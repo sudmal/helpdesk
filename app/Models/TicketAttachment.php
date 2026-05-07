@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Storage;
 
 class TicketAttachment extends Model
 {
+    protected $appends = ['url'];
+
     protected $fillable = [
         'ticket_id', 'comment_id', 'user_id',
         'original_name', 'stored_path', 'mime_type', 'size', 'context',

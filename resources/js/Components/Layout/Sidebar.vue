@@ -5,35 +5,56 @@
       <span class="font-semibold text-lg tracking-tight">HelpDesk</span>
     </div>
     <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-      <NavItem :href="route('dashboard')"         icon="grid"     label="Дашборд" />
-      <NavItem :href="route('tickets.index')"     icon="ticket"   label="Заявки" />
-      <NavItem :href="route('calendar.index')"    icon="calendar" label="Календарь" />
+      <a :href="route('tickets.create')"
+          class="flex items-center gap-2.5 px-3 py-2.5 mb-2 rounded-xl
+                 bg-green-600 hover:bg-green-700 text-white font-medium text-sm
+                 transition-colors shadow-sm">
+        <span class="text-base">+</span>
+        <span>Новая заявка</span>
+      </a>
+      <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" />
+      <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" />
+      <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" />
       <template v-if="canManageSettings">
-        <NavItem :href="route('territories.index')" icon="map-pin" label="Территории" />
-        <NavItem :href="route('brigades.index')"  icon="users"    label="Бригады" />
+        <NavItem :href="route('territories.index')" icon="map-pin"  label="Территории" />
+        <NavItem :href="route('brigades.index')"    icon="users"    label="Бригады" />
       </template>
-      <NavItem :href="route('addresses.index')"   icon="database" label="Адреса" />
-      <NavItem v-if="canManageSettings" :href="route('settings.index')" icon="settings" label="Настройки" />
+      <NavItem :href="route('addresses.index')"     icon="database" label="Адреса" />
+      <NavItem v-if="can('materials.view')" :href="route('materials.index')"    icon="package"  label="Материалы" />
+      <NavItem v-if="canManageSettings"
+               :href="route('settings.index')"      icon="settings" label="Настройки" />
     </nav>
     <div class="px-4 py-4 border-t border-white/10">
       <div class="text-sm font-medium truncate">{{ user.name }}</div>
-      <div class="text-xs text-white/50 truncate">{{ user.email }}</div>
-      <Link :href="route('logout')" method="post" as="button"
-            class="mt-3 flex items-center gap-2 text-xs text-white/60 hover:text-white transition-colors">
-        <Icon name="log-out" class="w-4 h-4" /> Выход
-      </Link>
+      <div class="text-xs text-white/50 truncate mb-3">{{ user.email }}</div>
+      <button @click="logout"
+              class="flex items-center gap-2 text-xs text-white/60 hover:text-white transition-colors w-full text-left cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+        </svg>
+        Выход
+      </button>
     </div>
   </aside>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import NavItem from './NavItem.vue'
-import Icon from '@/Components/UI/Icon.vue'
 
 const props = defineProps({ user: Object })
+
 const canManageSettings = computed(() =>
   ['admin', 'head_support'].includes(props.user?.role?.slug)
 )
+
+function can(permission) {
+  const perms = props.user?.role?.permissions ?? []
+  return perms.includes('*') || perms.includes(permission)
+}
+
+function logout() {
+  router.post(route('logout'))
+}
 </script>

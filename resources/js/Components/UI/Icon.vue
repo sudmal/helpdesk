@@ -11,7 +11,7 @@ import {
   ChevronLeft, ChevronRight, Edit2, Trash2, Download,
   Paperclip, MessageSquare, Play, Pause, X, Check,
   RefreshCw, ArrowLeft, Eye, MoreVertical, Phone,
-  FileText, Image, Video, Music, File,
+  FileText, Image, Video, Music, File, Package,
 } from 'lucide-vue-next'
 
 const props = defineProps({ name: { type: String, required: true } })
@@ -19,7 +19,7 @@ const props = defineProps({ name: { type: String, required: true } })
 const MAP = {
   'grid': LayoutGrid, 'ticket': Ticket, 'calendar': Calendar,
   'map-pin': MapPin, 'users': Users, 'database': Database,
-  'settings': Settings, 'log-out': LogOut, 'menu': Menu,
+  'settings': Settings, 'log-out': LogOut, 'package': Package, 'menu': Menu,
   'check-circle': CheckCircle, 'alert-triangle': AlertTriangle,
   'clock': Clock, 'x-circle': XCircle, 'plus': Plus,
   'search': Search, 'filter': Filter, 'chevron-down': ChevronDown,

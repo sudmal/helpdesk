@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Ticket, TicketType, TicketStatus, Brigade, Address, User};
+use App\Models\{Ticket, TicketType, TicketStatus, Brigade, Address, User, ServiceType, SystemSetting};
 use App\Services\TicketService;
 use App\Http\Requests\{StoreTicketRequest, UpdateTicketRequest, AddCommentRequest};
 use Illuminate\Http\Request;
@@ -16,15 +16,45 @@ class TicketController extends Controller
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Ticket::class);
+        $sort    = in_array($request->sort, ['number','created_at','scheduled_at','status_id','priority']) ? $request->sort : 'created_at';
+        $sortDir = in_array($request->sortDir, ['asc','desc']) ? $request->sortDir : 'desc';
 
-        $tickets = Ticket::with(['address', 'type', 'status', 'brigade', 'creator', 'assignee'])
+        $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade', 'creator', 'assignee'])
+            ->withCount('comments')
             ->when($request->search, fn($q) => $q->search($request->search))
             ->when($request->status, fn($q) => $q->where('status_id', $request->status))
             ->when($request->type,   fn($q) => $q->where('type_id', $request->type))
-            ->when($request->brigade, fn($q) => $q->where('brigade_id', $request->brigade))
+            ->when($request->brigade,      fn($q) => $q->where('brigade_id', $request->brigade))
+            ->when($request->service_type, fn($q) => $q->where('service_type_id', $request->service_type))
+            ->when($request->overdue, fn($q) => $q->whereIn('status_id',
+                \App\Models\TicketStatus::where('is_final', false)->pluck('id'))
+                ->whereNotNull('scheduled_at')
+                ->where('scheduled_at', '<', now()))
             ->when($request->priority, fn($q) => $q->where('priority', $request->priority))
             ->when($request->date_from, fn($q) => $q->where('scheduled_at', '>=', $request->date_from))
             ->when($request->date_to,   fn($q) => $q->where('scheduled_at', '<=', $request->date_to . ' 23:59:59'))
+->when($request->input('closed_today'), function ($q) use ($request) {
+                $closedId = \App\Models\TicketStatus::where('slug', 'closed')->value('id');
+                $q->where('status_id', $closedId)->whereDate('closed_at', today());
+                if ($request->input('closed_today') === 'auto') {
+                    $q->where('close_notes', 'LIKE', '%просрочено%');
+                } elseif ($request->input('closed_today') === 'manual') {
+                    $q->where(function ($sub) {
+                        $sub->whereNull('close_notes')
+                            ->orWhere('close_notes', 'NOT LIKE', '%просрочено%');
+                    });
+                }
+            })
+            ->when($request->input('address_id'), function ($q) use ($request) {
+                $q->where('address_id', $request->input('address_id'));
+            })
+            ->when($request->input('city') || $request->input('street') || $request->input('building'), function ($q) use ($request) {
+                $q->whereHas('address', function ($a) use ($request) {
+                    if ($request->input('city'))     $a->where('city',     $request->input('city'));
+                    if ($request->input('street'))   $a->where('street',   $request->input('street'));
+                    if ($request->input('building')) $a->where('building', $request->input('building'));
+                });
+            })
             ->when(
                 // Монтажник видит только свои заявки
                 auth()->user()->isTechnician(),
@@ -33,16 +63,22 @@ class TicketController extends Controller
                         ->orWhereHas('brigade', fn($b) => $b->whereHas('members', fn($m) => $m->where('user_id', auth()->id())));
                 })
             )
-            ->latest('scheduled_at')
+            ->orderBy($sort, $sortDir)
             ->paginate(25)
             ->withQueryString();
 
         return Inertia::render('Tickets/Index', [
             'tickets'  => $tickets,
-            'filters'  => $request->only(['search', 'status', 'type', 'brigade', 'priority', 'date_from', 'date_to']),
+            'filters'  => $request->only(['search', 'status', 'type', 'brigade', 'priority', 'date_from', 'date_to', 'address_id', 'city', 'street', 'building', 'service_type', 'overdue', 'closed_today', 'sort', 'sortDir']),
             'statuses' => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
             'types'    => TicketType::active()->get(['id', 'name', 'color']),
-            'brigades' => Brigade::orderBy('name')->get(['id', 'name']),
+            'brigades'     => Brigade::orderBy('name')->get(['id', 'name']),
+            'serviceTypes' => \App\Models\ServiceType::active()->get(['id', 'name', 'color']),
+            'overdueCount' => Ticket::whereIn('status_id',
+                \App\Models\TicketStatus::where('is_final', false)->pluck('id'))
+                ->whereNotNull('scheduled_at')
+                ->where('scheduled_at', '<', now())
+                ->count(),
         ]);
     }
 
@@ -58,22 +94,46 @@ class TicketController extends Controller
             $addressHistory = Ticket::with(['type', 'status', 'creator'])
                 ->where('address_id', $request->address_id)
                 ->latest()
-                ->take(10)
+                ->take(50)
                 ->get();
         }
 
         return Inertia::render('Tickets/Create', [
-            'types'    => TicketType::active()->get(['id', 'name', 'color']),
-            'statuses' => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
-            'brigades' => Brigade::with('territories')->orderBy('name')->get(),
-            'address'  => $address,
+            'types'        => TicketType::active()->get(['id', 'name', 'color']),
+            'serviceTypes' => ServiceType::active()->get(['id', 'name', 'color']),
+            'statuses'     => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
+            'brigades'     => Brigade::with('territories')->orderBy('name')->get(),
+            'address'      => $address,
             'addressHistory' => $addressHistory,
+'territories'  => \App\Models\Territory::orderBy('name')->get(['id', 'name']),
+            'lanbillingEnabled' => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),
+            'settings'     => [
+                'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
+                'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
+                'schedule_step_minutes' => SystemSetting::get('schedule_step_minutes', 30),
+            ],
         ]);
     }
 
     public function store(StoreTicketRequest $request): \Illuminate\Http\RedirectResponse
     {
-        $ticket = $this->ticketService->create($request->validated(), auth()->user());
+        $validated = $request->validated();
+
+        // Проверка занятости временного слота
+        $conflict = $this->ticketService->checkSlotConflict($validated);
+        if ($conflict) {
+            return back()->withErrors(['scheduled_at' => $conflict])->withInput();
+        }
+
+        $ticket = $this->ticketService->create($validated, auth()->user());
+
+        // Сохраняем вложения если есть
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $this->ticketService->storeAttachment($ticket, $file, auth()->user(), 'attachment');
+            }
+        }
+
         return redirect()->route('tickets.show', $ticket)->with('success', 'Заявка создана');
     }
 
@@ -83,31 +143,48 @@ class TicketController extends Controller
 
         $ticket->load([
             'address.territory',
-            'type', 'status', 'brigade.members', 'creator', 'assignee',
+            'type', 'serviceType', 'status', 'brigade.members', 'creator', 'assignee',
             'comments.author', 'comments.attachments',
             'attachments.uploader',
+            'materials',
             'history.user',
         ]);
 
         // История заявок по этому адресу (кроме текущей)
         $addressHistory = $ticket->address_id
+
             ? Ticket::with(['type', 'status'])
                 ->where('address_id', $ticket->address_id)
                 ->where('id', '!=', $ticket->id)
+                ->when($ticket->apartment, fn($q) =>
+                    $q->where(function ($sub) use ($ticket) {
+                        $sub->where('apartment', $ticket->apartment)
+                            ->orWhereNull('apartment')
+                            ->orWhere('apartment', '');
+                    })
+                )
                 ->latest()
-                ->take(5)
-                ->get()
+                ->take(20)
+                ->get(['id', 'number', 'type_id', 'status_id', 'address_id',
+                       'apartment', 'description', 'close_notes', 'act_number', 'created_at'])
             : [];
 
         return Inertia::render('Tickets/Show', [
             'ticket'         => $ticket,
             'addressHistory' => $addressHistory,
+            'materialsCatalog' => \App\Models\Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','name','unit','price']),
             'statuses'       => TicketStatus::active()->get(['id', 'name', 'color', 'slug', 'is_final']),
             'brigades'       => Brigade::with('members')->orderBy('name')->get(),
             'canEdit'        => auth()->user()->can('update', $ticket),
             'canAssign'      => auth()->user()->can('assign', $ticket),
             'canClose'       => auth()->user()->can('close', $ticket),
             'canComment'     => auth()->user()->can('comment', $ticket),
+            'settings'       => [
+                'lanbillingEnabled'    => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),
+                'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
+                'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
+                'schedule_step_minutes' => SystemSetting::get('schedule_step_minutes', 30),
+            ],
         ]);
     }
 
@@ -122,6 +199,12 @@ class TicketController extends Controller
             'types'    => TicketType::active()->get(['id', 'name', 'color']),
             'statuses' => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
             'brigades' => Brigade::with('members')->orderBy('name')->get(),
+            'settings' => [
+                'lanbillingEnabled'    => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),
+                'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
+                'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
+                'schedule_step_minutes' => SystemSetting::get('schedule_step_minutes', 30),
+            ],
         ]);
     }
 
@@ -158,17 +241,61 @@ class TicketController extends Controller
     public function close(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('close', $ticket);
-        $request->validate(['comment' => 'nullable|string|max:2000']);
+        $request->validate([
+            'comment'    => 'nullable|string|max:2000',
+            'act_number' => 'nullable|string|max:50',
+        ]);
+
+        // Если акт не указан — ставим б/а
+        $actNumber = $request->filled('act_number') ? $request->act_number : 'б/а';
+        $ticket->update(['act_number' => $actNumber]);
+
         $this->ticketService->updateStatus($ticket, 'closed', auth()->user(), $request->comment);
 
-        // Вложения при закрытии
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
                 $this->ticketService->storeAttachment($ticket, $file, auth()->user(), 'close');
             }
         }
 
+        // Сохраняем расходные материалы
+        $materialsData = $request->input('materials');
+        if (is_string($materialsData)) {
+            $materialsData = json_decode($materialsData, true) ?? [];
+        }
+        if (!empty($materialsData) && is_array($materialsData)) {
+            $ticket->materials()->delete();
+            foreach ($materialsData as $item) {
+                if (empty($item['material_id']) || empty($item['quantity'])) continue;
+                $material = \App\Models\Material::find($item['material_id']);
+                if ($material) {
+                    $ticket->materials()->create([
+                        'material_id'   => $material->id,
+                        'material_name' => $material->name,
+                        'material_unit' => $material->unit,
+                        'price_at_time' => $material->price,
+                        'quantity'      => $item['quantity'],
+                        'created_by'    => auth()->id(),
+                    ]);
+                }
+            }
+        }
+
         return back()->with('success', 'Заявка закрыта');
+    }
+
+    public function postpone(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorize('update', $ticket);
+        $request->validate([
+            'scheduled_at' => 'required|date',
+            'comment'      => 'nullable|string|max:2000',
+        ]);
+
+        $ticket->update(['scheduled_at' => $request->scheduled_at]);
+        $this->ticketService->updateStatus($ticket, 'postponed', auth()->user(), $request->comment);
+
+        return back()->with('success', 'Заявка перенесена на ' . \Carbon\Carbon::parse($request->scheduled_at)->format('d.m.Y H:i'));
     }
 
     public function reopen(Ticket $ticket): \Illuminate\Http\RedirectResponse

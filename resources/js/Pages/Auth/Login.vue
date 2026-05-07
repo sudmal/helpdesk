@@ -30,13 +30,13 @@
           </div>
 
           <div>
-            <label class="block text-sm text-blue-200 mb-1.5">Email</label>
+            <label class="block text-sm text-blue-200 mb-1.5">Логин или Email</label>
             <input v-model="form.email"
-                   type="email"
+                   type="text"
                    required
                    autofocus
-                   autocomplete="username"
-                   placeholder="admin@helpdesk.local"
+                   autocomplete="username" inputmode="text"
+                   placeholder="ivanov или admin@helpdesk.local"
                    class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3
                           text-white placeholder-white/30 text-sm
                           focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50

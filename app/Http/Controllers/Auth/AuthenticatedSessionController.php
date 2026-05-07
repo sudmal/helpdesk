@@ -17,14 +17,18 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
+        $request->validate([
+            'email'    => 'required|string',
             'password' => 'required|string',
         ]);
 
+        // Пробуем войти по логину, потом по email
+        $loginField = filter_var($request->email, FILTER_VALIDATE_EMAIL) ? 'email' : 'login';
+        $credentials = [$loginField => $request->email, 'password' => $request->password];
+
         if (!Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors([
-                'email' => 'Неверный email или пароль',
+                'email' => 'Неверный логин/email или пароль',
             ]);
         }
 

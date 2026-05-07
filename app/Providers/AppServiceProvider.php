@@ -16,6 +16,7 @@ class AppServiceProvider extends AuthServiceProvider
 
     public function boot(): void
     {
+
         $this->registerPolicies();
 
         // Регистрируем Observer

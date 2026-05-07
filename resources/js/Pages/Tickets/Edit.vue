@@ -119,10 +119,12 @@ import { Head, Link, useForm } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Icon from '@/Components/UI/Icon.vue'
+import TimePicker from '@/Components/UI/TimePicker.vue'
 import dayjs from 'dayjs'
 
 const props = defineProps({
   ticket: Object, types: Array, statuses: Array, brigades: Array,
+  settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
 })
 
 const addressQuery   = ref(props.ticket.address?.full_address ?? '')
@@ -143,9 +145,6 @@ const form = useForm({
     ? dayjs(props.ticket.scheduled_at).format('YYYY-MM-DDTHH:mm') : '',
 })
 
-const selectedBrigadeMembers = computed(() =>
-  props.brigades.find(b => b.id == form.brigade_id)?.members ?? []
-)
 
 let timer = null
 function searchAddresses() {

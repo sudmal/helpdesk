@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Territory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -14,7 +15,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'role_id', 'name', 'email', 'phone', 'password',
+        'role_id', 'name', 'login', 'email', 'phone', 'password',
         'telegram_chat_id', 'max_chat_id',
         'notify_telegram', 'notify_email', 'notify_max',
         'is_active',
@@ -38,6 +39,11 @@ class User extends Authenticatable
     public function brigades(): BelongsToMany
     {
         return $this->belongsToMany(Brigade::class, 'brigade_user');
+    }
+
+    public function territories(): BelongsToMany
+    {
+        return $this->belongsToMany(Territory::class, 'user_territory');
     }
 
     public function createdTickets(): HasMany

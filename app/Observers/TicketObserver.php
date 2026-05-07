@@ -14,6 +14,17 @@ class TicketObserver
     {
         $user = auth()->user();
         if (!$user) return;
+        // Пропускаем если нет значимых изменений
+        $watched = ['status_id', 'brigade_id', 'assigned_to', 'type_id', 'scheduled_at', 'priority'];
+        $changed = array_intersect(array_keys($ticket->getChanges()), $watched);
+        if (empty($changed)) return;
+        
+        // Защита от дублирования — пишем только один раз за запрос
+        static $written = [];
+        $key = $ticket->id . '_' . implode('_', $changed);
+        if (isset($written[$key])) return;
+        $written[$key] = true;
+
 
         $watchedFields = [
             'status_id'    => 'Статус',

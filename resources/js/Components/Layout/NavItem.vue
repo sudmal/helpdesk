@@ -1,17 +1,17 @@
 <template>
-  <Link :href="href"
-        :class="['flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+  <InertiaLink :href="href"
+        :class="['flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
                  isActive
                    ? 'bg-blue-600 text-white'
                    : 'text-white/70 hover:bg-white/10 hover:text-white']">
     <Icon :name="icon" class="w-4 h-4 shrink-0" />
     {{ label }}
-  </Link>
+  </InertiaLink>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { Link as InertiaLink, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/UI/Icon.vue'
 
 const props = defineProps({
@@ -21,5 +21,11 @@ const props = defineProps({
 })
 
 const page = usePage()
-const isActive = computed(() => page.url.startsWith(new URL(props.href, window.location.origin).pathname))
+const isActive = computed(() => {
+  try {
+    return page.url.startsWith(new URL(props.href, window.location.origin).pathname)
+  } catch {
+    return false
+  }
+})
 </script>

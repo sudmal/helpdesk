@@ -2,25 +2,73 @@
 
 namespace App\Services;
 
-use App\Models\{Ticket, TicketStatus, TicketAttachment, User};
+use App\Models\{Ticket, TicketStatus, TicketAttachment, TicketHistory, User, ServiceType, SystemSetting};
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class TicketService
 {
+    /**
+     * Проверка занятости временного слота
+     * Возвращает null если свободно, строку с описанием конфликта если занято
+     */
+    public function checkSlotConflict(array $data): ?string
+    {
+        if (empty($data['scheduled_at']) || empty($data['brigade_id'])) {
+            return null;
+        }
+
+        $step      = (int) SystemSetting::get('schedule_step_minutes', 30);
+        $slotStart = Carbon::parse($data['scheduled_at']);
+        $slotEnd   = $slotStart->copy()->addMinutes($step);
+
+        $conflict = Ticket::with('address')
+            ->where('brigade_id', $data['brigade_id'])
+            ->whereNotNull('scheduled_at')
+            ->whereHas('status', fn($q) => $q->where('is_final', false))
+            ->whereBetween('scheduled_at', [
+                $slotStart->copy()->subMinutes($step - 1),
+                $slotEnd->copy()->subMinute(),
+            ])
+            ->when(
+                !empty($data['service_type_id']),
+                fn($q) => $q->where('service_type_id', $data['service_type_id'])
+            )
+            ->when(
+                !empty($data['id']),
+                fn($q) => $q->where('id', '!=', $data['id'])
+            )
+            ->first();
+
+        if ($conflict) {
+            $time = Carbon::parse($conflict->scheduled_at)->format('H:i');
+            $addr = $conflict->address
+                ? $conflict->address->street . ' ' . $conflict->address->building
+                : '—';
+            return "Слот {$slotStart->format('H:i')} занят: заявка {$conflict->number} ({$addr} в {$time})";
+        }
+
+        return null;
+    }
+
     public function create(array $data, User $creator): Ticket
     {
         return DB::transaction(function () use ($data, $creator) {
             $newStatus = TicketStatus::where('slug', 'new')->firstOrFail();
 
+            // Определяем префикс номера по участку
+            $serviceTypeName = !empty($data['service_type_id'])
+                ? ServiceType::find($data['service_type_id'])?->name
+                : null;
+
             $ticket = Ticket::create([
-                'number'     => Ticket::generateNumber(),
+                'number'     => Ticket::generateNumber($serviceTypeName),
                 'status_id'  => $newStatus->id,
                 'created_by' => $creator->id,
                 ...$data,
             ]);
 
-            // history пишет Observer через created()
             return $ticket->load(['address', 'type', 'status', 'brigade', 'creator']);
         });
     }
@@ -29,7 +77,6 @@ class TicketService
     {
         $newStatus = TicketStatus::where('slug', $slug)->firstOrFail();
 
-        // Авторизуем пользователя чтобы Observer знал кто менял
         auth()->setUser($user);
 
         $updates = ['status_id' => $newStatus->id];
@@ -45,7 +92,6 @@ class TicketService
             $updates['close_notes'] = $comment;
         }
 
-        // Observer автоматически залогирует изменение status_id
         $ticket->update($updates);
 
         return $ticket->fresh(['status']);
@@ -55,20 +101,16 @@ class TicketService
     {
         auth()->setUser($by);
 
-        // Запоминаем старое имя ДО обновления
         $oldName = $ticket->brigade?->name;
 
-        // Observer залогирует изменение brigade_id
         $ticket->update([
             'brigade_id'  => $brigadeId,
             'assigned_to' => $userId,
         ]);
 
-        // Загружаем новую бригаду ПОСЛЕ обновления
         $ticket->load('brigade');
         $newName = $ticket->brigade?->name;
 
-        // Дополнительно пишем понятное имя (Observer пишет ID, мы — имя)
         $ticket->history()->create([
             'user_id'   => $by->id,
             'action'    => 'assigned',
