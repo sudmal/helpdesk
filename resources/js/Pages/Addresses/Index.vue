@@ -322,7 +322,7 @@
 
         <!-- МКД -->
         <template v-if="!editingAddr && addrMode === 'mkd'">
-          <div class="bg-blue-50 rounded-xl p-3 text-xs text-blue-800">🏢 МКД — дома + квартиры</div>
+          PLACEHOLDER
           <div class="grid grid-cols-2 gap-3">
             <div><label class="field-label">Дом с *</label>
               <input v-model.number="genFrom" type="number" min="1" required class="field-input" /></div>
@@ -344,12 +344,17 @@
     </Modal>
 
     <!-- Импорт -->
-    <Modal v-if="showImportModal" title="Импорт адресов (CSV/XLS)" @close="showImportModal = false">
+    <Modal v-if="showImportModal" title="Импорт адресов (CSV)" @close="showImportModal = false">
       <div class="space-y-4">
-        <div class="bg-blue-50 rounded-xl p-3 text-xs text-blue-800">
-          Заголовки: <code>city, street, building, apartment, subscriber_name, phone, contract_no, territory</code>
+        <div class="bg-blue-50 rounded-xl p-3 text-xs text-blue-800 space-y-2">
+          <p class="font-medium">Формат CSV (разделитель — запятая):</p>
+          <pre class="bg-white rounded-lg p-2 text-xs overflow-x-auto select-all">city,street,building,apartment,subscriber_name,phone,contract_no,territory
+Новый,Тестовая,111,1,,,,Нью-Васюки
+Новый,Тестовая,111,2,,,,Нью-Васюки
+Новый,Тестовая,111,3,,,,Нью-Васюки</pre>
+          <p class="text-blue-600">💡 Поля subscriber_name, phone, contract_no можно оставить пустыми</p>
         </div>
-        <input type="file" ref="importFile" accept=".csv,.xlsx,.xls" class="w-full text-sm" />
+        <input type="file" ref="importFile" accept=".csv" class="w-full text-sm" />
         <div v-if="importError" class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{{ importError }}</div>
         <div v-if="importResult" :class="['rounded-xl p-3 text-sm', importResult.errors?.length ? 'bg-amber-50' : 'bg-green-50']">
           ✅ Создано: {{ importResult.created }} | ⏭ Пропущено: {{ importResult.skipped }}
