@@ -1,4 +1,8 @@
 <template>
+  <Head>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2563eb" />
+  </Head>
   <div class="flex h-screen bg-gray-50 overflow-hidden">
 
     <!-- Overlay для мобильного -->
@@ -29,6 +33,7 @@
 
         <div class="ml-auto flex items-center gap-2 shrink-0">
           <slot name="actions" />
+          <PushNotifications />
         </div>
       </header>
 
@@ -58,6 +63,7 @@
 import { ref, computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import Sidebar from './Sidebar.vue'
+import PushNotifications from '@/Components/PushNotifications.vue'
 
 defineProps({ title: { type: String, default: '' } })
 

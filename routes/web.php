@@ -131,3 +131,10 @@ Route::resource('materials', App\Http\Controllers\MaterialController::class)
 Route::post('tickets/{ticket}/materials', [App\Http\Controllers\MaterialController::class, 'storeForTicket'])
     ->name('tickets.materials.store')
     ->middleware('auth');
+
+// Push уведомления
+Route::middleware('auth')->prefix('push')->group(function () {
+    Route::get('/vapid-key',    [App\Http\Controllers\PushController::class, 'vapidKey'])->name('push.vapid-key');
+    Route::post('/subscribe',   [App\Http\Controllers\PushController::class, 'subscribe'])->name('push.subscribe');
+    Route::post('/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe'])->name('push.unsubscribe');
+});

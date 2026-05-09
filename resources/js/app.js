@@ -21,3 +21,14 @@ createInertiaApp({
     },
     progress: { color: '#3b82f6', showSpinner: true },
 })
+
+// Регистрируем Service Worker для PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      console.log('SW registered:', reg.scope)
+    }).catch((err) => {
+      console.error('SW registration failed:', err)
+    })
+  })
+}
