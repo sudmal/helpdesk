@@ -5,27 +5,27 @@
       <div class="flex items-center gap-2 flex-wrap">
         <button v-if="canEdit && !ticket.status.is_final"
                 @click="$inertia.get(route('tickets.edit', ticket.id))"
-                class="btn-outline text-sm">✏️ Изменить</button>
+                class="btn-outline text-sm" title="Изменить">✏️</button>
 
         <button v-if="canClose && ticket.status.slug === 'new'"
                 @click="doAction('start')"
-                class="btn-sm bg-amber-500 hover:bg-amber-600 text-white">▶ В работу</button>
+                class="btn-sm bg-amber-500 hover:bg-amber-600 text-white" title="В работу">▶</button>
 
         <button v-if="canClose && ticket.status.slug === 'in_progress'"
                 @click="doAction('pause')"
-                class="btn-sm bg-gray-500 hover:bg-gray-600 text-white">⏸ Пауза</button>
+                class="btn-sm bg-gray-500 hover:bg-gray-600 text-white" title="Пауза">⏸</button>
 
         <button v-if="canClose && !ticket.status.is_final"
                 @click="showPostponeModal = true"
-                class="btn-outline text-sm">📅 Перенести</button>
+                class="btn-outline text-sm" title="Перенести">📅</button>
 
         <button v-if="canClose && !ticket.status.is_final"
                 @click="showCloseModal = true"
-                class="btn-sm bg-green-600 hover:bg-green-700 text-white">✓ Закрыть</button>
+                class="btn-sm bg-green-600 hover:bg-green-700 text-white" title="Закрыть">✓</button>
 
         <button v-if="canEdit && ticket.status.is_final"
                 @click="doAction('reopen')"
-                class="btn-outline text-sm">↩ Переоткрыть</button>
+                class="btn-outline text-sm" title="Переоткрыть">↩</button>
       </div>
     </template>
 
