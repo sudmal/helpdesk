@@ -96,7 +96,7 @@
           </div>
 
           <div v-if="ticket.close_notes" class="mt-3 bg-green-50 rounded-xl p-3">
-            <p class="text-xs text-green-600 mb-1 font-medium">Итог закрытия</p>
+            <p class="text-xs text-green-600 mb-1 font-medium">{{ ticket.status?.slug === 'postponed' ? 'Причина переноса' : 'Итог закрытия' }}</p>
             <p class="text-sm text-green-800">{{ ticket.close_notes }}</p>
           </div>
         </div>

@@ -7,7 +7,7 @@
                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200']"
             :disabled="loading">
       <span>{{ subscribed ? '🔔' : '🔕' }}</span>
-      <span>{{ loading ? '...' : (subscribed ? 'Уведомления вкл.' : 'Включить уведомления') }}</span>
+      
     </button>
   </div>
 </template>
