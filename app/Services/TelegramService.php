@@ -17,13 +17,23 @@ class TelegramService
         $this->apiUrl = "https://api.telegram.org/bot{$this->token}";
     }
 
-    public function send(string $chatId, string $text): void
+    public function send(string $chatId, string $text, array $keyboard = []): void
     {
-        Http::post("{$this->apiUrl}/sendMessage", [
+        $params = [
             'chat_id'    => $chatId,
             'text'       => $text,
             'parse_mode' => 'HTML',
-        ]);
+        ];
+
+        if ($keyboard) {
+            $params['reply_markup'] = json_encode([
+                'keyboard'        => $keyboard,
+                'resize_keyboard' => true,
+                'persistent'      => true,
+            ]);
+        }
+
+        Http::post("{$this->apiUrl}/sendMessage", $params);
     }
 
     public function broadcast(string $text, ?int $serviceTypeId = null): void
@@ -64,58 +74,100 @@ class TelegramService
         );
     }
 
-    // Форматируем одну заявку
-    public function formatTicket(Ticket $ticket, string $prefix = '🆕'): string
+    // Главная клавиатура
+    private function mainKeyboard(): array
     {
-        $address = $ticket->address;
-        $aptStr  = $ticket->apartment ? " кв.{$ticket->apartment}" : '';
-        $addrStr = $address ? "{$address->street} д.{$address->building}{$aptStr}" : '—';
-        $time    = $ticket->scheduled_at ? Carbon::parse($ticket->scheduled_at)->format('H:i') : '—';
-
-        return "{$prefix} <b>{$ticket->number}</b> [{$time}]\n" .
-               "📍 {$addrStr}\n" .
-               "📞 {$ticket->phone}\n" .
-               "💬 " . mb_substr($ticket->description ?? '—', 0, 100);
+        return [
+            ['📋 Заявки на сегодня', '📊 Статистика'],
+            ['🌐 Интернет', '📺 КТВ', '📡 ВОЛС'],
+            ['❌ Отписаться'],
+        ];
     }
 
-    // Список заявок на сегодня
+    // Форматируем список заявок (моноширинный)
     public function formatDailyList(?int $serviceTypeId = null): string
     {
         $today = today()->toDateString();
 
-        $query = Ticket::with(['address', 'type', 'serviceType', 'status'])
+        $query = Ticket::with(['address', 'serviceType', 'status'])
             ->whereDate('scheduled_at', $today)
             ->whereHas('status', fn($q) => $q->where('is_final', false))
             ->orderBy('scheduled_at');
 
-        if ($serviceTypeId) {
-            $query->where('service_type_id', $serviceTypeId);
-        }
+        if ($serviceTypeId) $query->where('service_type_id', $serviceTypeId);
 
         $tickets = $query->get();
 
+        $date = now()->format('d.m.Y');
+
         if ($tickets->isEmpty()) {
-            return "📋 <b>Заявки на сегодня " . now()->format('d.m.Y') . "</b>\n\nЗаявок нет";
+            return "<code>📋 Заявки на {$date}\n" .
+                   "─────────────────────\n" .
+                   "Заявок нет</code>";
         }
 
-        $text = "📋 <b>Заявки на сегодня " . now()->format('d.m.Y') . "</b> ({$tickets->count()} шт.)\n\n";
+        $lines  = "<code>📋 Заявки на {$date} ({$tickets->count()})\n";
+        $lines .= "─────────────────────────────\n";
 
         foreach ($tickets as $t) {
             $address = $t->address;
-            $aptStr  = $t->apartment ? " кв.{$t->apartment}" : '';
-            $addrStr = $address ? "{$address->street} д.{$address->building}{$aptStr}" : '—';
-            $time    = $t->scheduled_at ? Carbon::parse($t->scheduled_at)->format('H:i') : '—';
+            $aptStr  = $t->apartment ? " {$t->apartment}" : '';
+            $street  = $address ? mb_substr($address->street, 0, 15) : '—';
+            $bld     = $address ? "д.{$address->building}{$aptStr}" : '';
+            $time    = $t->scheduled_at ? Carbon::parse($t->scheduled_at)->format('H:i') : '--:--';
+            $phone   = $t->phone ?? '—';
+            $desc    = mb_substr($t->description ?? '—', 0, 25);
 
-            $text .= "▫️ <b>{$t->number}</b> {$time}\n" .
-                     "   📍 {$addrStr}\n" .
-                     "   📞 {$t->phone}\n" .
-                     "   💬 " . mb_substr($t->description ?? '—', 0, 60) . "\n\n";
+            $lines .= "{$t->number} {$time}\n";
+            $lines .= "  {$street} {$bld}\n";
+            $lines .= "  {$phone}\n";
+            $lines .= "  {$desc}\n";
+            $lines .= "─────────────────────────────\n";
         }
 
-        return rtrim($text);
+        return rtrim($lines) . "</code>";
     }
 
-    // Новая заявка на сегодня
+    // Статистика
+    public function formatStats(): string
+    {
+        $today   = today()->toDateString();
+        $openIds = TicketStatus::where('is_final', false)->pluck('id');
+
+        $total   = Ticket::whereDate('scheduled_at', $today)->count();
+        $open    = Ticket::whereDate('scheduled_at', $today)->whereIn('status_id', $openIds)->count();
+        $closed  = $total - $open;
+        $overdue = Ticket::whereIn('status_id', $openIds)
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<', today())
+            ->count();
+
+        $text  = "<code>📊 Статистика " . now()->format('d.m.Y') . "\n";
+        $text .= "─────────────────────\n";
+        $text .= "На сегодня:  {$total}\n";
+        $text .= "Открытых:    {$open}\n";
+        $text .= "Закрытых:    {$closed}\n";
+        if ($overdue > 0) {
+            $text .= "⚠ Просроч:   {$overdue}\n";
+        }
+        $text .= "─────────────────────\n";
+
+        // По участкам
+        $byType = Ticket::whereDate('scheduled_at', $today)
+            ->with('serviceType')
+            ->selectRaw('service_type_id, COUNT(*) as cnt')
+            ->groupBy('service_type_id')
+            ->get();
+
+        foreach ($byType as $row) {
+            $name = mb_substr($row->serviceType?->name ?? '—', 0, 10);
+            $text .= str_pad($name, 12) . "{$row->cnt}\n";
+        }
+
+        return rtrim($text) . "</code>";
+    }
+
+    // Новая заявка (моноширинный)
     public function formatNewTicket(Ticket $ticket): string
     {
         $address = $ticket->address;
@@ -124,15 +176,18 @@ class TelegramService
         $time    = $ticket->scheduled_at ? Carbon::parse($ticket->scheduled_at)->format('H:i d.m') : '—';
         $url     = config('app.url') . "/tickets/{$ticket->id}";
 
-        return "🆕 <b>Новая заявка {$ticket->number}</b>\n" .
-               "🕐 {$time} | {$ticket->serviceType?->name}\n" .
+        return "<code>🆕 НОВАЯ ЗАЯВКА\n" .
+               "─────────────────────────────\n" .
+               "№ {$ticket->number}\n" .
+               "⏰ {$time} | {$ticket->serviceType?->name}\n" .
                "📍 {$addrStr}\n" .
                "📞 {$ticket->phone}\n" .
-               "💬 " . mb_substr($ticket->description ?? '—', 0, 100) . "\n" .
+               "💬 " . mb_substr($ticket->description ?? '—', 0, 80) . "\n" .
+               "─────────────────────────────</code>\n" .
                "🔗 <a href=\"{$url}\">{$ticket->number}</a>";
     }
 
-    // Отменена заявка
+    // Отменена заявка (моноширинный)
     public function formatCancelledTicket(Ticket $ticket, ?string $reason = null): string
     {
         $address = $ticket->address;
@@ -140,14 +195,16 @@ class TelegramService
         $addrStr = $address ? "{$address->street} д.{$address->building}{$aptStr}" : '—';
         $time    = $ticket->scheduled_at ? Carbon::parse($ticket->scheduled_at)->format('H:i d.m') : '—';
 
-        $text = "❌ <b>Отменена {$ticket->number}</b>\n" .
-                "🕐 {$time} | {$ticket->serviceType?->name}\n" .
-                "📍 {$addrStr}\n" .
-                "📞 {$ticket->phone}\n";
-
+        $text  = "<code>❌ ОТМЕНЕНА\n";
+        $text .= "─────────────────────────────\n";
+        $text .= "№ {$ticket->number}\n";
+        $text .= "⏰ {$time} | {$ticket->serviceType?->name}\n";
+        $text .= "📍 {$addrStr}\n";
+        $text .= "📞 {$ticket->phone}\n";
         if ($reason) {
-            $text .= "📝 Причина: {$reason}\n";
+            $text .= "📝 " . mb_substr($reason, 0, 80) . "\n";
         }
+        $text .= "─────────────────────────────</code>";
 
         return $text;
     }
@@ -162,12 +219,18 @@ class TelegramService
         $text     = trim($message['text'] ?? '');
 
         match (true) {
-            str_starts_with($text, '/start') => $this->handleStart($chatId, $username, $text),
-            $text === '/stop'                 => $this->handleStop($chatId),
-            $text === '/today'                => $this->send($chatId, $this->formatDailyList()),
-            $text === '/status'               => $this->send($chatId, $this->formatDailyList()),
-            $text === '/help'                 => $this->handleHelp($chatId),
-            default => null,
+            str_starts_with($text, '/start'),
+            $text === '🌐 Все участки'          => $this->handleStart($chatId, $username, $text),
+            $text === '/stop',
+            $text === '❌ Отписаться'            => $this->handleStop($chatId),
+            $text === '/today',
+            $text === '📋 Заявки на сегодня'    => $this->send($chatId, $this->formatDailyList()),
+            $text === '📊 Статистика'            => $this->send($chatId, $this->formatStats()),
+            $text === '🌐 Интернет'              => $this->handleFilteredList($chatId, 'Интернет'),
+            $text === '📺 КТВ'                   => $this->handleFilteredList($chatId, 'КТВ'),
+            $text === '📡 ВОЛС'                  => $this->handleFilteredList($chatId, 'ВОЛС'),
+            $text === '/help'                    => $this->handleHelp($chatId),
+            default                              => null,
         };
     }
 
@@ -176,7 +239,7 @@ class TelegramService
         $parts         = explode(' ', $text, 2);
         $serviceTypeId = null;
 
-        if (isset($parts[1])) {
+        if (isset($parts[1]) && $parts[1] !== 'Все участки') {
             $st = \App\Models\ServiceType::where('name', 'like', '%' . trim($parts[1]) . '%')->first();
             $serviceTypeId = $st?->id;
         }
@@ -186,31 +249,35 @@ class TelegramService
         $filter = $serviceTypeId ? " (участок: {$parts[1]})" : " (все участки)";
         $this->send($chatId,
             "✅ <b>Подписка оформлена{$filter}</b>\n\n" .
-            "/today — список заявок на сегодня\n" .
-            "/stop — отписаться\n" .
-            "/help — помощь"
+            "Используйте кнопки ниже 👇",
+            $this->mainKeyboard()
         );
     }
 
     private function handleStop(string $chatId): void
     {
         $this->unsubscribe($chatId);
-        $this->send($chatId, "❌ Отписались. Напишите /start чтобы подписаться снова.");
+        $this->send($chatId,
+            "❌ Отписались от уведомлений.\nНапишите /start чтобы подписаться снова.",
+            [['▶️ Подписаться снова']]
+        );
+    }
+
+    private function handleFilteredList(string $chatId, string $typeName): void
+    {
+        $st = \App\Models\ServiceType::where('name', 'like', "%{$typeName}%")->first();
+        $this->send($chatId, $this->formatDailyList($st?->id));
     }
 
     private function handleHelp(string $chatId): void
     {
         $this->send($chatId,
             "📖 <b>HelpDesk бот</b>\n\n" .
-            "/start — подписаться (все уведомления)\n" .
-            "/start Интернет — только Интернет\n" .
-            "/start КТВ — только КТВ\n" .
-            "/today — список заявок на сегодня\n" .
-            "/stop — отписаться\n\n" .
-            "Автоматически приходят:\n" .
-            "• Новые заявки на сегодня\n" .
-            "• Утренний список в 08:00\n" .
-            "• Уведомление об отмене"
+            "Используйте кнопки на клавиатуре или команды:\n\n" .
+            "/start — подписаться\n" .
+            "/today — заявки на сегодня\n" .
+            "/stop — отписаться",
+            $this->mainKeyboard()
         );
     }
 }
