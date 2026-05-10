@@ -44,6 +44,25 @@ class TicketObserver
                 'new_value' => $newLabel,
             ]);
         }
+        // Уведомление об отмене заявки на сегодня
+        if ($ticket->wasChanged('status_id')) {
+            $newStatus = \App\Models\TicketStatus::find($ticket->status_id);
+            $isToday   = $ticket->scheduled_at &&
+                         \Carbon\Carbon::parse($ticket->scheduled_at)->isToday();
+
+            if ($newStatus?->slug === 'cancelled' && $isToday) {
+                dispatch(function () use ($ticket) {
+                    $telegram = app(\App\Services\TelegramService::class);
+                    $telegram->broadcast(
+                        $telegram->formatCancelledTicket(
+                            $ticket->fresh(['address', 'serviceType']),
+                            $ticket->close_notes
+                        ),
+                        $ticket->service_type_id
+                    );
+                })->afterResponse();
+            }
+        }
     }
 
     public function created(Ticket $ticket): void

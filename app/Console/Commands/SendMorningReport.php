@@ -47,7 +47,7 @@ class SendMorningReport extends Command
         }
 
         // Telegram
-        $telegram->broadcast($telegram->formatMorningSummary());
+        $telegram->broadcast($telegram->formatDailyList());
 
         $this->info("Push: {$users->count()} | Telegram: отправлено");
     }
