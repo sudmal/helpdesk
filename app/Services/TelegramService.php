@@ -109,7 +109,7 @@ class TelegramService
 
         foreach ($tickets as $t) {
             $address = $t->address;
-            $aptStr  = $t->apartment ? " {$t->apartment}" : '';
+            $aptStr  = $t->apartment ? " кв.{$t->apartment}" : '';
             $street  = $address ? mb_substr($address->street, 0, 15) : '—';
             $bld     = $address ? "д.{$address->building}{$aptStr}" : '';
             $time    = $t->scheduled_at ? Carbon::parse($t->scheduled_at)->format('H:i') : '--:--';
