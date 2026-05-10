@@ -138,3 +138,10 @@ Route::middleware('auth')->prefix('push')->group(function () {
     Route::post('/subscribe',   [App\Http\Controllers\PushController::class, 'subscribe'])->name('push.subscribe');
     Route::post('/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe'])->name('push.unsubscribe');
 });
+
+// Telegram Bot
+Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class, 'webhook'])
+    ->name('telegram.webhook');
+Route::get('/telegram/set-webhook', [App\Http\Controllers\TelegramController::class, 'setWebhook'])
+    ->middleware('auth')
+    ->name('telegram.set-webhook');

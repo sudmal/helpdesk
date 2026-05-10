@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Services\TelegramService;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -21,14 +22,37 @@ class NewTicketNotification extends Notification
         $ticket  = $this->ticket;
         $address = $ticket->address;
         $aptStr  = $ticket->apartment ? ' кв.'.$ticket->apartment : '';
-        $addrStr = $address
-            ? ($address->street . ' д.' . $address->building . $aptStr)
-            : '—';
+        $addrStr = $address ? ($address->street.' д.'.$address->building.$aptStr) : '—';
 
         return (new WebPushMessage)
-            ->title('🆕 Новая заявка ' . $ticket->number)
-            ->body($addrStr . "\n" . ($ticket->description ?? ''))
-            ->data(['url' => '/tickets/' . $ticket->id])
-            ->tag('ticket-' . $ticket->id);
+            ->title('🆕 Новая заявка '.$ticket->number)
+            ->body($addrStr."\n".($ticket->description ?? ''))
+            ->data(['url' => '/tickets/'.$ticket->id])
+            ->tag('ticket-'.$ticket->id);
+    }
+
+    // Отправляем в Telegram и Push
+    public static function dispatch(Ticket $ticket): void
+    {
+        // Telegram
+        try {
+            $telegram = app(TelegramService::class);
+            $telegram->broadcast(
+                $telegram->formatNewTicket($ticket),
+                $ticket->service_type_id
+            );
+        } catch (\Throwable $e) {
+            \Log::error('Telegram notification failed: '.$e->getMessage());
+        }
+
+        // Push
+        try {
+            $users = \App\Models\User::whereHas('pushSubscriptions')->get();
+            foreach ($users as $user) {
+                $user->notify(new static($ticket));
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Push notification failed: '.$e->getMessage());
+        }
     }
 }

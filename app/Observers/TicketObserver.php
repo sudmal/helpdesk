@@ -1,30 +1,24 @@
 <?php
-
 namespace App\Observers;
 
 use App\Models\Ticket;
+use App\Notifications\NewTicketNotification;
 
 class TicketObserver
 {
-    /**
-     * Автоматически пишем историю при любом изменении полей заявки.
-     * Вызывается после успешного update().
-     */
     public function updated(Ticket $ticket): void
     {
         $user = auth()->user();
         if (!$user) return;
-        // Пропускаем если нет значимых изменений
+
         $watched = ['status_id', 'brigade_id', 'assigned_to', 'type_id', 'scheduled_at', 'priority'];
         $changed = array_intersect(array_keys($ticket->getChanges()), $watched);
         if (empty($changed)) return;
-        
-        // Защита от дублирования — пишем только один раз за запрос
+
         static $written = [];
         $key = $ticket->id . '_' . implode('_', $changed);
         if (isset($written[$key])) return;
         $written[$key] = true;
-
 
         $watchedFields = [
             'status_id'    => 'Статус',
@@ -37,11 +31,8 @@ class TicketObserver
 
         foreach ($watchedFields as $field => $label) {
             if (!$ticket->wasChanged($field)) continue;
-
-            $old = $ticket->getOriginal($field);
-            $new = $ticket->getAttribute($field);
-
-            // Для FK — показываем имя связанной записи, а не ID
+            $old      = $ticket->getOriginal($field);
+            $new      = $ticket->getAttribute($field);
             $oldLabel = $this->resolveLabel($ticket, $field, $old);
             $newLabel = $this->resolveLabel($ticket, $field, $new);
 
@@ -67,26 +58,26 @@ class TicketObserver
             'old_value' => null,
             'new_value' => null,
         ]);
+
+        // Уведомления (асинхронно чтобы не тормозить создание)
+        dispatch(function () use ($ticket) {
+            NewTicketNotification::dispatch($ticket->fresh(['address', 'type', 'serviceType']));
+        })->afterResponse();
     }
 
     public function deleted(Ticket $ticket): void
     {
         $user = auth()->user();
         if (!$user) return;
-
         $ticket->history()->create([
-            'user_id'   => $user->id,
-            'action'    => 'deleted',
-            'field'     => null,
-            'old_value' => null,
-            'new_value' => null,
+            'user_id' => $user->id,
+            'action'  => 'deleted',
         ]);
     }
 
     private function resolveLabel(Ticket $ticket, string $field, mixed $value): ?string
     {
         if ($value === null) return null;
-
         return match ($field) {
             'status_id'   => \App\Models\TicketStatus::find($value)?->name ?? $value,
             'brigade_id'  => \App\Models\Brigade::find($value)?->name ?? $value,
