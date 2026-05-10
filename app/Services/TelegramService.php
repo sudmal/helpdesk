@@ -84,7 +84,7 @@ class TelegramService
         ];
     }
 
-    // Форматируем список заявок (моноширинный)
+    // Форматируем список заявок 
     public function formatDailyList(?int $serviceTypeId = null): string
     {
         $today = today()->toDateString();
@@ -101,13 +101,11 @@ class TelegramService
         $date = now()->format('d.m.Y');
 
         if ($tickets->isEmpty()) {
-            return "<code>📋 Заявки на {$date}\n" .
-                   "─────────────────────\n" .
-                   "Заявок нет</code>";
+            return "📋 <u>Заявки на {$date}</u>\n" .
+                   "Заявок нет";
         }
 
-        $lines  = "<code>📋 Заявки на {$date} ({$tickets->count()})\n";
-        $lines .= "─────────────────────────────\n";
+        $lines  = "📋 <u>Заявки на {$date} ({$tickets->count()})</u>\n";
 
         foreach ($tickets as $t) {
             $address = $t->address;
@@ -118,13 +116,13 @@ class TelegramService
             $phone   = $t->phone ?? '—';
             $desc    = mb_substr($t->description ?? '—', 0, 255);
 
-            $lines .= "{$t->number} {$time} ";
+            $lines .= "<blockquote>{$t->number} {$time} ";
             $lines .= "  {$street} {$bld} ";
             $lines .= "  {$phone} ";
-            $lines .= "  {$desc}\n\n";
+            $lines .= "  {$desc}</blockquote>\n\n";
         }
 
-        return rtrim($lines) . "</code>";
+        return rtrim($lines);
     }
 
     // Статистика
