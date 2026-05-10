@@ -116,13 +116,12 @@ class TelegramService
             $bld     = $address ? "д.{$address->building}{$aptStr}" : '';
             $time    = $t->scheduled_at ? Carbon::parse($t->scheduled_at)->format('H:i') : '--:--';
             $phone   = $t->phone ?? '—';
-            $desc    = mb_substr($t->description ?? '—', 0, 25);
+            $desc    = mb_substr($t->description ?? '—', 0, 255);
 
-            $lines .= "{$t->number} {$time}\n";
-            $lines .= "  {$street} {$bld}\n";
-            $lines .= "  {$phone}\n";
-            $lines .= "  {$desc}\n";
-            $lines .= "─────────────────────────────\n";
+            $lines .= "{$t->number} {$time} ";
+            $lines .= "  {$street} {$bld} ";
+            $lines .= "  {$phone} ";
+            $lines .= "  {$desc}\n\n";
         }
 
         return rtrim($lines) . "</code>";
