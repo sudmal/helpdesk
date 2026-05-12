@@ -112,16 +112,17 @@ class AddressController extends Controller
 
             $isMkd = $isMkdFromAddresses || $ticketApartments->isNotEmpty();
 
-            // Единый запрос: количество заявок на квартиру (учитывает оба способа хранения)
-            $ticketCountsByApt = \DB::table('tickets')
-                ->join('addresses', 'tickets.address_id', '=', 'addresses.id')
-                ->where('addresses.city', $city)
-                ->where('addresses.street', $street)
-                ->where('addresses.building', $building)
-                ->whereNull('tickets.deleted_at')
-                ->selectRaw("COALESCE(NULLIF(tickets.apartment, ''), NULLIF(addresses.apartment, ''), '') as apt_val, COUNT(*) as cnt")
-                ->groupBy(\DB::raw("COALESCE(NULLIF(tickets.apartment, ''), NULLIF(addresses.apartment, ''), '')"))
-                ->pluck('cnt', 'apt_val');
+            // Единый запрос: количество заявок на квартиру (учитывает оба способа хранения).
+            // GROUP BY apt_val (алиас) обходит ONLY_FULL_GROUP_BY в MySQL.
+            $rows = \DB::select(
+                "SELECT COALESCE(NULLIF(t.apartment,''),NULLIF(a.apartment,''),'') AS apt_val, COUNT(*) AS cnt
+                 FROM tickets t
+                 JOIN addresses a ON t.address_id = a.id
+                 WHERE a.city = ? AND a.street = ? AND a.building = ? AND t.deleted_at IS NULL
+                 GROUP BY apt_val",
+                [$city, $street, $building]
+            );
+            $ticketCountsByApt = collect($rows)->pluck('cnt', 'apt_val');
 
             if (!$isMkdFromAddresses && $ticketApartments->isNotEmpty()) {
                 $baseAddress = $allInBuilding->first();
