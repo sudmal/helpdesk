@@ -290,6 +290,7 @@ class TicketController extends Controller
                     $ticket->materials()->create([
                         'material_id'   => $material->id,
                         'material_name' => $material->name,
+                        'material_code' => $material->code,
                         'material_unit' => $material->unit,
                         'price_at_time' => $material->price,
                         'quantity'      => $item['quantity'],
