@@ -10,12 +10,14 @@ class MaterialController extends Controller
     public function index()
     {
         return Inertia::render('Materials/Index', [
-            'materials' => Material::orderBy('sort_order')->orderBy('name')->get(),
+            'materials'  => Material::orderBy('sort_order')->orderBy('name')->get(),
+            'canManage'  => auth()->user()->hasPermission('materials.manage'),
         ]);
     }
 
     public function store(Request $request)
     {
+        abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
         $data = $request->validate([
             'name'       => 'required|string|max:255',
             'unit'       => 'required|string|max:20',
@@ -29,6 +31,7 @@ class MaterialController extends Controller
 
     public function update(Request $request, Material $material)
     {
+        abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
         $data = $request->validate([
             'name'       => 'required|string|max:255',
             'unit'       => 'required|string|max:20',
@@ -42,6 +45,7 @@ class MaterialController extends Controller
 
     public function destroy(Material $material)
     {
+        abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
         $material->update(['is_active' => false]);
         return back()->with('success', 'Материал деактивирован');
     }

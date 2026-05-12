@@ -229,7 +229,17 @@ $allInBuilding = Address::with('territory')
 
     public function search(Request $request)
     {
-        $q = trim($request->get('q', ''));
+        $q    = trim($request->get('q', ''));
+        $user = auth()->user();
+
+        if ($user->isTechnician() || $user->isForeman()) {
+            $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+            $userTerritories = $brigadeIds->isNotEmpty()
+                ? Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+                : $user->territories()->pluck('territories.id');
+        } else {
+            $userTerritories = collect();
+        }
 
         // Определяем: если последнее слово — число, считаем его квартирой
         $words  = array_values(array_filter(explode(' ', $q)));
@@ -256,6 +266,7 @@ $allInBuilding = Address::with('territory')
         $searchQuery = implode(' ', $textWords);
 
         $addresses = Address::with('territory')
+            ->when($userTerritories->isNotEmpty(), fn($q) => $q->whereIn('territory_id', $userTerritories))
             ->when($searchQuery, fn($q) => $q->search($searchQuery))
             ->when($buildingHint, fn($q) => $q->where('building', $buildingHint))
             ->orderByRaw('CAST(building AS UNSIGNED)')

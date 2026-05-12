@@ -4,7 +4,7 @@
     <template #actions>
       <a :href="route('tickets.create')"
          class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700
-                text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors">
+                text-white px-3 py-0.5 rounded-lg text-sm font-medium transition-colors">
         + Новая
       </a>
     </template>
@@ -46,27 +46,27 @@
                       focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
       </div>
       <select v-model="localFilters.status" @change="applyFilters"
-              class="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white min-w-[110px]">
+              class="border border-gray-200 rounded-lg px-2 py-0.5 text-xs bg-white min-w-[110px]">
         <option value="">Все статусы</option>
         <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
       </select>
       <select v-model="localFilters.type" @change="applyFilters"
-              class="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white min-w-[110px]">
+              class="border border-gray-200 rounded-lg px-2 py-0.5 text-xs bg-white min-w-[110px]">
         <option value="">Все типы</option>
         <option v-for="t in types" :key="t.id" :value="t.id">{{ t.name }}</option>
       </select>
       <select v-model="localFilters.service_type" @change="applyFilters"
-              class="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white min-w-[90px]">
+              class="border border-gray-200 rounded-lg px-2 py-0.5 text-xs bg-white min-w-[90px]">
         <option value="">Участок</option>
         <option v-for="s in serviceTypes" :key="s.id" :value="s.id">{{ s.name }}</option>
       </select>
       <select v-model="localFilters.brigade" @change="applyFilters"
-              class="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white min-w-[110px]">
+              class="border border-gray-200 rounded-lg px-2 py-0.5 text-xs bg-white min-w-[110px]">
         <option value="">Все бригады</option>
         <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
       </select>
       <select v-model="localFilters.priority" @change="applyFilters"
-              class="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white min-w-[90px]">
+              class="border border-gray-200 rounded-lg px-2 py-0.5 text-xs bg-white min-w-[90px]">
         <option value="">Приоритет</option>
         <option value="urgent">🔴 Срочный</option>
         <option value="high">🟠 Высокий</option>
@@ -95,24 +95,24 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/80 text-xs text-gray-500 font-medium">
-              <th class="w-6 px-1.5 py-1.5"></th>
-              <th class="text-left px-2 py-1.5 w-28 cursor-pointer hover:text-gray-800 select-none"
+              <th class="w-6 px-1.5 py-0.5"></th>
+              <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
                 Дата <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
               </th>
-              <th class="text-left px-2 py-1.5 w-20 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-20 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('number')">
                 № <span class="text-gray-400">{{ sortIcon('number') }}</span>
               </th>
-              <th class="text-left px-2 py-1.5 hidden sm:table-cell w-24">Автор</th>
-              <th class="text-left px-2 py-1.5">Адрес / Описание</th>
-              <th class="text-left px-2 py-1.5 hidden md:table-cell w-32">Тип</th>
-              <th class="text-left px-2 py-1.5 hidden lg:table-cell w-24">Бригада</th>
-              <th class="text-left px-2 py-1.5 w-24 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-24">Автор</th>
+              <th class="text-left px-2 py-0.5">Адрес / Описание</th>
+              <th class="text-left px-2 py-0.5 hidden md:table-cell w-32">Тип</th>
+              <th class="text-left px-2 py-0.5 hidden lg:table-cell w-24">Бригада</th>
+              <th class="text-left px-2 py-0.5 w-24 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('status_id')">
                 Статус <span class="text-gray-400">{{ sortIcon('status_id') }}</span>
               </th>
-              <th class="text-left px-2 py-1.5 hidden sm:table-cell w-24 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-24 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('scheduled_at')">
                 Выезд <span class="text-gray-400">{{ sortIcon('scheduled_at') }}</span>
               </th>
@@ -128,15 +128,15 @@
                 @click="router.visit(route('tickets.show', t.id))">
 
               <!-- Иконка участка -->
-              <td class="px-1.5 py-1 text-center text-sm leading-none" :title="t.service_type?.name">
+              <td class="px-1.5 py-0.5 text-center text-sm leading-none" :title="t.service_type?.name">
                 {{ serviceIcon(t.service_type?.name) }}
               </td>
               <!-- Дата -->
-              <td class="px-2 py-1 whitespace-nowrap text-xs tabular-nums text-gray-400">
+              <td class="px-2 py-0.5 whitespace-nowrap text-xs tabular-nums text-gray-400">
                 {{ formatDate(t.created_at) }}
               </td>
               <!-- Номер + приоритет -->
-              <td class="px-2 py-1 whitespace-nowrap">
+              <td class="px-2 py-0.5 whitespace-nowrap">
                 <div class="flex items-center gap-1">
                   <span v-if="t.priority === 'urgent'" class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                   <span v-else-if="t.priority === 'high'" class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
@@ -145,11 +145,11 @@
               </td>
 
               <!-- Автор -->
-              <td class="px-2 py-1 hidden sm:table-cell text-xs text-gray-500 whitespace-nowrap truncate max-w-[80px]">
+              <td class="px-2 py-0.5 hidden sm:table-cell text-xs text-gray-500 whitespace-nowrap truncate max-w-[80px]">
                 {{ t.creator?.name?.split(' ')[0] ?? '—' }}
               </td>
               <!-- Адрес + телефон + описание -->
-              <td class="px-2 py-1 min-w-0">
+              <td class="px-2 py-0.5 min-w-0">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
                 <p class="text-gray-400 truncate text-xs leading-tight">
                   <span v-if="t.phone" class="text-gray-600 mr-1.5">{{ t.phone }}</span>
@@ -159,22 +159,22 @@
               </td>
 
               <!-- Тип -->
-              <td class="px-2 py-1 hidden md:table-cell">
+              <td class="px-2 py-0.5 hidden md:table-cell">
                 <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
               </td>
 
               <!-- Бригада -->
-              <td class="px-2 py-1 hidden lg:table-cell text-xs text-gray-500 whitespace-nowrap">
+              <td class="px-2 py-0.5 hidden lg:table-cell text-xs text-gray-500 whitespace-nowrap">
                 {{ t.brigade?.name ?? '—' }}
               </td>
 
               <!-- Статус -->
-              <td class="px-2 py-1">
+              <td class="px-2 py-0.5">
                 <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
               </td>
 
               <!-- Выезд -->
-              <td class="px-2 pr-3 py-1 hidden sm:table-cell text-xs whitespace-nowrap"
+              <td class="px-2 pr-3 py-0.5 hidden sm:table-cell text-xs whitespace-nowrap"
                   :class="isOverdue(t) ? 'text-red-500 font-medium' : 'text-gray-400'">
                 {{ formatDate(t.scheduled_at) }}
               </td>
@@ -315,7 +315,7 @@ const pageRange = computed(() => {
   return result
 })
 
-const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆' }
+const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆', 'подключ': '🟢' }
 function serviceIcon(name) {
   if (!name) return '📋'
   const k = name.toLowerCase()

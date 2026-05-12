@@ -151,7 +151,7 @@ const popup = reactive({
   brigade: '', scheduled: '', phone: '', description: '', url: '',
 })
 
-const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆' }
+const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆', 'подключ': '🟢' }
 function serviceIcon(name) {
   if (!name) return '📋'
   const k = name.toLowerCase()

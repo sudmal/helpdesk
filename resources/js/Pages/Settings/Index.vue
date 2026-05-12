@@ -15,13 +15,13 @@
 
     <!-- ── Типы заявок ── -->
     <div v-if="activeTab === 'types'" class="bg-white rounded-2xl border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-semibold">Типы заявок</h2>
         <button @click="openTypeModal()" class="btn-primary text-sm">+ Добавить</button>
       </div>
       <div class="divide-y divide-gray-100">
         <div v-for="t in ticketTypes" :key="t.id"
-             class="flex items-center px-6 py-3.5 gap-3 hover:bg-gray-50">
+             class="flex items-center px-4 py-1 gap-2 hover:bg-gray-50">
           <span class="w-3 h-3 rounded-full shrink-0" :style="{ background: t.color }"></span>
           <span class="flex-1 text-sm font-medium">{{ t.name }}</span>
           <span :class="['text-xs px-2 py-0.5 rounded-full',
@@ -37,7 +37,7 @@
 
     <!-- ── Участки (сервисы) ── -->
     <div v-if="activeTab === 'services'" class="bg-white rounded-2xl border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <div>
           <h2 class="font-semibold">Участки</h2>
           <p class="text-xs text-gray-400 mt-0.5">Интернет, КТВ и другие направления обслуживания</p>
@@ -50,7 +50,7 @@
              @dragstart="onDragStart('st', idx)"
              @dragover.prevent="onDragOver('st', idx)"
              @dragend="onDragEnd('st')"
-             :class="['flex items-center gap-3 px-4 py-3 border rounded-xl transition-colors cursor-grab',
+             :class="['flex items-center gap-2 px-3 py-1 border rounded-xl transition-colors cursor-grab',
                       dragOver_st === idx ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50']">
           <span class="text-gray-300 select-none text-lg">⠿</span>
           <span class="w-3 h-3 rounded-full shrink-0" :style="{ background: s.color }"></span>
@@ -109,7 +109,7 @@
           <div class="flex gap-2 flex-wrap">
             <label v-for="day in weekDays" :key="day.value"
                    class="flex items-center gap-1.5 text-sm cursor-pointer border border-gray-200
-                          rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
+                          rounded-lg px-3 py-1 hover:bg-gray-50 transition-colors"
                    :class="{ 'bg-blue-50 border-blue-300 text-blue-700': generalForm.work_days.includes(day.value) }">
               <input type="checkbox" :value="day.value" v-model="generalForm.work_days" class="hidden" />
               {{ day.label }}
@@ -126,7 +126,7 @@
 
     <!-- ── Территории ── -->
     <div v-if="activeTab === 'territories'" class="bg-white rounded-2xl border border-gray-200">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <div>
           <h2 class="font-semibold">Территории</h2>
           <p class="text-xs text-gray-400 mt-0.5">Перетащите для изменения порядка вкладок</p>
@@ -134,7 +134,7 @@
         <button @click="openTerritoryModal(null)"
                 class="btn-primary text-sm">+ Добавить</button>
       </div>
-      <div class="divide-y divide-gray-100 p-4 space-y-2">
+      <div class="divide-y divide-gray-100 p-2 space-y-1">
         <div v-if="!sortableTerritories.length" class="text-center py-6 text-gray-400 text-sm">
           Территории не добавлены
         </div>
@@ -143,7 +143,7 @@
              @dragstart="onDragStart('ter', idx)"
              @dragover.prevent="onDragOver('ter', idx)"
              @dragend="onDragEnd('ter')"
-             :class="['flex items-center gap-3 p-3 bg-white border rounded-xl transition-colors cursor-grab',
+             :class="['flex items-center gap-2 p-2 bg-white border rounded-xl transition-colors cursor-grab',
                       dragOver_ter === idx ? 'border-blue-400 bg-blue-50' : 'border-gray-200']">
           <span class="text-gray-300 select-none text-lg">⠿</span>
           <span class="flex-1 font-medium text-sm text-gray-800">{{ t.name }}</span>
@@ -157,13 +157,13 @@
 
     <!-- ── Статусы ── -->
     <div v-if="activeTab === 'statuses'" class="bg-white rounded-2xl border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-semibold">Статусы заявок</h2>
         <button @click="openStatusModal()" class="btn-primary text-sm">+ Добавить</button>
       </div>
       <div class="divide-y divide-gray-100">
         <div v-for="s in ticketStatuses" :key="s.id"
-             class="flex items-center px-6 py-3.5 gap-3 hover:bg-gray-50">
+             class="flex items-center px-4 py-1 gap-2 hover:bg-gray-50">
           <span class="w-3 h-3 rounded-full shrink-0" :style="{ background: s.color }"></span>
           <span class="flex-1 text-sm font-medium">{{ s.name }}</span>
           <span class="text-xs text-gray-400 font-mono">{{ s.slug }}</span>
@@ -177,7 +177,7 @@
 
     <!-- ── Пользователи ── -->
     <div v-if="activeTab === 'users'" class="bg-white rounded-2xl border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-semibold">Пользователи ({{ users.length }})</h2>
         <button @click="openUserModal()" class="btn-primary text-sm">+ Добавить</button>
       </div>
@@ -185,13 +185,13 @@
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
-              <th class="text-left px-5 py-3 text-xs text-gray-500 font-medium">Пользователь</th>
-              <th class="text-left px-5 py-3 text-xs text-gray-500 font-medium">Роль</th>
-              <th class="text-left px-5 py-3 text-xs text-gray-500 font-medium">Телефон</th>
-              <th class="text-left px-5 py-3 text-xs text-gray-500 font-medium">Telegram</th>
-              <th class="text-left px-5 py-3 text-xs text-gray-500 font-medium">Территории</th>
-              <th class="text-left px-5 py-3 text-xs text-gray-500 font-medium">Статус</th>
-              <th class="px-5 py-3"></th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Пользователь</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Роль</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Телефон</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Telegram</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Территории</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Статус</th>
+              <th class="px-3 py-0.5"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -199,19 +199,19 @@
               <td colspan="7" class="text-center py-10 text-gray-400">Нет пользователей</td>
             </tr>
             <tr v-for="u in users" :key="u.id" class="hover:bg-gray-50">
-              <td class="px-5 py-3">
+              <td class="px-3 py-0.5">
                 <p class="font-medium">{{ u.name }}</p>
                 <p class="text-xs text-gray-400">{{ u.email }}</p>
               </td>
-              <td class="px-5 py-3">
+              <td class="px-3 py-0.5">
                 <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{{ u.role?.name }}</span>
               </td>
-              <td class="px-5 py-3 text-gray-600">{{ u.phone ?? '—' }}</td>
-              <td class="px-5 py-3 text-gray-500 text-xs font-mono">{{ u.telegram_chat_id ?? '—' }}</td>
-              <td class="px-5 py-3 text-xs text-gray-500">
+              <td class="px-3 py-0.5 text-gray-600">{{ u.phone ?? '—' }}</td>
+              <td class="px-3 py-0.5 text-gray-500 text-xs font-mono">{{ u.telegram_chat_id ?? '—' }}</td>
+              <td class="px-3 py-0.5 text-xs text-gray-500">
                 {{ u.territories?.map(t => t.name).join(', ') || '—' }}
               </td>
-              <td class="px-5 py-3">
+              <td class="px-3 py-0.5">
                 <span :class="['text-xs px-2 py-0.5 rounded-full',
                                u.is_active
                                  ? 'bg-green-100 text-green-700'
@@ -219,7 +219,7 @@
                   {{ u.is_active ? 'Активен' : 'Заблокирован' }}
                 </span>
               </td>
-              <td class="px-5 py-3 text-right whitespace-nowrap">
+              <td class="px-3 py-0.5 text-right whitespace-nowrap">
                 <button @click="openUserModal(u)"   class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg">✏️</button>
                 <button @click="toggleBlock(u)"
                         class="p-1.5 rounded-lg"
@@ -240,7 +240,7 @@
            class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
 
         <!-- Заголовок роли -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100">
           <div class="flex items-center gap-3">
             <div :class="['w-9 h-9 rounded-xl flex items-center justify-center text-lg',
                           roleColor(role.slug).bg]">
@@ -261,7 +261,7 @@
             </span>
             <button @click="openRoleModal(role)"
                     class="flex items-center gap-1.5 text-sm border border-gray-200
-                           hover:bg-gray-50 px-3 py-1.5 rounded-xl transition-colors text-gray-600">
+                           hover:bg-gray-50 px-3 py-1 rounded-xl transition-colors text-gray-600">
               ✏️ Редактировать
             </button>
           </div>
@@ -300,14 +300,14 @@
               <p class="font-medium">Утренняя сводка бригадирам</p>
               <p class="text-gray-400 text-xs">Список заявок на сегодня — отправляется каждый день в 08:00</p>
             </div>
-            <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-mono">08:00 ежедневно</span>
+            <span class="text-xs bg-green-100 text-green-700 px-3 py-0.5 rounded-full font-mono">08:00 ежедневно</span>
           </div>
           <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <div>
               <p class="font-medium">Вечерний отчёт руководителям</p>
               <p class="text-gray-400 text-xs">Итоги дня для Администратора и Начальника ТП — в 20:00</p>
             </div>
-            <span class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-mono">20:00 ежедневно</span>
+            <span class="text-xs bg-blue-100 text-blue-700 px-3 py-0.5 rounded-full font-mono">20:00 ежедневно</span>
           </div>
         </div>
 
@@ -1100,5 +1100,5 @@ async function testLanbilling() {
 .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-40; }
 .btn-outline  { @apply border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-40; }
 .field-label  { @apply block text-xs text-gray-500 mb-1; }
-.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white; }
+.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-slate-50; }
 </style>

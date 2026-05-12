@@ -2,7 +2,7 @@
   <Head title="Расходные материалы" />
   <AppLayout title="Расходные материалы">
     <template #actions>
-      <button @click="openCreate"
+      <button v-if="canManage" @click="openCreate"
               class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700
                      text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
         + Добавить
@@ -26,19 +26,19 @@
           </tr>
           <tr v-for="m in materials" :key="m.id"
               :class="['transition-colors', m.is_active ? 'hover:bg-gray-50' : 'opacity-40 hover:bg-gray-50']">
-            <td class="px-4 py-1.5 text-gray-800 text-sm">{{ m.name }}</td>
-            <td class="px-3 py-1.5 text-gray-500 text-xs text-center">{{ m.unit }}</td>
-            <td class="px-4 py-1.5 text-right font-mono tabular-nums text-sm">{{ formatPrice(m.price) }}</td>
-            <td class="px-3 py-1.5 text-center">
+            <td class="px-4 py-0.5 text-gray-800 text-sm">{{ m.name }}</td>
+            <td class="px-3 py-0.5 text-gray-500 text-xs text-center">{{ m.unit }}</td>
+            <td class="px-4 py-0.5 text-right font-mono tabular-nums text-sm">{{ formatPrice(m.price) }}</td>
+            <td class="px-3 py-0.5 text-center">
               <span :class="['inline-block w-2 h-2 rounded-full',
                              m.is_active ? 'bg-green-500' : 'bg-gray-300']" />
             </td>
-            <td class="px-3 py-1.5 text-right whitespace-nowrap">
-              <button @click="openEdit(m)"
+            <td class="px-3 py-0.5 text-right whitespace-nowrap">
+              <button v-if="canManage" @click="openEdit(m)"
                       class="text-xs text-blue-600 hover:text-blue-800 mr-3 transition-colors">
                 Изменить
               </button>
-              <button @click="deactivate(m)"
+              <button v-if="canManage" @click="deactivate(m)"
                       class="text-xs text-gray-300 hover:text-red-500 transition-colors">
                 {{ m.is_active ? 'Откл' : 'Вкл' }}
               </button>
@@ -123,7 +123,7 @@ import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
 
-const props = defineProps({ materials: Array })
+const props = defineProps({ materials: Array, canManage: Boolean })
 
 const showModal = ref(false)
 const editing   = ref(null)

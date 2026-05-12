@@ -3,7 +3,7 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#2563eb" />
   </Head>
-  <div class="flex h-screen bg-gray-50 overflow-hidden">
+  <div class="flex h-screen bg-slate-100 overflow-hidden">
 
     <!-- Overlay для мобильного -->
     <div v-if="sidebarOpen"
@@ -20,7 +20,7 @@
     <div class="flex-1 flex flex-col overflow-hidden min-w-0">
 
       <!-- Topbar -->
-      <header class="h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3 shrink-0">
+      <header class="h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-3 shrink-0">
         <!-- Бургер для мобильного -->
         <button @click="sidebarOpen = !sidebarOpen"
                 class="md:hidden p-1.5 rounded-lg hover:bg-gray-100 transition-colors">

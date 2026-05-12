@@ -50,7 +50,7 @@ class CalendarController extends Controller
             $userTerritories = collect();
         }
 
-        $tickets = Ticket::with(['address', 'type', 'status', 'brigade'])
+        $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade'])
             ->whereBetween('scheduled_at', [$request->start, $request->end])
             ->when($userTerritories->isNotEmpty(), fn($q) =>
                 $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories)))
@@ -100,10 +100,22 @@ class CalendarController extends Controller
 
     private function eventTitle(Ticket $ticket): string
     {
+        $icon     = $this->serviceIcon($ticket->serviceType?->name);
         $apt      = $ticket->apartment ?? $ticket->address?->apartment;
         $street   = $ticket->address?->street ?? '';
         $building = $ticket->address?->building ? ' ' . $ticket->address->building : '';
         $aptStr   = $apt ? ' кв.' . $apt : '';
-        return $street . $building . $aptStr ?: $ticket->number;
+        return $icon . ($street . $building . $aptStr ?: $ticket->number);
+    }
+
+    private function serviceIcon(?string $name): string
+    {
+        if (!$name) return '';
+        $lower = mb_strtolower($name);
+        if (str_contains($lower, 'интернет') || str_contains($lower, 'inet')) return '🌐 ';
+        if (str_contains($lower, 'ктв') || str_contains($lower, 'ctv'))       return '📺 ';
+        if (str_contains($lower, 'волс'))                                      return '🔆 ';
+        if (str_contains($lower, 'подключ'))                                  return '🟢 ';
+        return '';
     }
 }

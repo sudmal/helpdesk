@@ -81,24 +81,24 @@
           <tr v-for="t in (overdue ?? [])" :key="t.id"
               class="hover:bg-red-100/50 cursor-pointer transition-colors"
               @click="router.visit(route('tickets.show', t.id))">
-            <td class="pl-3 pr-1 py-2 text-center w-6">{{ serviceIcon(t.service_type?.name) }}</td>
-            <td class="px-3 py-2 w-20">
+            <td class="pl-3 pr-1 py-px text-center w-6">{{ serviceIcon(t.service_type?.name) }}</td>
+            <td class="px-3 py-px w-20">
               <span class="font-mono text-red-700 font-medium">{{ t.number }}</span>
             </td>
-            <td class="px-3 py-2">
+            <td class="px-3 py-px">
               <p class="font-medium text-gray-800 truncate max-w-[180px]">{{ fullAddress(t) }}</p>
               <p class="text-gray-500 truncate max-w-[180px]">
                 {{ t.description?.slice(0, 50) }}{{ t.description?.length > 50 ? '…' : '' }}
               </p>
             </td>
-            <td class="px-3 py-2 hidden sm:table-cell">
+            <td class="px-3 py-px hidden sm:table-cell">
               <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
             </td>
-            <td class="px-3 py-2">
+            <td class="px-3 py-px">
               <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
             </td>
-            <td class="px-3 py-2 hidden md:table-cell text-gray-500">{{ t.phone ?? '—' }}</td>
-            <td class="px-3 py-2 text-red-600 font-medium whitespace-nowrap text-right pr-4">
+            <td class="px-3 py-px hidden md:table-cell text-gray-500">{{ t.phone ?? '—' }}</td>
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4">
               {{ formatDateTime(t.scheduled_at) }}
             </td>
           </tr>
@@ -286,7 +286,7 @@ function formatDateLabel(d) {
   return dt.format('DD.MM.YYYY')
 }
 
-const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆' }
+const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆', 'подключ': '🟢' }
 function serviceIcon(name) {
   if (!name) return '📋'
   const k = name.toLowerCase()

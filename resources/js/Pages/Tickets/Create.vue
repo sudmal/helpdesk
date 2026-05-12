@@ -303,6 +303,12 @@ function defaultServiceType() {
   return inet?.id ?? props.serviceTypes?.[0]?.id ?? ''
 }
 
+// Ремонт по умолчанию
+function defaultType() {
+  const repair = props.types?.find(t => t.name.toLowerCase().includes('ремонт'))
+  return repair?.id ?? props.types?.[0]?.id ?? ''
+}
+
 // Адрес
 const addressQuery    = ref(props.address ? (props.address.full_address ?? props.address.street) : '')
 const suggestions     = ref([])
@@ -330,7 +336,7 @@ const submitted = ref(false)
 const form = useForm({
   address_id:      props.address?.id ?? '',
   territory_id:    props.address?.territory_id ?? '',
-  type_id:         '',
+  type_id:         defaultType(),
   service_type_id: defaultServiceType(),
   brigade_id:      props.brigades?.length === 1 ? props.brigades[0].id : '',
   priority:        'normal',
@@ -491,5 +497,5 @@ function formatDate(d) {
 .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:cursor-not-allowed; }
 .btn-outline  { @apply border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors; }
 .field-label  { @apply block text-xs text-gray-500 mb-1; }
-.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white; }
+.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-slate-50; }
 </style>
