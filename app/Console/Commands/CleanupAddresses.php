@@ -115,6 +115,15 @@ class CleanupAddresses extends Command
             }
         }
 
+        // Always clear tickets.apartment = '0' (old private-house marker)
+        if ($apply) {
+            $cleared = DB::table('tickets')->where('apartment', '0')->update(['apartment' => null]);
+            $this->info("  Cleared {$cleared} tickets with apartment='0'");
+        } else {
+            $cnt = DB::table('tickets')->where('apartment', '0')->count();
+            if ($cnt > 0) $this->line("  [dry-run] Would clear $cnt tickets with apartment='0'");
+        }
+
         $this->newLine();
 
         // ── Phase 2: Remove fake apartment records (no ticket ever used them) ──
