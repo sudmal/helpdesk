@@ -190,7 +190,7 @@ class TicketController extends Controller
         return Inertia::render('Tickets/Show', [
             'ticket'         => $ticket,
             'addressHistory' => $addressHistory,
-            'materialsCatalog' => \App\Models\Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','name','unit','price']),
+            'materialsCatalog' => \App\Models\Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','code','name','unit','price']),
             'statuses'       => TicketStatus::active()->get(['id', 'name', 'color', 'slug', 'is_final']),
             'brigades'       => Brigade::with('members')->orderBy('name')->get(),
             'canEdit'        => auth()->user()->can('update', $ticket),

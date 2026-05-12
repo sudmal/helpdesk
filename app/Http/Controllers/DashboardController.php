@@ -94,7 +94,7 @@ class DashboardController extends Controller
             'overdue'           => $overdue,
             'territories'       => $territoriesWithCounts,
             'serviceTypes'      => $serviceTypesWithCounts,
-            'materialsCatalog'  => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','name','unit','price']),
+            'materialsCatalog'  => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','code','name','unit','price']),
             'selectedDate'      => $date,
             'selectedTerritory' => $territory ? (int)$territory : null,
             'serviceType'       => $serviceType ? (int)$serviceType : null,
