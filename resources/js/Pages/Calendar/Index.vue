@@ -164,7 +164,7 @@ function serviceIcon(name) {
 const calOptions = computed(() => ({
   plugins:     [dayGridPlugin, timeGridPlugin, interactionPlugin],
   locale:      ruLocale,
-  initialView: 'dayGridMonth',
+  initialView: 'timeGridWeek',
   timeZone:    'local',
   headerToolbar: {
     left:   'prev,next today',

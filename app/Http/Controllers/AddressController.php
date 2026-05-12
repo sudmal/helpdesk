@@ -29,74 +29,70 @@ class AddressController extends Controller
         $aptList     = [];
 
         if (!$city) {
-            // Уровень 0 — список городов с количеством адресов
+            // Уровень 0 — список городов
             $cityList = Address::selectRaw('city, COUNT(*) as count')
-                ->whereNotNull('city')
-                ->where('city', '!=', '')
-                ->groupBy('city')
-                ->orderBy('city')
+                ->whereNotNull('city')->where('city', '!=', '')
+                ->groupBy('city')->orderBy('city')
                 ->get()
                 ->map(fn($r) => ['name' => $r->city, 'count' => $r->count])
                 ->toArray();
 
         } elseif (!$street) {
-            // Уровень 1 — улицы выбранного города
+            // Уровень 1 — улицы города
             $streetList = Address::selectRaw('street, COUNT(*) as count')
                 ->where('city', $city)
                 ->whereNotNull('street')
-                ->groupBy('street')
-                ->orderBy('street')
+                ->groupBy('street')->orderBy('street')
                 ->get()
                 ->map(fn($r) => ['name' => $r->street, 'count' => $r->count])
                 ->toArray();
 
         } elseif (!$building) {
             // Уровень 2 — дома на улице
-            $buildingList = Address::selectRaw('building, COUNT(*) as cnt, MAX(id) as id')
-                ->where('city', $city)
-                ->where('street', $street)
-                ->whereNotNull('building')
+            // Было: 4 запроса на каждый дом (N+1). Теперь: 3 запроса суммарно.
+
+            // Запрос 1: список домов с количеством адресных записей
+            $buildingsRaw = Address::selectRaw('building, COUNT(*) as cnt, MAX(id) as id')
+                ->where('city', $city)->where('street', $street)->whereNotNull('building')
                 ->groupBy('building')
                 ->orderByRaw('CAST(building AS UNSIGNED), building')
-                ->get()
-                ->map(function ($r) use ($city, $street) {
-                    // Определяем МКД или ЧС — проверяем и addresses.apartment и tickets.apartment
-                    $addressIds = Address::where('city', $city)
-                        ->where('street', $street)
-                        ->where('building', $r->building)
-                        ->pluck('id');
+                ->get();
 
-                    $hasApts = Address::where('city', $city)
-                        ->where('street', $street)
-                        ->where('building', $r->building)
-                        ->whereNotNull('apartment')
-                        ->where('apartment', '!=', '')
-                        ->exists()
-                        || \App\Models\Ticket::whereIn('address_id', $addressIds)
-                            ->whereNotNull('apartment')
-                            ->where('apartment', '!=', '')
-                            ->exists();
+            // Запрос 2: количество квартир по домам из таблицы addresses
+            $addrAptCounts = Address::selectRaw('building, COUNT(DISTINCT apartment) as apt_count')
+                ->where('city', $city)->where('street', $street)
+                ->whereNotNull('building')->whereNotNull('apartment')->where('apartment', '!=', '')
+                ->groupBy('building')
+                ->pluck('apt_count', 'building');
 
-                    $aptCount = $hasApts
-                        ? \App\Models\Ticket::whereIn('address_id', $addressIds)
-                            ->whereNotNull('apartment')
-                            ->where('apartment', '!=', '')
-                            ->distinct('apartment')
-                            ->count('apartment')
-                        : 0;
+            // Запрос 3: количество квартир по домам из таблицы tickets
+            $ticketAptCounts = \DB::table('tickets')
+                ->join('addresses', 'tickets.address_id', '=', 'addresses.id')
+                ->where('addresses.city', $city)->where('addresses.street', $street)
+                ->whereNotNull('addresses.building')
+                ->whereNotNull('tickets.apartment')->where('tickets.apartment', '!=', '')
+                ->whereNull('tickets.deleted_at')
+                ->selectRaw('addresses.building, COUNT(DISTINCT tickets.apartment) as apt_count')
+                ->groupBy('addresses.building')
+                ->pluck('apt_count', 'building');
 
-                    return [
-                        'building'        => $r->building,
-                        'count'           => $aptCount ?: $r->cnt,
-                        'has_apartments'  => $hasApts,
-                        'id'              => $r->id,
-                    ];
-                })
-                ->toArray();
+            $buildingList = $buildingsRaw->map(function ($r) use ($addrAptCounts, $ticketAptCounts) {
+                $b             = $r->building;
+                $aptsFromAddr  = (int)($addrAptCounts[$b]  ?? 0);
+                $aptsFromTicks = (int)($ticketAptCounts[$b] ?? 0);
+                $hasApts       = $aptsFromAddr > 0 || $aptsFromTicks > 0;
+                $aptCount      = max($aptsFromAddr, $aptsFromTicks);
+                return [
+                    'building'       => $b,
+                    'count'          => $aptCount ?: $r->cnt,
+                    'has_apartments' => $hasApts,
+                    'id'             => $r->id,
+                ];
+            })->toArray();
 
         } else {
             // Уровень 3 — квартиры или данные дома
-$allInBuilding = Address::with('territory')
+            $allInBuilding = Address::with('territory')
                 ->withCount('tickets')
                 ->where('city', $city)
                 ->where('street', $street)
@@ -104,12 +100,10 @@ $allInBuilding = Address::with('territory')
                 ->orderByRaw('CAST(apartment AS UNSIGNED), apartment')
                 ->get();
 
-            // Есть ли квартиры в addresses?
             $isMkdFromAddresses = $allInBuilding->filter(
                 fn($a) => !empty($a->apartment)
             )->isNotEmpty();
 
-            // Проверяем также квартиры из tickets
             $addressIds = $allInBuilding->pluck('id');
             $ticketApartments = \App\Models\Ticket::whereIn('address_id', $addressIds)
                 ->whereNotNull('apartment')
@@ -121,7 +115,6 @@ $allInBuilding = Address::with('territory')
             $isMkd = $isMkdFromAddresses || $ticketApartments->isNotEmpty();
 
             if (!$isMkdFromAddresses && $ticketApartments->isNotEmpty()) {
-                // Квартиры только в tickets — строим aptList из них
                 $baseAddress = $allInBuilding->first();
                 $aptList = $ticketApartments->unique()->values()->map(fn($apt) => array_merge(
                     $baseAddress ? $baseAddress->toArray() : [],
@@ -131,7 +124,6 @@ $allInBuilding = Address::with('territory')
                 $aptList = $allInBuilding->toArray();
             }
 
-            // Для ЧС — данные первой записи
             $buildingInfo = !$isMkd ? $allInBuilding->first()?->toArray() : null;
         }
 
@@ -169,7 +161,6 @@ $allInBuilding = Address::with('territory')
             'building_step'   => 'nullable|integer|min:1',
         ]);
 
-        // Генерация диапазона домов
         $buildingFrom = $request->input('building_from');
         $buildingTo   = $request->input('building_to');
         $aptFrom      = $request->input('apt_from');
@@ -241,12 +232,7 @@ $allInBuilding = Address::with('territory')
             $userTerritories = collect();
         }
 
-        // Определяем: если последнее слово — число, считаем его квартирой
-        $words  = array_values(array_filter(explode(' ', $q)));
-
-        // Парсим запрос: выделяем текстовую часть, дом и квартиру
-        // Формат: [слова улицы] [дом] [квартира]
-        // Числа в конце — дом и/или квартира
+        $words         = array_values(array_filter(explode(' ', $q)));
         $textWords     = [];
         $buildingHint  = null;
         $apartmentHint = null;
@@ -254,9 +240,9 @@ $allInBuilding = Address::with('territory')
         foreach ($words as $word) {
             if (preg_match('/^\d+[а-яёa-z]?$/iu', $word)) {
                 if ($buildingHint === null) {
-                    $buildingHint = $word;  // первое число = дом
+                    $buildingHint = $word;
                 } else {
-                    $apartmentHint = $word; // второе число = квартира
+                    $apartmentHint = $word;
                 }
             } else {
                 $textWords[] = $word;
@@ -284,7 +270,6 @@ $allInBuilding = Address::with('territory')
             ])->filter()->join(', ');
 
             if ($apartmentHint) {
-                // Введена квартира — показываем один вариант с ней
                 $results[] = [
                     'id'              => $a->id,
                     'label'           => $baseLabel . ', кв.' . $apartmentHint,
@@ -296,15 +281,10 @@ $allInBuilding = Address::with('territory')
                     'territory_id'    => $a->territory_id,
                 ];
             } elseif ($buildingHint) {
-                // Найден конкретный дом — разворачиваем квартиры из истории заявок
                 $apartments = \App\Models\Ticket::where('address_id', $a->id)
-                    ->whereNotNull('apartment')
-                    ->where('apartment', '!=', '')
-                    ->distinct()
-                    ->orderBy('apartment')
-                    ->pluck('apartment');
+                    ->whereNotNull('apartment')->where('apartment', '!=', '')
+                    ->distinct()->orderBy('apartment')->pluck('apartment');
 
-                // Сначала вариант без квартиры
                 $results[] = [
                     'id'              => $a->id,
                     'label'           => $baseLabel,
@@ -316,7 +296,6 @@ $allInBuilding = Address::with('territory')
                     'territory_id'    => $a->territory_id,
                 ];
 
-                // Потом варианты с квартирами
                 foreach ($apartments->take(12) as $apt) {
                     $results[] = [
                         'id'              => $a->id,
