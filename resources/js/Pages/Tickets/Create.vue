@@ -79,18 +79,6 @@
                     class="text-blue-300 hover:text-red-500 shrink-0 transition-colors">✕</button>
           </div>
 
-          <!-- Квартира — показывается после выбора адреса -->
-          <div v-if="selectedAddress" class="mt-2">
-            <label class="block text-xs font-medium text-gray-500 mb-1">
-              Квартира / офис
-              <span class="text-gray-400 font-normal">(если МКД)</span>
-            </label>
-            <input v-model="form.apartment"
-                   type="text"
-                   placeholder="например: 47"
-                   class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm
-                          focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
-          </div>
 
           <p v-if="showAddressError"
              class="mt-2 text-xs text-red-600">⚠ Выберите адрес абонента из списка</p>
@@ -131,7 +119,7 @@
               <select v-model="form.brigade_id"
                       :class="['field-input', fieldError.brigade ? 'border-red-400 bg-red-50' : '']">
                 <option value="" disabled>— Выбрать —</option>
-                <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+                <option v-for="b in availableBrigades" :key="b.id" :value="b.id">{{ b.name }}</option>
               </select>
             </div>
 
@@ -363,18 +351,12 @@ onMounted(() => fetchFreeSlot(form.brigade_id || null))
 
 watch(() => form.brigade_id, (id) => { if (id) fetchFreeSlot(id) })
 
-// Бригады отфильтрованные по территории адреса
-const filteredBrigades = computed(() => {
-  if (!form.territory_id || !props.brigades?.length) return []
-  return props.brigades.filter(b =>
+// Бригады по территории адреса (пустой адрес = все бригады)
+const availableBrigades = computed(() => {
+  if (!form.territory_id) return props.brigades ?? []
+  return (props.brigades ?? []).filter(b =>
     b.territories?.some(t => t.id == form.territory_id)
   )
-})
-
-const otherBrigades = computed(() => {
-  if (!form.territory_id || !filteredBrigades.value.length) return props.brigades ?? []
-  const ids = new Set(filteredBrigades.value.map(b => b.id))
-  return props.brigades.filter(b => !ids.has(b.id))
 })
 
 // Проверка заполненности всех обязательных полей
@@ -417,6 +399,13 @@ function selectAddress(a) {
   form.apartment = a.apartment ?? ''
   form.address_id   = a.id
   form.territory_id = a.territory_id ?? ''
+  // Если выбранная бригада не обслуживает эту территорию — сбросить
+  if (form.brigade_id && a.territory_id) {
+    const stillOk = (props.brigades ?? []).some(b =>
+      b.id == form.brigade_id && b.territories?.some(t => t.id == a.territory_id)
+    )
+    if (!stillOk) form.brigade_id = ''
+  }
   form.phone        = form.phone || a.phone || ''
   form.contract_no  = form.contract_no || a.contract_no || ''
   addressQuery.value   = a.label
