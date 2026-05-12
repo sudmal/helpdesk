@@ -11,9 +11,20 @@ class CalendarController extends Controller
 {
     public function index(): Response
     {
+        $user = auth()->user();
+
+        if ($user->isTechnician() || $user->isForeman()) {
+            $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+            $territoriesQuery = $brigadeIds->isNotEmpty()
+                ? Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))
+                : Territory::whereIn('id', $user->territories()->pluck('territories.id'));
+        } else {
+            $territoriesQuery = Territory::orderBy('sort_order')->orderBy('name');
+        }
+
         return Inertia::render('Calendar/Index', [
             'brigades'     => Brigade::orderBy('name')->get(['id', 'name']),
-            'territories'  => Territory::orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
+            'territories'  => $territoriesQuery->orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
             'serviceTypes' => ServiceType::active()->orderBy('sort_order')->get(['id', 'name', 'color']),
         ]);
     }
@@ -30,8 +41,19 @@ class CalendarController extends Controller
 
         $user = auth()->user();
 
+        if ($user->isTechnician() || $user->isForeman()) {
+            $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+            $userTerritories = $brigadeIds->isNotEmpty()
+                ? \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+                : $user->territories()->pluck('territories.id');
+        } else {
+            $userTerritories = collect();
+        }
+
         $tickets = Ticket::with(['address', 'type', 'status', 'brigade'])
             ->whereBetween('scheduled_at', [$request->start, $request->end])
+            ->when($userTerritories->isNotEmpty(), fn($q) =>
+                $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories)))
             ->when($request->filled('brigade_id'),
                 fn($q) => $q->where('brigade_id', $request->brigade_id))
             ->when($request->filled('territory_id'),
@@ -39,13 +61,6 @@ class CalendarController extends Controller
                     fn($a) => $a->where('territory_id', $request->territory_id)))
             ->when($request->filled('service_type_id'),
                 fn($q) => $q->where('service_type_id', $request->service_type_id))
-            ->when($user->isTechnician(), fn($q) =>
-                $q->where(function ($sub) use ($user) {
-                    $sub->where('assigned_to', $user->id)
-                        ->orWhereHas('brigade.members',
-                            fn($m) => $m->where('user_id', $user->id));
-                })
-            )
             ->get();
 
         $events = $tickets->map(function ($ticket) {
