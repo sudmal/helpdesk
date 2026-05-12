@@ -73,6 +73,13 @@ class TicketController extends Controller
                     if ($request->input('building')) $a->where('building', $request->input('building'));
                 });
             })
+            ->when($request->input('apartment'), function ($q) use ($request) {
+                $apt = $request->input('apartment');
+                $q->where(function ($sub) use ($apt) {
+                    $sub->where('apartment', $apt)
+                        ->orWhereHas('address', fn($a) => $a->where('apartment', $apt));
+                });
+            })
 
             ->orderBy($sort, $sortDir)
             ->paginate(25)
@@ -80,7 +87,7 @@ class TicketController extends Controller
 
         return Inertia::render('Tickets/Index', [
             'tickets'  => $tickets,
-            'filters'  => $request->only(['search', 'status', 'type', 'brigade', 'priority', 'date_from', 'date_to', 'address_id', 'city', 'street', 'building', 'service_type', 'overdue', 'closed_today', 'sort', 'sortDir']),
+            'filters'  => $request->only(['search', 'status', 'type', 'brigade', 'priority', 'date_from', 'date_to', 'address_id', 'city', 'street', 'building', 'apartment', 'service_type', 'overdue', 'closed_today', 'sort', 'sortDir']),
             'statuses' => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
             'types'    => TicketType::active()->get(['id', 'name', 'color']),
             'brigades'     => Brigade::orderBy('name')->get(['id', 'name']),

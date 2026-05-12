@@ -166,7 +166,7 @@
               <td class="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{{ a.phone ?? '—' }}</td>
               <td class="px-4 py-2.5 text-gray-500 font-mono text-xs hidden md:table-cell">{{ a.contract_no ?? '—' }}</td>
               <td class="px-4 py-2.5">
-                <a :href="route('tickets.index', { address_id: a.id })"
+                <a :href="ticketsLink(a)"
                    class="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
                   Заявки
                   <span v-if="a.tickets_count"
@@ -394,6 +394,18 @@ const props = defineProps({
 })
 
 // ── Навигация ──────────────────────────────────────────────────────
+function ticketsLink(a) {
+  if (a.apartment) {
+    return route('tickets.index', {
+      city: selected.value.city,
+      street: selected.value.street,
+      building: selected.value.building,
+      apartment: a.apartment,
+    })
+  }
+  return route('tickets.index', { address_id: a.id })
+}
+
 const selected = ref({
   city:     props.currentCity,
   street:   props.currentStreet,

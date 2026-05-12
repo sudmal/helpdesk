@@ -93,35 +93,47 @@ class AddressController extends Controller
         } else {
             // Уровень 3 — квартиры или данные дома
             $allInBuilding = Address::with('territory')
-                ->withCount('tickets')
                 ->where('city', $city)
                 ->where('street', $street)
                 ->where('building', $building)
                 ->orderByRaw('CAST(apartment AS UNSIGNED), apartment')
                 ->get();
 
-            $isMkdFromAddresses = $allInBuilding->filter(
-                fn($a) => !empty($a->apartment)
-            )->isNotEmpty();
+            $isMkdFromAddresses = $allInBuilding->filter(fn($a) => !empty($a->apartment))->isNotEmpty();
 
             $addressIds = $allInBuilding->pluck('id');
             $ticketApartments = \App\Models\Ticket::whereIn('address_id', $addressIds)
                 ->whereNotNull('apartment')
                 ->where('apartment', '!=', '')
-                ->distinct()
+                ->whereNull('deleted_at')
                 ->orderByRaw('CAST(apartment AS UNSIGNED), apartment')
-                ->pluck('apartment', 'address_id');
+                ->distinct()
+                ->pluck('apartment');
 
             $isMkd = $isMkdFromAddresses || $ticketApartments->isNotEmpty();
 
+            // Единый запрос: количество заявок на квартиру (учитывает оба способа хранения)
+            $ticketCountsByApt = \DB::table('tickets')
+                ->join('addresses', 'tickets.address_id', '=', 'addresses.id')
+                ->where('addresses.city', $city)
+                ->where('addresses.street', $street)
+                ->where('addresses.building', $building)
+                ->whereNull('tickets.deleted_at')
+                ->selectRaw("COALESCE(NULLIF(tickets.apartment, ''), NULLIF(addresses.apartment, ''), '') as apt_val, COUNT(*) as cnt")
+                ->groupBy(\DB::raw("COALESCE(NULLIF(tickets.apartment, ''), NULLIF(addresses.apartment, ''), '')"))
+                ->pluck('cnt', 'apt_val');
+
             if (!$isMkdFromAddresses && $ticketApartments->isNotEmpty()) {
                 $baseAddress = $allInBuilding->first();
-                $aptList = $ticketApartments->unique()->values()->map(fn($apt) => array_merge(
+                $aptList = $ticketApartments->map(fn($apt) => array_merge(
                     $baseAddress ? $baseAddress->toArray() : [],
-                    ['apartment' => $apt, 'id' => $baseAddress?->id]
+                    ['apartment' => $apt, 'id' => $baseAddress?->id, 'tickets_count' => (int)($ticketCountsByApt[$apt] ?? 0)]
                 ))->toArray();
             } else {
-                $aptList = $allInBuilding->toArray();
+                $aptList = $allInBuilding->map(fn($a) => array_merge(
+                    $a->toArray(),
+                    ['tickets_count' => (int)($ticketCountsByApt[$a->apartment ?? ''] ?? 0)]
+                ))->toArray();
             }
 
             $buildingInfo = !$isMkd ? $allInBuilding->first()?->toArray() : null;
