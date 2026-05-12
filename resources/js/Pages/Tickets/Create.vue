@@ -15,33 +15,44 @@
             Адрес абонента <span class="text-red-500">*</span>
           </h3>
 
-          <div class="relative mb-3">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <input v-model="addressQuery"
-                   @input="searchAddresses"
-                   @focus="showAddressError = false"
-                   placeholder="Улица, дом, квартира, абонент, телефон..."
-                   class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm
-                          focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
-            <div v-if="suggestions.length"
-                 class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
-                        rounded-xl shadow-xl max-h-64 overflow-y-auto">
-              <button v-for="a in suggestions" :key="a.id"
-                      @click="selectAddress(a)" type="button"
-                      class="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm
-                             border-b border-gray-100 last:border-0">
-                <p class="font-medium text-gray-800">{{ a.label }}</p>
-                <p class="text-xs text-gray-400">
-                  {{ [a.subscriber_name, a.phone, a.territory].filter(Boolean).join(' · ') }}
-                </p>
-              </button>
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <input v-model="addressQuery"
+                     @input="searchAddresses"
+                     @focus="showAddressError = false"
+                     placeholder="Улица, дом, квартира, абонент, телефон..."
+                     class="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm
+                            focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+              <svg v-if="addressLoading"
+                   class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin"
+                   fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              <div v-if="suggestions.length"
+                   class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
+                          rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                <button v-for="a in suggestions" :key="a.id"
+                        @click="selectAddress(a)" type="button"
+                        class="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm
+                               border-b border-gray-100 last:border-0">
+                  <p class="font-medium text-gray-800">{{ a.label }}</p>
+                  <p class="text-xs text-gray-400">
+                    {{ [a.subscriber_name, a.phone, a.territory].filter(Boolean).join(' · ') }}
+                  </p>
+                </button>
+              </div>
             </div>
+            <button type="button" @click="openAddrModal"
+                    class="shrink-0 btn-outline text-sm whitespace-nowrap self-start">
+              📍 Адрес
+            </button>
           </div>
-
           <!-- LANBilling -->
           <template v-if="lanbillingEnabled">
           <div class="flex gap-2 mb-3">
@@ -246,11 +257,52 @@
       </div>
 
     </div>
-  </AppLayout>
+
+    <!-- Выбор адреса по иерархии -->
+    <Modal v-if="showAddrModal" title="Выбор адреса" @close="showAddrModal = false">
+      <div class="space-y-3">
+        <div>
+          <label class="field-label">Город</label>
+          <select v-model="addrSel.city" @change="onAddrCity" class="field-input">
+            <option value="">— Выбрать город —</option>
+            <option v-for="c in addrCities" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+        <div v-if="addrSel.city">
+          <label class="field-label">Улица</label>
+          <select v-model="addrSel.street" @change="onAddrStreet" class="field-input">
+            <option value="">— Выбрать улицу —</option>
+            <option v-for="s in addrStreets" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+        <div v-if="addrSel.street">
+          <label class="field-label">Дом</label>
+          <select v-model="addrSel.building" @change="onAddrBuilding" class="field-input">
+            <option value="">— Выбрать дом —</option>
+            <option v-for="b in addrBuildings" :key="b" :value="b">{{ b }}</option>
+          </select>
+        </div>
+        <div v-if="addrSel.building && addrApartments.length">
+          <label class="field-label">Квартира</label>
+          <select v-model="addrSel.apartment" class="field-input">
+            <option value="">— Весь дом —</option>
+            <option v-for="apt in addrApartments" :key="apt" :value="apt">кв. {{ apt }}</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showAddrModal = false" class="btn-outline text-sm">Отмена</button>
+          <button type="button" @click="applyAddrModal"
+                  :disabled="!addrSel.building || addrModalLoading"
+                  class="btn-primary text-sm">
+            {{ addrModalLoading ? 'Поиск...' : 'Выбрать →' }}
+          </button>
+        </div>
+      </div>
+    </Modal>  </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, reactive } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import dayjs from 'dayjs'
@@ -258,6 +310,7 @@ import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Badge from '@/Components/UI/Badge.vue'
 import TimePicker from '@/Components/UI/TimePicker.vue'
 import AttachmentUpload from '@/Components/Tickets/AttachmentUpload.vue'
+import Modal from '@/Components/UI/Modal.vue'
 
 const props = defineProps({
   lanbillingEnabled: { type: Boolean, default: false },
@@ -303,7 +356,14 @@ const suggestions     = ref([])
 const showAddressError = ref(false)
 const selectedAddress = ref(
   props.address
-    ? { id: props.address.id, label: props.address.full_address ?? props.address.street, ...props.address }
+    ? {
+        id: props.address.id,
+        label: props.address.full_address ?? props.address.street,
+        ...props.address,
+        territory: typeof props.address.territory === 'object'
+          ? (props.address.territory?.name ?? '')
+          : (props.address.territory ?? ''),
+      }
     : null
 )
 
@@ -337,6 +397,7 @@ const form = useForm({
 const attachmentFiles = ref([])
 const billingQuery    = ref('')
 const billingLoading  = ref(false)
+const addressLoading  = ref(false)
 
 async function fetchFreeSlot(brigadeId = null) {
   try {
@@ -383,7 +444,8 @@ const fieldError = computed(() => ({
 let searchTimer = null
 function searchAddresses() {
   clearTimeout(searchTimer)
-  if (addressQuery.value.length < 2) { suggestions.value = []; return }
+  if (addressQuery.value.length < 2) { suggestions.value = []; addressLoading.value = false; return }
+  addressLoading.value = true
   searchTimer = setTimeout(async () => {
     try {
       const { data } = await axios.get(route('addresses.search'), {
@@ -391,6 +453,7 @@ function searchAddresses() {
       })
       suggestions.value = data
     } catch { suggestions.value = [] }
+    finally { addressLoading.value = false }
   }, 300)
 }
 
@@ -493,7 +556,69 @@ function submitTicket() {
 function formatDate(d) {
   return d ? dayjs(d).format('DD.MM.YY') : ''
 }
-</script>
+
+// ── Модал выбора адреса ─────────────────────────────────────────────
+const showAddrModal    = ref(false)
+const addrCities       = ref([])
+const addrStreets      = ref([])
+const addrBuildings    = ref([])
+const addrApartments   = ref([])
+const addrModalLoading = ref(false)
+const addrSel          = reactive({ city: '', street: '', building: '', apartment: '' })
+
+async function openAddrModal() {
+  Object.assign(addrSel, { city: '', street: '', building: '', apartment: '' })
+  addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
+  showAddrModal.value = true
+  try {
+    addrCities.value = (await axios.get(route('addresses.hierarchy'))).data
+  } catch { addrCities.value = [] }
+}
+
+async function onAddrCity() {
+  addrSel.street = ''; addrSel.building = ''; addrSel.apartment = ''
+  addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
+  if (!addrSel.city) return
+  try {
+    addrStreets.value = (await axios.get(route('addresses.hierarchy'), { params: { city: addrSel.city } })).data
+  } catch { addrStreets.value = [] }
+}
+
+async function onAddrStreet() {
+  addrSel.building = ''; addrSel.apartment = ''
+  addrBuildings.value = []; addrApartments.value = []
+  if (!addrSel.street) return
+  try {
+    addrBuildings.value = (await axios.get(route('addresses.hierarchy'), { params: { city: addrSel.city, street: addrSel.street } })).data
+  } catch { addrBuildings.value = [] }
+}
+
+async function onAddrBuilding() {
+  addrSel.apartment = ''
+  addrApartments.value = []
+  if (!addrSel.building) return
+  try {
+    addrApartments.value = (await axios.get(route('addresses.hierarchy'), { params: { city: addrSel.city, street: addrSel.street, building: addrSel.building } })).data
+  } catch { addrApartments.value = [] }
+}
+
+async function applyAddrModal() {
+  if (!addrSel.building) return
+  addrModalLoading.value = true
+  const q = [addrSel.street, addrSel.building, addrSel.apartment].filter(Boolean).join(' ')
+  addressQuery.value = q
+  try {
+    const { data } = await axios.get(route('addresses.search'), { params: { q } })
+    suggestions.value = data
+    const exact = data.find(a => a.building === addrSel.building && (!addrSel.apartment || a.apartment === addrSel.apartment))
+    const pick  = exact ?? (data.length === 1 ? data[0] : null)
+    if (pick) { selectAddress(pick); showAddrModal.value = false }
+    else showAddrModal.value = false
+  } catch {
+    suggestions.value = []
+    showAddrModal.value = false
+  } finally { addrModalLoading.value = false }
+}</script>
 
 <style scoped>
 .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:cursor-not-allowed; }

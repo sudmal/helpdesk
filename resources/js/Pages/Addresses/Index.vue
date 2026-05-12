@@ -7,48 +7,58 @@
     </template>
 
     <!-- ── Поиск по адресу ── -->
-    <div class="relative mb-4 max-w-lg">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-           fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-      </svg>
-      <input v-model="globalSearch"
-             @input="onGlobalSearch"
-             placeholder="Быстрый поиск: улица, дом, абонент, телефон, договор..."
-             class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm
-                    focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
-      <!-- Результаты поиска -->
-      <div v-if="searchResults.length"
-           class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
-                  rounded-xl shadow-xl max-h-80 overflow-y-auto">
-        <a v-for="r in searchResults" :key="r.id"
-           :href="route('tickets.index', { address_id: r.id })"
-           class="flex items-center justify-between px-4 py-2.5 hover:bg-blue-50
-                  border-b border-gray-100 last:border-0">
-          <div>
-            <p class="text-sm font-medium text-gray-800">{{ r.label }}</p>
-            <p class="text-xs text-gray-400">
-              {{ [r.subscriber_name, r.phone].filter(Boolean).join(' · ') }}
-            </p>
-          </div>
-          <div class="flex items-center gap-2 shrink-0 ml-3">
-            <span v-if="r.tickets_count"
-                  class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-              {{ r.tickets_count }} заявок
-            </span>
-            <span class="text-xs text-gray-400">→</span>
-          </div>
-        </a>
-        <div v-if="searchLoading" class="px-4 py-3 text-sm text-gray-400 text-center">Поиск...</div>
+    <div class="flex items-center gap-2 mb-4">
+      <div class="relative flex-1 max-w-lg">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input v-model="globalSearch"
+               @input="onGlobalSearch"
+               placeholder="Быстрый поиск: улица, дом, абонент, телефон, договор..."
+               class="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+        <svg v-if="searchLoading"
+             class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin"
+             fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <!-- Результаты поиска -->
+        <div v-if="searchResults.length"
+             class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
+                    rounded-xl shadow-xl max-h-80 overflow-y-auto">
+          <a v-for="r in searchResults" :key="r.id"
+             :href="route('tickets.index', { address_id: r.id })"
+             class="flex items-center justify-between px-4 py-2.5 hover:bg-blue-50
+                    border-b border-gray-100 last:border-0">
+            <div>
+              <p class="text-sm font-medium text-gray-800">{{ r.label }}</p>
+              <p class="text-xs text-gray-400">
+                {{ [r.subscriber_name, r.phone].filter(Boolean).join(' · ') }}
+              </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 ml-3">
+              <span v-if="r.tickets_count"
+                    class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                {{ r.tickets_count }} заявок
+              </span>
+              <span class="text-xs text-gray-400">→</span>
+            </div>
+          </a>
+        </div>
+        <div v-if="globalSearch.length >= 2 && !searchResults.length && !searchLoading"
+             class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
+                    rounded-xl shadow-xl px-4 py-3 text-sm text-gray-400 text-center">
+          Ничего не найдено
+        </div>
       </div>
-      <div v-if="globalSearch.length >= 2 && !searchResults.length && !searchLoading"
-           class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
-                  rounded-xl shadow-xl px-4 py-3 text-sm text-gray-400 text-center">
-        Ничего не найдено
-      </div>
+      <button @click="openAddrModal" type="button"
+              class="shrink-0 btn-outline text-sm whitespace-nowrap">
+        📍 Адрес
+      </button>
     </div>
-
     <!-- ── Хлебные крошки (навигация) ── -->
     <nav class="flex items-center gap-1 text-sm mb-5 flex-wrap">
       <button @click="resetTo(0)"
@@ -368,11 +378,45 @@
         </div>
       </div>
     </Modal>
-  </AppLayout>
+
+    <!-- Выбор адреса по иерархии -->
+    <Modal v-if="showAddrModal" title="Выбор адреса" @close="showAddrModal = false">
+      <div class="space-y-3">
+        <div>
+          <label class="field-label">Город</label>
+          <select v-model="addrSel.city" @change="onAddrCity" class="field-input">
+            <option value="">— Выбрать город —</option>
+            <option v-for="c in addrCities" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+        <div v-if="addrSel.city">
+          <label class="field-label">Улица</label>
+          <select v-model="addrSel.street" @change="onAddrStreet" class="field-input">
+            <option value="">— Выбрать улицу —</option>
+            <option v-for="s in addrStreets" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+        <div v-if="addrSel.street">
+          <label class="field-label">Дом</label>
+          <select v-model="addrSel.building" class="field-input">
+            <option value="">— Выбрать дом —</option>
+            <option v-for="b in addrBuildings" :key="b" :value="b">{{ b }}</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showAddrModal = false" class="btn-outline text-sm">Отмена</button>
+          <button type="button" @click="applyAddrModal"
+                  :disabled="!addrSel.city || !addrSel.street || !addrSel.building"
+                  class="btn-primary text-sm">
+            Перейти →
+          </button>
+        </div>
+      </div>
+    </Modal>  </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -634,7 +678,46 @@ const Pagination = {
       </div>
     </div>`
 }
-</script>
+
+// ── Модал выбора адреса ─────────────────────────────────────────────
+const showAddrModal = ref(false)
+const addrCities    = ref([])
+const addrStreets   = ref([])
+const addrBuildings = ref([])
+const addrSel       = reactive({ city: '', street: '', building: '' })
+
+async function openAddrModal() {
+  Object.assign(addrSel, { city: '', street: '', building: '' })
+  addrStreets.value = []; addrBuildings.value = []
+  showAddrModal.value = true
+  try {
+    addrCities.value = (await axios.get(route('addresses.hierarchy'))).data
+  } catch { addrCities.value = [] }
+}
+
+async function onAddrCity() {
+  addrSel.street = ''; addrSel.building = ''
+  addrStreets.value = []; addrBuildings.value = []
+  if (!addrSel.city) return
+  try {
+    addrStreets.value = (await axios.get(route('addresses.hierarchy'), { params: { city: addrSel.city } })).data
+  } catch { addrStreets.value = [] }
+}
+
+async function onAddrStreet() {
+  addrSel.building = ''
+  addrBuildings.value = []
+  if (!addrSel.street) return
+  try {
+    addrBuildings.value = (await axios.get(route('addresses.hierarchy'), { params: { city: addrSel.city, street: addrSel.street } })).data
+  } catch { addrBuildings.value = [] }
+}
+
+function applyAddrModal() {
+  if (!addrSel.building) return
+  showAddrModal.value = false
+  navigate({ city: addrSel.city, street: addrSel.street, building: addrSel.building })
+}</script>
 
 <style scoped>
 .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-40; }
