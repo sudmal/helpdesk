@@ -47,7 +47,7 @@ class TicketController extends Controller
             ->when($request->overdue, fn($q) => $q->whereIn('status_id',
                 \App\Models\TicketStatus::where('is_final', false)->pluck('id'))
                 ->whereNotNull('scheduled_at')
-                ->where('scheduled_at', '<', now()))
+                ->where('scheduled_at', '<', today()))
             ->when($request->priority, fn($q) => $q->where('priority', $request->priority))
             ->when($request->date_from, fn($q) => $q->where('scheduled_at', '>=', $request->date_from))
             ->when($request->date_to,   fn($q) => $q->where('scheduled_at', '<=', $request->date_to . ' 23:59:59'))
@@ -95,7 +95,7 @@ class TicketController extends Controller
             'overdueCount' => Ticket::whereIn('status_id',
                 \App\Models\TicketStatus::where('is_final', false)->pluck('id'))
                 ->whereNotNull('scheduled_at')
-                ->where('scheduled_at', '<', now())
+                ->where('scheduled_at', '<', today())
                 ->count(),
         ]);
     }
@@ -300,6 +300,38 @@ class TicketController extends Controller
         }
 
         return back()->with('success', 'Заявка закрыта');
+    }
+
+    public function freeSlot(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $workStart = SystemSetting::get('work_hours_start', '09:00');
+        $workEnd   = SystemSetting::get('work_hours_end',   '17:00');
+        $step      = (int) SystemSetting::get('schedule_step_minutes', 30);
+        $brigadeId = $request->integer('brigade_id') ?: null;
+
+        [$sh, $sm] = array_map('intval', explode(':', $workStart));
+        [$eh, $em] = array_map('intval', explode(':', $workEnd));
+        $startMins = $sh * 60 + $sm;
+        $endMins   = $eh * 60 + $em;
+
+        $day = today()->addDay();
+
+        for ($attempt = 0; $attempt < 60; $attempt++, $day->addDay()) {
+            $occupied = Ticket::whereDate('scheduled_at', $day->toDateString())
+                ->when($brigadeId, fn($q) => $q->where('brigade_id', $brigadeId))
+                ->whereNotNull('scheduled_at')
+                ->pluck('scheduled_at')
+                ->mapWithKeys(fn($dt) => [\Carbon\Carbon::parse($dt)->format('H:i') => true]);
+
+            for ($m = $startMins; $m <= $endMins; $m += $step) {
+                $slot = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+                if (!$occupied->has($slot)) {
+                    return response()->json(['datetime' => $day->format('Y-m-d') . 'T' . $slot]);
+                }
+            }
+        }
+
+        return response()->json(['datetime' => today()->addDay()->format('Y-m-d') . 'T' . $workStart]);
     }
 
     public function postpone(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse

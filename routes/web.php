@@ -25,6 +25,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::prefix('tickets')->name('tickets.')->group(function () {
         Route::get('/',              [TicketController::class, 'index'])->name('index');
         Route::get('/create',        [TicketController::class, 'create'])->name('create');
+        Route::get('/free-slot',      [TicketController::class, 'freeSlot'])->name('free-slot');
         Route::post('/',             [TicketController::class, 'store'])->name('store');
         Route::get('/{ticket}',      [TicketController::class, 'show'])->name('show');
         Route::get('/{ticket}/edit', [TicketController::class, 'edit'])->name('edit');

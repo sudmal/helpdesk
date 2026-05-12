@@ -262,7 +262,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import dayjs from 'dayjs'
@@ -349,6 +349,19 @@ const form = useForm({
 const attachmentFiles = ref([])
 const billingQuery    = ref('')
 const billingLoading  = ref(false)
+
+async function fetchFreeSlot(brigadeId = null) {
+  try {
+    const params = {}
+    if (brigadeId) params.brigade_id = brigadeId
+    const { data } = await axios.get(route('tickets.free-slot'), { params })
+    if (data.datetime) form.scheduled_at = data.datetime
+  } catch { /* keep default */ }
+}
+
+onMounted(() => fetchFreeSlot(form.brigade_id || null))
+
+watch(() => form.brigade_id, (id) => { if (id) fetchFreeSlot(id) })
 
 // Бригады отфильтрованные по территории адреса
 const filteredBrigades = computed(() => {

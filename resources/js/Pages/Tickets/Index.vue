@@ -151,9 +151,13 @@
               <!-- Адрес + телефон + описание -->
               <td class="px-2 py-0.5 min-w-0">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
-                <p class="text-gray-400 truncate text-xs leading-tight">
+                <p class="text-gray-400 text-xs leading-tight" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
                   <span v-if="t.phone" class="text-gray-600 mr-1.5">{{ t.phone }}</span>
-                  {{ t.description?.slice(0, 50) }}{{ t.description?.length > 50 ? '…' : '' }}
+                  <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 60) }}</span>
+                  <button v-if="(t.description?.length ?? 0) > 60" @click.stop="toggleDesc(t.id)"
+                          class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
+                    {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
+                  </button>
                   <span v-if="t.comments_count" class="ml-1 text-blue-400">💬{{ t.comments_count }}</span>
                 </p>
               </td>
@@ -248,10 +252,6 @@ const localFilters = ref({
 // Автообновление каждые 60 сек
 let refreshTimer = null
 onMounted(() => {
-  console.log('tickets prop:', props.tickets)
-  console.log('serviceTypes:', props.serviceTypes)
-  console.log('statuses:', props.statuses)
-  console.log('types:', props.types)
   refreshTimer = setInterval(() => {
     router.reload({ only: ['tickets'], preserveState: true, preserveScroll: true })
   }, 60000)
@@ -340,6 +340,13 @@ function rowStyle(t) {
 
 function isOverdue(t) {
   return t.scheduled_at && !t.status?.is_final && dayjs(t.scheduled_at).isBefore(dayjs().startOf('day'))
+}
+
+const expandedDesc = ref(new Set())
+function toggleDesc(id) {
+  const s = new Set(expandedDesc.value)
+  if (s.has(id)) s.delete(id); else s.add(id)
+  expandedDesc.value = s
 }
 
 function formatDate(d) {

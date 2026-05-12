@@ -136,8 +136,12 @@
               </td>
               <td class="px-2 py-0.5 max-w-[240px]">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
-                <p class="text-gray-400 truncate text-xs leading-tight">
-                  {{ t.description?.slice(0, 60) }}{{ t.description?.length > 60 ? '…' : '' }}
+                <p class="text-gray-400 text-xs leading-tight" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
+                  <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 60) }}</span>
+                  <button v-if="(t.description?.length ?? 0) > 60" @click.stop="toggleDesc(t.id)"
+                          class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
+                    {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
+                  </button>
                 </p>
               </td>
               <td class="px-2 py-0.5 hidden md:table-cell">
@@ -185,6 +189,7 @@
         <a :href="route('tickets.index', { overdue: 1, service_type: serviceType, territory: selectedTerritory })"
            class="text-xs text-red-600 hover:text-red-800 font-medium">Открыть список →</a>
       </div>
+      <div class="overflow-y-auto" style="max-height:50vh">
       <table class="w-full text-xs">
         <tbody class="divide-y divide-red-100">
           <tr v-for="t in (overdue ?? [])" :key="t.id"
@@ -196,8 +201,12 @@
             </td>
             <td class="px-3 py-px">
               <p class="font-medium text-gray-800 truncate max-w-[180px]">{{ fullAddress(t) }}</p>
-              <p class="text-gray-500 truncate max-w-[180px]">
-                {{ t.description?.slice(0, 50) }}{{ t.description?.length > 50 ? '…' : '' }}
+              <p class="text-gray-500 text-xs" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate max-w-[180px]'">
+                <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 60) }}</span>
+                <button v-if="(t.description?.length ?? 0) > 60" @click.stop="toggleDesc(t.id)"
+                        class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
+                  {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
+                </button>
               </p>
             </td>
             <td class="px-3 py-px hidden sm:table-cell">
@@ -213,6 +222,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <!-- ── Модалка закрытия ── -->
@@ -378,6 +388,14 @@ function sortBy(field) {
 function sortIcon(field) {
   if (props.sort !== field) return '↕'
   return props.sortDir === 'asc' ? '↑' : '↓'
+}
+
+// ── Expand/collapse description ──
+const expandedDesc = ref(new Set())
+function toggleDesc(id) {
+  const s = new Set(expandedDesc.value)
+  if (s.has(id)) s.delete(id); else s.add(id)
+  expandedDesc.value = s
 }
 
 // ── Форматирование ──

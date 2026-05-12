@@ -5,7 +5,7 @@
     <!-- Участки -->
     <div class="bg-white rounded-2xl border border-gray-200 px-4 py-3 mb-2 flex items-center gap-2 flex-wrap">
       <span class="text-xs text-gray-400 font-medium">Участок:</span>
-      <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+      <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto">
         <button @click="selectedServiceType = null; reload()"
                 :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
                          !selectedServiceType ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
@@ -112,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -132,6 +132,17 @@ const selectedBrigade   = ref(null)
 const selectedTerritory = ref(null)
 const calKey            = ref(0)
 const selectedServiceType = ref(null)
+const windowWidth = ref(window.innerWidth)
+let resizeHandler = null
+onMounted(() => {
+  resizeHandler = () => { windowWidth.value = window.innerWidth }
+  window.addEventListener('resize', resizeHandler)
+})
+onUnmounted(() => { if (resizeHandler) window.removeEventListener('resize', resizeHandler) })
+
+watch(windowWidth, (newW, oldW) => {
+  if ((oldW < 640) !== (newW < 640)) calKey.value++
+})
 
 function reload() {
   calKey.value++
@@ -164,9 +175,13 @@ function serviceIcon(name) {
 const calOptions = computed(() => ({
   plugins:     [dayGridPlugin, timeGridPlugin, interactionPlugin],
   locale:      ruLocale,
-  initialView: 'timeGridWeek',
+  initialView: windowWidth.value < 640 ? 'timeGridDay' : 'timeGridWeek',
   timeZone:    'local',
-  headerToolbar: {
+  headerToolbar: windowWidth.value < 640 ? {
+    left:   'prev,next',
+    center: 'title',
+    right:  'today',
+  } : {
     left:   'prev,next today',
     center: 'title',
     right:  'dayGridMonth,timeGridWeek,timeGridDay',
