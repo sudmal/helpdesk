@@ -19,6 +19,7 @@ require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'active'])->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/new-since', [DashboardController::class, 'newTicketsSince'])->name('dashboard.new-since');
 
     // Заявки
     Route::prefix('tickets')->name('tickets.')->group(function () {

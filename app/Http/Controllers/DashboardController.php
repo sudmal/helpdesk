@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Ticket, TicketStatus, Territory, Brigade, ServiceType};
+use App\Models\{Ticket, TicketStatus, Territory, Brigade, ServiceType, Material};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,29 +34,8 @@ class DashboardController extends Controller
             ->when($territory,   fn($q) => $q->whereHas('address', fn($a) => $a->where('territory_id', $territory)))
             ->when($serviceType, fn($q) => $q->where('service_type_id', $serviceType));
 
-        $openIds  = TicketStatus::where('is_final', false)->pluck('id');
-        $closedId = TicketStatus::where('slug', 'closed')->value('id');
-
-        // Просроченные = scheduled_at < начало сегодняшнего дня (то есть дата выезда уже прошла)
+        $openIds          = TicketStatus::where('is_final', false)->pluck('id');
         $overdueThreshold = Carbon::today();
-
-        $stats = [
-            'open'              => (clone $scoped)->whereIn('status_id', $openIds)->count(),
-            'today'             => (clone $scoped)->whereDate('scheduled_at', $date)->count(),
-            'closed_today'      => (clone $scoped)->where('status_id', $closedId)
-                                    ->whereDate('closed_at', today())
-                                    ->where(fn($q) => $q->whereNull('close_notes')
-                                        ->orWhere('close_notes', 'NOT LIKE', '%просрочено%'))
-                                    ->count(),
-            'closed_today_auto' => (clone $scoped)->where('status_id', $closedId)
-                                    ->whereDate('closed_at', today())
-                                    ->where('close_notes', 'LIKE', '%просрочено%')
-                                    ->count(),
-            'overdue'           => (clone $scoped)->whereIn('status_id', $openIds)
-                                    ->whereNotNull('scheduled_at')
-                                    ->where('scheduled_at', '<', $overdueThreshold)
-                                    ->count(),
-        ];
 
         $todayTickets = (clone $scoped)
             ->with(['address', 'type', 'serviceType', 'status', 'brigade'])
@@ -72,7 +51,7 @@ class DashboardController extends Controller
             ->orderBy('scheduled_at')
             ->get();
 
-        // Счётчики для вкладок территорий: открытые и закрытые на выбранный день
+        // Счётчики для вкладок территорий
         $territoryStats = \DB::table('tickets')
             ->join('addresses', 'tickets.address_id', '=', 'addresses.id')
             ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
@@ -87,7 +66,6 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('territory_id');
 
-        // Счётчики для вкладок участков: есть ли незакрытые на выбранный день
         $serviceTypeHasOpen = Ticket::query()
             ->when($territory, fn($q) => $q->whereHas('address', fn($a) => $a->where('territory_id', $territory)))
             ->whereHas('address', fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
@@ -112,17 +90,46 @@ class DashboardController extends Controller
         ]);
 
         return Inertia::render('Dashboard/Index', [
-            'stats'             => $stats,
             'todayTickets'      => $todayTickets,
             'overdue'           => $overdue,
             'territories'       => $territoriesWithCounts,
             'serviceTypes'      => $serviceTypesWithCounts,
+            'materialsCatalog'  => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','name','unit','price']),
             'selectedDate'      => $date,
             'selectedTerritory' => $territory ? (int)$territory : null,
             'serviceType'       => $serviceType ? (int)$serviceType : null,
             'sort'              => $sort,
             'sortDir'           => $sortDir,
         ]);
+    }
+
+    public function newTicketsSince(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user        = auth()->user();
+        $since       = $request->integer('since', 0);
+        $territory   = $request->get('territory');
+        $serviceType = $request->get('service_type');
+
+        $userTerritories = $this->getUserTerritories($user);
+
+        $tickets = Ticket::with(['address', 'type'])
+            ->when($userTerritories->isNotEmpty(), fn($q) =>
+                $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories->pluck('id'))))
+            ->when($territory,   fn($q) => $q->whereHas('address', fn($a) => $a->where('territory_id', $territory)))
+            ->when($serviceType, fn($q) => $q->where('service_type_id', $serviceType))
+            ->where('created_at', '>', Carbon::createFromTimestamp(max($since, 0)))
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get();
+
+        return response()->json($tickets->map(fn($t) => [
+            'id'      => $t->id,
+            'number'  => $t->number,
+            'address' => collect([
+                $t->address?->street,
+                $t->address?->building ? 'д.' . $t->address->building : null,
+            ])->filter()->join(' '),
+        ]));
     }
 
     private function getUserTerritories($user)
