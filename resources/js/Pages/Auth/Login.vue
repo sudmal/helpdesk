@@ -19,6 +19,13 @@
 
       <!-- Форма -->
       <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl">
+
+        <!-- Blocked banner -->
+        <div v-if="isBlocked"
+             class="bg-red-500/20 border border-red-500/30 rounded-xl px-4 py-3 text-red-200 text-sm mb-5">
+          🚫 IP-адрес временно заблокирован на {{ blockMinutes }} мин. из-за многократных неверных попыток.
+        </div>
+
         <form @submit.prevent="submit" class="space-y-5">
 
           <!-- Ошибка -->
@@ -64,6 +71,25 @@
             </div>
           </div>
 
+          <!-- Captcha -->
+          <div v-if="showCaptcha && !isBlocked" class="space-y-2">
+            <label class="block text-sm text-blue-200">Введите ответ на пример</label>
+            <div class="flex items-center gap-3">
+              <img :src="'/captcha?t=' + captchaTs" alt="Капча"
+                   class="rounded-lg h-14 select-none border border-white/10" />
+              <button type="button" @click="refreshCaptcha"
+                      class="text-blue-300 hover:text-white transition-colors text-2xl leading-none"
+                      title="Обновить капчу">↺</button>
+            </div>
+            <input v-model="form.captcha"
+                   type="text" inputmode="numeric" maxlength="3"
+                   placeholder="Ответ..."
+                   class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3
+                          text-white placeholder-white/30 text-sm
+                          focus:outline-none focus:ring-2 focus:ring-blue-400/50" />
+            <p v-if="form.errors.captcha" class="text-sm text-red-300">⚠ {{ form.errors.captcha }}</p>
+          </div>
+
           <div class="flex items-center justify-between">
             <label class="flex items-center gap-2 text-sm text-blue-200 cursor-pointer">
               <input v-model="form.remember"
@@ -74,12 +100,12 @@
           </div>
 
           <button
-            :disabled="form.processing"
+            :disabled="form.processing || isBlocked"
             class="w-full bg-blue-500 hover:bg-blue-400 disabled:opacity-50
                    text-white font-semibold py-3 rounded-xl transition-all duration-200
                    shadow-lg shadow-blue-500/30 hover:shadow-blue-400/40
                    disabled:cursor-not-allowed text-sm">
-            {{ form.processing ? 'Вход...' : 'Войти в систему' }}
+            {{ form.processing ? 'Вход...' : isBlocked ? 'Доступ заблокирован' : 'Войти в систему' }}
           </button>
         </form>
       </div>
@@ -95,12 +121,23 @@
 import { ref } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 
+const props = defineProps({
+  showCaptcha:  { type: Boolean, default: false },
+  isBlocked:    { type: Boolean, default: false },
+  blockMinutes: { type: Number,  default: 60 },
+})
+
 const showPassword = ref(false)
+const captchaTs    = ref(Date.now())
+
 const form = useForm({
   email:    '',
   password: '',
   remember: false,
+  captcha:  '',
 })
+
+function refreshCaptcha() { captchaTs.value = Date.now() }
 
 function submit() {
   form.post(route('login'), {

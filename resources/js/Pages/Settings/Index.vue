@@ -117,6 +117,30 @@
           </div>
         </div>
 
+        <div class="border-t border-gray-100 pt-4">
+          <h2 class="font-semibold mb-3">🔐 Защита от перебора</h2>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="field-label">Капча после N попыток</label>
+              <input v-model.number="generalForm.login_captcha_attempts" type="number" min="1" max="10" class="field-input" />
+            </div>
+            <div>
+              <label class="field-label">Блок IP после N попыток</label>
+              <input v-model.number="generalForm.login_block_attempts" type="number" min="2" max="20" class="field-input" />
+            </div>
+            <div>
+              <label class="field-label">Длительность блокировки</label>
+              <select v-model.number="generalForm.login_block_minutes" class="field-input">
+                <option :value="15">15 минут</option>
+                <option :value="30">30 минут</option>
+                <option :value="60">1 час</option>
+                <option :value="120">2 часа</option>
+                <option :value="1440">24 часа</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div class="pt-2">
           <button class="btn-primary text-sm">Сохранить настройки</button>
         </div>
@@ -969,6 +993,9 @@ const generalForm = useForm({
   schedule_step_minutes: props.generalSettings?.schedule_step_minutes ?? '30',
   attachment_ttl_days:   props.generalSettings?.attachment_ttl_days ?? '365',
   work_days:             (props.generalSettings?.work_days ?? '1,2,3,4,5').split(','),
+  login_captcha_attempts:  props.generalSettings?.login_captcha_attempts ?? 3,
+  login_block_attempts:    props.generalSettings?.login_block_attempts ?? 6,
+  login_block_minutes:     props.generalSettings?.login_block_minutes ?? 60,
 })
 
 function saveGeneral() {

@@ -37,6 +37,9 @@ class SettingsController extends Controller
                 'schedule_step_minutes' => SystemSetting::get('schedule_step_minutes', 30),
                 'attachment_ttl_days'   => SystemSetting::get('attachment_ttl_days', 365),
                 'work_days'             => SystemSetting::get('work_days', '1,2,3,4,5'),
+                'login_captcha_attempts' => SystemSetting::get('login_captcha_attempts', 3),
+                'login_block_attempts'   => SystemSetting::get('login_block_attempts', 6),
+                'login_block_minutes'    => SystemSetting::get('login_block_minutes', 60),
             ],
         ]);
     }
@@ -268,6 +271,9 @@ class SettingsController extends Controller
             'attachment_ttl_days'   => 'required|integer|min:0',
             'work_days'             => 'required|array',
             'work_days.*'           => 'in:1,2,3,4,5,6,7',
+            'login_captcha_attempts' => 'required|integer|min:1|max:10',
+            'login_block_attempts'   => 'required|integer|min:2|max:20',
+            'login_block_minutes'    => 'required|integer|in:15,30,60,120,1440',
         ]);
 
         SystemSetting::set('lanbilling_enabled', $request->boolean('lanbilling_enabled'));
@@ -276,6 +282,12 @@ class SettingsController extends Controller
         SystemSetting::set('schedule_step_minutes', $data['schedule_step_minutes']);
         SystemSetting::set('attachment_ttl_days',   $data['attachment_ttl_days']);
         SystemSetting::set('work_days',             implode(',', $data['work_days']));
+        SystemSetting::set('login_captcha_attempts', $data['login_captcha_attempts']);
+        SystemSetting::set('login_block_attempts',   $data['login_block_attempts']);
+        SystemSetting::set('login_block_minutes',    $data['login_block_minutes']);
+        SystemSetting::set('login_captcha_attempts', $data['login_captcha_attempts']);
+        SystemSetting::set('login_block_attempts',   $data['login_block_attempts']);
+        SystemSetting::set('login_block_minutes',    $data['login_block_minutes']);
 
         return back()->with('success', 'Настройки сохранены');
     }
