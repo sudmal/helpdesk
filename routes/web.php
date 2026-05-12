@@ -123,6 +123,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/lanbilling',    [SettingsController::class, 'lanbilling'])->name('lanbilling');
         Route::put('/lanbilling',    [SettingsController::class, 'updateLanbilling'])->name('lanbilling.update');
     });
+    Route::middleware('can:manage-settings')->get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
 
 });

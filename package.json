@@ -13,6 +13,7 @@
     "@fullcalendar/vue3": "^6.1.11",
     "@inertiajs/vue3": "^2.3.21",
     "axios": "^1.6.4",
+    "chart.js": "^4.4.9",
     "dayjs": "^1.11.10",
     "lucide-vue-next": "^0.378.0",
     "vue": "^3.4.0"

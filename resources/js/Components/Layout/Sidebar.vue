@@ -22,6 +22,8 @@
       <NavItem :href="route('addresses.index')"     icon="database" label="Адреса" />
       <NavItem v-if="can('materials.view')" :href="route('materials.index')"    icon="package"  label="Материалы" />
       <NavItem v-if="canManageSettings"
+               :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" />
+      <NavItem v-if="canManageSettings"
                :href="route('settings.index')"      icon="settings" label="Настройки" />
       <NavItem :href="route('help')" icon="help-circle" label="Справка" />
     </nav>
@@ -35,6 +37,9 @@
         </svg>
         Выход
       </button>
+    </div>
+    <div class="px-4 py-2 border-t border-white/5">
+      <div class="text-[10px] text-white/20 leading-tight">Suntsov Dmitriy @ Claude</div>
     </div>
   </aside>
 </template>

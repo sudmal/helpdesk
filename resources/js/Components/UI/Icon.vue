@@ -5,7 +5,7 @@
 <script setup>
 import { computed } from 'vue'
 import {
-  LayoutGrid, Ticket, Calendar, MapPin, Users, Database, HelpCircle,
+  LayoutGrid, Ticket, Calendar, MapPin, Users, Database, BarChart2, HelpCircle,
   Settings, LogOut, Menu, CheckCircle, AlertTriangle,
   Clock, XCircle, Plus, Search, Filter, ChevronDown,
   ChevronLeft, ChevronRight, Edit2, Trash2, Download,
@@ -17,7 +17,7 @@ import {
 const props = defineProps({ name: { type: String, required: true } })
 
 const MAP = {
-  'grid': LayoutGrid, 'help-circle': HelpCircle, 'ticket': Ticket, 'calendar': Calendar,
+  'grid': LayoutGrid, 'help-circle': BarChart2, HelpCircle, 'ticket': Ticket, 'calendar': Calendar,
   'map-pin': MapPin, 'users': Users, 'database': Database,
   'settings': Settings, 'log-out': LogOut, 'package': Package, 'menu': Menu,
   'check-circle': CheckCircle, 'alert-triangle': AlertTriangle,
