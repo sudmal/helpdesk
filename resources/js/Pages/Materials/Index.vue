@@ -13,6 +13,7 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-medium">
+            <th class="text-center px-3 py-2 w-20">Код</th>
             <th class="text-left px-4 py-2">Наименование</th>
             <th class="text-center px-3 py-2 w-20">Ед. изм.</th>
             <th class="text-right px-4 py-2 w-28">Цена, ₽</th>
@@ -22,10 +23,11 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
           <tr v-if="!materials.length">
-            <td colspan="5" class="text-center py-8 text-gray-400 text-xs">Справочник пуст</td>
+            <td colspan="6" class="text-center py-8 text-gray-400 text-xs">Справочник пуст</td>
           </tr>
           <tr v-for="m in materials" :key="m.id"
               :class="['transition-colors', m.is_active ? 'hover:bg-gray-50' : 'opacity-40 hover:bg-gray-50']">
+            <td class="px-3 py-0.5 text-center font-mono text-xs text-gray-400">{{ m.code || '—' }}</td>
             <td class="px-4 py-0.5 text-gray-800 text-sm">{{ m.name }}</td>
             <td class="px-3 py-0.5 text-gray-500 text-xs text-center">{{ m.unit }}</td>
             <td class="px-4 py-0.5 text-right font-mono tabular-nums text-sm">{{ formatPrice(m.price) }}</td>
@@ -53,6 +55,16 @@
            :title="editing ? 'Редактировать материал' : 'Новый материал'"
            @close="showModal = false">
       <form @submit.prevent="submit" class="space-y-4">
+
+        <!-- Код -->
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Код (артикул)</label>
+          <input v-model="form.code"
+                 placeholder="001"
+                 maxlength="50"
+                 class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono
+                        focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
+        </div>
 
         <!-- Наименование -->
         <div>
@@ -127,17 +139,17 @@ const props = defineProps({ materials: Array, canManage: Boolean })
 
 const showModal = ref(false)
 const editing   = ref(null)
-const form      = ref({ name: '', unit: 'шт', price: 0, is_active: true })
+const form      = ref({ code: '', name: '', unit: 'шт', price: 0, is_active: true })
 
 function openCreate() {
   editing.value = null
-  form.value = { name: '', unit: 'шт', price: 0, is_active: true }
+  form.value = { code: '', name: '', unit: 'шт', price: 0, is_active: true }
   showModal.value = true
 }
 
 function openEdit(m) {
   editing.value = m
-  form.value = { name: m.name, unit: m.unit, price: m.price, is_active: m.is_active }
+  form.value = { code: m.code || '', name: m.name, unit: m.unit, price: m.price, is_active: m.is_active }
   showModal.value = true
 }
 

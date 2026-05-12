@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Material extends Model
 {
-    protected $fillable = ['name', 'unit', 'price', 'is_active', 'sort_order'];
+    protected $fillable = ['code', 'name', 'unit', 'price', 'is_active', 'sort_order'];
     protected $casts    = ['price' => 'float', 'is_active' => 'boolean'];
 
     public function ticketMaterials(): HasMany

@@ -136,6 +136,7 @@
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-gray-50 border-b border-gray-100 text-gray-500">
+                <th class="text-center px-3 py-2 w-16">Код</th>
                 <th class="text-left px-4 py-2">Наименование</th>
                 <th class="text-center px-3 py-2 w-24">Кол-во</th>
                 <th class="text-right px-3 py-2 w-24">Цена/ед</th>
@@ -145,6 +146,7 @@
             <tbody class="divide-y divide-gray-100">
               <tr v-for="m in ticket.materials" :key="m.id"
                   class="hover:bg-gray-50">
+                <td class="px-3 py-2 text-center text-gray-400 font-mono text-xs">{{ m.material_code || '—' }}</td>
                 <td class="px-4 py-2 text-gray-800">{{ m.material_name }}</td>
                 <td class="px-3 py-2 text-center text-gray-600">
                   {{ m.quantity }} {{ m.material_unit }}

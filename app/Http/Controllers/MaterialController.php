@@ -19,6 +19,7 @@ class MaterialController extends Controller
     {
         abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
         $data = $request->validate([
+            'code'       => 'nullable|string|max:50',
             'name'       => 'required|string|max:255',
             'unit'       => 'required|string|max:20',
             'price'      => 'required|numeric|min:0',
@@ -33,6 +34,7 @@ class MaterialController extends Controller
     {
         abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
         $data = $request->validate([
+            'code'       => 'nullable|string|max:50',
             'name'       => 'required|string|max:255',
             'unit'       => 'required|string|max:20',
             'price'      => 'required|numeric|min:0',
@@ -50,7 +52,6 @@ class MaterialController extends Controller
         return back()->with('success', 'Материал деактивирован');
     }
 
-    // Сохранение расходников по заявке
     public function storeForTicket(Request $request, Ticket $ticket)
     {
         $request->validate([
@@ -59,7 +60,6 @@ class MaterialController extends Controller
             'items.*.quantity'       => 'required|numeric|min:0.001',
         ]);
 
-        // Удаляем старые записи (перезапись)
         $ticket->materials()->delete();
 
         foreach ($request->items as $item) {
@@ -67,6 +67,7 @@ class MaterialController extends Controller
             $ticket->materials()->create([
                 'material_id'    => $material->id,
                 'material_name'  => $material->name,
+                'material_code'  => $material->code,
                 'material_unit'  => $material->unit,
                 'price_at_time'  => $material->price,
                 'quantity'       => $item['quantity'],

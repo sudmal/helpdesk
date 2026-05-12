@@ -12,7 +12,7 @@
                        focus:outline-none focus:ring-2 focus:ring-blue-500/30">
           <option value="">— Материал —</option>
           <option v-for="m in materials" :key="m.id" :value="m.id">
-            {{ m.name }} — {{ m.price }} ₽/{{ m.unit }}
+            {{ m.code ? '[' + m.code + '] ' : '' }}{{ m.name }} — {{ m.price }} ₽/{{ m.unit }}
           </option>
         </select>
         <!-- Количество -->
