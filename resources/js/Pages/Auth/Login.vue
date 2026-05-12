@@ -75,7 +75,7 @@
           <div v-if="showCaptcha && !isBlocked" class="space-y-2">
             <label class="block text-sm text-blue-200">Введите ответ на пример</label>
             <div class="flex items-center gap-3">
-              <img :src="'/captcha?t=' + captchaTs" alt="Капча"
+              <img :src="captchaImg" alt="Капча"
                    class="rounded-lg h-14 select-none border border-white/10" />
               <button type="button" @click="refreshCaptcha"
                       class="text-blue-300 hover:text-white transition-colors text-2xl leading-none"
@@ -125,10 +125,11 @@ const props = defineProps({
   showCaptcha:  { type: Boolean, default: false },
   isBlocked:    { type: Boolean, default: false },
   blockMinutes: { type: Number,  default: 60 },
+  captchaImage: { type: String,  default: '' },
 })
 
 const showPassword = ref(false)
-const captchaTs    = ref(Date.now())
+const captchaImg  = ref(props.captchaImage ?? '')
 
 const form = useForm({
   email:    '',
@@ -137,7 +138,13 @@ const form = useForm({
   captcha:  '',
 })
 
-function refreshCaptcha() { captchaTs.value = Date.now() }
+async function refreshCaptcha() {
+  try {
+    const r = await fetch('/captcha', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    const d = await r.json()
+    captchaImg.value = d.img
+  } catch (e) { console.error('captcha refresh:', e) }
+}
 
 function submit() {
   form.post(route('login'), {
