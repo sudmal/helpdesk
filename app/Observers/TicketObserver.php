@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 namespace App\Observers;
 
 use App\Models\Ticket;
@@ -52,13 +52,11 @@ class TicketObserver
 
             if ($newStatus?->slug === 'cancelled' && $isToday) {
                 dispatch(function () use ($ticket) {
+                    $fresh    = $ticket->fresh(['address', 'serviceType']);
                     $telegram = app(\App\Services\TelegramService::class);
                     $telegram->broadcast(
-                        $telegram->formatCancelledTicket(
-                            $ticket->fresh(['address', 'serviceType']),
-                            $ticket->close_notes
-                        ),
-                        $ticket->service_type_id
+                        $telegram->formatCancelledTicket($fresh, $ticket->close_notes),
+                        $fresh->address?->territory_id
                     );
                 })->afterResponse();
             }
@@ -113,3 +111,4 @@ class TicketObserver
         };
     }
 }
+

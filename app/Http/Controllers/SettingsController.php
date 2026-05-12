@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -14,13 +14,18 @@ class SettingsController extends Controller
     {
         $this->authorize('manage-settings');
 
+        $user = auth()->user();
+        $territoriesQuery = $user->isAdmin()
+            ? Territory::orderBy('sort_order')->orderBy('name')
+            : $user->territories()->orderBy('sort_order')->orderBy('name');
+
         return Inertia::render('Settings/Index', [
             'ticketTypes'      => TicketType::orderBy('sort_order')->get(),
             'ticketStatuses'   => TicketStatus::orderBy('sort_order')->get(),
             'serviceTypes'     => ServiceType::orderBy('sort_order')->get(),
             'users'            => User::with(['role', 'territories'])->orderBy('name')->get(),
             'roles'            => Role::orderBy('name')->get(),
-            'territories'      => Territory::orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
+            'territories'      => $territoriesQuery->get(['id', 'name']),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),
             'lanbillingConfig' => [
                 'url'   => config('lanbilling.url'),
@@ -131,6 +136,7 @@ class SettingsController extends Controller
             'telegram_chat_id' => 'nullable|string',
             'notify_telegram'  => 'boolean',
             'notify_email'     => 'boolean',
+            'telegram_chat_id'      => 'nullable|string|max:50',
             'territory_ids'    => 'nullable|array',
             'territory_ids.*'  => 'exists:territories,id',
         ]);
@@ -158,6 +164,7 @@ class SettingsController extends Controller
             'telegram_chat_id' => 'nullable|string',
             'notify_telegram'  => 'boolean',
             'notify_email'     => 'boolean',
+            'telegram_chat_id'      => 'nullable|string|max:50',
             'territory_ids'    => 'nullable|array',
             'territory_ids.*'  => 'exists:territories,id',
         ]);
@@ -316,3 +323,4 @@ class SettingsController extends Controller
         file_put_contents($path, $content);
     }
 }
+

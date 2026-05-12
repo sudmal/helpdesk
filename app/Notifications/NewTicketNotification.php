@@ -39,15 +39,18 @@ class NewTicketNotification extends Notification
             $telegram = app(TelegramService::class);
             $telegram->broadcast(
                 $telegram->formatNewTicket($ticket),
-                $ticket->service_type_id
+                $ticket->address?->territory_id
             );
         } catch (\Throwable $e) {
             \Log::error('Telegram notification failed: '.$e->getMessage());
         }
 
-        // Push
+        // Push — только пользователям у которых есть эта территория
         try {
-            $users = \App\Models\User::whereHas('pushSubscriptions')->get();
+            $territoryId = $ticket->address?->territory_id;
+            $users = \App\Models\User::whereHas('pushSubscriptions')
+                ->when($territoryId, fn($q) => $q->whereHas('territories', fn($t) => $t->where('territories.id', $territoryId)))
+                ->get();
             foreach ($users as $user) {
                 $user->notify(new static($ticket));
             }

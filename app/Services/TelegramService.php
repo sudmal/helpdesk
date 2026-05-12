@@ -34,10 +34,12 @@ class TelegramService
         Http::post("{$this->apiUrl}/sendMessage", $params);
     }
 
-    public function broadcast(string $text, ?int $serviceTypeId = null): void
+    public function broadcast(string $text, ?int $territoryId = null): void
     {
         User::whereNotNull('telegram_chat_id')
             ->where('is_active', true)
+            ->whereHas('brigades') // только члены бригад
+            ->when($territoryId, fn($q) => $q->whereHas('territories', fn($t) => $t->where('territories.id', $territoryId)))
             ->get()
             ->each(fn($user) => $this->send($user->telegram_chat_id, $text));
     }

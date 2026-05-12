@@ -19,8 +19,15 @@ class TicketController extends Controller
         $sort    = in_array($request->sort, ['number','created_at','scheduled_at','status_id','priority']) ? $request->sort : 'created_at';
         $sortDir = in_array($request->sortDir, ['asc','desc']) ? $request->sortDir : 'desc';
 
+        // Фильтр по территориям пользователя
+        $user            = auth()->user();
+        $userTerritories = $user->territories()->pluck('territories.id');
+
         $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade', 'creator', 'assignee'])
             ->withCount('comments')
+            ->when($userTerritories->isNotEmpty(), fn($q) =>
+                $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories))
+            )
             ->when($request->search, fn($q) => $q->search($request->search))
             ->when($request->status, fn($q) => $q->where('status_id', $request->status))
             ->when($request->type,   fn($q) => $q->where('type_id', $request->type))

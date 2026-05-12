@@ -480,6 +480,19 @@
               <input v-model="userForm.email" type="email" class="field-input" placeholder="email@example.com" autocomplete="off" />
             </div>
             <div>
+              <label class="field-label">Telegram ID</label>
+              <input v-model="userForm.telegram_chat_id" class="field-input" placeholder="123456789" />
+              <p class="text-xs text-gray-400 mt-1">Узнать ID: написать @userinfobot в Telegram</p>
+            </div><div style="display:none">
+            </div>
+            <div>
+              <label class="field-label">Telegram ID</label>
+              <input v-model="userForm.telegram_chat_id" class="field-input" placeholder="123456789" />
+              <p class="text-xs text-gray-400 mt-1">Узнать ID: написать @userinfobot в Telegram</p>
+            </div>
+            <div style="display:none"><-- Закрытые сегодня с scheduled_at вообще в прошлом ( любой срок placeholder -->
+            </div>
+            <div>
               <label class="field-label">Телефон</label>
               <input v-model="userForm.phone" class="field-input" placeholder="+7..." />
             </div>
@@ -749,7 +762,7 @@ function deleteStatus(s) {
 const showUserModal = ref(false)
 const editingUser   = ref(null)
 const userForm = useForm({
-  name: '', login: '', email: '', phone: '', role_id: '',
+  name: '', login: '', email: '', telegram_chat_id: '', phone: '', role_id: '',
   telegram_chat_id: '', max_chat_id: '',
   password: '', password_confirmation: '',
   notify_email: true, notify_telegram: false, notify_max: false,
@@ -760,6 +773,7 @@ function openUserModal(u = null) {
   editingUser.value = u
   if (u) {
     userForm.name              = u.name            ?? ''
+    userForm.telegram_chat_id       = u.telegram_chat_id     ?? ''
     userForm.login             = u.login           ?? ''
     userForm.email             = u.email           ?? ''
     userForm.phone             = u.phone           ?? ''
