@@ -123,6 +123,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/lanbilling',    [SettingsController::class, 'lanbilling'])->name('lanbilling');
         Route::put('/lanbilling',    [SettingsController::class, 'updateLanbilling'])->name('lanbilling.update');
     });
+    Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
+
 });
 
 // Материалы (справочник)

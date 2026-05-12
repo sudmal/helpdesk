@@ -23,6 +23,7 @@
       <NavItem v-if="can('materials.view')" :href="route('materials.index')"    icon="package"  label="Материалы" />
       <NavItem v-if="canManageSettings"
                :href="route('settings.index')"      icon="settings" label="Настройки" />
+      <NavItem :href="route('help')" icon="help-circle" label="Справка" />
     </nav>
     <div class="px-4 py-4 border-t border-white/10">
       <div class="text-sm font-medium truncate">{{ user.name }}</div>
