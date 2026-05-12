@@ -45,7 +45,7 @@
     </div>
 
     <!-- Календарь -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden p-4">
+    <div class="bg-white rounded-2xl border border-gray-200 p-4">
       <FullCalendar :key="calKey" ref="calRef" :options="calOptions" />
     </div>
 
@@ -186,6 +186,8 @@ const calOptions = computed(() => ({
     center: 'title',
     right:  'dayGridMonth,timeGridWeek,timeGridDay',
   },
+  scrollTime:       '08:00:00',
+  ...(windowWidth.value < 640 ? { contentHeight: 'auto', slotMinTime: '07:00:00', slotMaxTime: '21:00:00' } : {}),
   displayEventTime: true,
   eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
 

@@ -75,6 +75,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/{address}', [AddressController::class, 'destroy'])->name('destroy');
         Route::post('/import',      [AddressController::class, 'import'])->name('import');
         Route::get('/search',       [AddressController::class, 'search'])->name('search');
+        Route::get('/hierarchy',    [AddressController::class, 'hierarchy'])->name('hierarchy');
     });
 
     // LANBilling

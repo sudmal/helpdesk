@@ -10,7 +10,7 @@
     </template>
 
     <!-- Плашки активных фильтров -->
-    <div v-if="localFilters.overdue || localFilters.closed_today || localFilters.address_id || localFilters.street"
+    <div v-if="localFilters.overdue || localFilters.closed_today || localFilters.address_id || localFilters.street || localFilters.apartment"
          class="flex flex-wrap gap-1.5 mb-2">
       <span v-if="localFilters.overdue"
             class="inline-flex items-center gap-1 bg-red-100 border border-red-200 text-red-700
@@ -27,7 +27,7 @@
       <span v-if="localFilters.address_id || localFilters.street"
             class="inline-flex items-center gap-1 bg-blue-100 border border-blue-200 text-blue-700
                    text-xs px-2 py-0.5 rounded-full">
-        📍 {{ [localFilters.city, localFilters.street, localFilters.building ? 'д.'+localFilters.building : null].filter(Boolean).join(' ') || 'Адрес' }}
+        📍 {{ [localFilters.city, localFilters.street, localFilters.building ? 'д.'+localFilters.building : null, localFilters.apartment ? 'кв.'+localFilters.apartment : null].filter(Boolean).join(' ') || 'Адрес' }}
         <button @click="clearAddressFilter" class="hover:text-blue-900">✕</button>
       </span>
     </div>
@@ -73,6 +73,13 @@
         <option value="normal">🔵 Обычный</option>
         <option value="low">⚪ Низкий</option>
       </select>
+      <button @click="openAddrModal"
+              :class="['border rounded-lg px-2 py-0.5 text-xs transition-colors whitespace-nowrap',
+                       (localFilters.city || localFilters.address_id)
+                         ? 'bg-blue-50 border-blue-300 text-blue-700'
+                         : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
+        📍 Адрес
+      </button>
     </div>
 
     <!-- Пагинация + счётчик сверху -->
@@ -208,6 +215,48 @@
         </div>
       </div>
     </div>
+    <!-- Фильтр по адресу -->
+    <Modal v-if="showAddrModal" title="Фильтр по адресу" @close="showAddrModal = false">
+      <div class="space-y-3 w-72">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Город</label>
+          <select v-model="addrF.city" @change="onAddrCityChange"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option value="">— Выбрать город —</option>
+            <option v-for="c in addrCities" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+        <div v-if="addrF.city">
+          <label class="block text-xs text-gray-500 mb-1">Улица</label>
+          <select v-model="addrF.street" @change="onAddrStreetChange"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option value="">— Все улицы —</option>
+            <option v-for="s in addrStreets" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+        <div v-if="addrF.street">
+          <label class="block text-xs text-gray-500 mb-1">Дом</label>
+          <select v-model="addrF.building" @change="onAddrBuildingChange"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option value="">— Все дома —</option>
+            <option v-for="b in addrBuildings" :key="b" :value="b">{{ b }}</option>
+          </select>
+        </div>
+        <div v-if="addrF.building && addrApartments.length">
+          <label class="block text-xs text-gray-500 mb-1">Квартира</label>
+          <select v-model="addrF.apartment"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option value="">— Все квартиры —</option>
+            <option v-for="a in addrApartments" :key="a" :value="a">{{ a }}</option>
+          </select>
+        </div>
+        <div class="flex gap-2 justify-end pt-2 border-t border-gray-100">
+          <button type="button" @click="clearAddrModal" class="btn-outline text-sm">Очистить</button>
+          <button type="button" @click="applyAddrModal" :disabled="!addrF.city"
+                  class="btn-primary text-sm disabled:opacity-50">Найти</button>
+        </div>
+      </div>
+    </Modal>
   </AppLayout>
 </template>
 
@@ -219,6 +268,8 @@ import 'dayjs/locale/ru'
 dayjs.locale('ru')
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Badge from '@/Components/UI/Badge.vue'
+import Modal from '@/Components/UI/Modal.vue'
+import axios from 'axios'
 
 const props = defineProps({
   tickets:      { type: Object, default: () => ({ data: [], total: 0, current_page: 1, last_page: 1 }) },
@@ -247,6 +298,7 @@ const localFilters = ref({
   city:         props.filters?.city         ?? '',
   street:       props.filters?.street       ?? '',
   building:     props.filters?.building     ?? '',
+  apartment:    props.filters?.apartment    ?? '',
 })
 
 // Автообновление каждые 60 сек
@@ -288,6 +340,7 @@ function clearAddressFilter() {
   localFilters.value.city       = ''
   localFilters.value.street     = ''
   localFilters.value.building   = ''
+  localFilters.value.apartment  = ''
   applyFilters()
 }
 
@@ -336,6 +389,76 @@ function fullAddress(t) {
 function rowStyle(t) {
   if (!t.status?.color) return {}
   return { backgroundColor: t.status.color + '18' }
+}
+
+// ── Фильтр по адресу (модалка) ──
+const showAddrModal   = ref(false)
+const addrCities      = ref([])
+const addrStreets     = ref([])
+const addrBuildings   = ref([])
+const addrApartments  = ref([])
+const addrF           = ref({ city: '', street: '', building: '', apartment: '' })
+
+async function openAddrModal() {
+  addrF.value = {
+    city:      localFilters.value.city      ?? '',
+    street:    localFilters.value.street    ?? '',
+    building:  localFilters.value.building  ?? '',
+    apartment: localFilters.value.apartment ?? '',
+  }
+  showAddrModal.value = true
+  if (!addrCities.value.length) {
+    const { data } = await axios.get(route('addresses.hierarchy'))
+    addrCities.value = data
+  }
+  if (addrF.value.city && !addrStreets.value.length) {
+    const { data } = await axios.get(route('addresses.hierarchy'), { params: { city: addrF.value.city } })
+    addrStreets.value = data
+  }
+  if (addrF.value.street && !addrBuildings.value.length) {
+    const { data } = await axios.get(route('addresses.hierarchy'), { params: { city: addrF.value.city, street: addrF.value.street } })
+    addrBuildings.value = data
+  }
+  if (addrF.value.building && !addrApartments.value.length) {
+    const { data } = await axios.get(route('addresses.hierarchy'), { params: { city: addrF.value.city, street: addrF.value.street, building: addrF.value.building } })
+    addrApartments.value = data
+  }
+}
+async function onAddrCityChange() {
+  addrF.value.street = ''; addrF.value.building = ''; addrF.value.apartment = ''
+  addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
+  if (addrF.value.city) {
+    const { data } = await axios.get(route('addresses.hierarchy'), { params: { city: addrF.value.city } })
+    addrStreets.value = data
+  }
+}
+async function onAddrStreetChange() {
+  addrF.value.building = ''; addrF.value.apartment = ''
+  addrBuildings.value = []; addrApartments.value = []
+  if (addrF.value.street) {
+    const { data } = await axios.get(route('addresses.hierarchy'), { params: { city: addrF.value.city, street: addrF.value.street } })
+    addrBuildings.value = data
+  }
+}
+async function onAddrBuildingChange() {
+  addrF.value.apartment = ''; addrApartments.value = []
+  if (addrF.value.building) {
+    const { data } = await axios.get(route('addresses.hierarchy'), { params: { city: addrF.value.city, street: addrF.value.street, building: addrF.value.building } })
+    addrApartments.value = data
+  }
+}
+function clearAddrModal() {
+  addrF.value = { city: '', street: '', building: '', apartment: '' }
+  addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
+}
+function applyAddrModal() {
+  localFilters.value.address_id = ''
+  localFilters.value.city       = addrF.value.city
+  localFilters.value.street     = addrF.value.street
+  localFilters.value.building   = addrF.value.building
+  localFilters.value.apartment  = addrF.value.apartment
+  showAddrModal.value = false
+  applyFilters()
 }
 
 function isOverdue(t) {

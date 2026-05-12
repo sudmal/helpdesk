@@ -231,6 +231,45 @@ class AddressController extends Controller
         return back()->with('success', 'Адрес удалён');
     }
 
+    public function hierarchy(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $city     = $request->get('city');
+        $street   = $request->get('street');
+        $building = $request->get('building');
+
+        if (!$city) {
+            return response()->json(
+                Address::selectRaw('DISTINCT city')
+                    ->whereNotNull('city')->where('city', '!=', '')
+                    ->orderBy('city')->pluck('city')
+            );
+        }
+        if (!$street) {
+            return response()->json(
+                Address::selectRaw('DISTINCT street')
+                    ->where('city', $city)->whereNotNull('street')
+                    ->orderBy('street')->pluck('street')
+            );
+        }
+        if (!$building) {
+            return response()->json(
+                Address::selectRaw('DISTINCT building')
+                    ->where('city', $city)->where('street', $street)
+                    ->whereNotNull('building')
+                    ->orderByRaw('CAST(building AS UNSIGNED), building')->pluck('building')
+            );
+        }
+        $fromAddrs = Address::where('city', $city)->where('street', $street)->where('building', $building)
+            ->whereNotNull('apartment')->where('apartment', '!=', '')
+            ->distinct()->orderByRaw('CAST(apartment AS UNSIGNED), apartment')->pluck('apartment');
+        $fromTickets = \App\Models\Ticket::whereHas('address', fn($q) =>
+                $q->where('city', $city)->where('street', $street)->where('building', $building))
+            ->whereNotNull('apartment')->where('apartment', '!=', '')
+            ->whereNull('deleted_at')->distinct()
+            ->orderByRaw('CAST(apartment AS UNSIGNED), apartment')->pluck('apartment');
+        return response()->json($fromAddrs->merge($fromTickets)->unique()->values());
+    }
+
     public function search(Request $request)
     {
         $q    = trim($request->get('q', ''));
@@ -273,7 +312,8 @@ class AddressController extends Controller
             ->get(['id', 'city', 'street', 'building', 'apartment',
                    'subscriber_name', 'phone', 'contract_no', 'territory_id']);
 
-        $results = [];
+        $results     = [];
+        $seenBuildings = [];
 
         foreach ($addresses as $a) {
             $baseLabel = collect([
@@ -283,6 +323,9 @@ class AddressController extends Controller
             ])->filter()->join(', ');
 
             if ($apartmentHint) {
+                $bKey = $a->city . '|' . $a->street . '|' . $a->building;
+                if (isset($seenBuildings[$bKey])) continue;
+                $seenBuildings[$bKey] = true;
                 $results[] = [
                     'id'              => $a->id,
                     'label'           => $baseLabel . ', кв.' . $apartmentHint,
