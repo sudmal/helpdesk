@@ -382,7 +382,7 @@ function fullAddress(t) {
   const a = t.address
   if (!a) return '—'
   const apt = t.apartment || a.apartment
-  return [a.street, a.building ? 'д.'+a.building : null, apt ? 'кв.'+apt : null]
+  return [a.street, a.building ? 'д.'+a.building : null, (apt && apt !== '0') ? 'кв.'+apt : null]
     .filter(Boolean).join(' ')
 }
 
