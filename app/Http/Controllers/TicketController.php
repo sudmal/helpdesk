@@ -19,9 +19,20 @@ class TicketController extends Controller
         $sort    = in_array($request->sort, ['number','created_at','scheduled_at','status_id','priority']) ? $request->sort : 'created_at';
         $sortDir = in_array($request->sortDir, ['asc','desc']) ? $request->sortDir : 'desc';
 
-        // Фильтр по территориям пользователя
-        $user            = auth()->user();
-        $userTerritories = $user->territories()->pluck('territories.id');
+        $user = auth()->user();
+
+        // Операторы, диспетчеры, руководство видят все заявки.
+        // Бригадиры и монтажники — только по территориям своей бригады.
+        if ($user->isTechnician() || $user->isForeman()) {
+            $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+            if ($brigadeIds->isNotEmpty()) {
+                $userTerritories = \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id');
+            } else {
+                $userTerritories = $user->territories()->pluck('territories.id');
+            }
+        } else {
+            $userTerritories = collect(); // нет фильтра — видят всё
+        }
 
         $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade', 'creator', 'assignee'])
             ->withCount('comments')
@@ -62,14 +73,7 @@ class TicketController extends Controller
                     if ($request->input('building')) $a->where('building', $request->input('building'));
                 });
             })
-            ->when(
-                // Монтажник видит только свои заявки
-                auth()->user()->isTechnician(),
-                fn($q) => $q->where(function ($sub) {
-                    $sub->where('assigned_to', auth()->id())
-                        ->orWhereHas('brigade', fn($b) => $b->whereHas('members', fn($m) => $m->where('user_id', auth()->id())));
-                })
-            )
+
             ->orderBy($sort, $sortDir)
             ->paginate(25)
             ->withQueryString();
