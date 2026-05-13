@@ -59,6 +59,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/{territory}', [TerritoryController::class, 'destroy'])->name('destroy');
     });
 
+    // Расписание бригад
+    Route::middleware('can:manage-settings')->prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
+        Route::get('/',          [App\Http\Controllers\BrigadeScheduleController::class, 'show'])->name('show');
+        Route::post('/save',     [App\Http\Controllers\BrigadeScheduleController::class, 'save'])->name('save');
+        Route::post('/generate', [App\Http\Controllers\BrigadeScheduleController::class, 'generate'])->name('generate');
+    });
+    Route::middleware('can:manage-settings')->post('/schedule/holiday', [App\Http\Controllers\BrigadeScheduleController::class, 'toggleHoliday'])->name('brigades.schedule.holiday');
+
     // Бригады
     Route::middleware('can:manage-settings')->prefix('brigades')->name('brigades.')->group(function () {
         Route::get('/',             [BrigadeController::class, 'index'])->name('index');
