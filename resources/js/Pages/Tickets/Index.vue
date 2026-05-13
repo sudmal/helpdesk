@@ -158,7 +158,7 @@
               <!-- Адрес + телефон + описание -->
               <td class="px-2 py-0.5 min-w-0">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
-                <p class="text-gray-400 text-xs leading-tight" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
+                <p class="text-gray-600 text-xs leading-tight" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
                   <span v-if="t.phone" class="text-gray-600 mr-1.5">{{ t.phone }}</span>
                   <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 60) }}</span>
                   <button v-if="(t.description?.length ?? 0) > 60" @click.stop="toggleDesc(t.id)"
