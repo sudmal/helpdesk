@@ -213,6 +213,8 @@
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Роль</th>
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Телефон</th>
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Telegram</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">MAX ID</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Бригада</th>
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Территории</th>
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Статус</th>
               <th class="px-3 py-0.5"></th>
@@ -220,7 +222,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="!users.length">
-              <td colspan="7" class="text-center py-10 text-gray-400">Нет пользователей</td>
+              <td colspan="9" class="text-center py-10 text-gray-400">Нет пользователей</td>
             </tr>
             <tr v-for="u in users" :key="u.id" class="hover:bg-gray-50">
               <td class="px-3 py-0.5">
@@ -232,6 +234,8 @@
               </td>
               <td class="px-3 py-0.5 text-gray-600">{{ u.phone ?? '—' }}</td>
               <td class="px-3 py-0.5 text-gray-500 text-xs font-mono">{{ u.telegram_chat_id ?? '—' }}</td>
+              <td class="px-3 py-0.5 text-gray-500 text-xs font-mono">{{ u.max_chat_id ?? '—' }}</td>
+              <td class="px-3 py-0.5 text-xs text-gray-500">{{ u.brigades?.[0]?.name ?? '—' }}</td>
               <td class="px-3 py-0.5 text-xs text-gray-500">
                 {{ u.territories?.map(t => t.name).join(', ') || '—' }}
               </td>
@@ -529,6 +533,10 @@
             <div>
               <label class="field-label">Telegram Chat ID</label>
               <input v-model="userForm.telegram_chat_id" class="field-input" placeholder="123456789" autocomplete="off" />
+              <p class="mt-1 text-xs text-gray-400">
+                Узнать ID: <a href="https://t.me/userinfobot" target="_blank"
+                   class="text-blue-500 hover:text-blue-700 underline">@userinfobot в Telegram</a>
+              </p>
             </div>
             <div>
               <label class="field-label">MAX ID</label>
