@@ -330,26 +330,27 @@ function changeMonth(delta) {
   .schedule-grid thead th,
   .schedule-grid tbody td { border: 0.5pt solid #aaa !important; padding: 0 !important; }
 
-  /* Сужаем колонки дней */
+  /* Ширина колонок дней */
   .sched-cell,
   .schedule-grid thead th:not(.sched-name-col),
   .schedule-grid tbody td:not(.sched-name-col) {
-    width: 22px !important;
-    min-width: 22px !important;
-    max-width: 22px !important;
+    width: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
   }
 
   /* Колонка с именем */
   .sched-name-col {
     position: static !important;
     background: #f0f0f0 !important;
-    min-width: 100px !important;
-    max-width: 100px !important;
+    min-width: 110px !important;
+    max-width: 110px !important;
     white-space: nowrap;
-    font-size: 7pt !important;
+    font-size: 8pt !important;
   }
 
-  .sched-cell .cell-label { opacity: 1 !important; font-size: 7pt; }
+  /* Буквы скрыты — статус передаётся только заливкой */
+  .sched-cell .cell-label { opacity: 0 !important; }
 
   /* Статусы: оттенки серого для Ч/Б */
   .sched-cell[data-status="off"]       { background: #bbb !important; }
