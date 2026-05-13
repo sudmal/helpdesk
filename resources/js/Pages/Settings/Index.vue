@@ -504,11 +504,6 @@
               <input v-model="userForm.email" type="email" class="field-input" placeholder="email@example.com" autocomplete="off" />
             </div>
             <div>
-              <label class="field-label">Telegram ID</label>
-              <input v-model="userForm.telegram_chat_id" class="field-input" placeholder="123456789" />
-              <p class="text-xs text-gray-400 mt-1">Узнать ID: написать @userinfobot в Telegram</p>
-            </div>
-            <div>
               <label class="field-label">Телефон</label>
               <input v-model="userForm.phone" class="field-input" placeholder="+7..." />
             </div>
