@@ -67,6 +67,16 @@ class TicketPolicy
             || $user->isForeman();
     }
 
+    /** Перенос даты */
+    public function postpone(User $user, Ticket $ticket): bool
+    {
+        return $user->isAdmin()
+            || $user->isHeadSupport()
+            || $user->isOperator()
+            || $user->isForeman()
+            || $user->isTechnician();
+    }
+
     /** Взять в работу (монтажник/бригадир) */
     public function start(User $user, Ticket $ticket): bool
     {

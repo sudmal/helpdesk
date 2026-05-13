@@ -340,7 +340,7 @@ class TicketController extends Controller
 
     public function postpone(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('postpone', $ticket);
         $request->validate([
             'scheduled_at' => 'required|date',
             'comment'      => 'nullable|string|max:2000',
