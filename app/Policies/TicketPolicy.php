@@ -9,6 +9,9 @@ class TicketPolicy
     /** Список заявок */
     public function viewAny(User $user): bool
     {
+        // Монтажник и бригадир всегда видят список (фильтрация по территории — в контроллере)
+        if ($user->isTechnician() || $user->isForeman()) return true;
+
         return $user->hasPermission('tickets.view');
     }
 
@@ -17,10 +20,19 @@ class TicketPolicy
     {
         if ($user->hasPermission('tickets.*') || $user->isAdmin()) return true;
 
-        // Монтажник видит только заявки своей бригады
-        if ($user->isTechnician()) {
-            return $ticket->assigned_to === $user->id
-                || $user->brigades->contains('id', $ticket->brigade_id);
+        // Монтажник и бригадир: видят заявки своей бригады или назначенные лично
+        if ($user->isTechnician() || $user->isForeman()) {
+            if ($ticket->assigned_to === $user->id) return true;
+            if ($ticket->brigade_id && $user->brigades->contains('id', $ticket->brigade_id)) return true;
+            // Также видят заявки по своим территориям
+            $brigadeIds = $user->brigades->pluck('id');
+            if ($brigadeIds->isNotEmpty()) {
+                $territoryIds = \App\Models\Territory::whereHas('brigades',
+                    fn($q) => $q->whereIn('brigades.id', $brigadeIds)
+                )->pluck('id');
+                return $ticket->address && $territoryIds->contains($ticket->address->territory_id);
+            }
+            return false;
         }
 
         return $user->hasPermission('tickets.view');
