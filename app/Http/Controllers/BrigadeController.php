@@ -106,6 +106,13 @@ class BrigadeController extends Controller
         return back()->with('success', 'Бригада обновлена');
     }
 
+    public function updateMinWorkers(Request $request, Brigade $brigade)
+    {
+        $request->validate(['min_workers' => 'required|integer|min:1|max:50']);
+        $brigade->update(['min_workers' => $request->min_workers]);
+        return response()->json(['ok' => true]);
+    }
+
     public function destroy(Brigade $brigade)
     {
         if ($brigade->tickets()->whereHas('status', fn($q) => $q->where('is_final', false))->exists()) {

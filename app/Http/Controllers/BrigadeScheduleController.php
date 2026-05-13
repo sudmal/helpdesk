@@ -111,6 +111,7 @@ class BrigadeScheduleController extends Controller
             'month'       => 'required|date_format:Y-m',
             'pre_marks'   => 'array',
             'target_days' => 'integer|min:1',
+            'min_workers' => 'integer|min:1|max:50',
         ]);
 
         [$year, $mon] = explode('-', $request->month);

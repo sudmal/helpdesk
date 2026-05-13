@@ -74,6 +74,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/',            [BrigadeController::class, 'store'])->name('store');
         Route::put('/{brigade}',    [BrigadeController::class, 'update'])->name('update');
         Route::delete('/{brigade}', [BrigadeController::class, 'destroy'])->name('destroy');
+        Route::patch('/{brigade}/min-workers', [BrigadeController::class, 'updateMinWorkers'])->name('min-workers');
     });
 
     // Адреса

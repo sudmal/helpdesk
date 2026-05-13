@@ -34,6 +34,14 @@
         <span class="text-xs text-gray-400">из {{ days.length }}</span>
       </div>
 
+      <div class="flex items-center gap-1.5">
+        <label class="text-xs text-gray-500 whitespace-nowrap">Мин. на участке</label>
+        <input type="number" v-model.number="minWorkers" min="1" :max="members.length"
+               @change="saveMinWorkers"
+               class="w-16 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <span class="text-xs text-gray-400">чел.</span>
+      </div>
+
       <button @click="runGenerate" :disabled="generating || scheduleIsSaved"
               :title="scheduleIsSaved ? 'Расписание сохранено — измените ячейку для разблокировки' : ''"
               class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
@@ -168,10 +176,12 @@ const props = defineProps({
   schedule: Object,
 })
 
-const mode       = ref('mark')
-const targetDays = ref(24)
-const generating = ref(false)
-const saving     = ref(false)
+const mode            = ref('mark')
+const targetDays      = ref(24)
+const minWorkers      = ref(props.brigade.min_workers ?? 2)
+const generating      = ref(false)
+const saving          = ref(false)
+const savingMinWorkers = ref(false)
 const scheduleIsSaved = ref(
   props.members.some(m => Object.keys(props.schedule[m.id] ?? {}).length > 0)
 )
@@ -189,8 +199,6 @@ const localHolidays = reactive({})
 for (const day of props.days) {
   localHolidays[day.date] = { isHoliday: day.isHoliday, name: day.holidayName }
 }
-
-const minWorkers = computed(() => Math.min(2, props.members.length))
 
 const monthLabel = computed(() => {
   const [y, m] = props.month.split('-')
@@ -261,6 +269,15 @@ const hasConflicts = computed(() =>
   })
 )
 
+async function saveMinWorkers() {
+  savingMinWorkers.value = true
+  try {
+    await axios.patch(route('brigades.min-workers', props.brigade.id), { min_workers: minWorkers.value })
+  } catch { /* silent */ } finally {
+    savingMinWorkers.value = false
+  }
+}
+
 async function runGenerate() {
   generating.value = true
   try {
@@ -274,7 +291,7 @@ async function runGenerate() {
     }
     const res = await axios.post(
       route('brigades.schedule.generate', props.brigade.id),
-      { month: props.month, pre_marks: preMark, target_days: targetDays.value }
+      { month: props.month, pre_marks: preMark, target_days: targetDays.value, min_workers: minWorkers.value }
     )
     for (const m of props.members) {
       for (const day of props.days) {
