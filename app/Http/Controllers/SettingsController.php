@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{TicketType, TicketStatus, User, Role, Territory, ServiceType, SystemSetting};
+use App\Models\{TicketType, TicketStatus, User, Role, Territory, ServiceType, SystemSetting, Brigade};
 use App\Console\Commands\{SendDailySummary, SendEveningReport};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Hash, Artisan};
@@ -23,9 +23,10 @@ class SettingsController extends Controller
             'ticketTypes'      => TicketType::orderBy('sort_order')->get(),
             'ticketStatuses'   => TicketStatus::orderBy('sort_order')->get(),
             'serviceTypes'     => ServiceType::orderBy('sort_order')->get(),
-            'users'            => User::with(['role', 'territories'])->orderBy('name')->get(),
+            'users'            => User::with(['role', 'territories', 'brigades'])->orderBy('name')->get(),
             'roles'            => Role::orderBy('name')->get(),
             'territories'      => $territoriesQuery->get(['id', 'name']),
+            'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),
             'lanbillingConfig' => [
                 'url'   => config('lanbilling.url'),
@@ -146,11 +147,15 @@ class SettingsController extends Controller
         ]);
         $data['password'] = Hash::make($data['password']);
         $territoryIds = $data['territory_ids'] ?? [];
+        $brigadeId    = $request->input('brigade_id') ?: null;
         unset($data['territory_ids']);
 
         $user = User::create($data);
         if ($territoryIds) {
             $user->territories()->sync($territoryIds);
+        }
+        if ($brigadeId) {
+            $user->brigades()->sync([$brigadeId]);
         }
         return back()->with('success', 'Пользователь создан');
     }
@@ -180,10 +185,16 @@ class SettingsController extends Controller
         }
 
         $territoryIds = $data['territory_ids'] ?? [];
+        $brigadeId    = $request->input('brigade_id') ?: null;
         unset($data['territory_ids']);
 
         $user->update($data);
         $user->territories()->sync($territoryIds);
+        if ($brigadeId) {
+            $user->brigades()->sync([$brigadeId]);
+        } else {
+            $user->brigades()->detach();
+        }
 
         return back()->with('success', 'Пользователь обновлён');
     }

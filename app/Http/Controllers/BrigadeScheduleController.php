@@ -181,11 +181,14 @@ class BrigadeScheduleController extends Controller
 
         // Step 2: distribute additional offs evenly across the month.
         // Target: each person gets (totalWorking - targetDays) off days.
-        // Algorithm: greedy — each round pick the working day with max distance
-        // from already-assigned offs. Constraint: no 3+ consecutive offs.
+        // Score = own_distance - 2*globalOffCount (penalty for popular columns).
+        // Ties broken randomly. Members processed in shuffled order each run.
         $targetOff = max(0, $totalWorking - $targetDays);
 
-        foreach ($members as $uid) {
+        $shuffledMembers = $members;
+        shuffle($shuffledMembers);
+
+        foreach ($shuffledMembers as $uid) {
             $currentOff = 0;
             foreach ($workingDays as $date) {
                 if ($schedule[$uid][$date] === 'off') $currentOff++;
@@ -193,8 +196,8 @@ class BrigadeScheduleController extends Controller
             $need = max(0, $targetOff - $currentOff);
 
             for ($i = 0; $i < $need; $i++) {
-                $bestIdx   = null;
-                $bestScore = -1;
+                $bestScore      = PHP_INT_MIN;
+                $bestCandidates = [];
 
                 foreach ($workingDays as $idx => $date) {
                     if ($schedule[$uid][$date] === 'off') continue;
@@ -202,37 +205,43 @@ class BrigadeScheduleController extends Controller
                     // Min-workers constraint
                     if (($memberCount - $offPerDay[$date]) - 1 < $minWorkers) continue;
 
-                    // Consecutive constraint: adding this day must not create 3+ consecutive offs
+                    // Consecutive constraint: no 3+ consecutive offs
                     $offPrev1 = isset($workingDays[$idx - 1]) && $schedule[$uid][$workingDays[$idx - 1]] === 'off';
                     $offPrev2 = isset($workingDays[$idx - 2]) && $schedule[$uid][$workingDays[$idx - 2]] === 'off';
                     $offNext1 = isset($workingDays[$idx + 1]) && $schedule[$uid][$workingDays[$idx + 1]] === 'off';
                     $offNext2 = isset($workingDays[$idx + 2]) && $schedule[$uid][$workingDays[$idx + 2]] === 'off';
 
-                    if ($offPrev2 && $offPrev1) continue; // prev2 + prev1 + this = 3
-                    if ($offPrev1 && $offNext1) continue; // prev1 + this + next1 = 3
-                    if ($offNext1 && $offNext2) continue; // this + next1 + next2 = 3
+                    if ($offPrev2 && $offPrev1) continue;
+                    if ($offPrev1 && $offNext1) continue;
+                    if ($offNext1 && $offNext2) continue;
 
-                    // Score: distance to nearest existing off (larger = better spread)
-                    $minDist = $totalWorking + 1;
+                    // Own spread score: distance to nearest own off
+                    $ownDist = $totalWorking + 1;
                     foreach ($workingDays as $j => $d2) {
                         if ($schedule[$uid][$d2] === 'off') {
                             $dist = abs($idx - $j);
-                            if ($dist < $minDist) $minDist = $dist;
+                            if ($dist < $ownDist) $ownDist = $dist;
                         }
                     }
-                    // No offs yet: prefer days near the center for initial placement
-                    if ($minDist === $totalWorking + 1) {
-                        $minDist = abs($idx - intdiv($totalWorking, 2));
+                    if ($ownDist === $totalWorking + 1) {
+                        // No own offs yet: prefer center
+                        $ownDist = abs($idx - intdiv($totalWorking, 2));
                     }
 
-                    if ($minDist > $bestScore) {
-                        $bestScore = $minDist;
-                        $bestIdx   = $idx;
+                    // Penalise days already popular as offs across the team
+                    $score = $ownDist - 2 * $offPerDay[$date];
+
+                    if ($score > $bestScore) {
+                        $bestScore      = $score;
+                        $bestCandidates = [$idx];
+                    } elseif ($score === $bestScore) {
+                        $bestCandidates[] = $idx;
                     }
                 }
 
-                if ($bestIdx !== null) {
-                    $date = $workingDays[$bestIdx];
+                if (!empty($bestCandidates)) {
+                    $bestIdx = $bestCandidates[array_rand($bestCandidates)];
+                    $date    = $workingDays[$bestIdx];
                     $schedule[$uid][$date] = 'off';
                     $offPerDay[$date]++;
                 }

@@ -516,6 +516,14 @@
               <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
             </select>
           </div>
+          <!-- Бригада -->
+          <div>
+            <label class="field-label">Бригада</label>
+            <select v-model="userForm.brigade_id" class="field-input">
+              <option value="">— Не в бригаде —</option>
+              <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+            </select>
+          </div>
           <!-- TG ID + MAX ID в одной строке -->
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -708,6 +716,7 @@ const props = defineProps({
   users:          { type: Array, default: () => [] },
   roles:          { type: Array, default: () => [] },
   territories:    { type: Array, default: () => [] },
+  brigades:       { type: Array, default: () => [] },
   lanbillingConfig:  { type: Object, default: () => ({}) },
   generalSettings:   { type: Object, default: () => ({}) },
 })
@@ -777,7 +786,7 @@ const userForm = useForm({
   telegram_chat_id: '', max_chat_id: '',
   password: '', password_confirmation: '',
   notify_email: true, notify_telegram: false, notify_max: false,
-  is_active: true, territory_ids: [],
+  is_active: true, territory_ids: [], brigade_id: '',
 })
 
 function openUserModal(u = null) {
@@ -797,6 +806,7 @@ function openUserModal(u = null) {
     userForm.notify_max        = u.notify_max      ?? false
     userForm.is_active         = u.is_active       ?? true
     userForm.territory_ids     = u.territories?.map(t => t.id) ?? []
+    userForm.brigade_id        = u.brigades?.[0]?.id ?? ''
   } else {
     userForm.name = ''; userForm.login = ''; userForm.email = ''
     userForm.phone = ''; userForm.role_id = ''
@@ -805,6 +815,7 @@ function openUserModal(u = null) {
     userForm.notify_email = true; userForm.notify_telegram = false
     userForm.notify_max = false; userForm.is_active = true
     userForm.territory_ids = []
+    userForm.brigade_id = ''
   }
   showUserModal.value = true
 }

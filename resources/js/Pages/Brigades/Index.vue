@@ -49,6 +49,10 @@
             <option value="">— Выбрать —</option>
             <option v-for="u in technicians" :key="u.id" :value="u.id">{{ u.name }}</option>
           </select>
+          <p v-if="editing?.foreman_id && !form.foreman_id"
+             class="mt-1 text-xs text-amber-600">
+            ⚠ Нельзя убрать бригадира без назначения нового
+          </p>
         </div>
         <div>
           <label class="field-label">Территории</label>
@@ -67,6 +71,10 @@
               {{ u.name }}
             </label>
           </div>
+        </div>
+        <div v-if="form.errors && Object.keys(form.errors).length"
+             class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
+          <p v-for="(err, field) in form.errors" :key="field">{{ err }}</p>
         </div>
         <div class="flex justify-end gap-3">
           <button type="button" @click="close" class="btn-outline text-sm">Отмена</button>

@@ -34,12 +34,16 @@
         <span class="text-xs text-gray-400">из {{ days.length }}</span>
       </div>
 
-      <button @click="runGenerate" :disabled="generating"
-              class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
-        <svg class="w-4 h-4" :class="generating && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <button @click="runGenerate" :disabled="generating || scheduleIsSaved"
+              :title="scheduleIsSaved ? 'Расписание сохранено — измените ячейку для разблокировки' : ''"
+              class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+        <svg v-if="!scheduleIsSaved" class="w-4 h-4" :class="generating && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
-        {{ generating ? 'Генерация...' : 'Сгенерировать' }}
+        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+        {{ generating ? 'Генерация...' : (scheduleIsSaved ? 'Сохранено' : 'Сгенерировать') }}
       </button>
 
       <button @click="saveSchedule" :disabled="saving"
@@ -168,6 +172,9 @@ const mode       = ref('mark')
 const targetDays = ref(24)
 const generating = ref(false)
 const saving     = ref(false)
+const scheduleIsSaved = ref(
+  props.members.some(m => Object.keys(props.schedule[m.id] ?? {}).length > 0)
+)
 const savedMsg   = ref(false)
 
 const cells = reactive({})
@@ -221,6 +228,7 @@ function toggleCell(userId, day) {
   } else {
     cells[userId][day.date] = current === 'off' ? 'work' : 'off'
   }
+  scheduleIsSaved.value = false
 }
 
 async function toggleHoliday(day) {
@@ -274,6 +282,7 @@ async function runGenerate() {
       }
     }
     mode.value = 'edit'
+    scheduleIsSaved.value = false
   } catch {
     alert('Ошибка генерации')
   } finally {
@@ -292,6 +301,7 @@ async function saveSchedule() {
     }
     await axios.post(route('brigades.schedule.save', props.brigade.id), { month: props.month, schedule: s })
     savedMsg.value = true
+    scheduleIsSaved.value = true
     setTimeout(() => { savedMsg.value = false }, 3000)
   } catch {
     alert('Ошибка сохранения')
