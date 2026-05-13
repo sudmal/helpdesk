@@ -29,6 +29,13 @@
         </button>
       </div>
 
+      <div class="flex items-center gap-1.5">
+        <label class="text-xs text-gray-500 whitespace-nowrap">Выходов макс.</label>
+        <input type="number" v-model.number="targetDays" min="1" :max="days.length"
+               class="w-16 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <span class="text-xs text-gray-400">из {{ days.length }}</span>
+      </div>
+
       <button @click="runGenerate"
               :disabled="generating"
               class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
@@ -143,7 +150,8 @@ const props = defineProps({
   schedule: Object,
 })
 
-const mode      = ref('mark')  // 'mark' | 'edit'
+const mode       = ref('mark')  // 'mark' | 'edit'
+const targetDays = ref(24)
 const generating = ref(false)
 const saving     = ref(false)
 const savedMsg   = ref(false)

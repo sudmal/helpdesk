@@ -108,8 +108,9 @@ class BrigadeScheduleController extends Controller
     public function generate(Brigade $brigade, Request $request)
     {
         $request->validate([
-            'month'     => 'required|date_format:Y-m',
-            'pre_marks' => 'array', // userId => [date => 'requested'|'off']
+            'month'       => 'required|date_format:Y-m',
+            'pre_marks'   => 'array',
+            'target_days' => 'nullable|integer|min:1',
         ]);
 
         [$year, $mon] = explode('-', $request->month);
@@ -150,12 +151,14 @@ class BrigadeScheduleController extends Controller
             }
         }
 
-        // Apply pre-marked requested/off days — validate min constraint
-        $preMark = $request->pre_marks ?? [];
-        // Count per day: how many are already going to be off due to requests
-        $offPerDay = array_fill_keys($workingDays, 0);
+        $totalWorkingDays = count($workingDays);
+        $targetWork = (int)$request->get('target_days', 24);
+        $targetOff  = max(0, $totalWorkingDays - $targetWork);
 
-        // Sort requests by number of requests per day (least contested first)
+        $preMark = $request->pre_marks ?? [];
+
+        // Step 1: apply pre-marked requested/off days — validate min constraint
+        $offPerDay = array_fill_keys($workingDays, 0);
         $requestsByDay = [];
         foreach ($members as $uid) {
             $userMark = $preMark[$uid] ?? [];
@@ -167,7 +170,6 @@ class BrigadeScheduleController extends Controller
             }
         }
         asort($requestsByDay);
-
         foreach ($requestsByDay as $date => $uids) {
             foreach ($uids as $uid) {
                 $workersLeft = $memberCount - $offPerDay[$date];
@@ -175,7 +177,32 @@ class BrigadeScheduleController extends Controller
                     $schedule[$uid][$date] = 'off';
                     $offPerDay[$date]++;
                 }
-                // If can't grant — silently keep as 'work'
+            }
+        }
+
+        // Step 2: distribute extra offs to reach targetOff per member
+        foreach ($members as $uid) {
+            $currentOff = collect($schedule[$uid])->filter(fn($s) => $s === 'off')->count();
+            $needOff    = max(0, $targetOff - $currentOff);
+            if ($needOff === 0) continue;
+
+            // Candidates: working days where this member still works
+            // Sort by workers count desc — safest days to remove one person
+            $candidates = [];
+            foreach ($workingDays as $date) {
+                if ($schedule[$uid][$date] !== 'work') continue;
+                $candidates[$date] = $memberCount - $offPerDay[$date]; // workers remaining
+            }
+            arsort($candidates);
+
+            $assigned = 0;
+            foreach ($candidates as $date => $workerCount) {
+                if ($assigned >= $needOff) break;
+                if ($workerCount - 1 >= $minWorkers) {
+                    $schedule[$uid][$date] = 'off';
+                    $offPerDay[$date]++;
+                    $assigned++;
+                }
             }
         }
 
