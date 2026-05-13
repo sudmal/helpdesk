@@ -19,6 +19,7 @@ class EveningReportNotification extends Notification implements ShouldQueue
         $channels = [];
         if ($notifiable->notify_email)    $channels[] = 'mail';
         if ($notifiable->notify_telegram) $channels[] = TelegramChannel::class;
+        if ($notifiable->notify_max)      $channels[] = MaxChannel::class;
         return $channels ?: ['mail'];
     }
 
@@ -51,6 +52,22 @@ class EveningReportNotification extends Notification implements ShouldQueue
             'chat_id'    => $notifiable->telegram_chat_id,
             'text'       => $text,
             'parse_mode' => 'Markdown',
+        ];
+    }
+
+    public function toMax(object $notifiable): array
+    {
+        $date = now()->format('d.m.Y');
+
+        $text = "📊 **Итоги дня {$date}**\n\n"
+            . "✅ Закрыто: {$this->stats['closed']}\n"
+            . "🔄 Открытых: {$this->stats['open']}\n"
+            . "🆕 Создано: {$this->stats['created']}\n"
+            . "🚨 Срочных: {$this->stats['urgent']}";
+
+        return [
+            'text'   => $text,
+            'format' => 'markdown',
         ];
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
-use App\Services\TelegramService;
+use App\Services\{TelegramService, MaxService};
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -43,6 +43,17 @@ class NewTicketNotification extends Notification
             );
         } catch (\Throwable $e) {
             \Log::error('Telegram notification failed: '.$e->getMessage());
+        }
+
+        // MAX
+        try {
+            $max = app(MaxService::class);
+            $max->broadcast(
+                $max->formatNewTicket($ticket),
+                $ticket->address?->territory_id
+            );
+        } catch (\Throwable $e) {
+            \Log::error('MAX notification failed: '.$e->getMessage());
         }
 
         // Push — только пользователям у которых есть эта территория

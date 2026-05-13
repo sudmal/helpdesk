@@ -533,6 +533,11 @@
             <div>
               <label class="field-label">MAX ID</label>
               <input v-model="userForm.max_chat_id" class="field-input" placeholder="ID в Max" autocomplete="off" />
+              <p class="mt-1 text-xs text-gray-400">
+                Узнать ID:
+                <a href="https://max.ru/id380124799522_1_bot" target="_blank"
+                   class="text-blue-500 hover:text-blue-700 underline">@id_bot в Max</a>
+              </p>
             </div>
           </div>
           <!-- Пароль + Повтор в одной строке -->

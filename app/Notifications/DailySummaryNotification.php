@@ -67,4 +67,25 @@ class DailySummaryNotification extends Notification implements ShouldQueue
             'parse_mode' => 'Markdown',
         ];
     }
+
+    public function toMax(object $notifiable): array
+    {
+        $lines = ["📋 **Заявки на {$this->date}** — бригада «{$this->brigade->name}»\n"];
+
+        foreach ($this->tickets->sortBy('scheduled_at') as $i => $ticket) {
+            $num     = $i + 1;
+            $time    = $ticket->scheduled_at?->format('H:i') ?? '—';
+            $address = $ticket->address?->full_address ?? 'Адрес не указан';
+            $type    = $ticket->type->name;
+            $status  = $ticket->status->name;
+            $lines[] = "{$num}. ⏰ {$time}\n📍 {$address}\n🔧 {$type} | {$status}\n";
+        }
+
+        $lines[] = "Всего: {$this->tickets->count()} заявок";
+
+        return [
+            'text'   => implode("\n", $lines),
+            'format' => 'markdown',
+        ];
+    }
 }
