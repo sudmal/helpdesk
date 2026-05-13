@@ -60,11 +60,12 @@
 
     <!-- Легенда (скрыта при печати) -->
     <div class="flex flex-wrap gap-4 mb-4 text-xs text-gray-600 print:hidden">
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-green-300 border border-green-400"></span>Выход (будни)</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-rose-200 border border-rose-300"></span>Выход (вых. день)</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-green-200 border border-green-300"></span>Рабочий день</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-400"></span>Выходной</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-amber-300 border border-amber-400"></span>Пожелание</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-purple-300 border border-purple-400"></span>Праздник</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-purple-200 border border-purple-300"></span>Праздник</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-blue-100 border border-blue-200"></span>Сб (заголовок)</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-red-100 border border-red-200"></span>Вс (заголовок)</span>
       <span class="flex items-center gap-1.5 ml-4 text-gray-400">Клик по ячейке — статус · Клик по числу — праздник</span>
     </div>
 
@@ -87,11 +88,12 @@
                   @click="toggleHoliday(day)"
                   :class="['border-b border-r border-gray-200 text-center cursor-pointer select-none transition-colors w-9 min-w-[36px] py-1',
                            localHolidays[day.date]?.isHoliday ? 'bg-purple-200 hover:bg-purple-300'
+                           : day.dow === 'Сб'                 ? 'bg-blue-100 hover:bg-blue-200'
                            : day.isWeekend                    ? 'bg-red-100 hover:bg-red-200'
                            :                                    'bg-gray-100 hover:bg-gray-200']"
                   :title="localHolidays[day.date]?.isHoliday ? (localHolidays[day.date]?.name || 'Праздник — клик чтобы снять') : 'Клик — отметить праздник'">
                 <div class="text-xs font-bold text-gray-800">{{ day.day }}</div>
-                <div :class="['text-[10px] font-medium', day.isWeekend ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
+                <div :class="['text-[10px] font-medium', day.dow === 'Сб' ? 'text-blue-500' : day.isWeekend ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
               </th>
               <th class="border-b border-gray-200 bg-gray-100 px-3 py-2 text-center text-xs font-semibold text-gray-600 min-w-[64px]">
                 Выходов
@@ -199,8 +201,7 @@ function cellClass(userId, day) {
   if (s === 'holiday')   return 'bg-purple-200 cursor-default'
   if (s === 'off')       return 'bg-gray-300 hover:bg-gray-400'
   if (s === 'requested') return 'bg-amber-300 hover:bg-amber-400'
-  return day.isWeekend   ? 'bg-rose-200 hover:bg-rose-300'
-                         : 'bg-green-200 hover:bg-green-300'
+  return 'bg-green-200 hover:bg-green-300'
 }
 
 // Метка: пустая на экране (цвет достаточен), текст в печати через CSS
