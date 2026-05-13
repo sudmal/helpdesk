@@ -315,8 +315,9 @@ function changeMonth(delta) {
 .sched-cell .cell-label { opacity: 0; }
 
 @media print {
-  aside, .print\:hidden { display: none !important; }
+  .print\:hidden { display: none !important; }
   @page { size: A4 landscape; margin: 8mm; }
+  html, body { background: white !important; }
 
   .sched-cell .cell-label { opacity: 1 !important; font-size: 9pt; }
 

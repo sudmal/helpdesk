@@ -11,7 +11,7 @@
          @click="sidebarOpen = false" />
 
     <!-- Sidebar -->
-    <div :class="['fixed md:relative flex flex-col w-64 bg-[#141c2b] text-white shrink-0 h-full z-40 transition-transform duration-200',
+    <div :class="['print:hidden fixed md:relative flex flex-col w-64 bg-[#141c2b] text-white shrink-0 h-full z-40 transition-transform duration-200',
                   sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0']">
       <Sidebar :user="$page.props.auth.user" />
     </div>
@@ -20,7 +20,7 @@
     <div class="flex-1 flex flex-col overflow-hidden min-w-0">
 
       <!-- Topbar -->
-      <header class="h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-3 shrink-0">
+      <header class="print:hidden h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-3 shrink-0">
         <!-- Бургер для мобильного -->
         <button @click="sidebarOpen = !sidebarOpen"
                 class="md:hidden p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
