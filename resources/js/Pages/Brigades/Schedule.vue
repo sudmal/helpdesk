@@ -314,23 +314,47 @@ function changeMonth(delta) {
 /* Ячейки: метка скрыта на экране, видна при печати */
 .sched-cell .cell-label { opacity: 0; }
 
+/* @page должен быть на верхнем уровне — вне @media print */
+@page { size: A4 landscape; margin: 8mm; }
+
 @media print {
   .print\:hidden { display: none !important; }
-  @page { size: A4 landscape; margin: 8mm; }
   html, body { background: white !important; }
 
-  .sched-cell .cell-label { opacity: 1 !important; font-size: 9pt; }
+  /* Уменьшаем ячейки чтобы 31 день влез в A4 landscape */
+  .schedule-grid { border: 0.5pt solid #000 !important; border-radius: 0 !important; overflow: visible !important; }
+  .schedule-grid .overflow-x-auto { overflow: visible !important; }
+  .schedule-grid table { font-size: 7pt !important; }
 
-  .schedule-grid { border: 0.5pt solid #000 !important; border-radius: 0 !important; }
-  .sched-cell, thead th, tbody td { border: 0.5pt solid #888 !important; padding: 1pt 0 !important; }
+  .sched-cell,
+  .schedule-grid thead th,
+  .schedule-grid tbody td { border: 0.5pt solid #aaa !important; padding: 0 !important; }
 
-  /* Статусы через фон (Ч/Б: оттенки серого) */
-  .sched-cell[data-status="off"]      { background: #bbb !important; }
-  .sched-cell[data-status="requested"]{ background: #ddd !important; }
-  .sched-cell[data-status="holiday"]  { background: #999 !important; }
-  .sched-cell[data-status="work"]     { background: #fff !important; }
+  /* Сужаем колонки дней */
+  .sched-cell,
+  .schedule-grid thead th:not(.sched-name-col),
+  .schedule-grid tbody td:not(.sched-name-col) {
+    width: 22px !important;
+    min-width: 22px !important;
+    max-width: 22px !important;
+  }
 
-  .sched-name-col { position: static !important; background: #f0f0f0 !important; }
-  body { font-size: 8pt; }
+  /* Колонка с именем */
+  .sched-name-col {
+    position: static !important;
+    background: #f0f0f0 !important;
+    min-width: 100px !important;
+    max-width: 100px !important;
+    white-space: nowrap;
+    font-size: 7pt !important;
+  }
+
+  .sched-cell .cell-label { opacity: 1 !important; font-size: 7pt; }
+
+  /* Статусы: оттенки серого для Ч/Б */
+  .sched-cell[data-status="off"]       { background: #bbb !important; }
+  .sched-cell[data-status="requested"] { background: #ddd !important; }
+  .sched-cell[data-status="holiday"]   { background: #999 !important; }
+  .sched-cell[data-status="work"]      { background: #fff !important; }
 }
 </style>
