@@ -93,6 +93,10 @@
 
           <p v-if="showAddressError"
              class="mt-2 text-xs text-red-600">⚠ Выберите адрес абонента из списка</p>
+          <p v-else-if="fieldError.apartment"
+             class="mt-2 text-xs text-red-600">⚠ Для МКД обязательно укажите квартиру</p>
+          <p v-else-if="needsApartment"
+             class="mt-2 text-xs text-amber-600">⚠ Это МКД — укажите номер квартиры</p>
           <p v-else-if="!selectedAddress"
              class="mt-2 text-xs text-gray-400">Начните вводить адрес для поиска</p>
         </div>
@@ -283,16 +287,16 @@
           </select>
         </div>
         <div v-if="addrSel.building && addrApartments.length">
-          <label class="field-label">Квартира</label>
+          <label class="field-label">Квартира <span class="text-red-500">*</span></label>
           <select v-model="addrSel.apartment" class="field-input">
-            <option value="">— Весь дом —</option>
+            <option value="" disabled>— Выбрать квартиру —</option>
             <option v-for="apt in addrApartments" :key="apt" :value="apt">кв. {{ apt }}</option>
           </select>
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" @click="showAddrModal = false" class="btn-outline text-sm">Отмена</button>
           <button type="button" @click="applyAddrModal"
-                  :disabled="!addrSel.building || addrModalLoading"
+                  :disabled="!addrSel.building || addrModalLoading || (addrApartments.length > 0 && !addrSel.apartment)"
                   class="btn-primary text-sm">
             {{ addrModalLoading ? 'Поиск...' : 'Выбрать →' }}
           </button>
@@ -383,6 +387,7 @@ const submitted = ref(false)
 
 const form = useForm({
   address_id:      props.address?.id ?? '',
+  apartment:       props.address?.apartment ?? '',
   territory_id:    props.address?.territory_id ?? '',
   type_id:         defaultType(),
   service_type_id: defaultServiceType(),
@@ -421,8 +426,13 @@ const availableBrigades = computed(() => {
 })
 
 // Проверка заполненности всех обязательных полей
+const needsApartment = computed(() =>
+  !!selectedAddress.value?.has_apartments && !form.apartment
+)
+
 const isFormComplete = computed(() =>
   !!selectedAddress.value &&
+  !needsApartment.value &&
   !!form.service_type_id &&
   !!form.type_id &&
   !!form.phone.trim() &&
@@ -433,6 +443,7 @@ const isFormComplete = computed(() =>
 // Подсветка незаполненных полей (только после попытки отправки)
 const fieldError = computed(() => ({
   address:      submitted.value && !selectedAddress.value,
+  apartment:    submitted.value && needsApartment.value,
   service_type: submitted.value && !form.service_type_id,
   type:         submitted.value && !form.type_id,
   phone:        submitted.value && !form.phone.trim(),

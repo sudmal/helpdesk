@@ -34,6 +34,12 @@ class NewTicketNotification extends Notification
     // Отправляем в Telegram и Push
     public static function dispatch(Ticket $ticket): void
     {
+        // Уведомляем только если заявка запланирована на сегодня
+        $schedDate = $ticket->scheduled_at?->toDateString();
+        if ($schedDate && $schedDate !== now()->toDateString()) {
+            return;
+        }
+
         // Telegram
         try {
             $telegram = app(TelegramService::class);

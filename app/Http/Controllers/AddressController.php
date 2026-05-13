@@ -333,6 +333,7 @@ class AddressController extends Controller
                     'id'              => $a->id,
                     'label'           => $baseLabel . ', кв.' . $apartmentHint,
                     'apartment'       => $apartmentHint,
+                    'has_apartments'  => true,
                     'subscriber_name' => $a->subscriber_name,
                     'phone'           => $a->phone,
                     'contract_no'     => $a->contract_no,
@@ -340,26 +341,41 @@ class AddressController extends Controller
                     'territory_id'    => $a->territory_id,
                 ];
             } elseif ($buildingHint) {
-                $apartments = \App\Models\Ticket::where('address_id', $a->id)
+                $bKey = $a->city . '|' . $a->street . '|' . $a->building;
+                if (isset($seenBuildings[$bKey])) continue;
+                $seenBuildings[$bKey] = true;
+
+                $ticketApts = \App\Models\Ticket::where('address_id', $a->id)
                     ->whereNotNull('apartment')->where('apartment', '!=', '')
-                    ->distinct()->orderBy('apartment')->pluck('apartment');
+                    ->distinct()->orderByRaw('CAST(apartment AS UNSIGNED), apartment')->pluck('apartment');
 
-                $results[] = [
-                    'id'              => $a->id,
-                    'label'           => $baseLabel,
-                    'apartment'       => null,
-                    'subscriber_name' => $a->subscriber_name,
-                    'phone'           => $a->phone,
-                    'contract_no'     => $a->contract_no,
-                    'territory'       => $a->territory?->name,
-                    'territory_id'    => $a->territory_id,
-                ];
+                $addrApts = Address::where('city', $a->city)->where('street', $a->street)
+                    ->where('building', $a->building)->whereNotNull('apartment')->where('apartment', '!=', '')
+                    ->distinct()->orderByRaw('CAST(apartment AS UNSIGNED), apartment')->pluck('apartment');
 
-                foreach ($apartments->take(12) as $apt) {
+                $allApts = $ticketApts->merge($addrApts)->unique()->sort()->values();
+                $hasApts = $allApts->isNotEmpty();
+
+                if (!$hasApts) {
+                    $results[] = [
+                        'id'              => $a->id,
+                        'label'           => $baseLabel,
+                        'apartment'       => null,
+                        'has_apartments'  => false,
+                        'subscriber_name' => $a->subscriber_name,
+                        'phone'           => $a->phone,
+                        'contract_no'     => $a->contract_no,
+                        'territory'       => $a->territory?->name,
+                        'territory_id'    => $a->territory_id,
+                    ];
+                }
+
+                foreach ($allApts->take(12) as $apt) {
                     $results[] = [
                         'id'              => $a->id,
                         'label'           => $baseLabel . ', кв.' . $apt,
                         'apartment'       => $apt,
+                        'has_apartments'  => true,
                         'subscriber_name' => $a->subscriber_name,
                         'phone'           => $a->phone,
                         'contract_no'     => $a->contract_no,
@@ -373,6 +389,7 @@ class AddressController extends Controller
                     'id'              => $a->id,
                     'label'           => $baseLabel . ($apt ? ', кв.'.$apt : ''),
                     'apartment'       => $apt,
+                    'has_apartments'  => !empty($apt),
                     'subscriber_name' => $a->subscriber_name,
                     'phone'           => $a->phone,
                     'contract_no'     => $a->contract_no,
