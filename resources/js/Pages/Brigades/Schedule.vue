@@ -95,7 +95,7 @@
                 <div class="text-xs font-bold text-gray-800">{{ day.day }}</div>
                 <div :class="['text-[10px] font-medium', day.dow === 'Сб' ? 'text-blue-500' : day.isWeekend ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
               </th>
-              <th class="border-b border-gray-200 bg-gray-100 px-3 py-2 text-center text-xs font-semibold text-gray-600 min-w-[64px]">
+              <th class="sched-count-col border-b border-gray-200 bg-gray-100 px-3 py-2 text-center text-xs font-semibold text-gray-600 min-w-[64px]">
                 Выходов
               </th>
             </tr>
@@ -112,7 +112,7 @@
                   :data-status="cellStatus(member.id, day.date)">
                 <span class="text-[11px] font-bold select-none cell-label">{{ cellLabel(member.id, day) }}</span>
               </td>
-              <td class="border-b border-gray-200 px-3 text-center font-mono tabular-nums text-sm font-bold"
+              <td class="sched-count-col border-b border-gray-200 px-3 text-center font-mono tabular-nums text-sm font-bold"
                   :class="workCount(member.id) >= targetDays ? 'text-green-700' : 'text-orange-600'">
                 {{ workCount(member.id) }}
               </td>
@@ -133,7 +133,7 @@
                   {{ localHolidays[day.date]?.isHoliday ? '—' : workerCountOnDay(day.date) }}
                 </span>
               </td>
-              <td class="border-t border-gray-200 px-3 text-center text-xs text-gray-400 font-medium">
+              <td class="sched-count-col border-t border-gray-200 px-3 text-center text-xs text-gray-400 font-medium">
                 мин {{ minWorkers }}
               </td>
             </tr>
@@ -347,6 +347,17 @@ function changeMonth(delta) {
     max-width: 110px !important;
     white-space: nowrap;
     font-size: 8pt !important;
+  }
+
+  /* Колонка "Выходов" */
+  .sched-count-col {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+    padding: 0 2px !important;
+    font-size: 7pt !important;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   /* Буквы скрыты — статус передаётся только заливкой */
