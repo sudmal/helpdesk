@@ -125,25 +125,17 @@ class ReportsController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        $totals = DB::table('tickets as t')
-            ->join('ticket_statuses as ts', 't.status_id', '=', 'ts.id')
-            ->where('ts.is_final', 1)
-            ->whereBetween('t.closed_at', [$from, $to])
-            ->whereNotNull('t.scheduled_at')
-            ->whereNull('t.deleted_at')
-            ->selectRaw('COUNT(*) as total, SUM(t.closed_at <= t.scheduled_at) as on_time')
-            ->first();
+        $totalOnTime = $rows->sum('on_time');
+        $totalAll    = $rows->sum('total');
 
         return [
             'labels'  => $rows->pluck('brigade')->toArray(),
             'on_time' => $rows->pluck('on_time')->map(fn($v) => (int)$v)->toArray(),
             'overdue' => $rows->pluck('overdue')->map(fn($v) => (int)$v)->toArray(),
             'summary' => [
-                'total'   => (int)($totals->total ?? 0),
-                'on_time' => (int)($totals->on_time ?? 0),
-                'pct'     => $totals && $totals->total > 0
-                    ? round(100 * $totals->on_time / $totals->total, 1)
-                    : 0,
+                'total'   => (int)$totalAll,
+                'on_time' => (int)$totalOnTime,
+                'pct'     => $totalAll > 0 ? round(100 * $totalOnTime / $totalAll, 1) : 0,
             ],
         ];
     }
