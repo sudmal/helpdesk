@@ -2,16 +2,14 @@
   <Head :title="`Расписание — ${brigade.name}`" />
   <AppLayout :title="`Расписание: ${brigade.name}`">
 
-    <!-- Toolbar -->
-    <div class="flex flex-wrap items-center gap-3 mb-5">
+    <!-- Toolbar (скрыт при печати) -->
+    <div class="flex flex-wrap items-center gap-3 mb-5 print:hidden">
       <div class="flex items-center gap-1">
-        <button @click="changeMonth(-1)"
-                class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
+        <button @click="changeMonth(-1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <span class="text-sm font-semibold text-gray-700 min-w-[120px] text-center">{{ monthLabel }}</span>
-        <button @click="changeMonth(1)"
-                class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
+        <button @click="changeMonth(1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -36,8 +34,7 @@
         <span class="text-xs text-gray-400">из {{ days.length }}</span>
       </div>
 
-      <button @click="runGenerate"
-              :disabled="generating"
+      <button @click="runGenerate" :disabled="generating"
               class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
         <svg class="w-4 h-4" :class="generating && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -45,81 +42,96 @@
         {{ generating ? 'Генерация...' : 'Сгенерировать' }}
       </button>
 
-      <button @click="saveSchedule"
-              :disabled="saving"
+      <button @click="saveSchedule" :disabled="saving"
               class="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
         {{ saving ? 'Сохранение...' : 'Сохранить расписание' }}
+      </button>
+
+      <button @click="printPage"
+              class="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+        </svg>
+        Печать
       </button>
 
       <span v-if="savedMsg" class="text-sm text-green-600 font-medium">✓ Сохранено</span>
     </div>
 
-    <!-- Legend -->
-    <div class="flex flex-wrap gap-4 mb-4 text-xs text-gray-500">
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-green-100 border border-green-200"></span>Выход</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-gray-100 border border-gray-300"></span>Выходной</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-amber-100 border border-amber-200"></span>Пожелание (до генерации)</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-purple-100 border border-purple-200"></span>Праздник</span>
-      <span class="flex items-center gap-1.5 ml-4 text-gray-400">Клик по ячейке — переключить статус · Клик по числу дня — отметить праздник</span>
+    <!-- Легенда (скрыта при печати) -->
+    <div class="flex flex-wrap gap-4 mb-4 text-xs text-gray-600 print:hidden">
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-green-300 border border-green-400"></span>Выход (будни)</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-rose-200 border border-rose-300"></span>Выход (вых. день)</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-400"></span>Выходной</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-amber-300 border border-amber-400"></span>Пожелание</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-purple-300 border border-purple-400"></span>Праздник</span>
+      <span class="flex items-center gap-1.5 ml-4 text-gray-400">Клик по ячейке — статус · Клик по числу — праздник</span>
     </div>
 
-    <!-- Grid -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <!-- Заголовок для печати -->
+    <div class="hidden print:block mb-4">
+      <h1 class="text-lg font-bold">Расписание бригады: {{ brigade.name }}</h1>
+      <p class="text-sm text-gray-600">{{ monthLabel }} · Выходов: {{ targetDays }} из {{ days.length }}</p>
+    </div>
+
+    <!-- Сетка -->
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden schedule-grid">
       <div class="overflow-x-auto">
         <table class="border-collapse" style="min-width: max-content">
           <thead>
             <tr>
-              <th class="sticky left-0 z-10 bg-gray-50 border-b border-r border-gray-200 px-4 py-2 text-left text-xs font-medium text-gray-500 min-w-[160px]">
+              <th class="sched-name-col border-b border-r border-gray-200 bg-gray-100 px-4 py-2 text-left text-xs font-semibold text-gray-600 min-w-[160px]">
                 Сотрудник
               </th>
               <th v-for="day in days" :key="day.date"
                   @click="toggleHoliday(day)"
-                  :class="['border-b border-r border-gray-100 text-center cursor-pointer select-none transition-colors w-9 min-w-[36px] py-1',
-                           day.isHoliday  ? 'bg-purple-50 hover:bg-purple-100'
-                           : day.isWeekend ? 'bg-red-50 hover:bg-red-100'
-                           :                'bg-gray-50 hover:bg-gray-100']"
-                  :title="day.isHoliday ? (day.holidayName || 'Праздник — кликни чтобы снять') : 'Кликни чтобы отметить праздник'">
-                <div class="text-xs font-bold text-gray-700">{{ day.day }}</div>
-                <div :class="['text-[10px]', day.isWeekend ? 'text-red-400' : 'text-gray-400']">{{ day.dow }}</div>
+                  :class="['border-b border-r border-gray-200 text-center cursor-pointer select-none transition-colors w-9 min-w-[36px] py-1',
+                           localHolidays[day.date]?.isHoliday ? 'bg-purple-200 hover:bg-purple-300'
+                           : day.isWeekend                    ? 'bg-red-100 hover:bg-red-200'
+                           :                                    'bg-gray-100 hover:bg-gray-200']"
+                  :title="localHolidays[day.date]?.isHoliday ? (localHolidays[day.date]?.name || 'Праздник — клик чтобы снять') : 'Клик — отметить праздник'">
+                <div class="text-xs font-bold text-gray-800">{{ day.day }}</div>
+                <div :class="['text-[10px] font-medium', day.isWeekend ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
               </th>
-              <th class="border-b border-gray-200 bg-gray-50 px-3 py-2 text-center text-xs font-medium text-gray-500 min-w-[72px]">
+              <th class="border-b border-gray-200 bg-gray-100 px-3 py-2 text-center text-xs font-semibold text-gray-600 min-w-[64px]">
                 Выходов
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="member in members" :key="member.id"
-                class="hover:bg-gray-50/50 transition-colors">
-              <td class="sticky left-0 z-10 bg-white border-r border-b border-gray-100 px-4 py-1.5 text-sm text-gray-800 font-medium whitespace-nowrap">
+            <tr v-for="member in members" :key="member.id" class="hover:brightness-95 transition-all">
+              <td class="sched-name-col bg-white border-r border-b border-gray-200 px-4 py-1.5 text-sm text-gray-800 font-semibold whitespace-nowrap">
                 {{ member.name }}
               </td>
               <td v-for="day in days" :key="day.date"
                   @click="toggleCell(member.id, day)"
-                  :class="['border-r border-b border-gray-100 text-center cursor-pointer select-none transition-colors w-9 h-9',
-                           cellClass(member.id, day)]">
-                <span class="text-xs">{{ cellIcon(member.id, day) }}</span>
+                  :class="['border-r border-b border-gray-200 text-center cursor-pointer select-none transition-all w-9 h-9 sched-cell',
+                           cellClass(member.id, day)]"
+                  :data-status="cellStatus(member.id, day.date)">
+                <span class="text-[11px] font-bold select-none cell-label">{{ cellLabel(member.id, day) }}</span>
               </td>
-              <td class="border-b border-gray-100 px-3 text-center font-mono tabular-nums text-sm font-semibold text-gray-700">
+              <td class="border-b border-gray-200 px-3 text-center font-mono tabular-nums text-sm font-bold"
+                  :class="workCount(member.id) >= targetDays ? 'text-green-700' : 'text-orange-600'">
                 {{ workCount(member.id) }}
               </td>
             </tr>
 
-            <!-- Summary row -->
+            <!-- Строка "на участке" -->
             <tr class="bg-gray-50">
-              <td class="sticky left-0 z-10 bg-gray-50 border-r border-t border-gray-200 px-4 py-1.5 text-xs font-semibold text-gray-500">
+              <td class="sched-name-col bg-gray-50 border-r border-t border-gray-300 px-4 py-1.5 text-xs font-bold text-gray-500">
                 На участке
               </td>
               <td v-for="day in days" :key="day.date"
-                  :class="['border-r border-t border-gray-100 text-center w-9 py-1',
-                           workerCountOnDay(day.date) < minWorkers && !day.isHoliday ? 'bg-red-50' : '']">
-                <span :class="['text-[11px] font-semibold',
-                               day.isHoliday ? 'text-gray-300'
-                               : workerCountOnDay(day.date) < minWorkers ? 'text-red-500'
-                               : 'text-gray-500']">
-                  {{ day.isHoliday ? '—' : workerCountOnDay(day.date) }}
+                  :class="['border-r border-t border-gray-200 text-center w-9 py-1',
+                           !localHolidays[day.date]?.isHoliday && workerCountOnDay(day.date) < minWorkers ? 'bg-red-200' : '']">
+                <span :class="['text-[11px] font-bold',
+                               localHolidays[day.date]?.isHoliday ? 'text-gray-300'
+                               : workerCountOnDay(day.date) < minWorkers ? 'text-red-700'
+                               : 'text-gray-600']">
+                  {{ localHolidays[day.date]?.isHoliday ? '—' : workerCountOnDay(day.date) }}
                 </span>
               </td>
-              <td class="border-t border-gray-200 px-3 text-center text-xs text-gray-400">
+              <td class="border-t border-gray-200 px-3 text-center text-xs text-gray-400 font-medium">
                 мин {{ minWorkers }}
               </td>
             </tr>
@@ -128,9 +140,9 @@
       </div>
     </div>
 
-    <!-- Constraint warning -->
-    <div v-if="hasConflicts" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-      ⚠ Есть дни с меньше {{ minWorkers }} работающих — выделены красным. Скорректируй расписание или уменьши выходные.
+    <!-- Предупреждение (скрыто при печати) -->
+    <div v-if="hasConflicts" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium print:hidden">
+      ⚠ Есть дни с нарушением минимума ({{ minWorkers }} чел.) — выделены красным.
     </div>
 
   </AppLayout>
@@ -150,13 +162,12 @@ const props = defineProps({
   schedule: Object,
 })
 
-const mode       = ref('mark')  // 'mark' | 'edit'
+const mode       = ref('mark')
 const targetDays = ref(24)
 const generating = ref(false)
 const saving     = ref(false)
 const savedMsg   = ref(false)
 
-// Mutable copy of schedule: cells[userId][date] = 'work'|'off'|'requested'
 const cells = reactive({})
 for (const m of props.members) {
   cells[m.id] = {}
@@ -165,7 +176,6 @@ for (const m of props.members) {
   }
 }
 
-// Holiday overrides (client-side pending save)
 const localHolidays = reactive({})
 for (const day of props.days) {
   localHolidays[day.date] = { isHoliday: day.isHoliday, name: day.holidayName }
@@ -186,20 +196,20 @@ function cellStatus(userId, date) {
 
 function cellClass(userId, day) {
   const s = cellStatus(userId, day.date)
-  if (s === 'holiday')   return 'bg-purple-50 cursor-default'
-  if (s === 'off')       return 'bg-gray-100 hover:bg-gray-200'
-  if (s === 'requested') return 'bg-amber-100 hover:bg-amber-200'
-  // work
-  if (day.isWeekend)     return 'bg-red-50 hover:bg-red-100'
-  return 'bg-green-50 hover:bg-green-100'
+  if (s === 'holiday')   return 'bg-purple-200 cursor-default'
+  if (s === 'off')       return 'bg-gray-300 hover:bg-gray-400'
+  if (s === 'requested') return 'bg-amber-300 hover:bg-amber-400'
+  return day.isWeekend   ? 'bg-rose-200 hover:bg-rose-300'
+                         : 'bg-green-200 hover:bg-green-300'
 }
 
-function cellIcon(userId, day) {
+// Метка: пустая на экране (цвет достаточен), текст в печати через CSS
+function cellLabel(userId, day) {
   const s = cellStatus(userId, day.date)
-  if (s === 'holiday')   return '—'
-  if (s === 'off')       return ''
+  if (s === 'holiday')   return 'П'
+  if (s === 'off')       return 'В'
   if (s === 'requested') return '?'
-  return ''
+  return 'Р'
 }
 
 function toggleCell(userId, day) {
@@ -216,10 +226,7 @@ async function toggleHoliday(day) {
   const date = day.date
   const wasHoliday = localHolidays[date]?.isHoliday
   let name = null
-  if (!wasHoliday) {
-    name = prompt('Название праздника (необязательно):') ?? ''
-  }
-
+  if (!wasHoliday) name = prompt('Название праздника (необязательно):') ?? ''
   try {
     const res = await axios.post(route('brigades.schedule.holiday', props.brigade.id), { date, name })
     localHolidays[date] = { isHoliday: res.data.isHoliday, name: name || null }
@@ -229,16 +236,13 @@ async function toggleHoliday(day) {
 function workCount(userId) {
   return props.days.filter(day => {
     if (localHolidays[day.date]?.isHoliday) return false
-    const s = cells[userId]?.[day.date] ?? 'work'
-    return s === 'work'
+    return (cells[userId]?.[day.date] ?? 'work') === 'work'
   }).length
 }
 
 function workerCountOnDay(date) {
-  return props.members.filter(m => {
-    const s = cells[m.id]?.[date] ?? 'work'
-    return s === 'work'
-  }).length
+  if (localHolidays[date]?.isHoliday) return props.members.length
+  return props.members.filter(m => (cells[m.id]?.[date] ?? 'work') === 'work').length
 }
 
 const hasConflicts = computed(() =>
@@ -256,23 +260,20 @@ async function runGenerate() {
       preMark[m.id] = {}
       for (const day of props.days) {
         const s = cells[m.id][day.date]
-        if (s === 'requested' || s === 'off') {
-          preMark[m.id][day.date] = s
-        }
+        if (s === 'requested' || s === 'off') preMark[m.id][day.date] = s
       }
     }
     const res = await axios.post(
       route('brigades.schedule.generate', props.brigade.id),
-      { month: props.month, pre_marks: preMark }
+      { month: props.month, pre_marks: preMark, target_days: targetDays.value }
     )
-    const newSchedule = res.data.schedule
     for (const m of props.members) {
       for (const day of props.days) {
-        cells[m.id][day.date] = newSchedule[m.id]?.[day.date] ?? 'work'
+        cells[m.id][day.date] = res.data.schedule[m.id]?.[day.date] ?? 'work'
       }
     }
     mode.value = 'edit'
-  } catch (e) {
+  } catch {
     alert('Ошибка генерации')
   } finally {
     generating.value = false
@@ -283,17 +284,12 @@ async function saveSchedule() {
   saving.value = true
   savedMsg.value = false
   try {
-    const scheduleToSave = {}
+    const s = {}
     for (const m of props.members) {
-      scheduleToSave[m.id] = {}
-      for (const day of props.days) {
-        scheduleToSave[m.id][day.date] = cells[m.id][day.date] ?? 'work'
-      }
+      s[m.id] = {}
+      for (const day of props.days) s[m.id][day.date] = cells[m.id][day.date] ?? 'work'
     }
-    await axios.post(
-      route('brigades.schedule.save', props.brigade.id),
-      { month: props.month, schedule: scheduleToSave }
-    )
+    await axios.post(route('brigades.schedule.save', props.brigade.id), { month: props.month, schedule: s })
     savedMsg.value = true
     setTimeout(() => { savedMsg.value = false }, 3000)
   } catch {
@@ -303,10 +299,36 @@ async function saveSchedule() {
   }
 }
 
+function printPage() { window.print() }
+
 function changeMonth(delta) {
   const [y, m] = props.month.split('-').map(Number)
   const d = new Date(y, m - 1 + delta, 1)
-  const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  router.get(route('brigades.schedule.show', props.brigade.id), { month: newMonth })
+  router.get(route('brigades.schedule.show', props.brigade.id),
+    { month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
 }
 </script>
+
+<style>
+/* Ячейки: метка скрыта на экране, видна при печати */
+.sched-cell .cell-label { opacity: 0; }
+
+@media print {
+  aside, .print\:hidden { display: none !important; }
+  @page { size: A4 landscape; margin: 8mm; }
+
+  .sched-cell .cell-label { opacity: 1 !important; font-size: 9pt; }
+
+  .schedule-grid { border: 0.5pt solid #000 !important; border-radius: 0 !important; }
+  .sched-cell, thead th, tbody td { border: 0.5pt solid #888 !important; padding: 1pt 0 !important; }
+
+  /* Статусы через фон (Ч/Б: оттенки серого) */
+  .sched-cell[data-status="off"]      { background: #bbb !important; }
+  .sched-cell[data-status="requested"]{ background: #ddd !important; }
+  .sched-cell[data-status="holiday"]  { background: #999 !important; }
+  .sched-cell[data-status="work"]     { background: #fff !important; }
+
+  .sched-name-col { position: static !important; background: #f0f0f0 !important; }
+  body { font-size: 8pt; }
+}
+</style>

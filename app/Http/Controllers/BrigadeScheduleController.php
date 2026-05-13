@@ -110,7 +110,7 @@ class BrigadeScheduleController extends Controller
         $request->validate([
             'month'       => 'required|date_format:Y-m',
             'pre_marks'   => 'array',
-            'target_days' => 'nullable|integer|min:1',
+            'target_days' => 'integer|min:1',
         ]);
 
         [$year, $mon] = explode('-', $request->month);
@@ -127,11 +127,12 @@ class BrigadeScheduleController extends Controller
             ->flip()
             ->toArray();
 
-        $members    = $brigade->members()->orderBy('name')->pluck('users.id')->toArray();
+        $members     = $brigade->members()->orderBy('name')->pluck('users.id')->toArray();
         $memberCount = count($members);
         $minWorkers  = min(2, $memberCount);
+        $targetDays  = (int)($request->target_days ?? 24);
 
-        // Build working days
+        // Working days as numerically-indexed array (holidays excluded)
         $workingDays = [];
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $date = Carbon::create($year, $mon, $d)->format('Y-m-d');
@@ -139,8 +140,9 @@ class BrigadeScheduleController extends Controller
                 $workingDays[] = $date;
             }
         }
+        $totalWorking = count($workingDays);
 
-        // Init everyone as work on working days, off on holidays
+        // Init schedule: work on working days, off on holidays
         $schedule = [];
         foreach ($members as $uid) {
             foreach ($workingDays as $date) {
@@ -151,14 +153,11 @@ class BrigadeScheduleController extends Controller
             }
         }
 
-        $totalWorkingDays = count($workingDays);
-        $targetWork = (int)$request->get('target_days', 24);
-        $targetOff  = max(0, $totalWorkingDays - $targetWork);
-
-        $preMark = $request->pre_marks ?? [];
-
-        // Step 1: apply pre-marked requested/off days — validate min constraint
+        // offPerDay: how many workers are off on each working day
         $offPerDay = array_fill_keys($workingDays, 0);
+
+        // Step 1: honor pre-marked requests, validate min-workers constraint
+        $preMark       = $request->pre_marks ?? [];
         $requestsByDay = [];
         foreach ($members as $uid) {
             $userMark = $preMark[$uid] ?? [];
@@ -169,39 +168,73 @@ class BrigadeScheduleController extends Controller
                 }
             }
         }
-        asort($requestsByDay);
+        asort($requestsByDay); // least-contested days first
+
         foreach ($requestsByDay as $date => $uids) {
             foreach ($uids as $uid) {
-                $workersLeft = $memberCount - $offPerDay[$date];
-                if ($workersLeft - 1 >= $minWorkers) {
+                if (($memberCount - $offPerDay[$date]) - 1 >= $minWorkers) {
                     $schedule[$uid][$date] = 'off';
                     $offPerDay[$date]++;
                 }
             }
         }
 
-        // Step 2: distribute extra offs to reach targetOff per member
+        // Step 2: distribute additional offs evenly across the month.
+        // Target: each person gets (totalWorking - targetDays) off days.
+        // Algorithm: greedy — each round pick the working day with max distance
+        // from already-assigned offs. Constraint: no 3+ consecutive offs.
+        $targetOff = max(0, $totalWorking - $targetDays);
+
         foreach ($members as $uid) {
-            $currentOff = collect($schedule[$uid])->filter(fn($s) => $s === 'off')->count();
-            $needOff    = max(0, $targetOff - $currentOff);
-            if ($needOff === 0) continue;
-
-            // Candidates: working days where this member still works
-            // Sort by workers count desc — safest days to remove one person
-            $candidates = [];
+            $currentOff = 0;
             foreach ($workingDays as $date) {
-                if ($schedule[$uid][$date] !== 'work') continue;
-                $candidates[$date] = $memberCount - $offPerDay[$date]; // workers remaining
+                if ($schedule[$uid][$date] === 'off') $currentOff++;
             }
-            arsort($candidates);
+            $need = max(0, $targetOff - $currentOff);
 
-            $assigned = 0;
-            foreach ($candidates as $date => $workerCount) {
-                if ($assigned >= $needOff) break;
-                if ($workerCount - 1 >= $minWorkers) {
+            for ($i = 0; $i < $need; $i++) {
+                $bestIdx   = null;
+                $bestScore = -1;
+
+                foreach ($workingDays as $idx => $date) {
+                    if ($schedule[$uid][$date] === 'off') continue;
+
+                    // Min-workers constraint
+                    if (($memberCount - $offPerDay[$date]) - 1 < $minWorkers) continue;
+
+                    // Consecutive constraint: adding this day must not create 3+ consecutive offs
+                    $offPrev1 = isset($workingDays[$idx - 1]) && $schedule[$uid][$workingDays[$idx - 1]] === 'off';
+                    $offPrev2 = isset($workingDays[$idx - 2]) && $schedule[$uid][$workingDays[$idx - 2]] === 'off';
+                    $offNext1 = isset($workingDays[$idx + 1]) && $schedule[$uid][$workingDays[$idx + 1]] === 'off';
+                    $offNext2 = isset($workingDays[$idx + 2]) && $schedule[$uid][$workingDays[$idx + 2]] === 'off';
+
+                    if ($offPrev2 && $offPrev1) continue; // prev2 + prev1 + this = 3
+                    if ($offPrev1 && $offNext1) continue; // prev1 + this + next1 = 3
+                    if ($offNext1 && $offNext2) continue; // this + next1 + next2 = 3
+
+                    // Score: distance to nearest existing off (larger = better spread)
+                    $minDist = $totalWorking + 1;
+                    foreach ($workingDays as $j => $d2) {
+                        if ($schedule[$uid][$d2] === 'off') {
+                            $dist = abs($idx - $j);
+                            if ($dist < $minDist) $minDist = $dist;
+                        }
+                    }
+                    // No offs yet: prefer days near the center for initial placement
+                    if ($minDist === $totalWorking + 1) {
+                        $minDist = abs($idx - intdiv($totalWorking, 2));
+                    }
+
+                    if ($minDist > $bestScore) {
+                        $bestScore = $minDist;
+                        $bestIdx   = $idx;
+                    }
+                }
+
+                if ($bestIdx !== null) {
+                    $date = $workingDays[$bestIdx];
                     $schedule[$uid][$date] = 'off';
                     $offPerDay[$date]++;
-                    $assigned++;
                 }
             }
         }
