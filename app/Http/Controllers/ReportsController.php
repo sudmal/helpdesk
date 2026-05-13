@@ -24,6 +24,7 @@ class ReportsController extends Controller
             'territoryFrequency' => $this->territoryFrequency($fromDate, $toDate),
             'materialDynamics'   => $this->materialDynamics($fromDate, $toDate),
             'deadlineCompliance' => $this->deadlineCompliance($fromDate, $toDate),
+            'distribution'       => $this->distribution($fromDate, $toDate),
         ]);
     }
 
@@ -137,6 +138,64 @@ class ReportsController extends Controller
                 'on_time' => (int)$totalOnTime,
                 'pct'     => $totalAll > 0 ? round(100 * $totalOnTime / $totalAll, 1) : 0,
             ],
+        ];
+    }
+}
+
+    private function distribution(Carbon $from, Carbon $to): array
+    {
+        $serviceTypes = DB::table('service_types')
+            ->where('is_active', 1)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'color']);
+
+        $byDayRaw = DB::table('tickets as t')
+            ->whereBetween('t.created_at', [$from, $to])
+            ->whereNull('t.deleted_at')
+            ->whereNotNull('t.service_type_id')
+            ->selectRaw('t.service_type_id, DAY(t.created_at) as day, COUNT(*) as cnt')
+            ->groupBy('t.service_type_id', DB::raw('DAY(t.created_at)'))
+            ->get()
+            ->groupBy('service_type_id');
+
+        $byDowRaw = DB::table('tickets as t')
+            ->whereBetween('t.created_at', [$from, $to])
+            ->whereNull('t.deleted_at')
+            ->whereNotNull('t.service_type_id')
+            ->selectRaw('t.service_type_id, DAYOFWEEK(t.created_at) as dow, COUNT(*) as cnt')
+            ->groupBy('t.service_type_id', DB::raw('DAYOFWEEK(t.created_at)'))
+            ->get()
+            ->groupBy('service_type_id');
+
+        $dayLabels = range(1, 31);
+        $dowOrder  = [2, 3, 4, 5, 6, 7, 1]; // MySQL: 1=Вс,2=Пн..7=Сб
+        $dowLabels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        $fallback  = ['#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#06b6d4','#f97316','#ec4899'];
+
+        $byDay = [];
+        $byDow = [];
+
+        foreach ($serviceTypes as $i => $st) {
+            $color = $st->color ?: $fallback[$i % count($fallback)];
+
+            $dayData = $byDayRaw->get($st->id, collect())->keyBy('day');
+            $byDay[] = [
+                'name'  => $st->name,
+                'color' => $color,
+                'data'  => array_map(fn($d) => (int)($dayData[$d]->cnt ?? 0), $dayLabels),
+            ];
+
+            $dowData = $byDowRaw->get($st->id, collect())->keyBy('dow');
+            $byDow[] = [
+                'name'  => $st->name,
+                'color' => $color,
+                'data'  => array_map(fn($d) => (int)($dowData[$d]->cnt ?? 0), $dowOrder),
+            ];
+        }
+
+        return [
+            'byDay'     => ['labels' => $dayLabels, 'datasets' => $byDay],
+            'byWeekday' => ['labels' => $dowLabels,  'datasets' => $byDow],
         ];
     }
 }

@@ -192,6 +192,56 @@
       </div>
     </div>
 
+    <!-- Распределение по дням -->
+    <div v-show="activeTab === 'distribution'" class="space-y-4">
+      <div class="bg-white rounded-2xl border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-sm font-semibold text-gray-600">Распределение заявок по типу обращения</h2>
+          <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
+            <button @click="switchDistMode('day')"
+                    :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                             distMode === 'day' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+              По дням месяца
+            </button>
+            <button @click="switchDistMode('weekday')"
+                    :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                             distMode === 'weekday' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+              По дням недели
+            </button>
+          </div>
+        </div>
+        <div v-if="!hasDistData" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
+        <canvas v-else ref="distributionCanvas" style="max-height:380px" />
+      </div>
+
+      <!-- Легенда / итоговая таблица -->
+      <div v-if="hasDistData" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Итого за период</div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
+              <th class="text-left px-4 py-2.5">Тип обращения</th>
+              <th class="text-right px-4 py-2.5 w-32">Всего заявок</th>
+              <th class="text-right px-4 py-2.5 w-28">% от общего</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr v-for="ds in distTotals" :key="ds.name" class="hover:bg-gray-50">
+              <td class="px-4 py-2">
+                <span class="inline-block w-3 h-3 rounded-full mr-2 align-middle"
+                      :style="{ backgroundColor: ds.color }"></span>
+                <span class="text-gray-800">{{ ds.name }}</span>
+              </td>
+              <td class="px-4 py-2 text-right font-mono tabular-nums">{{ ds.total }}</td>
+              <td class="px-4 py-2 text-right font-mono tabular-nums text-gray-500">
+                {{ distGrandTotal ? (ds.total / distGrandTotal * 100).toFixed(1) + '%' : '—' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </AppLayout>
 </template>
 
@@ -208,29 +258,53 @@ const props = defineProps({
   territoryFrequency: Object,
   materialDynamics: Object,
   deadlineCompliance: Object,
+  distribution: Object,
 })
 
 const tabs = [
-  { id: 'brigade',   label: 'Нагрузка бригад' },
-  { id: 'territory', label: 'Территории' },
-  { id: 'materials', label: 'Расход материалов' },
-  { id: 'deadlines', label: 'Соблюдение сроков' },
+  { id: 'brigade',      label: 'Нагрузка бригад' },
+  { id: 'territory',    label: 'Территории' },
+  { id: 'materials',    label: 'Расход материалов' },
+  { id: 'deadlines',    label: 'Соблюдение сроков' },
+  { id: 'distribution', label: 'Распределение по дням' },
 ]
 
 const activeTab    = ref('brigade')
 const localFrom    = ref(props.from)
 const localTo      = ref(props.to)
+const distMode     = ref('day') // 'day' | 'weekday'
 
-const brigadeCanvas    = ref(null)
-const territoryCanvas  = ref(null)
-const materialQtyCanvas = ref(null)
-const materialAmtCanvas = ref(null)
-const deadlineCanvas   = ref(null)
+const brigadeCanvas      = ref(null)
+const territoryCanvas    = ref(null)
+const materialQtyCanvas  = ref(null)
+const materialAmtCanvas  = ref(null)
+const deadlineCanvas     = ref(null)
+const distributionCanvas = ref(null)
 
 const charts = {}
 
 const totalTerritory = computed(() =>
   props.territoryFrequency.values.reduce((a, b) => a + b, 0)
+)
+
+const currentDistData = computed(() =>
+  distMode.value === 'day' ? props.distribution.byDay : props.distribution.byWeekday
+)
+
+const hasDistData = computed(() =>
+  currentDistData.value.datasets.some(ds => ds.data.some(v => v > 0))
+)
+
+const distTotals = computed(() =>
+  currentDistData.value.datasets.map(ds => ({
+    name:  ds.name,
+    color: ds.color,
+    total: ds.data.reduce((a, b) => a + b, 0),
+  })).filter(ds => ds.total > 0)
+)
+
+const distGrandTotal = computed(() =>
+  distTotals.value.reduce((a, b) => a + b.total, 0)
 )
 
 function formatMoney(val) {
@@ -346,12 +420,52 @@ function buildDeadline() {
   })
 }
 
+function buildDistribution() {
+  destroy('distribution')
+  if (!distributionCanvas.value || !hasDistData.value) return
+  const src = currentDistData.value
+  charts.distribution = new Chart(distributionCanvas.value, {
+    type: 'line',
+    data: {
+      labels: src.labels,
+      datasets: src.datasets.map(ds => ({
+        label:           ds.name,
+        data:            ds.data,
+        borderColor:     ds.color,
+        backgroundColor: ds.color + '22',
+        borderWidth:     2,
+        pointRadius:     3,
+        pointHoverRadius: 5,
+        tension:         0.35,
+        fill:            false,
+      })),
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { mode: 'index' },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 } },
+      },
+    },
+  })
+}
+
+function switchDistMode(mode) {
+  distMode.value = mode
+  nextTick(() => buildDistribution())
+}
+
 function buildForTab(tab) {
   nextTick(() => {
-    if (tab === 'brigade')   buildBrigade()
-    if (tab === 'territory') buildTerritory()
-    if (tab === 'materials') buildMaterials()
-    if (tab === 'deadlines') buildDeadline()
+    if (tab === 'brigade')      buildBrigade()
+    if (tab === 'territory')    buildTerritory()
+    if (tab === 'materials')    buildMaterials()
+    if (tab === 'deadlines')    buildDeadline()
+    if (tab === 'distribution') buildDistribution()
   })
 }
 
