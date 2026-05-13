@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\{
     DashboardController,
+    SyncController,
     ServiceTypeController,
     TicketController,
     CalendarController,
@@ -152,6 +153,9 @@ Route::middleware('auth')->prefix('push')->group(function () {
     Route::post('/subscribe',   [App\Http\Controllers\PushController::class, 'subscribe'])->name('push.subscribe');
     Route::post('/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe'])->name('push.unsubscribe');
 });
+
+// Sync API (для скрипта синхронизации)
+Route::post('/sync/ticket', [SyncController::class, 'store'])->name('sync.ticket');
 
 // Telegram Bot
 Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class, 'webhook'])

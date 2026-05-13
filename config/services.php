@@ -6,4 +6,7 @@ return [
     'max' => [
         'token' => env('MAX_BOT_TOKEN'),
     ],
+    'sync' => [
+        'token' => env('SYNC_TOKEN'),
+    ],
 ];
