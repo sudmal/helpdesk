@@ -25,6 +25,7 @@ class HandleInertiaRequests extends Middleware
                 'error'         => session('error'),
                 'import_result' => session('import_result'),
             ],
+            'closeReasons' => config('tickets.close_reasons', []),
         ]);
     }
 }

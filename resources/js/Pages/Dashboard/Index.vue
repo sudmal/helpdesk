@@ -237,6 +237,14 @@
                         focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
           <p class="text-xs text-gray-400 mt-1">Если не заполнено — будет «б/а» (без акта)</p>
         </div>
+        <div v-if="$page.props.closeReasons?.length">
+          <label class="block text-xs text-gray-500 mb-1">Причина <span class="text-gray-400">(шаблон)</span></label>
+          <select @change="e => { closeComment = e.target.value; e.target.selectedIndex = 0 }"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option value="">— выбрать из шаблонов —</option>
+            <option v-for="r in $page.props.closeReasons" :key="r" :value="r">{{ r }}</option>
+          </select>
+        </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">Комментарий</label>
           <textarea v-model="closeComment" rows="3"
