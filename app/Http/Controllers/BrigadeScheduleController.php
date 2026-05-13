@@ -168,7 +168,7 @@ class BrigadeScheduleController extends Controller
                 }
             }
         }
-        asort($requestsByDay); // least-contested days first
+        uasort($requestsByDay, fn($a, $b) => count($a) - count($b)); // least-contested days first
 
         foreach ($requestsByDay as $date => $uids) {
             foreach ($uids as $uid) {

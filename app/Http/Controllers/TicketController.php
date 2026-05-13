@@ -266,39 +266,42 @@ class TicketController extends Controller
 
         // Если акт не указан — ставим б/а
         $actNumber = $request->filled('act_number') ? $request->act_number : 'б/а';
-        $ticket->update(['act_number' => $actNumber]);
 
-        $this->ticketService->updateStatus($ticket, 'closed', auth()->user(), $request->comment);
-
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $this->ticketService->storeAttachment($ticket, $file, auth()->user(), 'close');
-            }
-        }
-
-        // Сохраняем расходные материалы
         $materialsData = $request->input('materials');
         if (is_string($materialsData)) {
             $materialsData = json_decode($materialsData, true) ?? [];
         }
-        if (!empty($materialsData) && is_array($materialsData)) {
-            $ticket->materials()->delete();
-            foreach ($materialsData as $item) {
-                if (empty($item['material_id']) || empty($item['quantity'])) continue;
-                $material = \App\Models\Material::find($item['material_id']);
-                if ($material) {
-                    $ticket->materials()->create([
-                        'material_id'   => $material->id,
-                        'material_name' => $material->name,
-                        'material_code' => $material->code,
-                        'material_unit' => $material->unit,
-                        'price_at_time' => $material->price,
-                        'quantity'      => $item['quantity'],
-                        'created_by'    => auth()->id(),
-                    ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $actNumber, $materialsData, $request) {
+            $ticket->update(['act_number' => $actNumber]);
+            $this->ticketService->updateStatus($ticket, 'closed', auth()->user(), $request->comment);
+
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $this->ticketService->storeAttachment($ticket, $file, auth()->user(), 'close');
                 }
             }
-        }
+
+            // Сохраняем расходные материалы
+            if (!empty($materialsData) && is_array($materialsData)) {
+                $ticket->materials()->delete();
+                foreach ($materialsData as $item) {
+                    if (empty($item['material_id']) || empty($item['quantity'])) continue;
+                    $material = \App\Models\Material::find($item['material_id']);
+                    if ($material) {
+                        $ticket->materials()->create([
+                            'material_id'   => $material->id,
+                            'material_name' => $material->name,
+                            'material_code' => $material->code,
+                            'material_unit' => $material->unit,
+                            'price_at_time' => $material->price,
+                            'quantity'      => $item['quantity'],
+                            'created_by'    => auth()->id(),
+                        ]);
+                    }
+                }
+            }
+        });
 
         return back()->with('success', 'Заявка закрыта');
     }

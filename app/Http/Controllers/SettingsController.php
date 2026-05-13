@@ -287,9 +287,6 @@ class SettingsController extends Controller
         SystemSetting::set('login_captcha_attempts', $data['login_captcha_attempts']);
         SystemSetting::set('login_block_attempts',   $data['login_block_attempts']);
         SystemSetting::set('login_block_minutes',    $data['login_block_minutes']);
-        SystemSetting::set('login_captcha_attempts', $data['login_captcha_attempts']);
-        SystemSetting::set('login_block_attempts',   $data['login_block_attempts']);
-        SystemSetting::set('login_block_minutes',    $data['login_block_minutes']);
 
         return back()->with('success', 'Настройки сохранены');
     }
@@ -329,8 +326,9 @@ class SettingsController extends Controller
     {
         $path    = base_path('.env');
         $content = file_get_contents($path);
-        if (preg_match("/^{$key}=/m", $content)) {
-            $content = preg_replace("/^{$key}=.*/m", "{$key}={$value}", $content);
+        $pattern = '/^' . preg_quote($key, '/') . '=.*/m';
+        if (preg_match($pattern, $content)) {
+            $content = preg_replace_callback($pattern, fn() => $key . '=' . $value, $content);
         } else {
             $content .= "\n{$key}={$value}";
         }

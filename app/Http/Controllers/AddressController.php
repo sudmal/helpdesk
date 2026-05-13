@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\{Address, Territory};
+use Illuminate\Support\Facades\DB;
 use App\Services\AddressImportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -182,25 +183,27 @@ class AddressController extends Controller
 
         if ($buildingFrom && $buildingTo) {
             $created = 0;
-            for ($b = $buildingFrom; $b <= $buildingTo; $b += $buildStep) {
-                if ($aptFrom && $aptTo) {
-                    for ($apt = $aptFrom; $apt <= $aptTo; $apt++) {
+            DB::transaction(function () use ($data, $buildingFrom, $buildingTo, $buildStep, $aptFrom, $aptTo, &$created) {
+                for ($b = $buildingFrom; $b <= $buildingTo; $b += $buildStep) {
+                    if ($aptFrom && $aptTo) {
+                        for ($apt = $aptFrom; $apt <= $aptTo; $apt++) {
+                            Address::firstOrCreate(
+                                ['city' => $data['city'], 'street' => $data['street'],
+                                 'building' => (string)$b, 'apartment' => (string)$apt],
+                                array_merge($data, ['building' => (string)$b, 'apartment' => (string)$apt])
+                            );
+                            $created++;
+                        }
+                    } else {
                         Address::firstOrCreate(
                             ['city' => $data['city'], 'street' => $data['street'],
-                             'building' => (string)$b, 'apartment' => (string)$apt],
-                            array_merge($data, ['building' => (string)$b, 'apartment' => (string)$apt])
+                             'building' => (string)$b, 'apartment' => null],
+                            array_merge($data, ['building' => (string)$b, 'apartment' => null])
                         );
                         $created++;
                     }
-                } else {
-                    Address::firstOrCreate(
-                        ['city' => $data['city'], 'street' => $data['street'],
-                         'building' => (string)$b, 'apartment' => null],
-                        array_merge($data, ['building' => (string)$b, 'apartment' => null])
-                    );
-                    $created++;
                 }
-            }
+            });
             return back()->with('success', "Создано {$created} записей");
         }
 

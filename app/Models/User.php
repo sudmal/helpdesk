@@ -65,7 +65,7 @@ class User extends Authenticatable
     // === Permission helpers ===
     public function hasPermission(string $permission): bool
     {
-        $permissions = $this->role->permissions ?? [];
+        $permissions = $this->role?->permissions ?? [];
 
         if (in_array('*', $permissions)) {
             return true;
@@ -82,11 +82,11 @@ class User extends Authenticatable
         return false;
     }
 
-    public function isAdmin(): bool       { return $this->role->slug === 'admin'; }
-    public function isHeadSupport(): bool { return $this->role->slug === 'head_support'; }
-    public function isOperator(): bool    { return $this->role->slug === 'operator'; }
-    public function isForeman(): bool     { return $this->role->slug === 'foreman'; }
-    public function isTechnician(): bool  { return $this->role->slug === 'technician'; }
+    public function isAdmin(): bool       { return $this->role?->slug === 'admin'; }
+    public function isHeadSupport(): bool { return $this->role?->slug === 'head_support'; }
+    public function isOperator(): bool    { return $this->role?->slug === 'operator'; }
+    public function isForeman(): bool     { return $this->role?->slug === 'foreman'; }
+    public function isTechnician(): bool  { return $this->role?->slug === 'technician'; }
     public function canManageSettings(): bool
     {
         return $this->isAdmin() || $this->isHeadSupport();
