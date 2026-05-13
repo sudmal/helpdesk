@@ -130,7 +130,7 @@ class BrigadeScheduleController extends Controller
 
         $members     = $brigade->members()->orderBy('name')->pluck('users.id')->toArray();
         $memberCount = count($members);
-        $minWorkers  = min(2, $memberCount);
+        $minWorkers  = min((int)($request->min_workers ?? $brigade->min_workers ?? 2), $memberCount);
         $targetDays  = (int)($request->target_days ?? 24);
 
         // Working days as numerically-indexed array (holidays excluded)
