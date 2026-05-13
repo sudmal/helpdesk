@@ -140,7 +140,6 @@ class ReportsController extends Controller
             ],
         ];
     }
-}
 
     private function distribution(Carbon $from, Carbon $to): array
     {
