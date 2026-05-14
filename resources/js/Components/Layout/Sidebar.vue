@@ -15,6 +15,9 @@
       <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" />
       <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" />
       <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" />
+      <NavItem v-if="isForeman && foremanBrigadeId"
+               :href="route('brigades.schedule.show', foremanBrigadeId)"
+               icon="users" label="Моя бригада" />
       <template v-if="canManageSettings">
         <NavItem :href="route('territories.index')" icon="map-pin"  label="Территории" />
         <NavItem :href="route('brigades.index')"    icon="users"    label="Бригады" />
@@ -46,7 +49,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import NavItem from './NavItem.vue'
 
 const props = defineProps({ user: Object })
@@ -54,6 +57,8 @@ const props = defineProps({ user: Object })
 const canManageSettings = computed(() =>
   ['admin', 'head_support'].includes(props.user?.role?.slug)
 )
+const isForeman = computed(() => props.user?.role?.slug === 'foreman')
+const foremanBrigadeId = computed(() => usePage().props.auth?.foreman_brigade_id)
 
 function can(permission) {
   const perms = props.user?.role?.permissions ?? []

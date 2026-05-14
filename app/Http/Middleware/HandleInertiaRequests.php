@@ -18,7 +18,10 @@ class HandleInertiaRequests extends Middleware
     {
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user()?->load('role'),
+                'user'               => $request->user()?->load('role'),
+                'foreman_brigade_id' => $request->user()?->isForeman()
+                    ? \App\Models\Brigade::where('foreman_id', $request->user()->id)->value('id')
+                    : null,
             ],
             'flash' => [
                 'success'       => session('success'),

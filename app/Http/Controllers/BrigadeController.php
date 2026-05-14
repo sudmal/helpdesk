@@ -108,6 +108,10 @@ class BrigadeController extends Controller
 
     public function updateMinWorkers(Request $request, Brigade $brigade)
     {
+        $user = auth()->user();
+        if (!$user->canManageSettings() && $brigade->foreman_id !== $user->id) {
+            abort(403);
+        }
         $request->validate(['min_workers' => 'required|integer|min:1|max:50']);
         $brigade->update(['min_workers' => $request->min_workers]);
         return response()->json(['ok' => true]);
