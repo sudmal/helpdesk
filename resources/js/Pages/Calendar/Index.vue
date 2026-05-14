@@ -110,9 +110,8 @@
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
-                  <span class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
-                  <span v-if="titleParts(ev).type" class="text-gray-300 flex-shrink-0" style="font-size: 10px">·</span>
-                  <span class="truncate text-xs font-medium text-gray-800 min-w-0">{{ titleParts(ev).address }}</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1">{{ titleParts(ev).address }}</span>
+                  <span v-if="titleParts(ev).type" class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
                 </div>
               </div>
             </div>
@@ -138,9 +137,8 @@
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
-                  <span class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
-                  <span v-if="titleParts(ev).type" class="text-gray-300 flex-shrink-0" style="font-size: 10px">·</span>
-                  <span class="truncate text-xs font-medium text-gray-800 min-w-0">{{ titleParts(ev).address }}</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1">{{ titleParts(ev).address }}</span>
+                  <span v-if="titleParts(ev).type" class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
                 </div>
               </div>
             </div>
@@ -166,9 +164,8 @@
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
-                  <span class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
-                  <span v-if="titleParts(ev).type" class="text-gray-300 flex-shrink-0" style="font-size: 10px">·</span>
-                  <span class="truncate text-xs font-medium text-gray-800 min-w-0">{{ titleParts(ev).address }}</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1">{{ titleParts(ev).address }}</span>
+                  <span v-if="titleParts(ev).type" class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
                 </div>
               </div>
             </div>
@@ -532,17 +529,20 @@ const calOptions = computed(() => ({
     const time   = arg.timeText
     const type   = p.type || ''
     const dotIdx = arg.event.title.indexOf(' · ')
-    let body
+    let left
     if (type && dotIdx !== -1) {
       const iconType = arg.event.title.slice(0, dotIdx).trim()
       const address  = arg.event.title.slice(dotIdx + 3)
       const icon     = iconType.replace(type, '').trim()
-      body = `${icon} <span style="font-size:10px;font-weight:400;color:#9ca3af;text-transform:lowercase">${type}</span> · ${address}`
+      left = `${icon} ${address}`
     } else {
-      body = arg.event.title
+      left = arg.event.title
     }
+    const typeHtml = type
+      ? `<span style="font-size:10px;font-weight:400;color:#9ca3af;text-transform:lowercase;white-space:nowrap;flex-shrink:0;margin-left:4px">${type}</span>`
+      : ''
     return {
-      html: `<div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:1px 4px;font-size:0.75rem;cursor:pointer"><b>${time}</b> ${body}</div>`,
+      html: `<div style="display:flex;align-items:center;padding:1px 4px;font-size:0.75rem;cursor:pointer;min-width:0"><b style="flex-shrink:0;margin-right:2px">${time}</b><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${left}</span>${typeHtml}</div>`,
     }
   },
 }))
