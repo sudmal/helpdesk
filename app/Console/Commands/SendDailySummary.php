@@ -8,11 +8,16 @@ use Illuminate\Console\Command;
 
 class SendDailySummary extends Command
 {
-    protected $signature   = 'helpdesk:daily-summary {--date= : дата в формате Y-m-d}';
+    protected $signature   = 'helpdesk:daily-summary {--date= : дата в формате Y-m-d} {--scheduled : проверять время и флаг из настроек}';
     protected $description = 'Утренняя сводка по заявкам на сегодня — отправляется бригадирам';
 
     public function handle(): int
     {
+        if ($this->option('scheduled')) {
+            if (!((bool) \App\Models\SystemSetting::get('daily_summary_enabled', '1'))) return Command::SUCCESS;
+            $time = \App\Models\SystemSetting::get('daily_summary_time', '08:00');
+            if (now()->format('H:i') !== $time) return Command::SUCCESS;
+        }
         $date = $this->option('date') ?? now()->toDateString();
 
         $brigades = Brigade::with(['foreman', 'territories'])->get();

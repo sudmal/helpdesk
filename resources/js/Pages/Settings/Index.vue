@@ -323,28 +323,50 @@
       <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="font-semibold mb-4">Расписание уведомлений</h2>
         <div class="space-y-4 text-sm">
-          <div class="flex items-center justify-between py-3 border-b border-gray-100">
-            <div>
-              <p class="font-medium">Утренняя сводка бригадирам</p>
-              <p class="text-gray-400 text-xs">Список заявок на сегодня — отправляется каждый день в 08:00</p>
+
+          <!-- Утренняя сводка -->
+          <div class="flex items-start justify-between gap-4 py-3 border-b border-gray-100">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" v-model="notifForm.daily_summary_enabled" class="mt-0.5 rounded" />
+              <div>
+                <p class="font-medium">Утренняя сводка бригадирам</p>
+                <p class="text-gray-400 text-xs">Список заявок на сегодня — отправляется бригадирам</p>
+              </div>
             </div>
-            <span class="text-xs bg-green-100 text-green-700 px-3 py-0.5 rounded-full font-mono">08:00 ежедневно</span>
+            <input type="time" v-model="notifForm.daily_summary_time"
+                   :disabled="!notifForm.daily_summary_enabled"
+                   class="border border-gray-200 rounded-lg px-2 py-1 text-xs font-mono bg-slate-50 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
           </div>
-          <div class="flex items-center justify-between py-3 border-b border-gray-100">
-            <div>
-              <p class="font-medium">Вечерний отчёт руководителям</p>
-              <p class="text-gray-400 text-xs">Итоги дня для Администратора и Начальника ТП — в 20:00</p>
+
+          <!-- Вечерний отчёт -->
+          <div class="flex items-start justify-between gap-4 py-3">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" v-model="notifForm.evening_report_enabled" class="mt-0.5 rounded" />
+              <div>
+                <p class="font-medium">Вечерний отчёт руководителям</p>
+                <p class="text-gray-400 text-xs">Итоги дня для Администратора и Начальника ТП</p>
+              </div>
             </div>
-            <span class="text-xs bg-blue-100 text-blue-700 px-3 py-0.5 rounded-full font-mono">20:00 ежедневно</span>
+            <input type="time" v-model="notifForm.evening_report_time"
+                   :disabled="!notifForm.evening_report_enabled"
+                   class="border border-gray-200 rounded-lg px-2 py-1 text-xs font-mono bg-slate-50 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
           </div>
+
+        </div>
+
+        <div class="flex items-center gap-3 mt-4">
+          <button @click="saveNotifSettings" :disabled="notifForm.processing" class="btn-primary text-sm">
+            Сохранить
+          </button>
+          <span v-if="notifSaved" class="text-sm text-green-600">✓ Сохранено</span>
         </div>
 
         <h3 class="font-semibold mt-6 mb-3">Отправить сейчас</h3>
         <div class="flex gap-3">
-          <button @click="sendSummary"   :disabled="sending" class="btn-outline text-sm">
+          <button @click="sendSummary" :disabled="sending" class="btn-outline text-sm">
             {{ sending === 'summary' ? 'Отправка...' : '📋 Утренняя сводка' }}
           </button>
-          <button @click="sendReport"    :disabled="sending" class="btn-outline text-sm">
+          <button @click="sendReport" :disabled="sending" class="btn-outline text-sm">
             {{ sending === 'report' ? 'Отправка...' : '📊 Вечерний отчёт' }}
           </button>
         </div>
@@ -730,8 +752,9 @@ const props = defineProps({
   roles:          { type: Array, default: () => [] },
   territories:    { type: Array, default: () => [] },
   brigades:       { type: Array, default: () => [] },
-  lanbillingConfig:  { type: Object, default: () => ({}) },
-  generalSettings:   { type: Object, default: () => ({}) },
+  lanbillingConfig:       { type: Object, default: () => ({}) },
+  generalSettings:        { type: Object, default: () => ({}) },
+  notificationSettings:   { type: Object, default: () => ({}) },
 })
 
 const activeTab = ref('types')
@@ -1015,6 +1038,19 @@ function saveGeneral() {
 }
 
 // ── Уведомления ──────────────────────────────────────────────────────
+const notifForm = useForm({
+  daily_summary_enabled:  props.notificationSettings.daily_summary_enabled ?? true,
+  daily_summary_time:     props.notificationSettings.daily_summary_time    ?? '08:00',
+  evening_report_enabled: props.notificationSettings.evening_report_enabled ?? true,
+  evening_report_time:    props.notificationSettings.evening_report_time   ?? '20:00',
+})
+const notifSaved = ref(false)
+function saveNotifSettings() {
+  notifForm.put(route('settings.notifications.update'), {
+    onSuccess: () => { notifSaved.value = true; setTimeout(() => notifSaved.value = false, 3000) }
+  })
+}
+
 const sending    = ref(null)
 const sendResult = ref(null)
 
