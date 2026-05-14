@@ -86,9 +86,8 @@
           <!-- Grid body -->
           <div v-else class="flex items-start">
 
-            <!-- Time labels (align with today/tomorrow grid) -->
+            <!-- Time labels -->
             <div class="flex-shrink-0 border-r border-gray-100" style="width: 60px">
-              <!-- spacer matching overdue column header — empty, just visual -->
               <div v-for="(slot, i) in timeSlots" :key="slot.minutes"
                    class="flex items-start justify-end pr-2 pt-0.5 border-b border-gray-100 text-xs text-gray-400"
                    :style="{ height: slotHeights[i] + 'px' }">
@@ -96,11 +95,11 @@
               </div>
             </div>
 
-            <!-- Overdue column — simple list, no time grid -->
+            <!-- Overdue column — simple list -->
             <div class="flex-1 border-r border-gray-100 p-1.5 flex flex-col gap-0.5 self-stretch">
               <p v-if="!sortedOverdue.length" class="text-xs text-gray-400 px-2 py-2">Нет просроченных</p>
               <div v-for="ev in sortedOverdue" :key="ev.id"
-                   class="rounded overflow-hidden text-xs cursor-pointer hover:opacity-80 transition-opacity select-none flex-shrink-0"
+                   class="rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none flex-shrink-0"
                    :style="{
                      height:          EVENT_H + 'px',
                      backgroundColor: ev.backgroundColor,
@@ -109,9 +108,11 @@
                    @mouseenter="onEventEnter($event.currentTarget, ev.extendedProps)"
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
-                <div class="px-1.5 truncate leading-none font-medium text-gray-800"
-                     :style="{ lineHeight: EVENT_H + 'px' }">
-                  {{ ev.title }}
+                <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
+                  <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
+                  <span class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
+                  <span v-if="titleParts(ev).type" class="text-gray-300 flex-shrink-0" style="font-size: 10px">·</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0">{{ titleParts(ev).address }}</span>
                 </div>
               </div>
             </div>
@@ -123,7 +124,7 @@
                    class="absolute w-full border-b border-gray-100"
                    :style="{ top: slotTops[i] + 'px', height: slotHeights[i] + 'px' }"></div>
               <div v-for="ev in positionedEvents.today" :key="ev.id"
-                   class="absolute rounded overflow-hidden text-xs cursor-pointer hover:opacity-80 transition-opacity select-none"
+                   class="absolute rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none"
                    :style="{
                      top:             ev.top + 'px',
                      left:            '2px',
@@ -135,9 +136,11 @@
                    @mouseenter="onEventEnter($event.currentTarget, ev.extendedProps)"
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
-                <div class="px-1.5 truncate leading-none font-medium text-gray-800"
-                     :style="{ lineHeight: EVENT_H + 'px' }">
-                  {{ ev.title }}
+                <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
+                  <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
+                  <span class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
+                  <span v-if="titleParts(ev).type" class="text-gray-300 flex-shrink-0" style="font-size: 10px">·</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0">{{ titleParts(ev).address }}</span>
                 </div>
               </div>
             </div>
@@ -149,7 +152,7 @@
                    class="absolute w-full border-b border-gray-100"
                    :style="{ top: slotTops[i] + 'px', height: slotHeights[i] + 'px' }"></div>
               <div v-for="ev in positionedEvents.tomorrow" :key="ev.id"
-                   class="absolute rounded overflow-hidden text-xs cursor-pointer hover:opacity-80 transition-opacity select-none"
+                   class="absolute rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none"
                    :style="{
                      top:             ev.top + 'px',
                      left:            '2px',
@@ -161,9 +164,11 @@
                    @mouseenter="onEventEnter($event.currentTarget, ev.extendedProps)"
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
-                <div class="px-1.5 truncate leading-none font-medium text-gray-800"
-                     :style="{ lineHeight: EVENT_H + 'px' }">
-                  {{ ev.title }}
+                <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
+                  <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
+                  <span class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
+                  <span v-if="titleParts(ev).type" class="text-gray-300 flex-shrink-0" style="font-size: 10px">·</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0">{{ titleParts(ev).address }}</span>
                 </div>
               </div>
             </div>
@@ -257,9 +262,9 @@ const props = defineProps({
   workSettings: { type: Object, default: () => ({ start: '09:00', end: '17:00', step: 30 }) },
 })
 
-const BASE_H  = 22  // base slot height (px) when no events
-const EVENT_H = 20  // event card height (px)
-const PAD     = 2   // gap between events and slot border
+const BASE_H  = 22
+const EVENT_H = 20
+const PAD     = 2
 
 const view                = ref('overview')
 const calKey              = ref(0)
@@ -280,6 +285,17 @@ const popup = reactive({
   status: '', statusColor: '', type: '', typeColor: '',
   brigade: '', scheduled: '', phone: '', description: '', url: '',
 })
+
+// Split event title into { icon, type, address } for styled rendering
+function titleParts(ev) {
+  const type   = ev.extendedProps?.type ?? ''
+  const dotIdx = ev.title.indexOf(' · ')
+  if (!type || dotIdx === -1) return { icon: '', type: '', address: ev.title }
+  const iconType = ev.title.slice(0, dotIdx).trim()
+  const address  = ev.title.slice(dotIdx + 3)
+  const icon     = iconType.replace(type, '').trim()
+  return { icon, type, address }
+}
 
 const timeSlots = computed(() => {
   const [sh, sm] = props.workSettings.start.split(':').map(Number)
@@ -304,7 +320,6 @@ function getSlotIdx(startStr) {
   return Math.floor(((h * 60 + m) - (sh * 60 + sm)) / props.workSettings.step)
 }
 
-// Per-slot heights — expands when multiple events share a slot (max across today+tomorrow)
 const slotHeights = computed(() => {
   const heights = timeSlots.value.map(() => BASE_H)
   for (const col of ['today', 'tomorrow']) {
@@ -314,21 +329,16 @@ const slotHeights = computed(() => {
       bySlot[si] = (bySlot[si] ?? 0) + 1
     }
     for (const [si, count] of Object.entries(bySlot)) {
-      const needed = count * EVENT_H + PAD * 2
-      heights[Number(si)] = Math.max(heights[Number(si)], needed)
+      heights[Number(si)] = Math.max(heights[Number(si)], count * EVENT_H + PAD * 2)
     }
   }
   return heights
 })
 
-// Top offset of each slot in the grid
 const slotTops = computed(() => {
   const tops = []
   let acc = 0
-  for (const h of slotHeights.value) {
-    tops.push(acc)
-    acc += h
-  }
+  for (const h of slotHeights.value) { tops.push(acc); acc += h }
   return tops
 })
 
@@ -338,12 +348,10 @@ const totalGridH = computed(() =>
     : BASE_H
 )
 
-// Overdue sorted by scheduled_at descending (most recent first)
 const sortedOverdue = computed(() =>
   [...(overviewEvents.value.overdue ?? [])].sort((a, b) => b.start.localeCompare(a.start))
 )
 
-// Events positioned for today/tomorrow columns (stacked vertically within each slot)
 const positionedEvents = computed(() => {
   const result = {}
   for (const col of ['today', 'tomorrow']) {
@@ -357,9 +365,7 @@ const positionedEvents = computed(() => {
     for (const [siStr, slotEvs] of Object.entries(bySlot)) {
       const si  = Number(siStr)
       const top = slotTops.value[si]
-      slotEvs.forEach((ev, i) => {
-        positioned.push({ ...ev, top: top + PAD + i * EVENT_H })
-      })
+      slotEvs.forEach((ev, i) => positioned.push({ ...ev, top: top + PAD + i * EVENT_H }))
     }
     result[col] = positioned
   }
@@ -401,18 +407,15 @@ async function fetchOverview() {
   now.setHours(0, 0, 0, 0)
   const tom  = new Date(now)
   tom.setDate(tom.getDate() + 1)
-
   const todayStart = isoDate(now) + 'T00:00:00'
   const todayEnd   = isoDate(now) + 'T23:59:59'
   const tomStart   = isoDate(tom) + 'T00:00:00'
   const tomEnd     = isoDate(tom) + 'T23:59:59'
-
   const common = {
     brigade_id:      selectedBrigade.value     ?? '',
     territory_id:    selectedTerritory.value   ?? '',
     service_type_id: selectedServiceType.value ?? '',
   }
-
   try {
     const [overdue, today, tomorrow] = await Promise.all([
       fetchJson({ ...common, start: '2000-01-01T00:00:00', end: todayStart, overdue: '1' }),
@@ -525,12 +528,21 @@ const calOptions = computed(() => ({
   },
 
   eventContent(arg) {
-    const time  = arg.timeText
-    const title = arg.event.title
+    const p      = arg.event.extendedProps
+    const time   = arg.timeText
+    const type   = p.type || ''
+    const dotIdx = arg.event.title.indexOf(' · ')
+    let body
+    if (type && dotIdx !== -1) {
+      const iconType = arg.event.title.slice(0, dotIdx).trim()
+      const address  = arg.event.title.slice(dotIdx + 3)
+      const icon     = iconType.replace(type, '').trim()
+      body = `${icon} <span style="font-size:10px;font-weight:400;color:#9ca3af;text-transform:lowercase">${type}</span> · ${address}`
+    } else {
+      body = arg.event.title
+    }
     return {
-      html: `<div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:1px 4px;font-size:0.75rem;cursor:pointer">
-               <b>${time}</b> ${title}
-             </div>`,
+      html: `<div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:1px 4px;font-size:0.75rem;cursor:pointer"><b>${time}</b> ${body}</div>`,
     }
   },
 }))
