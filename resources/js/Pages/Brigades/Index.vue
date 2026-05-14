@@ -43,17 +43,36 @@
           <label class="field-label">Название *</label>
           <input v-model="form.name" required class="field-input" />
         </div>
+
+        <!-- Участники — сначала выбираем состав -->
+        <div>
+          <label class="field-label">Участники</label>
+          <div class="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2">
+            <label v-for="u in technicians" :key="u.id"
+                   class="flex items-center gap-2 text-sm p-1 rounded"
+                   :class="isInOtherBrigade(u) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'">
+              <input type="checkbox" :value="u.id" v-model="form.member_ids"
+                     :disabled="isInOtherBrigade(u)" class="rounded disabled:cursor-not-allowed" />
+              <span class="flex-1">{{ u.name }}</span>
+              <span v-if="isInOtherBrigade(u)" class="text-xs text-gray-400">другая бригада</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Бригадир — только из выбранных участников -->
         <div>
           <label class="field-label">Бригадир</label>
-          <select v-model="form.foreman_id" class="field-input">
-            <option value="">— Выбрать —</option>
-            <option v-for="u in technicians" :key="u.id" :value="u.id">{{ u.name }}</option>
+          <select v-model="form.foreman_id" class="field-input"
+                  :disabled="form.member_ids.length === 0">
+            <option value="">{{ form.member_ids.length ? '— Выбрать —' : '— Сначала добавьте участников —' }}</option>
+            <option v-for="u in foremanCandidates" :key="u.id" :value="u.id">{{ u.name }}</option>
           </select>
-          <p v-if="editing?.foreman_id && !form.foreman_id"
+          <p v-if="editing?.foreman_id && !form.foreman_id && form.member_ids.length > 0"
              class="mt-1 text-xs text-amber-600">
             ⚠ Нельзя убрать бригадира без назначения нового
           </p>
         </div>
+
         <div>
           <label class="field-label">Территории</label>
           <div class="space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded-xl p-2">
@@ -63,15 +82,7 @@
             </label>
           </div>
         </div>
-        <div>
-          <label class="field-label">Участники</label>
-          <div class="space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded-xl p-2">
-            <label v-for="u in technicians" :key="u.id" class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
-              <input type="checkbox" :value="u.id" v-model="form.member_ids" class="rounded" />
-              {{ u.name }}
-            </label>
-          </div>
-        </div>
+
         <div v-if="form.errors && Object.keys(form.errors).length"
              class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
           <p v-for="(err, field) in form.errors" :key="field">{{ err }}</p>
@@ -86,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
@@ -96,9 +107,29 @@ const showModal = ref(false)
 const editing   = ref(null)
 const form = useForm({ name: '', foreman_id: '', territory_ids: [], member_ids: [] })
 
+const editingId = computed(() => editing.value?.id ?? null)
+
+// Техник уже в другой бригаде (не редактируемой)
+function isInOtherBrigade(u) {
+  return u.in_brigade_id && u.in_brigade_id !== editingId.value
+}
+
+// Кандидаты в бригадиры — только выбранные участники
+const foremanCandidates = computed(() =>
+  props.technicians.filter(u => form.member_ids.includes(u.id))
+)
+
+// Если бригадир убран из состава — сбрасываем
+watch(() => [...form.member_ids], (ids) => {
+  if (form.foreman_id && !ids.includes(Number(form.foreman_id)) && !ids.includes(form.foreman_id)) {
+    form.foreman_id = ''
+  }
+})
+
 function edit(b) {
   editing.value = b
-  form.name = b.name; form.foreman_id = b.foreman_id ?? ''
+  form.name = b.name
+  form.foreman_id = b.foreman_id ?? ''
   form.territory_ids = b.territories?.map(t => t.id) ?? []
   form.member_ids    = b.members?.map(m => m.id) ?? []
   showModal.value = true
