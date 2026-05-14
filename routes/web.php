@@ -60,21 +60,21 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/{territory}', [TerritoryController::class, 'destroy'])->name('destroy');
     });
 
-    // Расписание бригад
-    Route::middleware('can:manage-settings')->prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
+    // Расписание бригад — доступно бригадиру своей бригады (авторизация в контроллере)
+    Route::prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
         Route::get('/',          [App\Http\Controllers\BrigadeScheduleController::class, 'show'])->name('show');
         Route::post('/save',     [App\Http\Controllers\BrigadeScheduleController::class, 'save'])->name('save');
         Route::post('/generate', [App\Http\Controllers\BrigadeScheduleController::class, 'generate'])->name('generate');
     });
-    Route::middleware('can:manage-settings')->post('/schedule/holiday', [App\Http\Controllers\BrigadeScheduleController::class, 'toggleHoliday'])->name('brigades.schedule.holiday');
+    Route::post('/schedule/holiday', [App\Http\Controllers\BrigadeScheduleController::class, 'toggleHoliday'])->name('brigades.schedule.holiday');
+    Route::patch('/brigades/{brigade}/min-workers', [BrigadeController::class, 'updateMinWorkers'])->name('brigades.min-workers');
 
-    // Бригады
+    // Бригады — только управляющие настройками
     Route::middleware('can:manage-settings')->prefix('brigades')->name('brigades.')->group(function () {
         Route::get('/',             [BrigadeController::class, 'index'])->name('index');
         Route::post('/',            [BrigadeController::class, 'store'])->name('store');
         Route::put('/{brigade}',    [BrigadeController::class, 'update'])->name('update');
         Route::delete('/{brigade}', [BrigadeController::class, 'destroy'])->name('destroy');
-        Route::patch('/{brigade}/min-workers', [BrigadeController::class, 'updateMinWorkers'])->name('min-workers');
     });
 
     // Адреса

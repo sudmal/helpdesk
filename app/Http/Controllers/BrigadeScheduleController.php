@@ -11,6 +11,7 @@ class BrigadeScheduleController extends Controller
 {
     public function show(Brigade $brigade, Request $request)
     {
+        $this->authorizeForBrigade($brigade);
         $month = $request->get('month', now()->addMonth()->format('Y-m'));
 
         [$year, $mon] = explode('-', $month);
@@ -68,6 +69,7 @@ class BrigadeScheduleController extends Controller
 
     public function save(Brigade $brigade, Request $request)
     {
+        $this->authorizeForBrigade($brigade);
         $request->validate([
             'month'    => 'required|date_format:Y-m',
             'schedule' => 'required|array',
@@ -107,6 +109,7 @@ class BrigadeScheduleController extends Controller
 
     public function generate(Brigade $brigade, Request $request)
     {
+        $this->authorizeForBrigade($brigade);
         $request->validate([
             'month'       => 'required|date_format:Y-m',
             'pre_marks'   => 'array',
@@ -250,6 +253,14 @@ class BrigadeScheduleController extends Controller
         }
 
         return response()->json(['schedule' => $schedule]);
+    }
+
+    private function authorizeForBrigade(Brigade $brigade): void
+    {
+        $user = auth()->user();
+        if (!$user->canManageSettings() && $brigade->foreman_id !== $user->id) {
+            abort(403, 'Нет доступа к этой бригаде');
+        }
     }
 
     public function toggleHoliday(Request $request)
