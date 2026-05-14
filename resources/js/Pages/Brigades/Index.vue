@@ -44,45 +44,40 @@
           <input v-model="form.name" required class="field-input" />
         </div>
 
-        <!-- Участники — выбираем состав первым -->
         <div>
           <label class="field-label flex items-center gap-1">
             Участники
-            <Tip>Выберите состав бригады. Бригадир назначается из состава. Сотрудники, уже входящие в другую бригаду, недоступны.</Tip>
+            <Tip>Выберите состав бригады. Бригадир назначается из состава. Сотрудники уже в другой бригаде — недоступны.</Tip>
           </label>
           <div class="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2">
             <label v-for="u in technicians" :key="u.id"
                    class="flex items-center gap-2 text-sm p-1 rounded"
-                   :class="u.in_brigade_name ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'">
+                   :class="isInOtherBrigade(u) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'">
               <input type="checkbox" :value="u.id" v-model="form.member_ids"
-                     :disabled="!!u.in_brigade_name" class="rounded disabled:cursor-not-allowed" />
+                     :disabled="isInOtherBrigade(u)" class="rounded disabled:cursor-not-allowed" />
               <span class="flex-1">{{ u.name }}</span>
-              <span v-if="u.in_brigade_name" class="text-xs text-gray-400 italic">{{ u.in_brigade_name }}</span>
+              <span v-if="isInOtherBrigade(u)" class="text-xs text-gray-400 italic">{{ u.in_brigade_name }}</span>
             </label>
           </div>
         </div>
 
-        <!-- Бригадир — только из выбранных участников -->
         <div>
           <label class="field-label flex items-center gap-1">
             Бригадир
             <Tip>Выбирается только из состава бригады. Сначала добавьте участников выше.</Tip>
           </label>
-          <select v-model="form.foreman_id" class="field-input"
-                  :disabled="form.member_ids.length === 0">
+          <select v-model="form.foreman_id" class="field-input" :disabled="form.member_ids.length === 0">
             <option value="">{{ form.member_ids.length ? '— Выбрать —' : '— Сначала добавьте участников —' }}</option>
             <option v-for="u in foremanCandidates" :key="u.id" :value="u.id">{{ u.name }}</option>
           </select>
           <p v-if="editing?.foreman_id && !form.foreman_id && form.member_ids.length > 0"
-             class="mt-1 text-xs text-amber-600">
-            ⚠ Нельзя убрать бригадира без назначения нового
-          </p>
+             class="mt-1 text-xs text-amber-600">⚠ Нельзя убрать бригадира без назначения нового</p>
         </div>
 
         <div>
           <label class="field-label flex items-center gap-1">
             Территории
-            <Tip>Определяют, на каких участках работает бригада. Используются для фильтрации уведомлений и заявок.</Tip>
+            <Tip>Участки обслуживания бригады. Влияют на фильтрацию уведомлений и заявок.</Tip>
           </label>
           <div class="space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded-xl p-2">
             <label v-for="t in territories" :key="t.id" class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
@@ -106,29 +101,22 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, h, defineComponent } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
+import Tip from '@/Components/UI/Tip.vue'
 
 const props = defineProps({ brigades: Array, territories: Array, technicians: Array })
 const showModal = ref(false)
 const editing   = ref(null)
 const form = useForm({ name: '', foreman_id: '', territory_ids: [], member_ids: [] })
 
-const Tip = defineComponent({
-  props: { default: String },
-  setup(_, { slots }) {
-    return () => h('span', { class: 'group relative inline-flex' }, [
-      h('span', { class: 'w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[10px] flex items-center justify-center cursor-help select-none' }, '?'),
-      h('span', { class: 'pointer-events-none absolute left-0 top-4 z-20 w-56 rounded-lg bg-gray-800 p-2.5 text-xs text-white leading-relaxed opacity-0 shadow-lg transition-opacity group-hover:opacity-100 font-normal' },
-        slots.default?.()
-      ),
-    ])
-  },
-})
-
 const editingId = computed(() => editing.value?.id ?? null)
+
+function isInOtherBrigade(u) {
+  return u.in_brigade_id && u.in_brigade_id !== editingId.value
+}
 
 const foremanCandidates = computed(() =>
   props.technicians.filter(u => form.member_ids.includes(u.id))
