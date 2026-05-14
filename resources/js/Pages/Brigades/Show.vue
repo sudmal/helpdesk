@@ -55,12 +55,12 @@
 
         <div class="divide-y divide-gray-100 mb-4">
           <label v-for="t in technicians" :key="t.id"
-                 class="flex items-center gap-3 py-2.5 cursor-pointer"
-                 :class="{ 'opacity-50 cursor-not-allowed': t.in_other_brigade }">
+                 class="flex items-center gap-3 py-2.5"
+                 :class="isDisabled(t) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
             <input type="checkbox"
                    :value="t.id"
                    v-model="form.member_ids"
-                   :disabled="t.in_other_brigade"
+                   :disabled="isDisabled(t)"
                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed" />
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-gray-800 truncate">{{ t.name }}</p>
@@ -90,7 +90,8 @@
 </template>
 
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
+import { Head, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
@@ -98,6 +99,13 @@ const props = defineProps({
   canManage:   Boolean,
   technicians: Array,
 })
+
+const currentUserId = computed(() => usePage().props.auth?.user?.id)
+
+// Нельзя снять: бригадир или участник другой бригады
+function isDisabled(t) {
+  return t.id === props.brigade.foreman_id || t.in_other_brigade
+}
 
 const form = useForm({
   member_ids: props.brigade.members?.map(m => m.id) ?? [],

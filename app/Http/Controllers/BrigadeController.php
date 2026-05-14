@@ -17,10 +17,12 @@ class BrigadeController extends Controller
                                 ->orderBy('name')
                                 ->get(),
             'territories' => Territory::orderBy('name')->get(['id', 'name']),
-            'technicians' => User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
-                                ->where('is_active', true)
-                                ->orderBy('name')
-                                ->get(['id', 'name', 'role_id']),
+            'technicians' => (function () {
+                    $map = DB::table('brigade_user')->pluck('brigade_id', 'user_id')->toArray();
+                    return User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
+                        ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
+                        ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'in_brigade_id' => $map[$u->id] ?? null]);
+                })(),
         ]);
     }
 
@@ -154,7 +156,12 @@ class BrigadeController extends Controller
                 return back()->withErrors(['member_ids' => "Уже в другой бригаде: {$msg}"]);
             }
         }
-        $brigade->members()->sync($data['member_ids'] ?? []);
+        // Бригадир всегда остаётся в составе
+        $ids = $data['member_ids'] ?? [];
+        if ($brigade->foreman_id && !in_array($brigade->foreman_id, $ids)) {
+            $ids[] = $brigade->foreman_id;
+        }
+        $brigade->members()->sync($ids);
         return back()->with('success', 'Состав бригады обновлён');
     }
 
