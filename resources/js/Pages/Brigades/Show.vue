@@ -1,10 +1,8 @@
 <template>
   <Head :title="`Бригада — ${brigade.name}`" />
   <AppLayout :title="`Бригада: ${brigade.name}`">
-
     <div class="max-w-2xl space-y-4">
 
-      <!-- Flash -->
       <div v-if="$page.props.flash?.success"
            class="bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-4 py-3">
         {{ $page.props.flash.success }}
@@ -19,7 +17,6 @@
             <p class="text-sm text-gray-500">Бригадир: <span class="font-medium text-gray-700">{{ brigade.foreman?.name ?? '—' }}</span></p>
           </div>
         </div>
-
         <a :href="route('brigades.schedule.show', brigade.id)"
            class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,7 +30,7 @@
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
         <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
           Территории
-          <Tip>Назначаются администратором. Определяют, на каких участках работает бригада, и фильтруют входящие уведомления о новых заявках.</Tip>
+          <Tip>Назначаются администратором. Определяют участки работы бригады и фильтруют входящие уведомления о заявках.</Tip>
         </h3>
         <div v-if="brigade.territories?.length" class="flex flex-wrap gap-2">
           <span v-for="t in brigade.territories" :key="t.id"
@@ -48,8 +45,8 @@
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
         <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
           Состав
-          <span class="ml-0.5 text-xs font-normal text-gray-400">({{ form.member_ids.length }} чел.)</span>
-          <Tip>Добавляйте и убирайте участников бригады. Бригадир всегда остаётся в составе. Сотрудники из другой бригады недоступны для выбора.</Tip>
+          <span class="text-xs font-normal text-gray-400">({{ form.member_ids.length }} чел.)</span>
+          <Tip>Добавляйте и убирайте участников бригады. Бригадир всегда остаётся в составе. Сотрудники из другой бригады недоступны.</Tip>
         </h3>
 
         <div v-if="form.errors.member_ids"
@@ -61,9 +58,7 @@
           <label v-for="t in technicians" :key="t.id"
                  class="flex items-center gap-3 py-2.5"
                  :class="isDisabled(t) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
-            <input type="checkbox"
-                   :value="t.id"
-                   v-model="form.member_ids"
+            <input type="checkbox" :value="t.id" v-model="form.member_ids"
                    :disabled="isDisabled(t)"
                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed" />
             <div class="flex-1 min-w-0">
@@ -77,8 +72,7 @@
           </label>
         </div>
 
-        <button @click="saveMembers"
-                :disabled="form.processing"
+        <button @click="saveMembers" :disabled="form.processing"
                 class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
           <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -89,31 +83,15 @@
       </div>
 
     </div>
-
   </AppLayout>
 </template>
 
 <script setup>
-import { h, defineComponent } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
+import Tip from '@/Components/UI/Tip.vue'
 
-const props = defineProps({
-  brigade:     Object,
-  canManage:   Boolean,
-  technicians: Array,
-})
-
-const Tip = defineComponent({
-  setup(_, { slots }) {
-    return () => h('span', { class: 'group relative inline-flex' }, [
-      h('span', { class: 'w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[10px] flex items-center justify-center cursor-help select-none' }, '?'),
-      h('span', { class: 'pointer-events-none absolute left-0 top-4 z-20 w-56 rounded-lg bg-gray-800 p-2.5 text-xs text-white leading-relaxed opacity-0 shadow-lg transition-opacity group-hover:opacity-100 font-normal' },
-        slots.default?.()
-      ),
-    ])
-  },
-})
+const props = defineProps({ brigade: Object, canManage: Boolean, technicians: Array })
 
 function isDisabled(t) {
   return t.id === props.brigade.foreman_id || !!t.in_brigade_name

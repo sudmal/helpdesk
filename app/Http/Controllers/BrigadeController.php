@@ -18,12 +18,17 @@ class BrigadeController extends Controller
                                 ->get(),
             'territories' => Territory::orderBy('name')->get(['id', 'name']),
             'technicians' => (function () {
-                    $names = DB::table('brigade_user')
+                    $bmap = DB::table('brigade_user')
                         ->join('brigades', 'brigade_user.brigade_id', '=', 'brigades.id')
-                        ->pluck('brigades.name', 'brigade_user.user_id')->toArray();
+                        ->select('brigade_user.user_id', 'brigades.id as brigade_id', 'brigades.name as brigade_name')
+                        ->get()->keyBy('user_id');
                     return User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
                         ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
-                        ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'in_brigade_name' => $names[$u->id] ?? null]);
+                        ->map(fn($u) => [
+                            'id' => $u->id, 'name' => $u->name,
+                            'in_brigade_id'   => $bmap[$u->id]->brigade_id ?? null,
+                            'in_brigade_name' => $bmap[$u->id]->brigade_name ?? null,
+                        ]);
                 })(),
         ]);
     }
