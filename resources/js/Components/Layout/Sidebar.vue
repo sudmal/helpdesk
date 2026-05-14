@@ -16,7 +16,7 @@
       <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" />
       <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" />
       <NavItem v-if="isForeman && foremanBrigadeId"
-               :href="route('brigades.schedule.show', foremanBrigadeId)"
+               :href="route('brigades.show', foremanBrigadeId)"
                icon="users" label="Моя бригада" />
       <template v-if="canManageSettings">
         <NavItem :href="route('territories.index')" icon="map-pin"  label="Территории" />

@@ -60,6 +60,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/{territory}', [TerritoryController::class, 'destroy'])->name('destroy');
     });
 
+    // Просмотр бригады — доступно бригадиру своей бригады
+    Route::get('/brigades/{brigade}', [BrigadeController::class, 'show'])->name('brigades.show');
+
     // Расписание бригад — доступно бригадиру своей бригады (авторизация в контроллере)
     Route::prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
         Route::get('/',          [App\Http\Controllers\BrigadeScheduleController::class, 'show'])->name('show');

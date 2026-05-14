@@ -106,6 +106,19 @@ class BrigadeController extends Controller
         return back()->with('success', 'Бригада обновлена');
     }
 
+    public function show(Brigade $brigade)
+    {
+        $user = auth()->user();
+        if (!$user->canManageSettings() && $brigade->foreman_id !== $user->id) {
+            abort(403);
+        }
+        $brigade->load(['foreman', 'territories', 'members.role']);
+        return \Inertia\Inertia::render('Brigades/Show', [
+            'brigade'        => $brigade,
+            'canManage'      => $user->canManageSettings(),
+        ]);
+    }
+
     public function updateMinWorkers(Request $request, Brigade $brigade)
     {
         $user = auth()->user();
