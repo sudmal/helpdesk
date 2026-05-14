@@ -84,44 +84,90 @@
           <div v-if="loading" class="py-10 text-center text-sm text-gray-400">Загрузка...</div>
 
           <!-- Grid body -->
-          <div v-else class="flex">
-            <!-- Time labels -->
+          <div v-else class="flex items-start">
+
+            <!-- Time labels (align with today/tomorrow grid) -->
             <div class="flex-shrink-0 border-r border-gray-100" style="width: 60px">
-              <div v-for="slot in timeSlots" :key="slot.minutes"
-                   class="flex items-start justify-end pr-2 pt-1 border-b border-gray-100 text-xs text-gray-400"
-                   :style="{ height: SLOT_HEIGHT + 'px' }">
+              <!-- spacer matching overdue column header — empty, just visual -->
+              <div v-for="(slot, i) in timeSlots" :key="slot.minutes"
+                   class="flex items-start justify-end pr-2 pt-0.5 border-b border-gray-100 text-xs text-gray-400"
+                   :style="{ height: slotHeights[i] + 'px' }">
                 {{ slot.label }}
               </div>
             </div>
 
-            <!-- 3 columns -->
-            <div v-for="col in columns" :key="col.key"
-                 class="flex-1 relative border-r border-gray-100 last:border-r-0"
-                 :style="{ height: timeSlots.length * SLOT_HEIGHT + 'px' }">
-              <!-- Slot grid lines -->
-              <div v-for="(_, i) in timeSlots" :key="i"
-                   class="absolute w-full border-b border-gray-100"
-                   :style="{ top: i * SLOT_HEIGHT + 'px', height: SLOT_HEIGHT + 'px' }"></div>
-
-              <!-- Events -->
-              <div v-for="ev in positionedEvents[col.key]" :key="ev.id"
-                   class="absolute rounded-md overflow-hidden text-xs cursor-pointer hover:opacity-80 transition-opacity select-none"
+            <!-- Overdue column — simple list, no time grid -->
+            <div class="flex-1 border-r border-gray-100 p-1.5 flex flex-col gap-0.5 self-stretch">
+              <p v-if="!sortedOverdue.length" class="text-xs text-gray-400 px-2 py-2">Нет просроченных</p>
+              <div v-for="ev in sortedOverdue" :key="ev.id"
+                   class="rounded overflow-hidden text-xs cursor-pointer hover:opacity-80 transition-opacity select-none flex-shrink-0"
                    :style="{
-                     top:             (ev.slotIdx * SLOT_HEIGHT + 2) + 'px',
-                     left:            `calc(${ev.colPos / ev.totalCols * 100}% + 2px)`,
-                     width:           `calc(${100 / ev.totalCols}% - 4px)`,
-                     height:          (SLOT_HEIGHT - 4) + 'px',
+                     height:          EVENT_H + 'px',
                      backgroundColor: ev.backgroundColor,
                      borderLeft:      '3px solid ' + ev.borderColor,
                    }"
                    @mouseenter="onEventEnter($event.currentTarget, ev.extendedProps)"
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
-                <div class="px-1.5 py-0.5 truncate leading-tight font-medium text-gray-800">
+                <div class="px-1.5 truncate leading-none font-medium text-gray-800"
+                     :style="{ lineHeight: EVENT_H + 'px' }">
                   {{ ev.title }}
                 </div>
               </div>
             </div>
+
+            <!-- Today column -->
+            <div class="flex-1 relative border-r border-gray-100"
+                 :style="{ height: totalGridH + 'px' }">
+              <div v-for="(_, i) in timeSlots" :key="i"
+                   class="absolute w-full border-b border-gray-100"
+                   :style="{ top: slotTops[i] + 'px', height: slotHeights[i] + 'px' }"></div>
+              <div v-for="ev in positionedEvents.today" :key="ev.id"
+                   class="absolute rounded overflow-hidden text-xs cursor-pointer hover:opacity-80 transition-opacity select-none"
+                   :style="{
+                     top:             ev.top + 'px',
+                     left:            '2px',
+                     right:           '2px',
+                     height:          EVENT_H + 'px',
+                     backgroundColor: ev.backgroundColor,
+                     borderLeft:      '3px solid ' + ev.borderColor,
+                   }"
+                   @mouseenter="onEventEnter($event.currentTarget, ev.extendedProps)"
+                   @mouseleave="tooltip.show = false"
+                   @click="openPopup(ev.extendedProps)">
+                <div class="px-1.5 truncate leading-none font-medium text-gray-800"
+                     :style="{ lineHeight: EVENT_H + 'px' }">
+                  {{ ev.title }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Tomorrow column -->
+            <div class="flex-1 relative"
+                 :style="{ height: totalGridH + 'px' }">
+              <div v-for="(_, i) in timeSlots" :key="i"
+                   class="absolute w-full border-b border-gray-100"
+                   :style="{ top: slotTops[i] + 'px', height: slotHeights[i] + 'px' }"></div>
+              <div v-for="ev in positionedEvents.tomorrow" :key="ev.id"
+                   class="absolute rounded overflow-hidden text-xs cursor-pointer hover:opacity-80 transition-opacity select-none"
+                   :style="{
+                     top:             ev.top + 'px',
+                     left:            '2px',
+                     right:           '2px',
+                     height:          EVENT_H + 'px',
+                     backgroundColor: ev.backgroundColor,
+                     borderLeft:      '3px solid ' + ev.borderColor,
+                   }"
+                   @mouseenter="onEventEnter($event.currentTarget, ev.extendedProps)"
+                   @mouseleave="tooltip.show = false"
+                   @click="openPopup(ev.extendedProps)">
+                <div class="px-1.5 truncate leading-none font-medium text-gray-800"
+                     :style="{ lineHeight: EVENT_H + 'px' }">
+                  {{ ev.title }}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -211,7 +257,9 @@ const props = defineProps({
   workSettings: { type: Object, default: () => ({ start: '09:00', end: '17:00', step: 30 }) },
 })
 
-const SLOT_HEIGHT = 44
+const BASE_H  = 22  // base slot height (px) when no events
+const EVENT_H = 20  // event card height (px)
+const PAD     = 2   // gap between events and slot border
 
 const view                = ref('overview')
 const calKey              = ref(0)
@@ -249,6 +297,75 @@ const timeSlots = computed(() => {
   return slots
 })
 
+function getSlotIdx(startStr) {
+  const timePart = (startStr || '').split('T')[1] || '00:00:00'
+  const [h, m]   = timePart.split(':').map(Number)
+  const [sh, sm] = props.workSettings.start.split(':').map(Number)
+  return Math.floor(((h * 60 + m) - (sh * 60 + sm)) / props.workSettings.step)
+}
+
+// Per-slot heights — expands when multiple events share a slot (max across today+tomorrow)
+const slotHeights = computed(() => {
+  const heights = timeSlots.value.map(() => BASE_H)
+  for (const col of ['today', 'tomorrow']) {
+    const bySlot = {}
+    for (const ev of (overviewEvents.value[col] ?? [])) {
+      const si = Math.max(0, Math.min(getSlotIdx(ev.start), timeSlots.value.length - 1))
+      bySlot[si] = (bySlot[si] ?? 0) + 1
+    }
+    for (const [si, count] of Object.entries(bySlot)) {
+      const needed = count * EVENT_H + PAD * 2
+      heights[Number(si)] = Math.max(heights[Number(si)], needed)
+    }
+  }
+  return heights
+})
+
+// Top offset of each slot in the grid
+const slotTops = computed(() => {
+  const tops = []
+  let acc = 0
+  for (const h of slotHeights.value) {
+    tops.push(acc)
+    acc += h
+  }
+  return tops
+})
+
+const totalGridH = computed(() =>
+  slotTops.value.length
+    ? slotTops.value[slotTops.value.length - 1] + slotHeights.value[slotHeights.value.length - 1]
+    : BASE_H
+)
+
+// Overdue sorted by scheduled_at descending (most recent first)
+const sortedOverdue = computed(() =>
+  [...(overviewEvents.value.overdue ?? [])].sort((a, b) => b.start.localeCompare(a.start))
+)
+
+// Events positioned for today/tomorrow columns (stacked vertically within each slot)
+const positionedEvents = computed(() => {
+  const result = {}
+  for (const col of ['today', 'tomorrow']) {
+    const bySlot = {}
+    for (const ev of (overviewEvents.value[col] ?? [])) {
+      const si = Math.max(0, Math.min(getSlotIdx(ev.start), timeSlots.value.length - 1))
+      if (!bySlot[si]) bySlot[si] = []
+      bySlot[si].push(ev)
+    }
+    const positioned = []
+    for (const [siStr, slotEvs] of Object.entries(bySlot)) {
+      const si  = Number(siStr)
+      const top = slotTops.value[si]
+      slotEvs.forEach((ev, i) => {
+        positioned.push({ ...ev, top: top + PAD + i * EVENT_H })
+      })
+    }
+    result[col] = positioned
+  }
+  return result
+})
+
 function fmtDate(d) {
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`
 }
@@ -264,47 +381,12 @@ const columns = computed(() => {
   ]
 })
 
-function getSlotIdx(startStr) {
-  const timePart = (startStr || '').split('T')[1] || '00:00:00'
-  const [h, m]   = timePart.split(':').map(Number)
-  const [sh, sm] = props.workSettings.start.split(':').map(Number)
-  const evMin    = h * 60 + m
-  const startMin = sh * 60 + sm
-  return Math.floor((evMin - startMin) / props.workSettings.step)
-}
-
-const positionedEvents = computed(() => {
-  const result  = {}
-  const maxSlot = timeSlots.value.length - 1
-  for (const col of ['overdue', 'today', 'tomorrow']) {
-    const events = (overviewEvents.value[col] ?? []).map(ev => ({
-      ...ev,
-      slotIdx: Math.max(0, Math.min(getSlotIdx(ev.start), maxSlot)),
-    }))
-    const bySlot = {}
-    for (const ev of events) {
-      const k = ev.slotIdx
-      if (!bySlot[k]) bySlot[k] = []
-      bySlot[k].push(ev)
-    }
-    const positioned = []
-    for (const slotEvs of Object.values(bySlot)) {
-      slotEvs.forEach((ev, i) => {
-        positioned.push({ ...ev, colPos: i, totalCols: slotEvs.length })
-      })
-    }
-    result[col] = positioned
-  }
-  return result
-})
-
 function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function fetchJson(params) {
-  const url = `/calendar/events?${new URLSearchParams(params)}`
-  return fetch(url, {
+  return fetch(`/calendar/events?${new URLSearchParams(params)}`, {
     headers: {
       'X-Requested-With': 'XMLHttpRequest',
       'Accept':           'application/json',
@@ -350,10 +432,7 @@ function onFilterChange() {
   else calKey.value++
 }
 
-watch(view, v => {
-  if (v === 'overview') fetchOverview()
-})
-
+watch(view, v => { if (v === 'overview') fetchOverview() })
 onMounted(fetchOverview)
 
 function onEventEnter(el, p) {
