@@ -18,10 +18,12 @@ class BrigadeController extends Controller
                                 ->get(),
             'territories' => Territory::orderBy('name')->get(['id', 'name']),
             'technicians' => (function () {
-                    $map = DB::table('brigade_user')->pluck('brigade_id', 'user_id')->toArray();
+                    $names = DB::table('brigade_user')
+                        ->join('brigades', 'brigade_user.brigade_id', '=', 'brigades.id')
+                        ->pluck('brigades.name', 'brigade_user.user_id')->toArray();
                     return User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
                         ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
-                        ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'in_brigade_id' => $map[$u->id] ?? null]);
+                        ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'in_brigade_name' => $names[$u->id] ?? null]);
                 })(),
         ]);
     }
@@ -115,17 +117,13 @@ class BrigadeController extends Controller
             abort(403);
         }
         $brigade->load(['foreman', 'territories', 'members.role']);
+        $otherBrigadeNames = DB::table('brigade_user')
+            ->join('brigades', 'brigade_user.brigade_id', '=', 'brigades.id')
+            ->where('brigade_user.brigade_id', '!=', $brigade->id)
+            ->pluck('brigades.name', 'brigade_user.user_id')->toArray();
         $technicians = User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'role_id'])
-            ->map(function ($u) use ($brigade) {
-                $inOtherBrigade = \DB::table('brigade_user')
-                    ->where('user_id', $u->id)
-                    ->where('brigade_id', '!=', $brigade->id)
-                    ->exists();
-                return ['id' => $u->id, 'name' => $u->name, 'in_other_brigade' => $inOtherBrigade];
-            });
+            ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
+            ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'in_brigade_name' => $otherBrigadeNames[$u->id] ?? null]);
         return \Inertia\Inertia::render('Brigades/Show', [
             'brigade'     => $brigade,
             'canManage'   => $user->canManageSettings(),

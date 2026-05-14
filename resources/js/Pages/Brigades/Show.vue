@@ -31,7 +31,10 @@
 
       <!-- Территории -->
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">Территории</h3>
+        <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
+          Территории
+          <Tip>Назначаются администратором. Определяют, на каких участках работает бригада, и фильтруют входящие уведомления о новых заявках.</Tip>
+        </h3>
         <div v-if="brigade.territories?.length" class="flex flex-wrap gap-2">
           <span v-for="t in brigade.territories" :key="t.id"
                 class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-50 text-blue-700 border border-blue-100">
@@ -43,9 +46,10 @@
 
       <!-- Состав -->
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">
+        <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
           Состав
-          <span class="ml-1.5 text-xs font-normal text-gray-400">({{ form.member_ids.length }} чел.)</span>
+          <span class="ml-0.5 text-xs font-normal text-gray-400">({{ form.member_ids.length }} чел.)</span>
+          <Tip>Добавляйте и убирайте участников бригады. Бригадир всегда остаётся в составе. Сотрудники из другой бригады недоступны для выбора.</Tip>
         </h3>
 
         <div v-if="form.errors.member_ids"
@@ -64,7 +68,7 @@
                    class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed" />
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-gray-800 truncate">{{ t.name }}</p>
-              <p v-if="t.in_other_brigade" class="text-xs text-gray-400">Состоит в другой бригаде</p>
+              <p v-if="t.in_brigade_name" class="text-xs text-gray-400">{{ t.in_brigade_name }}</p>
             </div>
             <span v-if="t.id === brigade.foreman_id"
                   class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
@@ -90,8 +94,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { Head, useForm, usePage } from '@inertiajs/vue3'
+import { h, defineComponent } from 'vue'
+import { Head, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
@@ -100,11 +104,19 @@ const props = defineProps({
   technicians: Array,
 })
 
-const currentUserId = computed(() => usePage().props.auth?.user?.id)
+const Tip = defineComponent({
+  setup(_, { slots }) {
+    return () => h('span', { class: 'group relative inline-flex' }, [
+      h('span', { class: 'w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[10px] flex items-center justify-center cursor-help select-none' }, '?'),
+      h('span', { class: 'pointer-events-none absolute left-0 top-4 z-20 w-56 rounded-lg bg-gray-800 p-2.5 text-xs text-white leading-relaxed opacity-0 shadow-lg transition-opacity group-hover:opacity-100 font-normal' },
+        slots.default?.()
+      ),
+    ])
+  },
+})
 
-// Нельзя снять: бригадир или участник другой бригады
 function isDisabled(t) {
-  return t.id === props.brigade.foreman_id || t.in_other_brigade
+  return t.id === props.brigade.foreman_id || !!t.in_brigade_name
 }
 
 const form = useForm({
