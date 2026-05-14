@@ -63,6 +63,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Просмотр бригады — доступно бригадиру своей бригады
     Route::get('/brigades/{brigade}', [BrigadeController::class, 'show'])->name('brigades.show');
 
+    // Состав бригады — доступно бригадиру своей бригады
+    Route::put('/brigades/{brigade}/members', [BrigadeController::class, 'updateMembers'])->name('brigades.members.update');
+
     // Расписание бригад — доступно бригадиру своей бригады (авторизация в контроллере)
     Route::prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
         Route::get('/',          [App\Http\Controllers\BrigadeScheduleController::class, 'show'])->name('show');

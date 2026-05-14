@@ -4,6 +4,12 @@
 
     <div class="max-w-2xl space-y-4">
 
+      <!-- Flash -->
+      <div v-if="$page.props.flash?.success"
+           class="bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-4 py-3">
+        {{ $page.props.flash.success }}
+      </div>
+
       <!-- Общая инфо -->
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
         <div class="flex items-center gap-3 mb-4">
@@ -39,25 +45,43 @@
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
         <h3 class="text-sm font-semibold text-gray-700 mb-3">
           Состав
-          <span class="ml-1.5 text-xs font-normal text-gray-400">({{ brigade.members?.length ?? 0 }} чел.)</span>
+          <span class="ml-1.5 text-xs font-normal text-gray-400">({{ form.member_ids.length }} чел.)</span>
         </h3>
-        <div v-if="brigade.members?.length" class="divide-y divide-gray-100">
-          <div v-for="m in brigade.members" :key="m.id"
-               class="flex items-center gap-3 py-2.5">
-            <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600">
-              {{ m.name.charAt(0) }}
-            </div>
+
+        <div v-if="form.errors.member_ids"
+             class="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {{ form.errors.member_ids }}
+        </div>
+
+        <div class="divide-y divide-gray-100 mb-4">
+          <label v-for="t in technicians" :key="t.id"
+                 class="flex items-center gap-3 py-2.5 cursor-pointer"
+                 :class="{ 'opacity-50 cursor-not-allowed': t.in_other_brigade }">
+            <input type="checkbox"
+                   :value="t.id"
+                   v-model="form.member_ids"
+                   :disabled="t.in_other_brigade"
+                   class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed" />
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-800 truncate">{{ m.name }}</p>
-              <p class="text-xs text-gray-400">{{ m.role?.name ?? '—' }}</p>
+              <p class="text-sm font-medium text-gray-800 truncate">{{ t.name }}</p>
+              <p v-if="t.in_other_brigade" class="text-xs text-gray-400">Состоит в другой бригаде</p>
             </div>
-            <span v-if="m.id === brigade.foreman_id"
+            <span v-if="t.id === brigade.foreman_id"
                   class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
               бригадир
             </span>
-          </div>
+          </label>
         </div>
-        <p v-else class="text-sm text-gray-400">Нет участников</p>
+
+        <button @click="saveMembers"
+                :disabled="form.processing"
+                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
+          <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+          Сохранить состав
+        </button>
       </div>
 
     </div>
@@ -66,11 +90,20 @@
 </template>
 
 <script setup>
-import { Head } from '@inertiajs/vue3'
+import { Head, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
-defineProps({
-  brigade:   Object,
-  canManage: Boolean,
+const props = defineProps({
+  brigade:     Object,
+  canManage:   Boolean,
+  technicians: Array,
 })
+
+const form = useForm({
+  member_ids: props.brigade.members?.map(m => m.id) ?? [],
+})
+
+function saveMembers() {
+  form.put(route('brigades.members.update', props.brigade.id))
+}
 </script>
