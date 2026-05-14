@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Ticket, Brigade, Territory, ServiceType};
+use App\Models\{Ticket, Brigade, Territory, ServiceType, SystemSetting, TicketStatus};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,6 +26,11 @@ class CalendarController extends Controller
             'brigades'     => Brigade::orderBy('name')->get(['id', 'name']),
             'territories'  => $territoriesQuery->orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
             'serviceTypes' => ServiceType::active()->orderBy('sort_order')->get(['id', 'name', 'color']),
+            'workSettings' => [
+                'start' => SystemSetting::get('work_hours_start', '09:00'),
+                'end'   => SystemSetting::get('work_hours_end', '17:00'),
+                'step'  => (int) SystemSetting::get('schedule_step_minutes', 30),
+            ],
         ]);
     }
 
@@ -61,6 +66,10 @@ class CalendarController extends Controller
                     fn($a) => $a->where('territory_id', $request->territory_id)))
             ->when($request->filled('service_type_id'),
                 fn($q) => $q->where('service_type_id', $request->service_type_id))
+            ->when($request->boolean('overdue'), function ($q) {
+                $final = TicketStatus::where('is_final', true)->pluck('id');
+                $q->whereNotIn('status_id', $final);
+            })
             ->get();
 
         $events = $tickets->map(function ($ticket) {
