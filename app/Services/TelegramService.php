@@ -57,13 +57,14 @@ class TelegramService
         ];
     }
 
-    public function formatDailyList(?int $serviceTypeId = null): string
+    public function formatDailyList(?int $serviceTypeId = null, array $territoryIds = []): string
     {
         $today = today()->toDateString();
 
         $query = Ticket::with(['address', 'serviceType', 'status'])
             ->whereDate('scheduled_at', $today)
             ->whereHas('status', fn($q) => $q->where('is_final', false))
+            ->whereHas('address', fn($a) => $a->whereIn('territory_id', $territoryIds))
             ->orderBy('scheduled_at');
 
         if ($serviceTypeId) $query->where('service_type_id', $serviceTypeId);
@@ -92,16 +93,19 @@ class TelegramService
         return rtrim($lines);
     }
 
-    public function formatStats(): string
+    public function formatStats(array $territoryIds = []): string
     {
         $today   = today()->toDateString();
         $openIds = TicketStatus::where('is_final', false)->pluck('id');
-        $total   = Ticket::whereDate('scheduled_at', $today)->count();
-        $open    = Ticket::whereDate('scheduled_at', $today)->whereIn('status_id', $openIds)->count();
+        $base    = fn($q) => $q->whereDate('scheduled_at', $today)
+            ->whereHas('address', fn($a) => $a->whereIn('territory_id', $territoryIds));
+        $total   = Ticket::query()->tap($base)->count();
+        $open    = Ticket::query()->tap($base)->whereIn('status_id', $openIds)->count();
         $closed  = $total - $open;
         $overdue = Ticket::whereIn('status_id', $openIds)
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<', today())
+            ->whereHas('address', fn($a) => $a->whereIn('territory_id', $territoryIds))
             ->count();
 
         $text  = "📊 <u>Статистика " . now()->format('d.m.Y') . "</u>\n\n";
@@ -112,6 +116,7 @@ class TelegramService
         $text .= "\n";
 
         Ticket::whereDate('scheduled_at', $today)
+            ->whereHas('address', fn($a) => $a->whereIn('territory_id', $territoryIds))
             ->with('serviceType')
             ->selectRaw('service_type_id, COUNT(*) as cnt')
             ->groupBy('service_type_id')
@@ -172,14 +177,16 @@ class TelegramService
             return;
         }
 
+        $tIds = $user->territories()->pluck('territories.id')->toArray();
+
         match (true) {
             str_starts_with($text, '/start')  => $this->send($chatId, "✅ <b>{$user->name}</b>, добро пожаловать!", $this->mainKeyboard()),
             $text === '/today',
-            $text === '📋 Заявки на сегодня'  => $this->send($chatId, $this->formatDailyList(), $this->mainKeyboard()),
-            $text === '📊 Статистика'         => $this->send($chatId, $this->formatStats(), $this->mainKeyboard()),
-            $text === '🌐 Интернет'           => $this->send($chatId, $this->formatDailyList(ServiceType::where('name', 'like', '%Интернет%')->value('id')), $this->mainKeyboard()),
-            $text === '📺 КТВ'                => $this->send($chatId, $this->formatDailyList(ServiceType::where('name', 'like', '%КТВ%')->value('id')), $this->mainKeyboard()),
-            $text === '📡 ВОЛС'               => $this->send($chatId, $this->formatDailyList(ServiceType::where('name', 'like', '%ВОЛС%')->value('id')), $this->mainKeyboard()),
+            $text === '📋 Заявки на сегодня'  => $this->send($chatId, $this->formatDailyList(null, $tIds), $this->mainKeyboard()),
+            $text === '📊 Статистика'         => $this->send($chatId, $this->formatStats($tIds), $this->mainKeyboard()),
+            $text === '🌐 Интернет'           => $this->send($chatId, $this->formatDailyList(ServiceType::where('name', 'like', '%Интернет%')->value('id'), $tIds), $this->mainKeyboard()),
+            $text === '📺 КТВ'                => $this->send($chatId, $this->formatDailyList(ServiceType::where('name', 'like', '%КТВ%')->value('id'), $tIds), $this->mainKeyboard()),
+            $text === '📡 ВОЛС'               => $this->send($chatId, $this->formatDailyList(ServiceType::where('name', 'like', '%ВОЛС%')->value('id'), $tIds), $this->mainKeyboard()),
             $text === '/help'                 => $this->send($chatId, "📖 <b>HelpDesk</b>\n👤 {$user->name}\n\n/today — заявки на сегодня\n/help — справка", $this->mainKeyboard()),
             default                           => $this->send($chatId, "Используйте кнопки 👇", $this->mainKeyboard()),
         };
