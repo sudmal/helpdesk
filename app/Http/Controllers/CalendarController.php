@@ -110,11 +110,12 @@ class CalendarController extends Controller
     private function eventTitle(Ticket $ticket): string
     {
         $icon     = $this->serviceIcon($ticket->serviceType?->name);
+        $type     = $ticket->type?->name ? $ticket->type->name . ' · ' : '';
         $apt      = $ticket->apartment ?? $ticket->address?->apartment;
         $street   = $ticket->address?->street ?? '';
         $building = $ticket->address?->building ? ' ' . $ticket->address->building : '';
         $aptStr   = $apt ? ' кв.' . $apt : '';
-        return $icon . ($street . $building . $aptStr ?: $ticket->number);
+        return $icon . $type . ($street . $building . $aptStr ?: $ticket->number);
     }
 
     private function serviceIcon(?string $name): string
