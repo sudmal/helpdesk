@@ -8,11 +8,16 @@ use Illuminate\Console\Command;
 
 class SendEveningReport extends Command
 {
-    protected $signature   = 'helpdesk:evening-report {--date= : дата Y-m-d}';
+    protected $signature   = 'helpdesk:evening-report {--date= : дата Y-m-d} {--scheduled : проверять время и флаг из настроек}';
     protected $description = 'Вечерний отчёт по итогам дня — отправляется руководителям ТП';
 
     public function handle(): int
     {
+        if ($this->option('scheduled')) {
+            if (!((bool) \App\Models\SystemSetting::get('evening_report_enabled', '1'))) return Command::SUCCESS;
+            $time = \App\Models\SystemSetting::get('evening_report_time', '20:00');
+            if (now()->format('H:i') !== $time) return Command::SUCCESS;
+        }
         $date = $this->option('date') ?? today()->toDateString();
 
         $finalStatuses = TicketStatus::where('is_final', true)->pluck('id');

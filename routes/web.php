@@ -132,6 +132,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/sort/territories',   [SettingsController::class, 'sortTerritories'])->name('sort.territories');
 
         // Уведомления — ручной запуск
+        Route::put('/notifications', [SettingsController::class, 'updateNotifications'])->name('notifications.update');
         Route::post('/notifications/daily-summary', [SettingsController::class, 'sendDailySummary'])->name('notifications.send-summary');
         Route::post('/notifications/evening-report',[SettingsController::class, 'sendEveningReport'])->name('notifications.send-report');
 

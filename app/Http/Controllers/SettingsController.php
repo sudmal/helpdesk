@@ -42,6 +42,12 @@ class SettingsController extends Controller
                 'login_block_attempts'   => SystemSetting::get('login_block_attempts', 6),
                 'login_block_minutes'    => SystemSetting::get('login_block_minutes', 60),
             ],
+            'notificationSettings' => [
+                'daily_summary_enabled'  => (bool) SystemSetting::get('daily_summary_enabled', '1'),
+                'daily_summary_time'     => SystemSetting::get('daily_summary_time', '08:00'),
+                'evening_report_enabled' => (bool) SystemSetting::get('evening_report_enabled', '1'),
+                'evening_report_time'    => SystemSetting::get('evening_report_time', '20:00'),
+            ],
         ]);
     }
 
@@ -245,6 +251,22 @@ class SettingsController extends Controller
         $this->authorize('manage-settings');
         Artisan::call('helpdesk:evening-report');
         return response()->json(['ok' => true, 'message' => 'Вечерний отчёт отправлен']);
+    }
+
+    public function updateNotifications(Request $request)
+    {
+        $this->authorize('manage-settings');
+        $request->validate([
+            'daily_summary_enabled'  => 'boolean',
+            'daily_summary_time'     => 'required|date_format:H:i',
+            'evening_report_enabled' => 'boolean',
+            'evening_report_time'    => 'required|date_format:H:i',
+        ]);
+        SystemSetting::set('daily_summary_enabled',  $request->boolean('daily_summary_enabled') ? '1' : '0');
+        SystemSetting::set('daily_summary_time',     $request->daily_summary_time);
+        SystemSetting::set('evening_report_enabled', $request->boolean('evening_report_enabled') ? '1' : '0');
+        SystemSetting::set('evening_report_time',    $request->evening_report_time);
+        return back()->with('success', 'Настройки уведомлений сохранены');
     }
 
     // ── Общие настройки ─────────────────────────────────────────────────
