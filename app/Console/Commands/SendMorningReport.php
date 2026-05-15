@@ -11,11 +11,17 @@ use Illuminate\Notifications\Notification;
 
 class SendMorningReport extends Command
 {
-    protected $signature   = 'helpdesk:morning-report';
+    protected $signature   = 'helpdesk:morning-report {--scheduled : проверять время из настроек}';
     protected $description = 'Утренний push + telegram отчёт по заявкам на сегодня';
 
     public function handle(TelegramService $telegram): void
     {
+        if ($this->option('scheduled')) {
+            if (!((bool) \App\Models\SystemSetting::get('daily_summary_enabled', '1'))) return;
+            $time = \App\Models\SystemSetting::get('daily_summary_time', '08:00');
+            if (now()->format('H:i') !== $time) return;
+        }
+
         $today   = today()->toDateString();
         $openIds = TicketStatus::where('is_final', false)->pluck('id');
 

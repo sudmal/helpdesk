@@ -12,5 +12,4 @@ Schedule::command('helpdesk:close-overdue --days=30')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Утренний отчёт в 8:00
-Schedule::command('helpdesk:morning-report')->dailyAt('08:00');
+Schedule::command('helpdesk:morning-report --scheduled')->everyMinute()->withoutOverlapping()->runInBackground();
