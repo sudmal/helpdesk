@@ -11,23 +11,15 @@ class CalendarController extends Controller
 {
     public function index(): Response
     {
-        $user = auth()->user();
-
-        if ($user->isTechnician() || $user->isForeman()) {
-            $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            $tIds = collect();
-            if ($brigadeIds->isNotEmpty()) {
-                $tIds = $tIds->merge(Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id'));
-            }
-            $tIds = $tIds->merge($user->territories()->pluck('territories.id'))->unique();
-            $territoriesQuery = Territory::whereIn('id', $tIds);
-        } else {
-            $territoriesQuery = Territory::orderBy('sort_order')->orderBy('name');
-        }
+        $user   = auth()->user();
+        $tIds   = $this->getUserTerritoryIds($user);
+        $tQuery = $tIds === null
+            ? Territory::query()
+            : Territory::whereIn('id', $tIds);
 
         return Inertia::render('Calendar/Index', [
             'brigades'     => Brigade::orderBy('name')->get(['id', 'name']),
-            'territories'  => $territoriesQuery->orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
+            'territories'  => $tQuery->orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
             'serviceTypes' => ServiceType::active()->orderBy('sort_order')->get(['id', 'name', 'color']),
             'workSettings' => [
                 'start' => SystemSetting::get('work_hours_start', '09:00'),
@@ -49,22 +41,11 @@ class CalendarController extends Controller
 
         $user = auth()->user();
 
-        if ($user->isTechnician() || $user->isForeman()) {
-            $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            $userTerritories = collect();
-            if ($brigadeIds->isNotEmpty()) {
-                $userTerritories = $userTerritories->merge(
-                    \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-                );
-            }
-            $userTerritories = $userTerritories->merge($user->territories()->pluck('territories.id'))->unique();
-        } else {
-            $userTerritories = collect();
-        }
+        $userTerritories = $this->getUserTerritoryIds($user);
 
         $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade'])
             ->whereBetween('scheduled_at', [$request->start, $request->end])
-            ->when($userTerritories->isNotEmpty(), fn($q) =>
+            ->when($userTerritories !== null, fn($q) =>
                 $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories)))
             ->when($request->filled('brigade_id'),
                 fn($q) => $q->where('brigade_id', $request->brigade_id))
@@ -125,6 +106,21 @@ class CalendarController extends Controller
         return $icon . $type . ($street . $building . $aptStr ?: $ticket->number);
     }
 
+    private function getUserTerritoryIds($user): ?array
+    {
+        if ($user->hasPermission('*') || $user->hasPermission('settings.*')) {
+            return null;
+        }
+        $ids = collect();
+        $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+        if ($brigadeIds->isNotEmpty()) {
+            $ids = $ids->merge(
+                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+            );
+        }
+        $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
+        return $ids->values()->all();
+    }
     private function serviceIcon(?string $name): string
     {
         if (!$name) return '';
