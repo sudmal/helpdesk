@@ -11,7 +11,9 @@ class MaxChannel
     public function send(object $notifiable, Notification $notification): void
     {
         if (!method_exists($notification, 'toMax')) return;
-        if (empty($notifiable->max_chat_id) || !$notifiable->notify_max) return;
+        if (empty($notifiable->max_chat_id)) return;
+        $isTest = property_exists($notification, 'isTest') && $notification->isTest;
+        if (!$isTest && !$notifiable->notify_max) return;
 
         $payload = $notification->toMax($notifiable);
 

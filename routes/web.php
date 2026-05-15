@@ -115,6 +115,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/users',        [SettingsController::class, 'storeUser'])->name('users.store');
         Route::put('/users/{user}',  [SettingsController::class, 'updateUser'])->name('users.update');
         Route::delete('/users/{user}', [SettingsController::class, 'destroyUser'])->name('users.destroy');
+        Route::post('/users/{user}/test-notify', [SettingsController::class, 'testNotify'])->name('users.test-notify');
 
         // Участки
         Route::post('/services',             [ServiceTypeController::class, 'store'])->name('services.store');
