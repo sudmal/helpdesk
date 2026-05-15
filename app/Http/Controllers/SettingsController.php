@@ -205,6 +205,18 @@ class SettingsController extends Controller
         return back()->with('success', 'Пользователь обновлён');
     }
 
+    public function testNotify(Request $request, User $user)
+    {
+        $this->authorize('manage-settings');
+        $request->validate(['channel' => 'required|in:email,telegram,max']);
+        try {
+            $user->notify(new \App\Notifications\TestNotification($user->name, $request->channel));
+            return response()->json(['ok' => true, 'message' => 'Отправлено']);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function destroyUser(User $user)
     {
         $this->authorize('manage-settings');
