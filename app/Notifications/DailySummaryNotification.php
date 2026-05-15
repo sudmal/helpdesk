@@ -3,16 +3,12 @@
 namespace App\Notifications;
 
 use App\Models\{Brigade, Ticket};
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Collection;
 
-class DailySummaryNotification extends Notification implements ShouldQueue
+class DailySummaryNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(
         private Brigade    $brigade,
         private Collection $tickets,
