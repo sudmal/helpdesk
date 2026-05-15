@@ -146,7 +146,7 @@ class DashboardController extends Controller
         }
         $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
         if ($ids->isNotEmpty()) {
-            return Territory::whereIn('id', $ids)->orderBy('name')->get();
+            return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
         }
         return Territory::orderBy('sort_order')->orderBy('name')->get();
     }
