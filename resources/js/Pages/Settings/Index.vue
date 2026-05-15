@@ -841,9 +841,9 @@ function deleteStatus(s) {
 
 // ── Пользователи ─────────────────────────────────────────────────────
 const showUserModal = ref(false)
-const editingUser      = ref(null)
-const testNotifyLoading = ref(null)
-const testNotifyResult  = ref(null)
+const editingUser        = ref(null)
+const testNotifyLoading  = ref(null)
+const testNotifyResult   = ref(null)
 const userForm = useForm({
   name: '', login: '', email: '', phone: '', role_id: '',
   telegram_chat_id: '', max_chat_id: '',
@@ -883,27 +883,341 @@ function openUserModal(u = null) {
   showUserModal.value = true
 }
 async function sendTestNotify(channel) {
+  if (!editingUser.value) return
   testNotifyLoading.value = channel
   testNotifyResult.value  = null
   try {
-    const res = await fetch(route('settings.users.test-notify', editingUser.value.id), {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Accept':        'application/json',
-        'X-CSRF-TOKEN':  document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-      },
+    const res = await fetch(route('users.test-notify', editingUser.value.id), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
       body: JSON.stringify({ channel }),
     })
     const data = await res.json()
-    testNotifyResult.value = { ok: res.ok, message: data.message ?? (res.ok ? 'Отправлено' : 'Ошибка') }
-  } catch {
-    testNotifyResult.value = { ok: false, message: 'Ошибка сети' }
+    testNotifyResult.value = data
+  } catch (e) {
+    testNotifyResult.value = { ok: false, message: e.message }
   } finally {
     testNotifyLoading.value = null
-    setTimeout(() => { testNotifyResult.value = null }, 4000)
+    setTimeout(() => { testNotifyResult.value = null }, 5000)
+  }
+}
+function closeUserModal() { showUserModal.value = false; editingUser.value = null; testNotifyResult.value = null }
+function submitUser() {
+  const opts = { onSuccess: closeUserModal }
+  editingUser.value
+    ? userForm.put(route('settings.users.update', editingUser.value.id), opts)
+    : userForm.post(route('settings.users.store'), opts)
+}
+function toggleBlock(u) {
+  if (confirm(`${u.is_active ? 'Заблокировать' : 'Разблокировать'} пользователя «${u.name}»?`)) {
+    router.put(route('settings.users.update', u.id), { ...u, is_active: !u.is_active, role_id: u.role_id })
+  }
+}
+function deleteUser(u) {
+  if (confirm(`Удалить пользователя «${u.name}»? Это действие необратимо.`)) {
+    router.delete(route('settings.users.destroy', u.id))
   }
 }
 
+// ── Роли ─────────────────────────────────────────────────────────────
+const showRoleModal = ref(false)
+const editingRole   = ref(null)
+const roleForm = useForm({ name: '', permissions: [] })
 
-function closeUserModal() {
+// Цвета для ролей
+function roleColor(slug) {
+  const map = {
+    admin:        { bg: 'bg-red-100',    icon: '👑' },
+    head_support: { bg: 'bg-purple-100', icon: '🎯' },
+    operator:     { bg: 'bg-blue-100',   icon: '🖥️' },
+    foreman:      { bg: 'bg-amber-100',  icon: '👷' },
+    technician:   { bg: 'bg-green-100',  icon: '🔧' },
+  }
+  return map[slug] ?? { bg: 'bg-gray-100', icon: '👤' }
+}
+
+// Каталог всех прав системы
+const permissionGroups = [
+  {
+    key: 'system', icon: '⚡', label: 'Полный доступ', badgeClass: 'bg-amber-50 border-amber-100 text-amber-700',
+    permissions: [
+      { key: '*', label: 'Суперадминистратор', desc: 'Все права без ограничений', wide: true },
+    ]
+  },
+  {
+    key: 'tickets', icon: '📋', label: 'Заявки', badgeClass: 'bg-blue-50 border-blue-100 text-blue-700',
+    permissions: [
+      { key: 'tickets.view',    label: 'Просмотр',    desc: 'Видеть список и карточки заявок' },
+      { key: 'tickets.create',  label: 'Создание',    desc: 'Создавать новые заявки' },
+      { key: 'tickets.update',  label: 'Редактирование', desc: 'Изменять данные заявки' },
+      { key: 'tickets.delete',  label: 'Удаление',    desc: 'Удалять заявки' },
+      { key: 'tickets.assign',  label: 'Назначение',  desc: 'Назначать бригаду на заявку' },
+      { key: 'tickets.start',   label: 'В работу',    desc: 'Переводить заявку в статус "В работу"' },
+      { key: 'tickets.close',   label: 'Закрытие',    desc: 'Закрывать и отменять заявки' },
+      { key: 'tickets.comment', label: 'Комментарии', desc: 'Добавлять комментарии к заявкам' },
+    ]
+  },
+  {
+    key: 'addresses', icon: '📍', label: 'Адреса', badgeClass: 'bg-green-50 border-green-100 text-green-700',
+    permissions: [
+      { key: 'addresses.view',   label: 'Просмотр',  desc: 'Просматривать базу адресов' },
+      { key: 'addresses.create', label: 'Создание',  desc: 'Добавлять новые адреса' },
+      { key: 'addresses.update', label: 'Изменение', desc: 'Редактировать адреса' },
+      { key: 'addresses.delete', label: 'Удаление',  desc: 'Удалять адреса' },
+      { key: 'addresses.import', label: 'Импорт',    desc: 'Импортировать адреса из файла' },
+    ]
+  },
+  {
+    key: 'calendar', icon: '📅', label: 'Календарь', badgeClass: 'bg-purple-50 border-purple-100 text-purple-700',
+    permissions: [
+      { key: 'calendar.view', label: 'Просмотр', desc: 'Видеть календарь заявок' },
+    ]
+  },
+  {
+    key: 'settings', icon: '⚙️', label: 'Настройки', badgeClass: 'bg-gray-50 border-gray-200 text-gray-700',
+    permissions: [
+      { key: 'settings.view',          label: 'Просмотр',          desc: 'Видеть раздел настроек' },
+      { key: 'settings.edit',          label: 'Редактирование',     desc: 'Изменять настройки системы' },
+      { key: 'users.operators.create', label: 'Создание операторов', desc: 'Добавлять операторов и диспетчеров' },
+      { key: 'users.operators.delete', label: 'Удаление операторов', desc: 'Удалять операторов и диспетчеров' },
+    ]
+  },
+  {
+    key: 'materials', icon: '📦', label: 'Расходные материалы', badgeClass: 'bg-teal-50 border-teal-100 text-teal-700',
+    permissions: [
+      { key: 'materials.view',   label: 'Просмотр',     desc: 'Видеть справочник материалов' },
+      { key: 'materials.manage', label: 'Управление',   desc: 'Добавлять и редактировать материалы' },
+    ]
+  },
+  {
+    key: 'brigades', icon: '👷', label: 'Бригады и территории', badgeClass: 'bg-amber-50 border-amber-100 text-amber-700',
+    permissions: [
+      { key: 'brigades.view',      label: 'Просмотр бригад',    desc: 'Видеть список бригад' },
+      { key: 'brigades.manage',    label: 'Управление бригадами', desc: 'Создавать и редактировать бригады' },
+      { key: 'territories.view',   label: 'Просмотр участков',  desc: 'Видеть список участков' },
+      { key: 'territories.manage', label: 'Управление участками', desc: 'Создавать и редактировать участки' },
+    ]
+  },
+]
+
+function openRoleModal(r) {
+  editingRole.value = r
+  roleForm.name        = r.name
+  roleForm.permissions = Array.isArray(r.permissions) ? [...r.permissions] : []
+  showRoleModal.value  = true
+}
+
+function togglePerm(key, checked) {
+  if (checked) {
+    if (!roleForm.permissions.includes(key)) {
+      roleForm.permissions.push(key)
+    }
+  } else {
+    roleForm.permissions = roleForm.permissions.filter(p => p !== key)
+  }
+}
+
+function selectGroup(group, selectAll) {
+  group.permissions.forEach(perm => {
+    if (selectAll) {
+      if (!roleForm.permissions.includes(perm.key)) {
+        roleForm.permissions.push(perm.key)
+      }
+    } else {
+      roleForm.permissions = roleForm.permissions.filter(p => p !== perm.key)
+    }
+  })
+}
+
+function submitRole() {
+  router.put(route('settings.roles.update', editingRole.value.id), {
+    name:        roleForm.name,
+    permissions: roleForm.permissions,
+  }, { onSuccess: () => { showRoleModal.value = false } })
+}
+
+// ── Участки ──────────────────────────────────────────────────────────
+const showServiceModal = ref(false)
+const editingService   = ref(null)
+const serviceForm = useForm({ name: '', color: '#3b82f6', is_active: true, sort_order: 0 })
+
+function openServiceModal(s = null) {
+  editingService.value = s
+  if (s) Object.assign(serviceForm, { name: s.name, color: s.color, is_active: s.is_active })
+  else serviceForm.reset()
+  showServiceModal.value = true
+}
+function closeServiceModal() { showServiceModal.value = false; editingService.value = null; serviceForm.reset() }
+function submitService() {
+  const opts = { onSuccess: closeServiceModal }
+  editingService.value
+    ? serviceForm.put(route('settings.services.update', editingService.value.id), opts)
+    : serviceForm.post(route('settings.services.store'), opts)
+}
+function deleteService(s) {
+  if (confirm(`Удалить участок «${s.name}»?`)) router.delete(route('settings.services.destroy', s.id))
+}
+
+// ── Общие настройки ───────────────────────────────────────────────────
+const weekDays = [
+  { value: '1', label: 'Пн' }, { value: '2', label: 'Вт' },
+  { value: '3', label: 'Ср' }, { value: '4', label: 'Чт' },
+  { value: '5', label: 'Пт' }, { value: '6', label: 'Сб' },
+  { value: '7', label: 'Вс' },
+]
+const generalSaved = ref(false)
+const generalForm = useForm({
+  work_hours_start:      props.generalSettings?.work_hours_start ?? '09:00',
+  work_hours_end:        props.generalSettings?.work_hours_end ?? '17:00',
+  schedule_step_minutes: props.generalSettings?.schedule_step_minutes ?? '30',
+  attachment_ttl_days:   props.generalSettings?.attachment_ttl_days ?? '365',
+  work_days:             (props.generalSettings?.work_days ?? '1,2,3,4,5').split(','),
+  login_captcha_attempts:  props.generalSettings?.login_captcha_attempts ?? 3,
+  login_block_attempts:    props.generalSettings?.login_block_attempts ?? 6,
+  login_block_minutes:     props.generalSettings?.login_block_minutes ?? 60,
+})
+
+function saveGeneral() {
+  generalForm.put(route('settings.general.update'), {
+    onSuccess: () => { generalSaved.value = true; setTimeout(() => generalSaved.value = false, 3000) }
+  })
+}
+
+// ── Уведомления ──────────────────────────────────────────────────────
+const notifForm = useForm({
+  daily_summary_enabled:  props.notificationSettings.daily_summary_enabled ?? true,
+  daily_summary_time:     props.notificationSettings.daily_summary_time    ?? '08:00',
+  evening_report_enabled: props.notificationSettings.evening_report_enabled ?? true,
+  evening_report_time:    props.notificationSettings.evening_report_time   ?? '20:00',
+})
+const notifSaved = ref(false)
+function saveNotifSettings() {
+  notifForm.put(route('settings.notifications.update'), {
+    onSuccess: () => { notifSaved.value = true; setTimeout(() => notifSaved.value = false, 3000) }
+  })
+}
+
+const sending    = ref(null)
+const sendResult = ref(null)
+
+async function sendSummary() {
+  sending.value = 'summary'
+  sendResult.value = null
+  try {
+    await axios.post(route('settings.notifications.send-summary'))
+    sendResult.value = { ok: true, message: 'Утренняя сводка отправлена!' }
+  } catch (e) {
+    sendResult.value = { ok: false, message: e.response?.data?.message ?? 'Ошибка отправки' }
+  } finally { sending.value = null }
+}
+
+async function sendReport() {
+  sending.value = 'report'
+  sendResult.value = null
+  try {
+    await axios.post(route('settings.notifications.send-report'))
+    sendResult.value = { ok: true, message: 'Вечерний отчёт отправлен!' }
+  } catch (e) {
+    sendResult.value = { ok: false, message: e.response?.data?.message ?? 'Ошибка отправки' }
+  } finally { sending.value = null }
+}
+
+// ── LANBilling ───────────────────────────────────────────────────────
+const settingsForm = ref({ lanbilling_enabled: props.lanbillingEnabled })
+
+async function toggleLanbilling() {
+  settingsForm.value.lanbilling_enabled = !settingsForm.value.lanbilling_enabled
+  await router.put(route('settings.general.update'), { lanbilling_enabled: settingsForm.value.lanbilling_enabled }, {
+    preserveState: true,
+    preserveScroll: true,
+  })
+}
+
+const lbForm    = useForm({ url: props.lanbillingConfig?.url ?? '', login: props.lanbillingConfig?.login ?? '', password: '' })
+const lbTesting = ref(false)
+const lbResult  = ref(null)
+
+function saveLanbilling() {
+  lbForm.put(route('settings.lanbilling.update'), { onSuccess: () => { lbResult.value = { ok: true, message: 'Настройки сохранены' } } })
+}
+// ── Сортировка вкладок ───────────────────────────────────────────
+const sortableServiceTypes = ref([...(props.serviceTypes ?? [])])
+const sortableTerritories  = ref([...(props.territories  ?? [])])
+const dragOver_st  = ref(null)
+const dragOver_ter = ref(null)
+let dragIdx  = null
+let dragType = null
+
+watch(() => props.serviceTypes, v => { sortableServiceTypes.value = [...(v ?? [])] })
+watch(() => props.territories,  v => { sortableTerritories.value  = [...(v ?? [])] })
+
+// Территории
+const showTerritoryModal = ref(false)
+const editingTerritory   = ref(null)
+const territoryForm      = ref({ name: '' })
+
+function openTerritoryModal(t) {
+  editingTerritory.value = t
+  territoryForm.value = { name: t?.name ?? '' }
+  showTerritoryModal.value = true
+}
+
+function submitTerritory() {
+  if (editingTerritory.value) {
+    router.put(route('territories.update', editingTerritory.value.id), territoryForm.value, {
+      onSuccess: () => { showTerritoryModal.value = false }
+    })
+  } else {
+    router.post(route('territories.store'), territoryForm.value, {
+      onSuccess: () => { showTerritoryModal.value = false }
+    })
+  }
+}
+
+function deleteTerritory(t) {
+  if (confirm(`Удалить территорию "${t.name}"?`)) {
+    router.delete(route('territories.destroy', t.id))
+  }
+}
+
+function onDragStart(type, idx) { dragType = type; dragIdx = idx }
+function onDragOver(type, idx) {
+  if (type === 'st')  dragOver_st.value  = idx
+  if (type === 'ter') dragOver_ter.value = idx
+  if (dragType !== type || dragIdx === idx) return
+  const arr = type === 'st' ? sortableServiceTypes : sortableTerritories
+  const items = [...arr.value]
+  const [moved] = items.splice(dragIdx, 1)
+  items.splice(idx, 0, moved)
+  arr.value = items
+  dragIdx = idx
+}
+async function onDragEnd(type) {
+  dragOver_st.value  = null
+  dragOver_ter.value = null
+  const arr = type === 'st' ? sortableServiceTypes : sortableTerritories
+  const name = type === 'st' ? 'settings.sort.service-types' : 'settings.sort.territories'
+  try {
+    await axios.post(route(name), { order: arr.value.map(i => i.id) })
+  } catch(e) { console.error('Sort save failed', e) }
+}
+
+async function testLanbilling() {
+  lbTesting.value = true; lbResult.value = null
+  try {
+    await axios.get(route('lanbilling.lookup'), { params: { phone: '70000000000' } })
+    lbResult.value = { ok: true, message: 'API отвечает корректно' }
+  } catch (e) {
+    lbResult.value = e.response?.status === 404
+      ? { ok: true,  message: 'API работает (абонент не найден — это нормально для теста)' }
+      : { ok: false, message: e.response?.data?.message ?? 'Ошибка подключения' }
+  } finally { lbTesting.value = false }
+}
+</script>
+
+<style scoped>
+.btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-40; }
+.btn-outline  { @apply border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-40; }
+.field-label  { @apply block text-xs text-gray-500 mb-1; }
+.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-slate-50; }
+</style>
