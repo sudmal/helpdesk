@@ -15,9 +15,12 @@ class CalendarController extends Controller
 
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            $territoriesQuery = $brigadeIds->isNotEmpty()
-                ? Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))
-                : Territory::whereIn('id', $user->territories()->pluck('territories.id'));
+            $tIds = collect();
+            if ($brigadeIds->isNotEmpty()) {
+                $tIds = $tIds->merge(Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id'));
+            }
+            $tIds = $tIds->merge($user->territories()->pluck('territories.id'))->unique();
+            $territoriesQuery = Territory::whereIn('id', $tIds);
         } else {
             $territoriesQuery = Territory::orderBy('sort_order')->orderBy('name');
         }
@@ -48,9 +51,13 @@ class CalendarController extends Controller
 
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            $userTerritories = $brigadeIds->isNotEmpty()
-                ? \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-                : $user->territories()->pluck('territories.id');
+            $userTerritories = collect();
+            if ($brigadeIds->isNotEmpty()) {
+                $userTerritories = $userTerritories->merge(
+                    \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+                );
+            }
+            $userTerritories = $userTerritories->merge($user->territories()->pluck('territories.id'))->unique();
         } else {
             $userTerritories = collect();
         }
