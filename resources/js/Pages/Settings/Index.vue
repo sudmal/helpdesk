@@ -887,7 +887,7 @@ async function sendTestNotify(channel) {
   testNotifyLoading.value = channel
   testNotifyResult.value  = null
   try {
-    const res = await fetch(route('users.test-notify', editingUser.value.id), {
+    const res = await fetch(route('settings.users.test-notify', editingUser.value.id), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
       body: JSON.stringify({ channel }),
