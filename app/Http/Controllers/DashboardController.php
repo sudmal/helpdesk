@@ -137,11 +137,14 @@ class DashboardController extends Controller
         if ($user->hasPermission('*') || $user->hasPermission('settings.*')) {
             return Territory::orderBy('sort_order')->orderBy('name')->get();
         }
+        $ids = collect();
         $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
         if ($brigadeIds->isNotEmpty()) {
-            return Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->orderBy('name')->get();
+            $ids = $ids->merge(
+                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+            );
         }
-        $ids = $user->territories()->pluck('territories.id');
+        $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
         if ($ids->isNotEmpty()) {
             return Territory::whereIn('id', $ids)->orderBy('name')->get();
         }
