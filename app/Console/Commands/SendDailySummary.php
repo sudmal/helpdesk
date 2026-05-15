@@ -30,13 +30,16 @@ class SendDailySummary extends Command
                 ->where('brigade_id', $brigade->id)
                 ->get();
 
-            if ($tickets->isEmpty()) continue;
+            $foreman  = $brigade->foreman;
+            $channels = [];
+            if ($foreman->notify_email)    $channels[] = 'email';
+            if ($foreman->notify_telegram) $channels[] = 'telegram';
+            if ($foreman->notify_max)      $channels[] = 'max';
+            if (empty($channels))          $channels[] = 'mail(fallback)';
 
-            $brigade->foreman->notify(
-                new DailySummaryNotification($brigade, $tickets, $date)
-            );
+            $this->info("Бригада «{$brigade->name}» → {$foreman->name} | заявок: {$tickets->count()} | каналы: " . implode(',', $channels));
 
-            $this->info("Отправлено бригадиру: {$brigade->foreman->name} ({$tickets->count()} заявок)");
+            $foreman->notify(new DailySummaryNotification($brigade, $tickets, $date));
         }
 
         return Command::SUCCESS;
