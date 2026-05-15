@@ -887,13 +887,8 @@ async function sendTestNotify(channel) {
   testNotifyLoading.value = channel
   testNotifyResult.value  = null
   try {
-    const res = await fetch(route('settings.users.test-notify', editingUser.value.id), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-      body: JSON.stringify({ channel }),
-    })
-    const data = await res.json()
-    testNotifyResult.value = data
+    const res = await axios.post(route('settings.users.test-notify', editingUser.value.id), { channel })
+    testNotifyResult.value = res.data
   } catch (e) {
     testNotifyResult.value = { ok: false, message: e.response?.data?.message ?? e.message }
   } finally {
