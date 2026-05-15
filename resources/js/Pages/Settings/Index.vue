@@ -895,7 +895,7 @@ async function sendTestNotify(channel) {
     const data = await res.json()
     testNotifyResult.value = data
   } catch (e) {
-    testNotifyResult.value = { ok: false, message: e.message }
+    testNotifyResult.value = { ok: false, message: e.response?.data?.message ?? e.message }
   } finally {
     testNotifyLoading.value = null
     setTimeout(() => { testNotifyResult.value = null }, 5000)
