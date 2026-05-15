@@ -2,16 +2,12 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Collection;
 
-class EveningReportNotification extends Notification implements ShouldQueue
+class EveningReportNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(private array $stats, private Collection $tickets) {}
 
     public function via(object $notifiable): array
