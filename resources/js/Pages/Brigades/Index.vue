@@ -37,53 +37,64 @@
       </div>
     </div>
 
-    <Modal v-if="showModal" :title="editing ? 'Редактировать бригаду' : 'Новая бригада'" @close="close">
+    <Modal v-if="showModal" size="xl" :title="editing ? 'Редактировать бригаду' : 'Новая бригада'" @close="close">
       <form @submit.prevent="submit" class="space-y-4">
+
+        <!-- Название — на всю ширину -->
         <div>
           <label class="field-label">Название *</label>
           <input v-model="form.name" required class="field-input" />
         </div>
 
-        <div>
-          <label class="field-label flex items-center gap-1">
-            Участники
-            <Tip>Выберите состав бригады. Бригадир назначается из состава. Сотрудники уже в другой бригаде — недоступны.</Tip>
-          </label>
-          <div class="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2">
-            <label v-for="u in technicians" :key="u.id"
-                   class="flex items-center gap-2 text-sm p-1 rounded"
-                   :class="isInOtherBrigade(u) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'">
-              <input type="checkbox" :value="u.id" v-model="form.member_ids"
-                     :disabled="isInOtherBrigade(u)" class="rounded disabled:cursor-not-allowed" />
-              <span class="flex-1">{{ u.name }}</span>
-              <span v-if="isInOtherBrigade(u)" class="text-xs text-gray-400 italic">{{ u.in_brigade_name }}</span>
-            </label>
+        <!-- Двухколоночный блок -->
+        <div class="grid grid-cols-[1fr_210px] gap-5">
+
+          <!-- Левая колонка: участники + бригадир -->
+          <div class="space-y-3">
+            <div>
+              <label class="field-label flex items-center gap-1">
+                Участники
+                <Tip>Выберите состав бригады. Бригадир назначается из состава. Сотрудники уже в другой бригаде — недоступны.</Tip>
+              </label>
+              <div class="space-y-1 overflow-y-auto border border-gray-200 rounded-xl p-2 min-h-32 max-h-52">
+                <label v-for="u in technicians" :key="u.id"
+                       class="flex items-center gap-2 text-sm p-1 rounded"
+                       :class="isInOtherBrigade(u) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'">
+                  <input type="checkbox" :value="u.id" v-model="form.member_ids"
+                         :disabled="isInOtherBrigade(u)" class="rounded disabled:cursor-not-allowed" />
+                  <span class="flex-1">{{ u.name }}</span>
+                  <span v-if="isInOtherBrigade(u)" class="text-xs text-gray-400 italic">{{ u.in_brigade_name }}</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label class="field-label flex items-center gap-1">
+                Бригадир
+                <Tip>Выбирается только из состава бригады. Сначала добавьте участников выше.</Tip>
+              </label>
+              <select v-model="form.foreman_id" class="field-input" :disabled="form.member_ids.length === 0">
+                <option value="">{{ form.member_ids.length ? '— Выбрать —' : '— Сначала добавьте участников —' }}</option>
+                <option v-for="u in foremanCandidates" :key="u.id" :value="u.id">{{ u.name }}</option>
+              </select>
+              <p v-if="editing?.foreman_id && !form.foreman_id && form.member_ids.length > 0"
+                 class="mt-1 text-xs text-amber-600">⚠ Нельзя убрать бригадира без назначения нового</p>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label class="field-label flex items-center gap-1">
-            Бригадир
-            <Tip>Выбирается только из состава бригады. Сначала добавьте участников выше.</Tip>
-          </label>
-          <select v-model="form.foreman_id" class="field-input" :disabled="form.member_ids.length === 0">
-            <option value="">{{ form.member_ids.length ? '— Выбрать —' : '— Сначала добавьте участников —' }}</option>
-            <option v-for="u in foremanCandidates" :key="u.id" :value="u.id">{{ u.name }}</option>
-          </select>
-          <p v-if="editing?.foreman_id && !form.foreman_id && form.member_ids.length > 0"
-             class="mt-1 text-xs text-amber-600">⚠ Нельзя убрать бригадира без назначения нового</p>
-        </div>
-
-        <div>
-          <label class="field-label flex items-center gap-1">
-            Территории
-            <Tip>Участки обслуживания бригады. Влияют на фильтрацию уведомлений и заявок.</Tip>
-          </label>
-          <div class="space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded-xl p-2">
-            <label v-for="t in territories" :key="t.id" class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
-              <input type="checkbox" :value="t.id" v-model="form.territory_ids" class="rounded" />
-              {{ t.name }}
+          <!-- Правая колонка: территории -->
+          <div class="flex flex-col">
+            <label class="field-label flex items-center gap-1">
+              Территории
+              <Tip>Участки обслуживания бригады. Влияют на фильтрацию уведомлений и заявок.</Tip>
             </label>
+            <div class="flex-1 overflow-y-auto border border-gray-200 rounded-xl p-2 min-h-48 space-y-1">
+              <label v-for="t in territories" :key="t.id"
+                     class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
+                <input type="checkbox" :value="t.id" v-model="form.territory_ids" class="rounded" />
+                {{ t.name }}
+              </label>
+            </div>
           </div>
         </div>
 
@@ -91,7 +102,7 @@
              class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
           <p v-for="(err, field) in form.errors" :key="field">{{ err }}</p>
         </div>
-        <div class="flex justify-end gap-3">
+        <div class="flex justify-end gap-3 pt-2 border-t border-gray-100">
           <button type="button" @click="close" class="btn-outline text-sm">Отмена</button>
           <button class="btn-primary text-sm">{{ editing ? 'Сохранить' : 'Создать' }}</button>
         </div>
