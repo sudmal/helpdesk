@@ -571,54 +571,41 @@
               <label class="field-label">Уведомления</label>
 
               <!-- Email -->
-              <div class="border border-gray-200 rounded-xl p-3 space-y-2">
-                <div class="flex items-center justify-between">
-                  <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                    <input type="checkbox" v-model="userForm.notify_email" class="rounded" /> Email
-                  </label>
-                  <button v-if="editingUser" type="button" @click="sendTestNotify('email')"
-                          :disabled="!!testNotifyLoading"
-                          class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-0.5 transition-colors disabled:opacity-40">
-                    {{ testNotifyLoading === 'email' ? '…' : 'Тест' }}
-                  </button>
-                </div>
-                <input v-model="userForm.email" type="email" class="field-input" placeholder="email@example.com" autocomplete="off" />
+              <div class="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2">
+                <input type="checkbox" v-model="userForm.notify_email" class="rounded shrink-0" />
+                <span class="text-sm font-medium w-16 shrink-0">Email</span>
+                <input v-model="userForm.email" type="email" class="field-input flex-1 min-w-0" placeholder="email@example.com" autocomplete="off" />
+                <button v-if="editingUser" type="button" @click="sendTestNotify('email')"
+                        :disabled="!!testNotifyLoading"
+                        class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-1 transition-colors disabled:opacity-40 shrink-0">
+                  {{ testNotifyLoading === 'email' ? '…' : 'Тест' }}
+                </button>
               </div>
 
               <!-- Telegram -->
-              <div class="border border-gray-200 rounded-xl p-3 space-y-2">
-                <div class="flex items-center justify-between">
-                  <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                    <input type="checkbox" v-model="userForm.notify_telegram" class="rounded" /> Telegram
-                  </label>
-                  <button v-if="editingUser && userForm.notify_telegram" type="button" @click="sendTestNotify('telegram')"
-                          :disabled="!!testNotifyLoading"
-                          class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-0.5 transition-colors disabled:opacity-40">
-                    {{ testNotifyLoading === 'telegram' ? '…' : 'Тест' }}
-                  </button>
-                </div>
-                <div v-if="userForm.notify_telegram" class="space-y-1.5">
-                  <input v-model="userForm.telegram_chat_id" class="field-input" placeholder="Chat ID: 123456789" autocomplete="off" />
-                  <p class="text-xs text-gray-400">Узнать ID: <a href="https://t.me/userinfobot" target="_blank" class="text-blue-500 hover:text-blue-700 underline">@userinfobot в Telegram</a></p>
-                </div>
+              <div class="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2">
+                <input type="checkbox" v-model="userForm.notify_telegram" class="rounded shrink-0" />
+                <span class="text-sm font-medium w-16 shrink-0">Telegram</span>
+                <input v-model="userForm.telegram_chat_id" class="field-input flex-1 min-w-0" placeholder="Chat ID: 123456789" autocomplete="off" />
+                <a href="https://t.me/userinfobot" target="_blank" title="Узнать Chat ID" class="text-gray-300 hover:text-blue-500 shrink-0 text-sm leading-none">?</a>
+                <button v-if="editingUser && userForm.notify_telegram" type="button" @click="sendTestNotify('telegram')"
+                        :disabled="!!testNotifyLoading"
+                        class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-1 transition-colors disabled:opacity-40 shrink-0">
+                  {{ testNotifyLoading === 'telegram' ? '…' : 'Тест' }}
+                </button>
               </div>
 
               <!-- Max -->
-              <div class="border border-gray-200 rounded-xl p-3 space-y-2">
-                <div class="flex items-center justify-between">
-                  <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                    <input type="checkbox" v-model="userForm.notify_max" class="rounded" /> Max
-                  </label>
-                  <button v-if="editingUser && userForm.notify_max" type="button" @click="sendTestNotify('max')"
-                          :disabled="!!testNotifyLoading"
-                          class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-0.5 transition-colors disabled:opacity-40">
-                    {{ testNotifyLoading === 'max' ? '…' : 'Тест' }}
-                  </button>
-                </div>
-                <div v-if="userForm.notify_max" class="space-y-1.5">
-                  <input v-model="userForm.max_chat_id" class="field-input" placeholder="ID в Max" autocomplete="off" />
-                  <p class="text-xs text-gray-400">Узнать ID: <a href="https://max.ru/id380124799522_1_bot" target="_blank" class="text-blue-500 hover:text-blue-700 underline">@id_bot в Max</a></p>
-                </div>
+              <div class="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2">
+                <input type="checkbox" v-model="userForm.notify_max" class="rounded shrink-0" />
+                <span class="text-sm font-medium w-16 shrink-0">Max</span>
+                <input v-model="userForm.max_chat_id" class="field-input flex-1 min-w-0" placeholder="ID в Max" autocomplete="off" />
+                <a href="https://max.ru/id380124799522_1_bot" target="_blank" title="Узнать ID в Max" class="text-gray-300 hover:text-blue-500 shrink-0 text-sm leading-none">?</a>
+                <button v-if="editingUser && userForm.notify_max" type="button" @click="sendTestNotify('max')"
+                        :disabled="!!testNotifyLoading"
+                        class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-1 transition-colors disabled:opacity-40 shrink-0">
+                  {{ testNotifyLoading === 'max' ? '…' : 'Тест' }}
+                </button>
               </div>
 
               <div v-if="testNotifyResult"
@@ -626,7 +613,6 @@
                 {{ testNotifyResult.ok ? '✓' : '✗' }} {{ testNotifyResult.message }}
               </div>
             </div>
-
             <label v-if="editingUser" class="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" v-model="userForm.is_active" class="rounded" /> Активен
             </label>
