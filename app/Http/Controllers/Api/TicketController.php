@@ -19,7 +19,7 @@ class TicketController extends Controller
         $brigadeId = $user->brigades()->first()?->id;
 
         $base = fn(): Builder => Ticket::with([
-                'address', 'type', 'status', 'brigade', 'assignee',
+                'address', 'type', 'serviceType', 'status', 'brigade', 'assignee',
                 'comments.author',
             ])
             ->when($brigadeId && !$user->hasPermission('*'), fn($q) => $q->where('brigade_id', $brigadeId));
@@ -49,7 +49,7 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
-        $ticket->load(['address', 'type', 'status', 'brigade', 'assignee', 'comments.author']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -80,6 +80,7 @@ class TicketController extends Controller
             'id'           => $t->id,
             'number'       => $t->number,
             'scheduled_at' => $t->scheduled_at?->toIso8601String(),
+            'closed_at'    => $t->closed_at?->toIso8601String(),
             'description'  => $t->description,
             'phone'        => $t->phone,
             'apartment'    => $t->apartment,
@@ -90,6 +91,11 @@ class TicketController extends Controller
                 'building' => $t->address->building,
             ] : null,
             'type'    => $t->type?->name,
+            'service_type' => $t->serviceType ? [
+                'id'    => $t->serviceType->id,
+                'name'  => $t->serviceType->name,
+                'color' => $t->serviceType->color,
+            ] : null,
             'status'  => [
                 'name'     => $t->status?->name,
                 'is_final' => (bool) $t->status?->is_final,
