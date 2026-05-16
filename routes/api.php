@@ -9,5 +9,6 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout',                    [AuthController::class,  'logout']);
     Route::get('/tickets',                         [TicketController::class, 'index']);
+    Route::get('/tickets/{ticket}',                [TicketController::class, 'show']);
     Route::post('/tickets/{ticket}/comments',      [TicketController::class, 'addComment']);
 });
