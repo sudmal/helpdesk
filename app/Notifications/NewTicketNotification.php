@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\Ticket;
+use App\Models\{Ticket, BrigadeSchedule};
 use App\Services\{TelegramService, MaxService};
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
@@ -31,7 +31,6 @@ class NewTicketNotification extends Notification
             ->tag('ticket-'.$ticket->id);
     }
 
-    // Отправляем в Telegram и Push
     public static function dispatch(Ticket $ticket): void
     {
         // Уведомляем только если заявка запланирована на сегодня
@@ -40,13 +39,35 @@ class NewTicketNotification extends Notification
             return;
         }
 
+        // Получаем членов бригады, которые сегодня работают (нет статуса 'off')
+        if (!$ticket->relationLoaded('brigade')) {
+            $ticket->load('brigade.members');
+        }
+
+        $brigade = $ticket->brigade;
+        $workingMembers = collect();
+
+        if ($brigade) {
+            $offUserIds = BrigadeSchedule::where('brigade_id', $brigade->id)
+                ->whereDate('date', now())
+                ->where('status', 'off')
+                ->pluck('user_id');
+
+            $workingMembers = $brigade->members()
+                ->where('is_active', true)
+                ->whereNotIn('id', $offUserIds)
+                ->get();
+        }
+
         // Telegram
         try {
             $telegram = app(TelegramService::class);
-            $telegram->broadcast(
-                $telegram->formatNewTicket($ticket),
-                $ticket->address?->territory_id
-            );
+            $text = $telegram->formatNewTicket($ticket);
+            foreach ($workingMembers as $user) {
+                if ($user->notify_telegram && $user->telegram_chat_id) {
+                    $telegram->send($user->telegram_chat_id, $text);
+                }
+            }
         } catch (\Throwable $e) {
             \Log::error('Telegram notification failed: '.$e->getMessage());
         }
@@ -54,21 +75,23 @@ class NewTicketNotification extends Notification
         // MAX
         try {
             $max = app(MaxService::class);
-            $max->broadcast(
-                $max->formatNewTicket($ticket),
-                $ticket->address?->territory_id
-            );
+            $text = $max->formatNewTicket($ticket);
+            foreach ($workingMembers as $user) {
+                if ($user->notify_max && $user->max_chat_id) {
+                    $max->send($user->max_chat_id, $text);
+                }
+            }
         } catch (\Throwable $e) {
             \Log::error('MAX notification failed: '.$e->getMessage());
         }
 
-        // Push — только пользователям у которых есть эта территория
+        // Push — членам бригады с push-подписками
         try {
-            $territoryId = $ticket->address?->territory_id;
-            $users = \App\Models\User::whereHas('pushSubscriptions')
-                ->when($territoryId, fn($q) => $q->whereHas('territories', fn($t) => $t->where('territories.id', $territoryId)))
+            $memberIds = $workingMembers->pluck('id');
+            $pushUsers = \App\Models\User::whereIn('id', $memberIds)
+                ->whereHas('pushSubscriptions')
                 ->get();
-            foreach ($users as $user) {
+            foreach ($pushUsers as $user) {
                 $user->notify(new static($ticket));
             }
         } catch (\Throwable $e) {
