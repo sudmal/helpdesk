@@ -2,14 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Models\{Brigade, User, Ticket};
+use App\Models\{Brigade, BrigadeSchedule, User, Ticket};
 use App\Notifications\DailySummaryNotification;
 use Illuminate\Console\Command;
 
 class SendDailySummary extends Command
 {
     protected $signature   = 'helpdesk:daily-summary {--date= : дата в формате Y-m-d} {--scheduled : проверять время и флаг из настроек}';
-    protected $description = 'Утренняя сводка по заявкам на сегодня — отправляется бригадирам';
+    protected $description = 'Утренняя сводка по заявкам на сегодня — отправляется всем работающим членам бригады';
 
     public function handle(): int
     {
@@ -20,26 +20,40 @@ class SendDailySummary extends Command
         }
         $date = $this->option('date') ?? now()->toDateString();
 
-        $brigades = Brigade::with(['foreman', 'territories'])->get();
+        $brigades = Brigade::with(['members', 'territories'])->get();
 
         foreach ($brigades as $brigade) {
-            if (!$brigade->foreman) continue;
-
             $tickets = Ticket::with(['address', 'type', 'status', 'assignee'])
                 ->whereDate('scheduled_at', $date)
                 ->where('brigade_id', $brigade->id)
                 ->get();
 
-            $foreman  = $brigade->foreman;
-            $channels = [];
-            if ($foreman->notify_email)    $channels[] = 'email';
-            if ($foreman->notify_telegram) $channels[] = 'telegram';
-            if ($foreman->notify_max)      $channels[] = 'max';
-            if (empty($channels))          $channels[] = 'mail(fallback)';
+            $offUserIds = BrigadeSchedule::where('brigade_id', $brigade->id)
+                ->whereDate('date', $date)
+                ->where('status', 'off')
+                ->pluck('user_id');
 
-            $this->info("Бригада «{$brigade->name}» → {$foreman->name} | заявок: {$tickets->count()} | каналы: " . implode(',', $channels));
+            $members = $brigade->members()
+                ->where('is_active', true)
+                ->whereNotIn('id', $offUserIds)
+                ->get();
 
-            $foreman->notify(new DailySummaryNotification($brigade, $tickets, $date));
+            if ($members->isEmpty()) {
+                $this->info("Бригада «{$brigade->name}» — нет работающих участников");
+                continue;
+            }
+
+            foreach ($members as $member) {
+                $channels = [];
+                if ($member->notify_email)    $channels[] = 'email';
+                if ($member->notify_telegram) $channels[] = 'telegram';
+                if ($member->notify_max)      $channels[] = 'max';
+                if (empty($channels))          $channels[] = 'mail(fallback)';
+
+                $this->info("Бригада «{$brigade->name}» → {$member->name} | заявок: {$tickets->count()} | каналы: " . implode(',', $channels));
+
+                $member->notify(new DailySummaryNotification($brigade, $tickets, $date));
+            }
         }
 
         return Command::SUCCESS;
