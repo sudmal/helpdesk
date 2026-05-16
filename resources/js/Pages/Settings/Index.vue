@@ -587,7 +587,7 @@
                 <input type="checkbox" v-model="userForm.notify_telegram" class="rounded shrink-0" />
                 <span class="text-sm font-medium w-16 shrink-0">Telegram</span>
                 <input v-model="userForm.telegram_chat_id" class="field-input flex-1 min-w-0" placeholder="Chat ID: 123456789" autocomplete="off" />
-                <a href="https://t.me/userinfobot" target="_blank" title="Узнать Chat ID" class="text-gray-300 hover:text-blue-500 shrink-0 text-sm leading-none">?</a>
+                <a href="https://t.me/userinfobot" target="_blank" title="Узнать свой ID" class="shrink-0 text-base leading-none opacity-60 hover:opacity-100 transition-opacity">ℹ️</a>
                 <button v-if="editingUser && userForm.notify_telegram" type="button" @click="sendTestNotify('telegram')"
                         :disabled="!!testNotifyLoading"
                         class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-1 transition-colors disabled:opacity-40 shrink-0">
@@ -600,7 +600,7 @@
                 <input type="checkbox" v-model="userForm.notify_max" class="rounded shrink-0" />
                 <span class="text-sm font-medium w-16 shrink-0">Max</span>
                 <input v-model="userForm.max_chat_id" class="field-input flex-1 min-w-0" placeholder="ID в Max" autocomplete="off" />
-                <a href="https://max.ru/id380124799522_1_bot" target="_blank" title="Узнать ID в Max" class="text-gray-300 hover:text-blue-500 shrink-0 text-sm leading-none">?</a>
+                <a href="https://max.ru/id380124799522_1_bot" target="_blank" title="Узнать свой ID" class="shrink-0 text-base leading-none opacity-60 hover:opacity-100 transition-opacity">ℹ️</a>
                 <button v-if="editingUser && userForm.notify_max" type="button" @click="sendTestNotify('max')"
                         :disabled="!!testNotifyLoading"
                         class="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded px-2 py-1 transition-colors disabled:opacity-40 shrink-0">
