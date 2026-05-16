@@ -16,41 +16,42 @@ class TicketController extends Controller
         $today    = now()->toDateString();
         $tomorrow = now()->addDay()->toDateString();
 
-        // Бригада пользователя (если есть)
         $brigadeId = $user->brigades()->first()?->id;
 
         $base = fn(): Builder => Ticket::with([
                 'address', 'type', 'status', 'brigade', 'assignee',
                 'comments.author',
             ])
-            // Технику и бригадиру — только их бригада; остальным — всё
             ->when($brigadeId && !$user->hasPermission('*'), fn($q) => $q->where('brigade_id', $brigadeId));
 
         $overdue  = $base()->whereDate('scheduled_at', '<', $today)
                            ->whereHas('status', fn($s) => $s->where('is_final', false))
-                           ->orderBy('scheduled_at')
-                           ->get();
+                           ->orderBy('scheduled_at')->get();
 
         $today_list = $base()->whereDate('scheduled_at', $today)
-                             ->orderBy('scheduled_at')
-                             ->get();
+                             ->orderBy('scheduled_at')->get();
 
         $new_today  = $base()->whereDate('scheduled_at', $today)
                              ->whereDate('created_at', $today)
-                             ->orderByDesc('created_at')
-                             ->get();
+                             ->orderByDesc('created_at')->get();
 
         $tomorrow_list = $base()->whereDate('scheduled_at', $tomorrow)
-                                ->orderBy('scheduled_at')
-                                ->get();
+                                ->orderBy('scheduled_at')->get();
 
         return response()->json([
-            'overdue'    => $this->format($overdue),
-            'today'      => $this->format($today_list),
-            'new_today'  => $this->format($new_today),
-            'tomorrow'   => $this->format($tomorrow_list),
-            'synced_at'  => now()->toIso8601String(),
+            'overdue'   => $this->format($overdue),
+            'today'     => $this->format($today_list),
+            'new_today' => $this->format($new_today),
+            'tomorrow'  => $this->format($tomorrow_list),
+            'synced_at' => now()->toIso8601String(),
         ]);
+    }
+
+    public function show(Request $request, Ticket $ticket): JsonResponse
+    {
+        $ticket->load(['address', 'type', 'status', 'brigade', 'assignee', 'comments.author']);
+
+        return response()->json($this->formatOne($ticket));
     }
 
     public function addComment(Request $request, Ticket $ticket): JsonResponse
@@ -73,15 +74,16 @@ class TicketController extends Controller
         ], 201);
     }
 
-    private function format($tickets): array
+    private function formatOne(Ticket $t): array
     {
-        return $tickets->map(fn(Ticket $t) => [
+        return [
             'id'           => $t->id,
             'number'       => $t->number,
             'scheduled_at' => $t->scheduled_at?->toIso8601String(),
             'description'  => $t->description,
             'phone'        => $t->phone,
             'apartment'    => $t->apartment,
+            'close_notes'  => $t->close_notes,
             'address'      => $t->address ? [
                 'full'     => $t->address->full_address,
                 'street'   => $t->address->street,
@@ -101,6 +103,11 @@ class TicketController extends Controller
                 'author'     => $c->author?->name,
                 'created_at' => $c->created_at->toIso8601String(),
             ])->values()->all(),
-        ])->values()->all();
+        ];
+    }
+
+    private function format($tickets): array
+    {
+        return $tickets->map(fn(Ticket $t) => $this->formatOne($t))->values()->all();
     }
 }
