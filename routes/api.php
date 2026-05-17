@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TicketController;
+use App\Models\ServiceType;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -11,4 +12,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tickets',                         [TicketController::class, 'index']);
     Route::get('/tickets/{ticket}',                [TicketController::class, 'show']);
     Route::post('/tickets/{ticket}/comments',      [TicketController::class, 'addComment']);
+
+    Route::get('/service_types', function () {
+        return response()->json(
+            ServiceType::active()->get(['id', 'name', 'color'])
+        );
+    });
 });
