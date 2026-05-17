@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Material;
 use App\Models\Ticket;
+use App\Services\TicketService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TicketController extends Controller
 {
+    public function __construct(private TicketService $ticketService) {}
+
     public function index(Request $request): JsonResponse
     {
         $user     = $request->user();
@@ -74,6 +79,64 @@ class TicketController extends Controller
         ], 201);
     }
 
+    public function close(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('close', $ticket);
+
+        $request->validate([
+            'close_notes' => 'nullable|string|max:2000',
+            'act_number'  => 'nullable|string|max:50',
+            'materials'   => 'nullable|array',
+            'materials.*.material_id' => 'required|integer|exists:materials,id',
+            'materials.*.quantity'    => 'required|numeric|min:0.01',
+        ]);
+
+        $actNumber = filled($request->act_number) ? $request->act_number : 'б/а';
+
+        DB::transaction(function () use ($ticket, $actNumber, $request) {
+            $ticket->update(['act_number' => $actNumber]);
+            $this->ticketService->updateStatus($ticket, 'closed', $request->user(), $request->close_notes);
+
+            if (!empty($request->materials)) {
+                $ticket->materials()->delete();
+                foreach ($request->materials as $item) {
+                    $material = Material::find($item['material_id']);
+                    if (!$material) continue;
+                    $ticket->materials()->create([
+                        'material_id'   => $material->id,
+                        'material_name' => $material->name,
+                        'material_code' => $material->code,
+                        'material_unit' => $material->unit,
+                        'price_at_time' => $material->price,
+                        'quantity'      => $item['quantity'],
+                        'created_by'    => $request->user()->id,
+                    ]);
+                }
+            }
+        });
+
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author']);
+
+        return response()->json($this->formatOne($ticket));
+    }
+
+    public function reschedule(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('postpone', $ticket);
+
+        $request->validate([
+            'scheduled_at' => 'required|date|after:today',
+            'comment'      => 'nullable|string|max:2000',
+        ]);
+
+        $ticket->update(['scheduled_at' => $request->scheduled_at]);
+        $this->ticketService->updateStatus($ticket, 'postponed', $request->user(), $request->comment);
+
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author']);
+
+        return response()->json($this->formatOne($ticket));
+    }
+
     private function formatOne(Ticket $t): array
     {
         return [
@@ -85,6 +148,7 @@ class TicketController extends Controller
             'phone'        => $t->phone,
             'apartment'    => $t->apartment,
             'close_notes'  => $t->close_notes,
+            'act_number'   => $t->act_number,
             'address'      => $t->address ? [
                 'full'     => $t->address->full_address,
                 'street'   => $t->address->street,
@@ -100,6 +164,7 @@ class TicketController extends Controller
                 'name'     => $t->status?->name,
                 'is_final' => (bool) $t->status?->is_final,
                 'color'    => $t->status?->color,
+                'slug'     => $t->status?->slug,
             ],
             'brigade'  => $t->brigade?->name,
             'assignee' => $t->assignee?->name,

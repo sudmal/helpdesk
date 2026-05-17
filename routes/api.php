@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TicketController;
+use App\Models\Material;
 use App\Models\ServiceType;
 use Illuminate\Support\Facades\Route;
 
@@ -12,10 +13,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tickets',                         [TicketController::class, 'index']);
     Route::get('/tickets/{ticket}',                [TicketController::class, 'show']);
     Route::post('/tickets/{ticket}/comments',      [TicketController::class, 'addComment']);
+    Route::post('/tickets/{ticket}/close',         [TicketController::class, 'close']);
+    Route::post('/tickets/{ticket}/reschedule',    [TicketController::class, 'reschedule']);
 
     Route::get('/service_types', function () {
         return response()->json(
             ServiceType::active()->get(['id', 'name', 'color'])
+        );
+    });
+
+    Route::get('/materials', function () {
+        return response()->json(
+            Material::active()->orderBy('sort_order')->get(['id', 'code', 'name', 'unit', 'price'])
         );
     });
 });
