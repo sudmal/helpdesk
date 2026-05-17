@@ -379,5 +379,45 @@ class SettingsController extends Controller
         }
         file_put_contents($path, $content);
     }
-}
 
+    // ── Безопасность: журнал и блокировки ────────────────────────────
+
+    public function securityData()
+    {
+        $this->authorize('manage-settings');
+
+        $throttle = app(\App\Services\LoginThrottleService::class);
+
+        $blocked  = $throttle->getBlockedIps()->map(fn($b) => [
+            'id'            => $b->id,
+            'ip'            => $b->ip,
+            'auto_blocked'  => $b->auto_blocked,
+            'blocked_until' => $b->blocked_until?->format('d.m.Y H:i'),
+            'created_at'    => $b->created_at->format('d.m.Y H:i'),
+        ]);
+
+        $attempts = $throttle->getAttempts(300)->map(fn($a) => [
+            'id'           => $a->id,
+            'ip'           => $a->ip,
+            'login'        => $a->login,
+            'password'     => $a->password_attempt,
+            'method'       => $a->method,
+            'success'      => $a->success,
+            'was_blocked'  => $a->was_blocked,
+            'caused_block' => $a->caused_block,
+            'created_at'   => $a->created_at->format('d.m.Y H:i:s'),
+        ]);
+
+        return response()->json(['blocked' => $blocked, 'attempts' => $attempts]);
+    }
+
+    public function unblockIp(\Illuminate\Http\Request $request)
+    {
+        $this->authorize('manage-settings');
+        $request->validate(['ip' => 'required|ip']);
+
+        app(\App\Services\LoginThrottleService::class)->unblock($request->input('ip'));
+
+        return response()->json(['ok' => true]);
+    }
+}
