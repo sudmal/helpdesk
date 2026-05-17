@@ -140,7 +140,12 @@ Route::middleware(['auth', 'active'])->group(function () {
         // LANBilling
         Route::get('/lanbilling',    [SettingsController::class, 'lanbilling'])->name('lanbilling');
         Route::put('/lanbilling',    [SettingsController::class, 'updateLanbilling'])->name('lanbilling.update');
+
+        // Безопасность
+        Route::get('/security/data',    [SettingsController::class, 'securityData'])->name('security.data');
+        Route::post('/security/unblock', [SettingsController::class, 'unblockIp'])->name('security.unblock');
     });
+
     Route::middleware('can:manage-settings')->get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
 

@@ -118,7 +118,10 @@
         </div>
 
         <div class="border-t border-gray-100 pt-4">
-          <h2 class="font-semibold mb-3">🔐 Защита от перебора</h2>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold">🔐 Защита от перебора</h2>
+            <button type="button" @click="openSecurityModal" class="btn-outline text-xs py-1 px-3">Журнал / блокировки →</button>
+          </div>
           <div class="grid grid-cols-3 gap-4">
             <div>
               <label class="field-label">Капча после N попыток</label>
@@ -752,6 +755,68 @@
   </Modal>
 
   </AppLayout>
+    <!-- ── Модалка безопасности ── -->
+    <Modal v-if="securityModal.show" @close="securityModal.show = false" size="xl">
+      <template #title>Безопасность входа</template>
+      <div class="flex border-b border-gray-200 mb-4">
+        <button @click="securityModal.tab = 'blocked'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                :class="securityModal.tab === 'blocked' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'">
+          Заблокированные IP
+          <span v-if="securityModal.data?.blocked?.length" class="ml-1.5 bg-red-100 text-red-700 text-xs rounded-full px-1.5 py-0.5">{{ securityModal.data.blocked.length }}</span>
+        </button>
+        <button @click="securityModal.tab = 'log'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                :class="securityModal.tab === 'log' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'">
+          Журнал попыток
+        </button>
+      </div>
+      <div v-if="securityModal.loading" class="py-10 text-center text-gray-400">Загрузка...</div>
+      <div v-else-if="securityModal.tab === 'blocked'">
+        <div v-if="!securityModal.data?.blocked?.length" class="py-8 text-center text-gray-400 text-sm">Заблокированных IP нет</div>
+        <table v-else class="w-full text-sm">
+          <thead><tr class="border-b border-gray-100 text-xs text-gray-500 text-left">
+            <th class="pb-2 pr-4">IP</th><th class="pb-2 pr-4">Причина</th><th class="pb-2 pr-4">Заблокирован</th><th class="pb-2 pr-4">Истекает</th><th class="pb-2"></th>
+          </tr></thead>
+          <tbody class="divide-y divide-gray-50">
+            <tr v-for="b in securityModal.data.blocked" :key="b.id">
+              <td class="py-2 pr-4 font-mono font-medium">{{ b.ip }}</td>
+              <td class="py-2 pr-4 text-gray-500">{{ b.auto_blocked ? 'Авто (перебор)' : 'Вручную' }}</td>
+              <td class="py-2 pr-4 text-gray-500">{{ b.created_at }}</td>
+              <td class="py-2 pr-4 text-gray-500">{{ b.blocked_until ?? '—' }}</td>
+              <td class="py-2">
+                <button @click="unblockIp(b.ip)" class="text-xs text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50 transition-colors">Разблокировать</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else-if="securityModal.tab === 'log'">
+        <div v-if="!securityModal.data?.attempts?.length" class="py-8 text-center text-gray-400 text-sm">Попыток входа нет</div>
+        <div v-else class="overflow-auto max-h-[60vh]">
+          <table class="w-full text-xs">
+            <thead class="sticky top-0 bg-white"><tr class="border-b border-gray-100 text-gray-500 text-left">
+              <th class="pb-2 pr-3 whitespace-nowrap">Время</th><th class="pb-2 pr-3">Метод</th><th class="pb-2 pr-3 font-mono">IP</th><th class="pb-2 pr-3">Логин</th><th class="pb-2 pr-3">Пароль</th><th class="pb-2">Результат</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="a in securityModal.data.attempts" :key="a.id" :class="a.caused_block ? 'bg-red-50' : a.success ? 'bg-green-50' : ''">
+                <td class="py-1 pr-3 whitespace-nowrap text-gray-500">{{ a.created_at }}</td>
+                <td class="py-1 pr-3"><span class="rounded px-1 py-0.5 text-xs font-medium" :class="a.method === 'api' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'">{{ a.method.toUpperCase() }}</span></td>
+                <td class="py-1 pr-3 font-mono">{{ a.ip }}</td>
+                <td class="py-1 pr-3 font-medium">{{ a.login ?? '—' }}</td>
+                <td class="py-1 pr-3 font-mono text-gray-500">{{ a.password ? (a.password.length > 3 ? a.password.substring(0,2) + '•••' : '•••') : '—' }}</td>
+                <td class="py-1">
+                  <span v-if="a.was_blocked" class="text-red-600 font-medium">Уже заблокирован</span>
+                  <span v-else-if="a.caused_block" class="text-red-600 font-medium">⛔ Заблокировал IP</span>
+                  <span v-else-if="a.success" class="text-green-600 font-medium">✓ Успех</span>
+                  <span v-else class="text-orange-500">✗ Ошибка</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Modal>
 </template>
 
 <script setup>
@@ -1200,6 +1265,32 @@ async function testLanbilling() {
       ? { ok: true,  message: 'API работает (абонент не найден — это нормально для теста)' }
       : { ok: false, message: e.response?.data?.message ?? 'Ошибка подключения' }
   } finally { lbTesting.value = false }
+}
+// ── Безопасность ─────────────────────────────────────────────────────
+const securityModal = ref({ show: false, tab: 'blocked', loading: false, data: null })
+
+async function openSecurityModal() {
+  securityModal.value.show    = true
+  securityModal.value.loading = true
+  securityModal.value.data    = null
+  try {
+    const { data } = await axios.get(route('settings.security.data'))
+    securityModal.value.data = data
+  } catch (e) {
+    console.error('Security data load failed', e)
+  } finally {
+    securityModal.value.loading = false
+  }
+}
+
+async function unblockIp(ip) {
+  if (!confirm(`Разблокировать IP ${ip}?`)) return
+  try {
+    await axios.post(route('settings.security.unblock'), { ip })
+    securityModal.value.data.blocked = securityModal.value.data.blocked.filter(b => b.ip !== ip)
+  } catch (e) {
+    alert('Ошибка разблокировки: ' + (e.response?.data?.message ?? e.message))
+  }
 }
 </script>
 

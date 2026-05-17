@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
+use App\Services\LoginThrottleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -12,10 +13,12 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
+    public function __construct(private LoginThrottleService $throttle) {}
+
     public function create(Request $request): Response
     {
         $ip       = $request->ip();
-        $attempts = (int) Cache::get("login_fails:{$ip}", 0);
+        $attempts = $this->throttle->getAttemptCount($ip);
         $captchaT = (int) SystemSetting::get('login_captcha_attempts', 3);
         $blockT   = (int) SystemSetting::get('login_block_attempts', 6);
         $blockMin = (int) SystemSetting::get('login_block_minutes', 60);
@@ -28,7 +31,7 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('Auth/Login', [
             'showCaptcha'  => $captchaImage !== null,
             'captchaImage' => $captchaImage,
-            'isBlocked'    => $attempts >= $blockT,
+            'isBlocked'    => $this->throttle->isBlocked($ip),
             'blockMinutes' => $blockMin,
         ]);
     }
@@ -36,13 +39,13 @@ class AuthenticatedSessionController extends Controller
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
         $ip       = $request->ip();
-        $key      = "login_fails:{$ip}";
         $captchaT = (int) SystemSetting::get('login_captcha_attempts', 3);
         $blockT   = (int) SystemSetting::get('login_block_attempts', 6);
         $blockMin = (int) SystemSetting::get('login_block_minutes', 60);
-        $attempts = (int) Cache::get($key, 0);
+        $attempts = $this->throttle->getAttemptCount($ip);
 
-        if ($attempts >= $blockT) {
+        if ($this->throttle->isBlocked($ip)) {
+            $this->throttle->recordAttempt($ip, $request->email, $request->password, 'web', false, true);
             return back()->withErrors(['email' => "IP-адрес заблокирован на {$blockMin} мин. из-за многократных неверных попыток."]);
         }
 
@@ -57,7 +60,8 @@ class AuthenticatedSessionController extends Controller
             $request->session()->forget('captcha_answer');
 
             if ($given !== $stored || $stored === -999) {
-                $this->incrementAttempts($key, $blockMin);
+                $caused = $this->throttle->handleFailure($ip);
+                $this->throttle->recordAttempt($ip, $request->email, $request->password, 'web', false, false, $caused);
                 return back()->withErrors(['captcha' => 'Неверная капча. Попробуйте ещё раз.']);
             }
         }
@@ -66,8 +70,9 @@ class AuthenticatedSessionController extends Controller
         $credentials = [$loginField => $request->email, 'password' => $request->password];
 
         if (!Auth::attempt($credentials, $request->boolean('remember'))) {
-            $newAttempts = $this->incrementAttempts($key, $blockMin);
-            if ($newAttempts >= $blockT) {
+            $caused = $this->throttle->handleFailure($ip);
+            $this->throttle->recordAttempt($ip, $request->email, $request->password, 'web', false, false, $caused);
+            if ($caused) {
                 return back()->withErrors(['email' => "IP-адрес заблокирован на {$blockMin} мин."]);
             }
             return back()->withErrors(['email' => 'Неверный логин/email или пароль']);
@@ -75,10 +80,12 @@ class AuthenticatedSessionController extends Controller
 
         if (!Auth::user()->is_active) {
             Auth::logout();
+            $this->throttle->recordAttempt($ip, $request->email, $request->password, 'web', false);
             return back()->withErrors(['email' => 'Ваш аккаунт деактивирован. Обратитесь к администратору.']);
         }
 
-        Cache::forget($key);
+        $this->throttle->handleSuccess($ip);
+        $this->throttle->recordAttempt($ip, $request->email, null, 'web', true);
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));
@@ -118,11 +125,5 @@ class AuthenticatedSessionController extends Controller
               . "</text></svg>";
 
         return 'data:image/svg+xml;base64,' . base64_encode($svg);
-    }
-
-    private function incrementAttempts(string $key, int $blockMin): int
-    {
-        Cache::add($key, 0, now()->addMinutes($blockMin));
-        return (int) Cache::increment($key);
     }
 }
