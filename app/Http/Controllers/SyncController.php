@@ -40,7 +40,10 @@ class SyncController extends Controller
             'scheduled_at'    => $scheduledAt,
             'priority'        => 'normal',
         ], $creator);
-        NewTicketNotification::dispatch($ticket->fresh(['address']));
+        // Уведомляем только если заявка на сегодня (новая срочная в течение дня)
+        if ($ticket->scheduled_at?->isToday()) {
+            NewTicketNotification::dispatch($ticket->fresh(['address']));
+        }
         return response()->json([
             'status' => 'created', 'id' => $ticket->id,
             'number' => $ticket->number, 'scheduled_at' => $scheduledAt,
