@@ -25,3 +25,4 @@ Thumbs.db
 
 .env.1
 /.claude/
+sync_requests.py
