@@ -54,7 +54,9 @@ class SyncTicketCommand extends Command
             'priority'        => 'normal',
         ], $creator);
 
-        NewTicketNotification::dispatch($ticket->fresh(['address']));
+        if ($ticket->scheduled_at?->isToday()) {
+            NewTicketNotification::dispatch($ticket->fresh(['address']));
+        }
 
         $this->line(json_encode([
             'status'       => 'created',
