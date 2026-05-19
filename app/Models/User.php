@@ -19,17 +19,18 @@ class User extends Authenticatable
     protected $fillable = [
         'role_id', 'name', 'login', 'email', 'phone', 'password',
         'telegram_chat_id', 'max_chat_id',
-        'notify_telegram', 'notify_email', 'notify_max',
+        'notify_telegram', 'notify_email', 'notify_max', 'notify_on_days_off',
         'is_active',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
-        'notify_telegram' => 'boolean',
-        'notify_email'    => 'boolean',
-        'notify_max'      => 'boolean',
-        'is_active'       => 'boolean',
+        'notify_telegram'    => 'boolean',
+        'notify_email'       => 'boolean',
+        'notify_max'         => 'boolean',
+        'notify_on_days_off' => 'boolean',
+        'is_active'          => 'boolean',
     ];
 
     // === Relations ===
