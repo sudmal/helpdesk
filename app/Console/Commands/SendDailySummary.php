@@ -35,7 +35,10 @@ class SendDailySummary extends Command
 
             $members = $brigade->members()
                 ->where('is_active', true)
-                ->whereNotIn('id', $offUserIds)
+                ->where(function ($q) use ($offUserIds) {
+                    $q->whereNotIn('id', $offUserIds)
+                      ->orWhere('notify_on_days_off', true);
+                })
                 ->get();
 
             if ($members->isEmpty()) {
