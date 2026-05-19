@@ -611,6 +611,12 @@
                 </button>
               </div>
 
+              <!-- Уведомления на выходных -->
+              <label class="flex items-center gap-2 text-sm cursor-pointer px-1">
+                <input type="checkbox" v-model="userForm.notify_on_days_off" class="rounded" />
+                <span>Получать уведомления в выходные дни</span>
+              </label>
+
               <div v-if="testNotifyResult"
                    :class="['text-xs px-3 py-1.5 rounded-lg', testNotifyResult.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700']">
                 {{ testNotifyResult.ok ? '✓' : '✗' }} {{ testNotifyResult.message }}
@@ -906,7 +912,7 @@ const userForm = useForm({
   name: '', login: '', email: '', phone: '', role_id: '',
   telegram_chat_id: '', max_chat_id: '',
   password: '', password_confirmation: '',
-  notify_email: true, notify_telegram: false, notify_max: false,
+  notify_email: true, notify_telegram: false, notify_max: false, notify_on_days_off: true,
   is_active: true, territory_ids: [], brigade_id: '',
 })
 
@@ -924,8 +930,9 @@ function openUserModal(u = null) {
     userForm.password_confirmation = ''
     userForm.notify_email      = u.notify_email    ?? true
     userForm.notify_telegram   = u.notify_telegram ?? false
-    userForm.notify_max        = u.notify_max      ?? false
-    userForm.is_active         = u.is_active       ?? true
+    userForm.notify_max           = u.notify_max           ?? false
+    userForm.notify_on_days_off   = u.notify_on_days_off ?? true
+    userForm.is_active            = u.is_active            ?? true
     userForm.territory_ids     = u.territories?.map(t => t.id) ?? []
     userForm.brigade_id        = u.brigades?.[0]?.id ?? ''
   } else {
@@ -934,7 +941,7 @@ function openUserModal(u = null) {
     userForm.telegram_chat_id = ''; userForm.max_chat_id = ''
     userForm.password = ''; userForm.password_confirmation = ''
     userForm.notify_email = true; userForm.notify_telegram = false
-    userForm.notify_max = false; userForm.is_active = true
+    userForm.notify_max = false; userForm.notify_on_days_off = true; userForm.is_active = true
     userForm.territory_ids = []
     userForm.brigade_id = ''
   }
