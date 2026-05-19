@@ -44,25 +44,29 @@ class DailySummaryNotification extends Notification
 
     public function toTelegram(object $notifiable): array
     {
-        $lines = ["📋 *Заявки на {$this->date}* — бригада «{$this->brigade->name}»\n"];
+        $esc   = fn(string $s) => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $lines = ["📋 <b>Заявки на {$this->date}</b> — бригада «{$esc($this->brigade->name)}»\n"];
 
         foreach ($this->tickets->sortBy('scheduled_at') as $i => $ticket) {
             $num     = $i + 1;
             $time    = $ticket->scheduled_at?->format('H:i') ?? '—';
-            $address = $ticket->address?->full_address ?? 'Адрес не указан';
-            $type    = $ticket->type->name;
-            $status  = $ticket->status->name;
-            $phone    = $ticket->phone ?: "—";
-            $descLine = $ticket->description ? "\n> 💬 {$ticket->description}" : "";
-            $lines[] = "> {$num}. ⏰ {$time} 📍 {$address}\n> 🔧 {$type} | {$status}\n> 📞 {$phone}{$descLine}\n";
+            $address = $esc($ticket->address?->full_address ?? 'Адрес не указан');
+            $type    = $esc($ticket->type->name);
+            $status  = $esc($ticket->status->name);
+            $phone   = $esc($ticket->phone ?: '—');
+            $block   = "{$num}. ⏰ {$time} 📍 {$address}\n🔧 {$type} | {$status}\n📞 {$phone}";
+            if ($ticket->description) {
+                $block .= "\n💬 " . $esc($ticket->description);
+            }
+            $lines[] = "<blockquote>{$block}</blockquote>";
         }
 
         $lines[] = "Всего: {$this->tickets->count()} заявок";
 
         return [
-            'chat_id' => $notifiable->telegram_chat_id,
-            'text'    => implode("\n", $lines),
-            'parse_mode' => 'Markdown',
+            'chat_id'    => $notifiable->telegram_chat_id,
+            'text'       => implode("\n", $lines),
+            'parse_mode' => 'HTML',
         ];
     }
 
