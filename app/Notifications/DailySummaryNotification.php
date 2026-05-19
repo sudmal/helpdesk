@@ -52,8 +52,9 @@ class DailySummaryNotification extends Notification
             $address = $ticket->address?->full_address ?? 'Адрес не указан';
             $type    = $ticket->type->name;
             $status  = $ticket->status->name;
-            $descLine = $ticket->description ? "\n💬 {$ticket->description}" : "";
-            $lines[] = "{$num}. ⏰ {$time}\n📍 {$address}\n🔧 {$type} | {$status}{$descLine}\n";
+            $phone    = $ticket->phone ?: "—";
+            $descLine = $ticket->description ? "\n> 💬 {$ticket->description}" : "";
+            $lines[] = "> {$num}. ⏰ {$time} 📍 {$address}\n> 🔧 {$type} | {$status}\n> 📞 {$phone}{$descLine}\n";
         }
 
         $lines[] = "Всего: {$this->tickets->count()} заявок";
@@ -75,8 +76,9 @@ class DailySummaryNotification extends Notification
             $address = $ticket->address?->full_address ?? 'Адрес не указан';
             $type    = $ticket->type->name;
             $status  = $ticket->status->name;
-            $descLine = $ticket->description ? "\n💬 {$ticket->description}" : "";
-            $lines[] = "{$num}. ⏰ {$time}\n📍 {$address}\n🔧 {$type} | {$status}{$descLine}\n";
+            $phone    = $ticket->phone ?: "—";
+            $descLine = $ticket->description ? "\n> 💬 {$ticket->description}" : "";
+            $lines[] = "> {$num}. ⏰ {$time} 📍 {$address}\n> 🔧 {$type} | {$status}\n> 📞 {$phone}{$descLine}\n";
         }
 
         $lines[] = "Всего: {$this->tickets->count()} заявок";
