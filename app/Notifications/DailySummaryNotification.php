@@ -52,7 +52,9 @@ class DailySummaryNotification extends Notification
             $address = $ticket->address?->full_address ?? 'Адрес не указан';
             $type    = $ticket->type->name;
             $status  = $ticket->status->name;
-            $lines[] = "{$num}. ⏰ {$time}\n📍 {$address}\n🔧 {$type} | {$status}\n";
+            $desc    = $ticket->description ? mb_strimwidth(str_replace("\n", " ", $ticket->description), 0, 100, "…") : null;
+            $descLine = $desc ? "\n💬 {$desc}" : "";
+            $lines[] = "{$num}. ⏰ {$time}\n📍 {$address}\n🔧 {$type} | {$status}{$descLine}\n";
         }
 
         $lines[] = "Всего: {$this->tickets->count()} заявок";
@@ -74,7 +76,9 @@ class DailySummaryNotification extends Notification
             $address = $ticket->address?->full_address ?? 'Адрес не указан';
             $type    = $ticket->type->name;
             $status  = $ticket->status->name;
-            $lines[] = "{$num}. ⏰ {$time}\n📍 {$address}\n🔧 {$type} | {$status}\n";
+            $desc    = $ticket->description ? mb_strimwidth(str_replace("\n", " ", $ticket->description), 0, 100, "…") : null;
+            $descLine = $desc ? "\n💬 {$desc}" : "";
+            $lines[] = "{$num}. ⏰ {$time}\n📍 {$address}\n🔧 {$type} | {$status}{$descLine}\n";
         }
 
         $lines[] = "Всего: {$this->tickets->count()} заявок";
