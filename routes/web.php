@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 require __DIR__ . '/auth.php';
 
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::get('/pbx/lookup', [\App\Http\Controllers\PbxController::class, 'lookup'])->name('pbx.lookup');
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/new-since', [DashboardController::class, 'newTicketsSince'])->name('dashboard.new-since');
