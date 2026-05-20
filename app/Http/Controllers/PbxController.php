@@ -21,11 +21,14 @@ class PbxController extends Controller
             return response()->json(['status' => 'skipped']);
         }
 
-        $addressId = $addressString ? $this->matchAddress($addressString) : null;
+        [$addressId, $apartment] = $addressString
+            ? $this->matchAddress($addressString)
+            : [null, null];
 
         Call::create([
             'phone'          => $phone,
             'address_string' => $addressString ?: null,
+            'apartment'      => $apartment,
             'address_id'     => $addressId,
             'called_at'      => now(),
             'event'          => $request->input('event', 'incoming'),
@@ -45,13 +48,11 @@ class PbxController extends Controller
 
         $suffix = substr($phone, -7);
 
-        // Последний звонок с этого номера
         $lastCall = Call::where('phone', 'like', "%{$suffix}")
             ->with('address')
             ->latest('called_at')
             ->first();
 
-        // Последние заявки с этим номером
         $tickets = Ticket::with(['address', 'status', 'type'])
             ->where('phone', 'like', "%{$suffix}")
             ->latest()
@@ -62,6 +63,7 @@ class PbxController extends Controller
                 'number'     => $t->number,
                 'address'    => $t->address?->full_address,
                 'address_id' => $t->address_id,
+                'apartment'  => $t->apartment,
                 'type'       => $t->type?->name,
                 'status'     => $t->status?->name,
                 'date'       => $t->scheduled_at?->format('d.m.Y'),
@@ -72,6 +74,7 @@ class PbxController extends Controller
                 'called_at'      => $lastCall->called_at->format('d.m.Y H:i'),
                 'address_string' => $lastCall->address_string,
                 'address_id'     => $lastCall->address_id,
+                'apartment'      => $lastCall->apartment,
                 'address_full'   => $lastCall->address?->full_address,
             ] : null,
             'tickets' => $tickets,
@@ -79,11 +82,18 @@ class PbxController extends Controller
     }
 
     // Парсинг строки биллинга: "кв-л Железнодорожный дом 15 кв 63"
-    private function matchAddress(string $raw): ?int
+    // Возвращает [address_id|null, apartment|null]
+    private function matchAddress(string $raw): array
     {
-        if (!preg_match('/^(.+?)\s+дом\s+(\S+)/iu', $raw, $m)) {
-            return null;
+        $apartment = null;
+        if (preg_match('/\bкв[\.\s]+(\S+)/iu', $raw, $a)) {
+            $apartment = $a[1];
         }
+
+        if (!preg_match('/^(.+?)\s+дом\s+(\S+)/iu', $raw, $m)) {
+            return [null, $apartment];
+        }
+
         $street   = trim($m[1]);
         $building = trim($m[2]);
 
@@ -91,7 +101,7 @@ class PbxController extends Controller
             ->where('street', 'like', '%' . mb_substr($street, -5) . '%')
             ->first();
 
-        return $address?->id;
+        return [$address?->id, $apartment];
     }
 
     private function normalizePhone(string $phone): string

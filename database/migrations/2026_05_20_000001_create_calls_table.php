@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('phone', 30)->index();
             $table->string('address_string', 300)->nullable();
+            $table->string('apartment', 20)->nullable();
             $table->unsignedInteger('address_id')->nullable()->index();
             $table->timestamp('called_at');
             $table->string('event', 30)->default('incoming');
