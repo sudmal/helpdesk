@@ -103,8 +103,15 @@ class PbxController extends Controller
         $street   = trim($m[1]);
         $building = trim($m[2]);
 
+        // Strip common prefixes (ул, кв-л, пр-т, etc.) before matching
+        $streetClean = preg_replace(
+            '/^(ул\.?\s*|кв-л\.?\s*|кв\.?л\.?\s*|квартал\s*|пр-т\.?\s*|проспект\s*|пер\.?\s*|пл\.?\s*|б-р\.?\s*|бульвар\s*|ш\.?\s*)/iu',
+            '', $street
+        );
+        $streetClean = trim($streetClean);
+
         $address = Address::where('building', $building)
-            ->where('street', 'like', '%' . mb_substr($street, -5) . '%')
+            ->where('street', 'like', '%' . $streetClean . '%')
             ->first();
 
         return [$address?->id, $apartment];
