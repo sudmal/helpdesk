@@ -27,6 +27,8 @@
       <NavItem v-if="canManageSettings"
                :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" />
       <NavItem v-if="canManageSettings"
+               :href="route('calls.index')"          icon="phone"       label="Звонки" />
+      <NavItem v-if="canManageSettings"
                :href="route('settings.index')"      icon="settings" label="Настройки" />
       <NavItem :href="route('help')" icon="help-circle" label="Справка" />
     </nav>
