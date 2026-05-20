@@ -53,7 +53,7 @@
               <th class="px-4 py-3 text-left">Заявки</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="c in calls.data" :key="c.id" class="hover:bg-gray-50">
               <td class="px-4 py-2.5 whitespace-nowrap text-gray-500 text-xs">
                 {{ formatDate(c.called_at) }}
@@ -90,7 +90,7 @@
                 :disabled="!link.url || link.active"
                 @click="link.url && router.get(link.url, {}, { preserveState: true })"
                 v-html="link.label"
-                :class="['px-3 py-1 rounded-lg text-sm transition-colors',
+                :class="['px-3 py-0.5 rounded-lg text-sm transition-colors',
                          link.active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600 disabled:opacity-40 disabled:cursor-default']" />
       </div>
     </div>
