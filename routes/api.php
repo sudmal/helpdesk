@@ -6,6 +6,10 @@ use App\Models\Material;
 use App\Models\ServiceType;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\PbxController;
+
+Route::post('/pbx/incoming', [PbxController::class, 'webhook']);
+
 Route::post('/auth/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {

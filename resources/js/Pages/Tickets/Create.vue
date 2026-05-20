@@ -155,8 +155,28 @@
               <input v-model="form.phone" type="tel"
                      :class="['field-input', fieldError.phone ? 'border-red-400 bg-red-50' : '']"
                      placeholder="+7..." />
-            <p v-if="fieldError.phone" class="text-xs text-red-500 mt-1">⚠ Укажите телефон</p>
-          </div>
+              <p v-if="fieldError.phone" class="text-xs text-red-500 mt-1">⚠ Укажите телефон</p>
+              <!-- Подсказка из журнала звонков -->
+              <div v-if="phoneLookup" class="mt-1.5 rounded-xl border border-blue-200 bg-blue-50 text-xs divide-y divide-blue-100">
+                <div v-if="phoneLookup.last_call" class="px-3 py-1.5 flex items-center justify-between gap-2">
+                  <span class="text-blue-700">
+                    📞 {{ phoneLookup.last_call.called_at }}
+                    <span v-if="phoneLookup.last_call.address_string"> — {{ phoneLookup.last_call.address_string }}</span>
+                  </span>
+                  <button v-if="phoneLookup.last_call.address_id" type="button"
+                          @click="applyLookupAddress(phoneLookup.last_call.address_id)"
+                          class="shrink-0 text-blue-600 hover:text-blue-800 font-medium underline">
+                    Подставить адрес
+                  </button>
+                </div>
+                <div v-for="t in phoneLookup.tickets" :key="t.id"
+                     class="px-3 py-1 flex items-center justify-between gap-2 hover:bg-blue-100 cursor-pointer"
+                     @click="applyLookupAddress(t.address_id)">
+                  <span class="text-gray-600">{{ t.date }} {{ t.type }} — {{ t.address }}</span>
+                  <span class="text-gray-400 shrink-0">{{ t.status }}</span>
+                </div>
+              </div>
+            </div>
 
             <!-- Договор -->
             <div>
@@ -403,6 +423,30 @@ const attachmentFiles = ref([])
 const billingQuery    = ref('')
 const billingLoading  = ref(false)
 const addressLoading  = ref(false)
+const phoneLookup     = ref(null)
+
+let phoneLookupTimer = null
+watch(() => form.phone, (val) => {
+  clearTimeout(phoneLookupTimer)
+  const digits = val.replace(/\D/g, '')
+  if (digits.length < 7) { phoneLookup.value = null; return }
+  phoneLookupTimer = setTimeout(async () => {
+    try {
+      const { data } = await axios.get(route('pbx.lookup'), { params: { phone: val } })
+      phoneLookup.value = (data.last_call || data.tickets?.length) ? data : null
+    } catch { phoneLookup.value = null }
+  }, 500)
+})
+
+function applyLookupAddress(addressId) {
+  if (!addressId) return
+  const addr = props.addresses?.find(a => a.id === addressId)
+  if (addr) {
+    form.address_id   = addr.id
+    form.territory_id = addr.territory_id
+    phoneLookup.value = null
+  }
+}
 
 async function fetchFreeSlot(brigadeId = null) {
   try {

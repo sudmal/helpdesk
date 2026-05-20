@@ -9,4 +9,7 @@ return [
     'sync' => [
         'token' => env('SYNC_TOKEN'),
     ],
+    'pbx' => [
+        'token' => env('PBX_TOKEN'),
+    ],
 ];
