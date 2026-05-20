@@ -49,6 +49,7 @@
               <th class="px-4 py-3 text-left">Телефон</th>
               <th class="px-4 py-3 text-left">Адрес из биллинга</th>
               <th class="px-4 py-3 text-left">Адрес в базе</th>
+              <th class="px-4 py-3 text-left">Кв.</th>
               <th class="px-4 py-3 text-left">Заявки</th>
             </tr>
           </thead>
@@ -68,9 +69,10 @@
                 </span>
                 <span v-else class="text-gray-400 text-xs">не найден</span>
               </td>
+              <td class="px-4 py-2.5 text-gray-600">{{ c.apartment ?? '—' }}</td>
               <td class="px-4 py-2.5">
                 <a v-if="c.address"
-                   :href="route('tickets.index', { address_id: c.address.id })"
+                   :href="route('tickets.index', { address_id: c.address.id, apartment: c.apartment })"
                    class="text-xs text-blue-500 hover:underline">заявки →</a>
               </td>
             </tr>
@@ -97,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -129,4 +131,12 @@ function formatDate(val) {
   const d = new Date(val)
   return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
+
+let refreshTimer = null
+onMounted(() => {
+  refreshTimer = setInterval(() => {
+    router.reload({ only: ['calls'], preserveState: true })
+  }, 10000)
+})
+onUnmounted(() => clearInterval(refreshTimer))
 </script>
