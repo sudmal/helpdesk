@@ -55,22 +55,22 @@
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="c in calls.data" :key="c.id" class="hover:bg-gray-50">
-              <td class="px-4 py-2.5 whitespace-nowrap text-gray-500 text-xs">
+              <td class="px-3 py-0.5 whitespace-nowrap text-gray-500 text-xs">
                 {{ formatDate(c.called_at) }}
               </td>
-              <td class="px-4 py-2.5 font-mono whitespace-nowrap">
+              <td class="px-3 py-0.5 font-mono whitespace-nowrap">
                 <a :href="route('tickets.index', { search: c.phone })"
                    class="text-blue-600 hover:underline">{{ c.phone }}</a>
               </td>
-              <td class="px-4 py-2.5 text-gray-700">{{ c.address_string ?? '—' }}</td>
-              <td class="px-4 py-2.5">
+              <td class="px-3 py-0.5 text-gray-700">{{ c.address_string ?? '—' }}</td>
+              <td class="px-3 py-0.5">
                 <span v-if="c.address" class="text-green-700">
                   ✓ {{ c.address.full_address }}
                 </span>
                 <span v-else class="text-gray-400 text-xs">не найден</span>
               </td>
-              <td class="px-4 py-2.5 text-gray-600">{{ c.apartment ?? '—' }}</td>
-              <td class="px-4 py-2.5">
+              <td class="px-3 py-0.5 text-gray-600">{{ c.apartment ?? '—' }}</td>
+              <td class="px-3 py-0.5">
                 <a v-if="c.address"
                    :href="route('tickets.index', { address_id: c.address.id, apartment: c.apartment })"
                    class="text-xs text-blue-500 hover:underline">заявки →</a>
