@@ -87,6 +87,15 @@
         <p><b>Max (корпоративный мессенджер):</b> уведомления через бота <a href="https://max.ru/id9311009404_1_bot" target="_blank" class="text-blue-600 hover:text-blue-800 underline">@sputnikhd_bot в Max</a>. Требует MAX ID — узнать у <a href="https://max.ru/id380124799522_1_bot" target="_blank" class="text-blue-600 hover:text-blue-800 underline">бота-определителя ID</a>.</p>
       </HelpSection>
 
+      <HelpSection title="Мобильное приложение" icon="📱">
+        <p>Для выездных сотрудников доступно нативное Android-приложение <b>SP-Helpdesk</b>.</p>
+        <ul>
+          <li>Требования: <b>Android 11+</b>.</li>
+          <li>Скачать по ссылке в нижней части левого меню — кнопка <b>SP-Helpdesk x.x.x.x</b>. Ссылка всегда актуальна.</li>
+          <li>Установка: разрешите установку из неизвестных источников в настройках Android.</li>
+        </ul>
+      </HelpSection>
+
       <HelpSection title="Система уведомлений" icon="🔔">
         <p><b>Событийные уведомления</b> (отправляются немедленно):</p>
         <ul>
@@ -239,6 +248,10 @@
 
     <!-- ТЕХНИКИ -->
     <div v-if="activeTab === 'technician'" class="space-y-4">
+
+      <HelpSection title="Мобильное приложение" icon="📱">
+        <p>Для работы в поле рекомендуется приложение <b>SP-Helpdesk</b> (Android 11+) — ссылка для скачивания в нижней части левого меню.</p>
+      </HelpSection>
 
       <HelpSection title="Просмотр своих заявок" icon="📋">
         <ul>
