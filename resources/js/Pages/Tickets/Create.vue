@@ -163,15 +163,15 @@
                     📞 {{ phoneLookup.last_call.called_at }}
                     <span v-if="phoneLookup.last_call.address_string"> — {{ phoneLookup.last_call.address_string }}</span>
                   </span>
-                  <button v-if="phoneLookup.last_call.address_id" type="button"
-                          @click="applyLookupAddress(phoneLookup.last_call.address_id, phoneLookup.last_call.apartment)"
+                  <button v-if="phoneLookup.last_call.address" type="button"
+                          @click="applyLookupAddress(phoneLookup.last_call.address, phoneLookup.last_call.apartment)"
                           class="shrink-0 text-blue-600 hover:text-blue-800 font-medium underline">
                     Подставить адрес
                   </button>
                 </div>
                 <div v-for="t in phoneLookup.tickets" :key="t.id"
                      class="px-3 py-1 flex items-center justify-between gap-2 hover:bg-blue-100 cursor-pointer"
-                     @click="applyLookupAddress(t.address_id, t.apartment)">
+                     @click="applyLookupAddress({ id: t.address_id, label: t.address, full_address: t.address }, t.apartment)">
                   <span class="text-gray-600">{{ t.date }} {{ t.type }} — {{ t.address }}<span v-if="t.apartment" class="text-gray-400"> кв.{{ t.apartment }}</span></span>
                   <span class="text-gray-400 shrink-0">{{ t.status }}</span>
                 </div>
@@ -438,15 +438,11 @@ watch(() => form.phone, (val) => {
   }, 500)
 })
 
-function applyLookupAddress(addressId, apartment) {
-  if (!addressId) return
-  const addr = props.addresses?.find(a => a.id === addressId)
-  if (addr) {
-    form.address_id   = addr.id
-    form.territory_id = addr.territory_id
-    if (apartment) form.apartment = apartment
-    phoneLookup.value = null
-  }
+function applyLookupAddress(address, apartment) {
+  if (!address?.id) return
+  selectAddress(address)
+  if (apartment) form.apartment = apartment
+  phoneLookup.value = null
 }
 
 async function fetchFreeSlot(brigadeId = null) {

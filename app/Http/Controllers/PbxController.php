@@ -69,13 +69,19 @@ class PbxController extends Controller
                 'date'       => $t->scheduled_at?->format('d.m.Y'),
             ]);
 
+        $addr = $lastCall?->address;
+
         return response()->json([
             'last_call' => $lastCall ? [
                 'called_at'      => $lastCall->called_at->format('d.m.Y H:i'),
                 'address_string' => $lastCall->address_string,
-                'address_id'     => $lastCall->address_id,
                 'apartment'      => $lastCall->apartment,
-                'address_full'   => $lastCall->address?->full_address,
+                'address'        => $addr ? [
+                    'id'           => $addr->id,
+                    'territory_id' => $addr->territory_id,
+                    'label'        => $addr->full_address,
+                    'full_address' => $addr->full_address,
+                ] : null,
             ] : null,
             'tickets' => $tickets,
         ]);
