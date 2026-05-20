@@ -10,8 +10,6 @@ class CallLogController extends Controller
 {
     public function index(Request $request)
     {
-        $this->authorize('manage-settings');
-
         $q = Call::with('address')->latest('called_at');
 
         if ($request->filled('phone')) {
