@@ -42,6 +42,15 @@
         Выход
       </button>
     </div>
+    <div v-if="apk" class="px-4 py-2 border-t border-white/10">
+      <a :href="apk.apk_url" target="_blank"
+         class="flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.5l-4-4m4 4l4-4m-4 4V9m-7 9a9 9 0 1118 0 9 9 0 01-18 0z" />
+        </svg>
+        <span>Android {{ apk.version_name }}</span>
+      </a>
+    </div>
     <div class="px-4 py-2 border-t border-white/5">
       <div class="text-[10px] text-white/20 leading-tight">Suntsov Dmitriy @ Claude</div>
     </div>
@@ -49,11 +58,20 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import NavItem from './NavItem.vue'
 
 const props = defineProps({ user: Object })
+
+const apk = ref(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/apk/version.json')
+    if (res.ok) apk.value = await res.json()
+  } catch {}
+})
 
 const canManageSettings = computed(() =>
   ['admin', 'head_support'].includes(props.user?.role?.slug)
