@@ -6,6 +6,7 @@ use App\Models\{Ticket, TicketType, TicketStatus, Brigade, Address, User, Servic
 use App\Services\TicketService;
 use App\Http\Requests\{StoreTicketRequest, UpdateTicketRequest, AddCommentRequest};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -34,6 +35,11 @@ class TicketController extends Controller
             $userTerritories = collect(); // нет фильтра — видят всё
         }
 
+        $nonFinalStatusIds = Cache::remember('ts_non_final_ids', 3600,
+            fn() => \App\Models\TicketStatus::where('is_final', false)->pluck('id'));
+        $closedStatusId = Cache::remember('ts_closed_id', 3600,
+            fn() => \App\Models\TicketStatus::where('slug', 'closed')->value('id'));
+
         $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade', 'creator', 'assignee'])
             ->withCount('comments')
             ->when($userTerritories->isNotEmpty(), fn($q) =>
@@ -44,16 +50,14 @@ class TicketController extends Controller
             ->when($request->type,   fn($q) => $q->where('type_id', $request->type))
             ->when($request->brigade,      fn($q) => $q->where('brigade_id', $request->brigade))
             ->when($request->service_type, fn($q) => $q->where('service_type_id', $request->service_type))
-            ->when($request->overdue, fn($q) => $q->whereIn('status_id',
-                \App\Models\TicketStatus::where('is_final', false)->pluck('id'))
+            ->when($request->overdue, fn($q) => $q->whereIn('status_id', $nonFinalStatusIds)
                 ->whereNotNull('scheduled_at')
                 ->where('scheduled_at', '<', today()))
             ->when($request->priority, fn($q) => $q->where('priority', $request->priority))
             ->when($request->date_from, fn($q) => $q->where('scheduled_at', '>=', $request->date_from))
             ->when($request->date_to,   fn($q) => $q->where('scheduled_at', '<=', $request->date_to . ' 23:59:59'))
 ->when($request->input('closed_today'), function ($q) use ($request) {
-                $closedId = \App\Models\TicketStatus::where('slug', 'closed')->value('id');
-                $q->where('status_id', $closedId)->whereDate('closed_at', today());
+                $q->where('status_id', $closedStatusId)->whereDate('closed_at', today());
                 if ($request->input('closed_today') === 'auto') {
                     $q->where('close_notes', 'LIKE', '%просрочено%');
                 } elseif ($request->input('closed_today') === 'manual') {
@@ -92,11 +96,11 @@ class TicketController extends Controller
             'types'    => TicketType::active()->get(['id', 'name', 'color']),
             'brigades'     => Brigade::orderBy('name')->get(['id', 'name']),
             'serviceTypes' => \App\Models\ServiceType::active()->get(['id', 'name', 'color']),
-            'overdueCount' => Ticket::whereIn('status_id',
-                \App\Models\TicketStatus::where('is_final', false)->pluck('id'))
-                ->whereNotNull('scheduled_at')
-                ->where('scheduled_at', '<', today())
-                ->count(),
+            'overdueCount' => Cache::remember('overdue_count', 60, fn() =>
+                Ticket::whereIn('status_id', $nonFinalStatusIds)
+                    ->whereNotNull('scheduled_at')
+                    ->where('scheduled_at', '<', today())
+                    ->count()),
         ]);
     }
 
