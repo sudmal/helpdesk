@@ -30,6 +30,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/create',        [TicketController::class, 'create'])->name('create');
         Route::get('/free-slot',      [TicketController::class, 'freeSlot'])->name('free-slot');
         Route::post('/',             [TicketController::class, 'store'])->name('store');
+        Route::post('/bulk/close',      [TicketController::class, 'bulkClose'])->name('bulk.close');
+        Route::post('/bulk/reschedule', [TicketController::class, 'bulkReschedule'])->name('bulk.reschedule');
         Route::get('/{ticket}',      [TicketController::class, 'show'])->name('show');
         Route::get('/{ticket}/edit', [TicketController::class, 'edit'])->name('edit');
         Route::put('/{ticket}',      [TicketController::class, 'update'])->name('update');
@@ -40,8 +42,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/{ticket}/reopen',   [TicketController::class, 'reopen'])->name('reopen');
         Route::post('/{ticket}/postpone', [TicketController::class, 'postpone'])->name('postpone');
         Route::post('/{ticket}/assign',  [TicketController::class, 'assign'])->name('assign');
-        Route::post('/bulk/close',       [TicketController::class, 'bulkClose'])->name('bulk.close');
-        Route::post('/bulk/reschedule',  [TicketController::class, 'bulkReschedule'])->name('bulk.reschedule');
+
         Route::post('/{ticket}/comments',[TicketController::class, 'addComment'])->name('comment');
     });
 
