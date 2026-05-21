@@ -10,7 +10,7 @@ class Address extends Model
     protected $fillable = [
         'territory_id', 'city', 'street', 'building', 'apartment',
         'entrance', 'floor', 'subscriber_name', 'phone', 'contract_no',
-        'lanbilling_id', 'lanbilling_data', 'notes',
+        'lanbilling_id', 'lanbilling_data', 'notes', 'lat', 'lng',
     ];
 
     protected $casts = ['lanbilling_data' => 'array'];

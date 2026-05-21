@@ -224,12 +224,24 @@
               </svg>
             </a>
           </div>
-          <iframe :src="mapWidgetUrl"
-                  class="w-full border-0 block"
-                  style="height:220px"
-                  frameborder="0"
-                  allowfullscreen
-                  loading="lazy" />
+          <div class="relative">
+            <iframe :src="mapWidgetUrl"
+                    class="w-full border-0 block"
+                    style="height:220px"
+                    frameborder="0"
+                    allowfullscreen
+                    loading="lazy" />
+            <!-- crosshair overlay, pointer-events-none so map stays interactive -->
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none"
+                 style="padding-bottom:20px">
+              <div class="relative w-8 h-8 drop-shadow">
+                <div class="absolute top-1/2 left-0 right-0 h-px bg-red-500 opacity-90"></div>
+                <div class="absolute left-1/2 top-0 bottom-0 w-px bg-red-500 opacity-90"></div>
+                <div class="absolute top-1/2 left-1/2 w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow
+                            -translate-x-1/2 -translate-y-1/2"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- История по адресу -->
