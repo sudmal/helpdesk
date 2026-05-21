@@ -102,7 +102,10 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/80 text-xs text-gray-500 font-medium">
-              <th class="w-6 px-1.5 py-0.5"></th>
+              <th class="w-8 px-1.5 py-0.5 text-center">
+                <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded border-gray-300 cursor-pointer" />
+              </th>
+              <th class="w-5 px-1 py-0.5"></th>
               <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
                 Дата <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
@@ -134,6 +137,9 @@
                 :style="rowStyle(t)"
                 @click="router.visit(route('tickets.show', t.id))">
 
+              <td class="px-1.5 py-0.5 text-center" @click.stop>
+                <input type="checkbox" :checked="selected.has(t.id)" @change="toggleSelect(t.id)" class="rounded border-gray-300 cursor-pointer" />
+              </td>
               <!-- Иконка участка -->
               <td class="px-1.5 py-0.5 text-center text-sm leading-none" :title="t.service_type?.name">
                 {{ serviceIcon(t.service_type?.name) }}
@@ -257,6 +263,71 @@
         </div>
       </div>
     </Modal>
+    <!-- Массовые операции: панель -->
+    <Teleport to="body">
+      <div v-if="selected.size > 0"
+           class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-4 text-sm whitespace-nowrap">
+        <span>Выбрано: <b>{{ selected.size }}</b></span>
+        <button @click="bulkCloseModal = true"
+                class="bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded-lg font-medium transition-colors">
+          ✓ Закрыть
+        </button>
+        <button @click="bulkRescheduleModal = true"
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg font-medium transition-colors">
+          📅 Перенести
+        </button>
+        <button @click="selected = new Set()" class="text-white/50 hover:text-white ml-1">✕</button>
+      </div>
+    </Teleport>
+
+    <!-- Модалка: массовое закрытие -->
+    <Modal v-if="bulkCloseModal" title="Закрыть заявки" @close="bulkCloseModal = false">
+      <div class="w-80 space-y-3">
+        <p class="text-sm text-gray-600">Выбрано заявок: <b>{{ selected.size }}</b></p>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Номер акта <span class="text-gray-400">(если нет — будет «б/а»)</span></label>
+          <input v-model="bulkCloseForm.act_number" type="text" placeholder="б/а"
+                 class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Комментарий</label>
+          <textarea v-model="bulkCloseForm.comment" rows="3" placeholder="Что было сделано..."
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"></textarea>
+        </div>
+        <div class="flex gap-2 justify-end pt-1 border-t border-gray-100">
+          <button @click="bulkCloseModal = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="doBulkClose" :disabled="bulkLoading"
+                  class="btn-primary text-sm disabled:opacity-50">
+            {{ bulkLoading ? 'Закрываем...' : 'Закрыть ' + selected.size + ' заявок' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- Модалка: массовый перенос -->
+    <Modal v-if="bulkRescheduleModal" title="Перенести заявки" @close="bulkRescheduleModal = false">
+      <div class="w-80 space-y-3">
+        <p class="text-sm text-gray-600">Выбрано заявок: <b>{{ selected.size }}</b></p>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Новая дата и время <span class="text-red-400">*</span></label>
+          <input v-model="bulkRescheduleForm.scheduled_at" type="datetime-local"
+                 class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Комментарий</label>
+          <textarea v-model="bulkRescheduleForm.comment" rows="3" placeholder="Причина переноса..."
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"></textarea>
+        </div>
+        <div class="flex gap-2 justify-end pt-1 border-t border-gray-100">
+          <button @click="bulkRescheduleModal = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="doBulkReschedule" :disabled="!bulkRescheduleForm.scheduled_at || bulkLoading"
+                  class="btn-primary text-sm disabled:opacity-50">
+            {{ bulkLoading ? 'Переносим...' : 'Перенести ' + selected.size + ' заявок' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
+
   </AppLayout>
 </template>
 
@@ -475,5 +546,59 @@ function toggleDesc(id) {
 function formatDate(d) {
   if (!d) return '—'
   return dayjs(d).format('DD MMM HH:mm')
+}
+
+// Массовые операции
+const selected = ref(new Set())
+const bulkCloseModal = ref(false)
+const bulkRescheduleModal = ref(false)
+const bulkLoading = ref(false)
+const bulkCloseForm = ref({ comment: '', act_number: '' })
+const bulkRescheduleForm = ref({ scheduled_at: '', comment: '' })
+
+const selectAll = computed(() => {
+  const ids = props.tickets?.data?.map(t => t.id) ?? []
+  return ids.length > 0 && ids.every(id => selected.value.has(id))
+})
+
+function toggleSelect(id) {
+  const s = new Set(selected.value)
+  if (s.has(id)) s.delete(id); else s.add(id)
+  selected.value = s
+}
+
+function toggleSelectAll() {
+  const ids = props.tickets?.data?.map(t => t.id) ?? []
+  selected.value = selectAll.value ? new Set() : new Set(ids)
+}
+
+async function doBulkClose() {
+  bulkLoading.value = true
+  try {
+    await axios.post(route('tickets.bulk.close'), {
+      ids: [...selected.value],
+      comment: bulkCloseForm.value.comment,
+      act_number: bulkCloseForm.value.act_number,
+    })
+    bulkCloseModal.value = false
+    selected.value = new Set()
+    bulkCloseForm.value = { comment: '', act_number: '' }
+    router.reload({ only: ['tickets'], preserveState: true })
+  } finally { bulkLoading.value = false }
+}
+
+async function doBulkReschedule() {
+  bulkLoading.value = true
+  try {
+    await axios.post(route('tickets.bulk.reschedule'), {
+      ids: [...selected.value],
+      scheduled_at: bulkRescheduleForm.value.scheduled_at,
+      comment: bulkRescheduleForm.value.comment,
+    })
+    bulkRescheduleModal.value = false
+    selected.value = new Set()
+    bulkRescheduleForm.value = { scheduled_at: '', comment: '' }
+    router.reload({ only: ['tickets'], preserveState: true })
+  } finally { bulkLoading.value = false }
 }
 </script>
