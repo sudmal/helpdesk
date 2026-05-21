@@ -784,7 +784,7 @@ const HelpSection = defineComponent({
 
 const tabs = [
   { id: 'about',      label: '✦ О системе' },
-  { id: 'overview',   label: 'О системе' },
+  { id: 'overview',   label: 'Описание' },
   { id: 'dispatcher', label: 'Диспетчеры' },
   { id: 'technician', label: 'Техники / Бригады' },
   { id: 'admin',      label: 'Администраторы' },
