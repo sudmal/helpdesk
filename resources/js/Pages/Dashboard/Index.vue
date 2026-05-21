@@ -181,13 +181,29 @@
     <!-- ── ПРОСРОЧЕННЫЕ ── -->
     <div v-if="overdue?.length" ref="overdueSection"
          class="bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
-      <div class="px-4 py-3 border-b border-red-200 flex items-center justify-between">
+      <div class="px-4 py-3 border-b border-red-200 flex items-center justify-between flex-wrap gap-2">
         <h2 class="font-semibold text-red-700 text-sm flex items-center gap-2">
+          <input type="checkbox" :checked="selectAllOverdue" @change="toggleSelectAllOverdue"
+                 class="rounded border-red-300 cursor-pointer" />
           ⚠ Требуют внимания — просроченные
           <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">{{ overdue?.length }}</span>
         </h2>
-        <a :href="route('tickets.index', { overdue: 1, service_type: serviceType, territory: selectedTerritory })"
-           class="text-xs text-red-600 hover:text-red-800 font-medium">Открыть список →</a>
+        <div class="flex items-center gap-2">
+          <template v-if="selectedOverdue.size > 0">
+            <span class="text-xs text-red-700 font-medium">Выбрано: {{ selectedOverdue.size }}</span>
+            <button @click="bulkCloseOverdueModal = true"
+                    class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded-lg font-medium transition-colors">
+              ✓ Закрыть
+            </button>
+            <button @click="bulkRescheduleOverdueModal = true"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-lg font-medium transition-colors">
+              📅 Перенести
+            </button>
+            <button @click="selectedOverdue = new Set()" class="text-xs text-red-400 hover:text-red-700">✕</button>
+          </template>
+          <a :href="route('tickets.index', { overdue: 1, service_type: serviceType, territory: selectedTerritory })"
+             class="text-xs text-red-600 hover:text-red-800 font-medium">Открыть список →</a>
+        </div>
       </div>
       <div class="overflow-y-auto" style="max-height:50vh">
       <table class="w-full text-xs">
@@ -195,7 +211,12 @@
           <tr v-for="t in (overdue ?? [])" :key="t.id"
               class="hover:bg-red-100/50 cursor-pointer transition-colors"
               @click="router.visit(route('tickets.show', t.id))">
-            <td class="pl-3 pr-1 py-px text-center w-6">{{ serviceIcon(t.service_type?.name) }}</td>
+            <td class="pl-2 pr-0 py-px text-center w-7" @click.stop>
+              <input type="checkbox" :checked="selectedOverdue.has(t.id)"
+                     @change="toggleOverdueSelect(t.id)"
+                     class="rounded border-red-300 cursor-pointer" />
+            </td>
+            <td class="pl-1 pr-1 py-px text-center w-6">{{ serviceIcon(t.service_type?.name) }}</td>
             <td class="px-3 py-px w-20">
               <span class="font-mono text-red-700 font-medium">{{ t.number }}</span>
             </td>
@@ -265,11 +286,59 @@
       </form>
     </Modal>
 
+    <!-- Модалка: массовое закрытие просроченных -->
+    <Modal v-if="bulkCloseOverdueModal" title="Закрыть просроченные" @close="bulkCloseOverdueModal = false">
+      <div class="w-80 space-y-3">
+        <p class="text-sm text-gray-600">Выбрано заявок: <b>{{ selectedOverdue.size }}</b></p>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Номер акта <span class="text-gray-400">(если нет — будет «б/а»)</span></label>
+          <input v-model="bulkOverdueCloseForm.act_number" type="text" placeholder="б/а"
+                 class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Комментарий</label>
+          <textarea v-model="bulkOverdueCloseForm.comment" rows="3" placeholder="Что было сделано..."
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"></textarea>
+        </div>
+        <div class="flex gap-2 justify-end pt-1 border-t border-gray-100">
+          <button @click="bulkCloseOverdueModal = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="doBulkCloseOverdue" :disabled="bulkOverdueLoading"
+                  class="btn-primary text-sm disabled:opacity-50">
+            {{ bulkOverdueLoading ? 'Закрываем...' : 'Закрыть ' + selectedOverdue.size + ' заявок' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- Модалка: массовый перенос просроченных -->
+    <Modal v-if="bulkRescheduleOverdueModal" title="Перенести просроченные" @close="bulkRescheduleOverdueModal = false">
+      <div class="w-80 space-y-3">
+        <p class="text-sm text-gray-600">Выбрано заявок: <b>{{ selectedOverdue.size }}</b></p>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Новая дата и время <span class="text-red-400">*</span></label>
+          <input v-model="bulkOverdueRescheduleForm.scheduled_at" type="datetime-local"
+                 class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Комментарий</label>
+          <textarea v-model="bulkOverdueRescheduleForm.comment" rows="3" placeholder="Причина переноса..."
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"></textarea>
+        </div>
+        <div class="flex gap-2 justify-end pt-1 border-t border-gray-100">
+          <button @click="bulkRescheduleOverdueModal = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="doBulkRescheduleOverdue" :disabled="!bulkOverdueRescheduleForm.scheduled_at || bulkOverdueLoading"
+                  class="btn-primary text-sm disabled:opacity-50">
+            {{ bulkOverdueLoading ? 'Переносим...' : 'Перенести ' + selectedOverdue.size + ' заявок' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
+
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
@@ -279,6 +348,7 @@ import Badge from '@/Components/UI/Badge.vue'
 import Modal from '@/Components/UI/Modal.vue'
 import AttachmentUpload from '@/Components/Tickets/AttachmentUpload.vue'
 import MaterialsForm from '@/Components/Tickets/MaterialsForm.vue'
+import axios from 'axios'
 
 const props = defineProps({
   todayTickets:      { type: Array,  default: () => [] },
@@ -433,6 +503,60 @@ function fullAddress(t) {
   return [a.street, a.building ? 'д.' + a.building : null, apt ? 'кв.' + apt : null]
     .filter(Boolean).join(' ')
 }
+// ── Массовые операции по просроченным ──
+const selectedOverdue          = ref(new Set())
+const bulkCloseOverdueModal    = ref(false)
+const bulkRescheduleOverdueModal = ref(false)
+const bulkOverdueLoading       = ref(false)
+const bulkOverdueCloseForm     = ref({ comment: '', act_number: '' })
+const bulkOverdueRescheduleForm = ref({ scheduled_at: '', comment: '' })
+
+const selectAllOverdue = computed(() => {
+  const ids = props.overdue?.map(t => t.id) ?? []
+  return ids.length > 0 && ids.every(id => selectedOverdue.value.has(id))
+})
+
+function toggleOverdueSelect(id) {
+  const s = new Set(selectedOverdue.value)
+  if (s.has(id)) s.delete(id); else s.add(id)
+  selectedOverdue.value = s
+}
+
+function toggleSelectAllOverdue() {
+  const ids = props.overdue?.map(t => t.id) ?? []
+  selectedOverdue.value = selectAllOverdue.value ? new Set() : new Set(ids)
+}
+
+async function doBulkCloseOverdue() {
+  bulkOverdueLoading.value = true
+  try {
+    await axios.post(route('tickets.bulk.close'), {
+      ids: [...selectedOverdue.value],
+      comment: bulkOverdueCloseForm.value.comment,
+      act_number: bulkOverdueCloseForm.value.act_number,
+    })
+    bulkCloseOverdueModal.value = false
+    selectedOverdue.value = new Set()
+    bulkOverdueCloseForm.value = { comment: '', act_number: '' }
+    router.reload({ only: ['overdue', 'todayTickets'], preserveState: true })
+  } finally { bulkOverdueLoading.value = false }
+}
+
+async function doBulkRescheduleOverdue() {
+  bulkOverdueLoading.value = true
+  try {
+    await axios.post(route('tickets.bulk.reschedule'), {
+      ids: [...selectedOverdue.value],
+      scheduled_at: bulkOverdueRescheduleForm.value.scheduled_at,
+      comment: bulkOverdueRescheduleForm.value.comment,
+    })
+    bulkRescheduleOverdueModal.value = false
+    selectedOverdue.value = new Set()
+    bulkOverdueRescheduleForm.value = { scheduled_at: '', comment: '' }
+    router.reload({ only: ['overdue', 'todayTickets'], preserveState: true })
+  } finally { bulkOverdueLoading.value = false }
+}
+
 </script>
 
 <style scoped>
