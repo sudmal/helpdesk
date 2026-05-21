@@ -40,6 +40,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/{ticket}/reopen',   [TicketController::class, 'reopen'])->name('reopen');
         Route::post('/{ticket}/postpone', [TicketController::class, 'postpone'])->name('postpone');
         Route::post('/{ticket}/assign',  [TicketController::class, 'assign'])->name('assign');
+        Route::post('/bulk/close',       [TicketController::class, 'bulkClose'])->name('bulk.close');
+        Route::post('/bulk/reschedule',  [TicketController::class, 'bulkReschedule'])->name('bulk.reschedule');
         Route::post('/{ticket}/comments',[TicketController::class, 'addComment'])->name('comment');
     });
 

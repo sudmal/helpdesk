@@ -352,6 +352,51 @@ class TicketController extends Controller
         return back()->with('success', 'Заявка перенесена на ' . \Carbon\Carbon::parse($request->scheduled_at)->format('d.m.Y H:i'));
     }
 
+    public function bulkClose(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'ids'        => 'required|array|min:1|max:100',
+            'ids.*'      => 'integer|exists:tickets,id',
+            'comment'    => 'nullable|string|max:2000',
+            'act_number' => 'nullable|string|max:50',
+        ]);
+
+        $actNumber = filled($request->act_number) ? $request->act_number : 'б/а';
+        $tickets   = Ticket::findMany($request->ids);
+        $user      = auth()->user();
+
+        foreach ($tickets as $ticket) {
+            if ($user->cannot('close', $ticket)) continue;
+            \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $actNumber, $request, $user) {
+                $ticket->update(['act_number' => $actNumber]);
+                $this->ticketService->updateStatus($ticket, 'closed', $user, $request->comment);
+            });
+        }
+
+        return response()->json(['ok' => true, 'count' => $tickets->count()]);
+    }
+
+    public function bulkReschedule(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'ids'          => 'required|array|min:1|max:100',
+            'ids.*'        => 'integer|exists:tickets,id',
+            'scheduled_at' => 'required|date',
+            'comment'      => 'nullable|string|max:2000',
+        ]);
+
+        $tickets = Ticket::findMany($request->ids);
+        $user    = auth()->user();
+
+        foreach ($tickets as $ticket) {
+            if ($user->cannot('postpone', $ticket)) continue;
+            $ticket->update(['scheduled_at' => $request->scheduled_at]);
+            $this->ticketService->updateStatus($ticket, 'postponed', $user, $request->comment);
+        }
+
+        return response()->json(['ok' => true, 'count' => $tickets->count()]);
+    }
+
     public function reopen(Ticket $ticket): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('update', $ticket);
