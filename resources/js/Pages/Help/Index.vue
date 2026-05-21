@@ -160,7 +160,7 @@
               class="text-xs bg-white border border-gray-200 text-gray-600 px-2.5 py-1 rounded-lg font-medium">
           {{ t }}
         </span>
-        <span class="text-xs text-gray-400 ml-auto">© Suntsov Dmitriy &amp; Claude</span>
+        <span class="text-xs text-gray-400 ml-auto">© Sudmal &amp; Claude</span>
       </div>
 
     </div>

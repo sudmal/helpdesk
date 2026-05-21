@@ -60,7 +60,7 @@
       </a>
     </div>
     <div class="px-4 py-2 border-t border-white/5">
-      <div class="text-[10px] text-white/20 leading-tight">Suntsov Dmitriy @ Claude</div>
+      <div class="text-[10px] text-white/20 leading-tight">Sudmal @ Claude</div>
     </div>
   </aside>
 </template>
