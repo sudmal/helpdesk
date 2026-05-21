@@ -13,6 +13,159 @@
       </button>
     </div>
 
+    <!-- ПРЕЗЕНТАЦИЯ -->
+    <div v-if="activeTab === 'about'" class="space-y-6">
+
+      <!-- Hero -->
+      <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 text-white">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center font-bold text-xl">HD</div>
+              <div>
+                <h1 class="text-2xl font-bold leading-tight">HelpDesk</h1>
+                <p class="text-blue-200 text-sm">Система управления заявками технической поддержки</p>
+              </div>
+            </div>
+            <p class="text-blue-100 text-sm max-w-lg leading-relaxed">
+              Полный цикл обработки обращений абонентов — от входящего звонка до закрытия заявки.
+              Разработана для интернет-провайдеров и сервисных компаний с выездными бригадами.
+            </p>
+          </div>
+          <div class="flex gap-3 flex-wrap">
+            <div class="bg-white/10 rounded-xl px-4 py-3 text-center min-w-[80px]">
+              <div class="text-2xl font-bold">6</div>
+              <div class="text-xs text-blue-200 mt-0.5">интеграций</div>
+            </div>
+            <div class="bg-white/10 rounded-xl px-4 py-3 text-center min-w-[80px]">
+              <div class="text-2xl font-bold">5</div>
+              <div class="text-xs text-blue-200 mt-0.5">ролей</div>
+            </div>
+            <div class="bg-white/10 rounded-xl px-4 py-3 text-center min-w-[80px]">
+              <div class="text-2xl font-bold">3</div>
+              <div class="text-xs text-blue-200 mt-0.5">канала уведомлений</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ключевые функции -->
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide px-1 mb-3">Ключевые функции</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+            <div class="text-2xl">📋</div>
+            <h3 class="font-semibold text-gray-800">Управление заявками</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Полный жизненный цикл: создание, назначение бригаде, выезд, закрытие с актом. Комментарии, вложения, история каждого изменения.</p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+            <div class="text-2xl">👷</div>
+            <h3 class="font-semibold text-gray-800">Бригады и расписание</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Управление составом бригад, автоматическая генерация сменного расписания с учётом пожеланий сотрудников и ограничений.</p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+            <div class="text-2xl">🔔</div>
+            <h3 class="font-semibold text-gray-800">Умные уведомления</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Telegram, Email, Max — мгновенно при событиях и по расписанию. Утренняя сводка заявок на день и вечерний отчёт для руководства.</p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+            <div class="text-2xl">🔌</div>
+            <h3 class="font-semibold text-gray-800">Интеграции</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">
+              <b class="text-gray-700">LANBilling</b> — поиск абонента по телефону/договору, автозаполнение адреса.<br/>
+              <b class="text-gray-700">MikoPBX</b> — при входящем звонке АТС автоматически передаёт адрес абонента.
+            </p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+            <div class="text-2xl">📱</div>
+            <h3 class="font-semibold text-gray-800">Android-приложение</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Нативное приложение для выездных сотрудников (Android 11+). Заявки, закрытие, перенос, комментарии, фото — всё в телефоне.</p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+            <div class="text-2xl">📊</div>
+            <h3 class="font-semibold text-gray-800">Аналитика и отчёты</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Нагрузка на бригады, частота по территориям, динамика расхода материалов, соблюдение сроков — за любой период.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Дополнительные возможности -->
+      <div>
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide px-1 mb-3">Дополнительные возможности</h2>
+        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Журнал звонков</b> — все входящие с автоматическим матчингом адреса из биллинга, фильтры, автообновление</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Роли и права</b> — гибкая настройка: администратор, руководитель, диспетчер, бригадир, техник</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Расходные материалы</b> — справочник с кодами и ценами, учёт при закрытии заявки</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Адресная база</b> — справочник домов с импортом, привязка к территориям</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Массовые операции</b> — закрыть или перенести несколько заявок одним действием</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Приоритеты заявок</b> — срочный, высокий, обычный, низкий с визуальной маркировкой</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Интерактивный календарь</b> — заявки в виде сетки по дням/неделям/месяцу</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Видимость территорий</b> — каждый видит только свои участки; временная подмена без смены бригады</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Праздники и выходные</b> — глобальный календарь праздников, учёт при генерации расписания</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Печать расписания</b> — оптимизировано для Ч/Б принтера, альбомная A4</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Защита от перебора паролей</b> — математическая капча и блокировка по IP</span>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Уведомления в выходные</b> — настраивается индивидуально для каждого сотрудника</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Стек -->
+      <div class="bg-gray-50 rounded-2xl border border-gray-200 px-5 py-4 flex flex-wrap gap-2 items-center">
+        <span class="text-xs text-gray-400 font-medium mr-1">Технологии:</span>
+        <span v-for="t in ['Laravel 11', 'Vue 3', 'Inertia.js', 'Tailwind CSS', 'MySQL', 'Android (Kotlin)']" :key="t"
+              class="text-xs bg-white border border-gray-200 text-gray-600 px-2.5 py-1 rounded-lg font-medium">
+          {{ t }}
+        </span>
+        <span class="text-xs text-gray-400 ml-auto">© Suntsov Dmitriy &amp; Claude</span>
+      </div>
+
+    </div>
+
+
     <!-- О СИСТЕМЕ -->
     <div v-if="activeTab === 'overview'" class="space-y-4">
 
@@ -630,13 +783,14 @@ const HelpSection = defineComponent({
 })
 
 const tabs = [
+  { id: 'about',      label: '✦ О системе' },
   { id: 'overview',   label: 'О системе' },
   { id: 'dispatcher', label: 'Диспетчеры' },
   { id: 'technician', label: 'Техники / Бригады' },
   { id: 'admin',      label: 'Администраторы' },
   { id: 'app',        label: '📱 Приложение' },
 ]
-const activeTab = ref('overview')
+const activeTab = ref('about')
 onMounted(() => {
   const tab = new URLSearchParams(window.location.search).get('tab')
   if (tab && tabs.some(t => t.id === tab)) activeTab.value = tab
