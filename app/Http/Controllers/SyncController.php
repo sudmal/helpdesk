@@ -2,7 +2,6 @@
 namespace App\Http\Controllers;
 use App\Models\{Ticket, Brigade, SystemSetting};
 use App\Services\TicketService;
-use App\Notifications\NewTicketNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -40,10 +39,6 @@ class SyncController extends Controller
             'scheduled_at'    => $scheduledAt,
             'priority'        => 'normal',
         ], $creator);
-        // Уведомляем только если заявка на сегодня (новая срочная в течение дня)
-        if ($ticket->scheduled_at?->isToday()) {
-            NewTicketNotification::dispatch($ticket->fresh(['address']));
-        }
         return response()->json([
             'status' => 'created', 'id' => $ticket->id,
             'number' => $ticket->number, 'scheduled_at' => $scheduledAt,

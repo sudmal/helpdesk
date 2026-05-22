@@ -3,7 +3,6 @@ namespace App\Console\Commands;
 
 use App\Models\{Ticket, Brigade, SystemSetting};
 use App\Services\TicketService;
-use App\Notifications\NewTicketNotification;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -53,10 +52,6 @@ class SyncTicketCommand extends Command
             'scheduled_at'    => $scheduledAt,
             'priority'        => 'normal',
         ], $creator);
-
-        if ($ticket->scheduled_at?->isToday()) {
-            NewTicketNotification::dispatch($ticket->fresh(['address']));
-        }
 
         $this->line(json_encode([
             'status'       => 'created',

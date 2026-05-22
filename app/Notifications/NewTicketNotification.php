@@ -56,6 +56,7 @@ class NewTicketNotification extends Notification
             $workingMembers = $brigade->members()
                 ->where('is_active', true)
                 ->whereNotIn('id', $offUserIds)
+                ->whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
                 ->get();
         }
 
