@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TicketController extends Controller
 {
@@ -61,22 +62,69 @@ class TicketController extends Controller
 
     public function addComment(Request $request, Ticket $ticket): JsonResponse
     {
-        $request->validate(['body' => 'required|string|max:2000']);
+        $request->validate([
+            'body'          => 'nullable|string|max:2000',
+            'attachments'   => 'nullable|array|max:10',
+            'attachments.*' => 'file|mimes:jpeg,jpg,png,gif,pdf|max:20480',
+        ]);
+
+        if (!$request->filled('body') && !$request->hasFile('attachments')) {
+            return response()->json(['error' => 'body or attachments required'], 422);
+        }
 
         $comment = $ticket->comments()->create([
             'user_id'     => $request->user()->id,
-            'body'        => $request->body,
+            'body'        => $request->input('body', ''),
             'is_internal' => false,
         ]);
+
+        $attachments = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $att = $this->ticketService->storeAttachment($ticket, $file, $request->user(), 'comment', $comment->id);
+                $attachments[] = [
+                    'id'            => $att->id,
+                    'original_name' => $att->original_name,
+                    'url'           => Storage::url($att->stored_path),
+                    'mime_type'     => $att->mime_type,
+                    'size'          => $att->size,
+                ];
+            }
+        }
 
         $comment->load('author');
 
         return response()->json([
-            'id'         => $comment->id,
-            'body'       => $comment->body,
-            'author'     => $comment->author?->name,
-            'created_at' => $comment->created_at->toIso8601String(),
+            'id'          => $comment->id,
+            'body'        => $comment->body,
+            'author'      => $comment->author?->name,
+            'created_at'  => $comment->created_at->toIso8601String(),
+            'attachments' => $attachments,
         ], 201);
+    }
+
+    public function addAttachment(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('view', $ticket);
+
+        $request->validate([
+            'attachments'   => 'required|array|min:1|max:10',
+            'attachments.*' => 'required|file|mimes:jpeg,jpg,png,gif,pdf|max:20480',
+        ]);
+
+        $stored = [];
+        foreach ($request->file('attachments') as $file) {
+            $att = $this->ticketService->storeAttachment($ticket, $file, $request->user(), 'attachment');
+            $stored[] = [
+                'id'            => $att->id,
+                'original_name' => $att->original_name,
+                'url'           => Storage::url($att->stored_path),
+                'mime_type'     => $att->mime_type,
+                'size'          => $att->size,
+            ];
+        }
+
+        return response()->json(['attachments' => $stored], 201);
     }
 
     public function close(Request $request, Ticket $ticket): JsonResponse
@@ -84,11 +132,13 @@ class TicketController extends Controller
         $this->authorize('close', $ticket);
 
         $request->validate([
-            'close_notes' => 'nullable|string|max:2000',
-            'act_number'  => 'nullable|string|max:50',
-            'materials'   => 'nullable|array',
+            'close_notes'   => 'nullable|string|max:2000',
+            'act_number'    => 'nullable|string|max:50',
+            'materials'     => 'nullable|array',
             'materials.*.material_id' => 'required|integer|exists:materials,id',
             'materials.*.quantity'    => 'required|numeric|min:0.01',
+            'attachments'   => 'nullable|array|max:10',
+            'attachments.*' => 'file|mimes:jpeg,jpg,png,gif,pdf|max:20480',
         ]);
 
         $actNumber = filled($request->act_number) ? $request->act_number : 'б/а';
@@ -115,7 +165,13 @@ class TicketController extends Controller
             }
         });
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author']);
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $this->ticketService->storeAttachment($ticket, $file, $request->user(), 'attachment');
+            }
+        }
+
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author', 'attachments']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -173,6 +229,13 @@ class TicketController extends Controller
                 'body'       => $c->body,
                 'author'     => $c->author?->name,
                 'created_at' => $c->created_at->toIso8601String(),
+            ])->values()->all(),
+            'attachments' => ($t->relationLoaded('attachments') ? $t->attachments : collect())->map(fn($a) => [
+                'id'            => $a->id,
+                'original_name' => $a->original_name,
+                'url'           => Storage::url($a->stored_path),
+                'mime_type'     => $a->mime_type,
+                'size'          => $a->size,
             ])->values()->all(),
         ];
     }
