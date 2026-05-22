@@ -37,7 +37,10 @@ class SendMorningReport extends Command
         if ($overdue > 0) $body .= " | ⚠ Просроченных: {$overdue}";
 
         // Push уведомления
-        $users = User::whereHas('pushSubscriptions')->get();
+        $users = User::whereHas('pushSubscriptions')
+            ->whereHas('brigades')
+            ->whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
+            ->get();
         foreach ($users as $user) {
             $user->notify(new class($body) extends Notification {
                 public function __construct(private string $body) {}
