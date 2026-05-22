@@ -18,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tickets/{ticket}',                [TicketController::class, 'show']);
     Route::post('/tickets/{ticket}/comments',      [TicketController::class, 'addComment']);
     Route::post('/tickets/{ticket}/close',         [TicketController::class, 'close']);
+    Route::post('/tickets/{ticket}/attachments',   [TicketController::class, 'addAttachment']);
     Route::post('/tickets/{ticket}/reschedule',    [TicketController::class, 'reschedule']);
 
     Route::get('/service_types', function () {
