@@ -1,14 +1,32 @@
 <template>
   <div :class="['flex flex-wrap gap-2', className]">
-    <button v-for="att in attachments" :key="att.id"
-            @click="open(att)"
-            class="flex items-center gap-1.5 bg-gray-50 border border-gray-200
-                   hover:border-blue-300 rounded-lg px-3 py-1.5 text-xs text-gray-600
-                   hover:text-blue-600 transition-colors cursor-pointer">
-      <span>{{ icon(att) }}</span>
-      <span class="max-w-[150px] truncate">{{ att.original_name }}</span>
-      <span class="text-gray-400">{{ formatSize(att.size) }}</span>
-    </button>
+    <template v-for="att in attachments" :key="att.id">
+      <!-- Изображение — thumbnail -->
+      <button v-if="isImage(att)"
+              @click="open(att)"
+              class="relative group rounded-xl overflow-hidden border border-gray-200
+                     hover:border-blue-400 transition-colors cursor-pointer shrink-0"
+              style="width:80px;height:80px">
+        <img :src="att.url" :alt="att.original_name"
+             class="w-full h-full object-cover" />
+        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors
+                    flex items-end justify-center pb-1 opacity-0 group-hover:opacity-100">
+          <span class="text-white text-[10px] px-1 truncate max-w-full leading-tight">
+            {{ att.original_name }}
+          </span>
+        </div>
+      </button>
+      <!-- Остальные файлы — чип -->
+      <button v-else
+              @click="open(att)"
+              class="flex items-center gap-1.5 bg-gray-50 border border-gray-200
+                     hover:border-blue-300 rounded-lg px-3 py-1.5 text-xs text-gray-600
+                     hover:text-blue-600 transition-colors cursor-pointer">
+        <span>{{ icon(att) }}</span>
+        <span class="max-w-[150px] truncate">{{ att.original_name }}</span>
+        <span class="text-gray-400">{{ formatSize(att.size) }}</span>
+      </button>
+    </template>
   </div>
 
   <!-- Модалка для изображений -->
