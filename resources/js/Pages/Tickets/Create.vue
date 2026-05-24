@@ -344,6 +344,8 @@ const props = defineProps({
   brigades:       Array,
   address:        Object,
   addressHistory: { type: Array, default: () => [] },
+  initialPhone:     { type: String, default: '' },
+  initialApartment: { type: String, default: '' },
   settings: {
     type: Object,
     default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 })
@@ -407,13 +409,13 @@ const submitted = ref(false)
 
 const form = useForm({
   address_id:      props.address?.id ?? '',
-  apartment:       props.address?.apartment ?? '',
+  apartment:       props.initialApartment || props.address?.apartment || '',
   territory_id:    props.address?.territory_id ?? '',
   type_id:         defaultType(),
   service_type_id: defaultServiceType(),
   brigade_id:      props.brigades?.length === 1 ? props.brigades[0].id : '',
   priority:        'normal',
-  phone:           props.address?.phone ?? '',
+  phone:           props.initialPhone || props.address?.phone || '',
   contract_no:     props.address?.contract_no ?? '',
   description:     '',
   scheduled_at:    defaultScheduledAt(),
