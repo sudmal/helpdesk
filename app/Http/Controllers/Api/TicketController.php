@@ -26,7 +26,7 @@ class TicketController extends Controller
 
         $base = fn(): Builder => Ticket::with([
                 'address', 'type', 'serviceType', 'status', 'brigade', 'assignee',
-                'comments.author',
+                'comments.author', 'comments.attachments', 'attachments',
             ])
             ->when($brigadeId && !$user->hasPermission('*'), fn($q) => $q->where('brigade_id', $brigadeId));
 
@@ -55,7 +55,7 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author', 'comments.attachments', 'attachments']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -188,7 +188,7 @@ class TicketController extends Controller
         $ticket->update(['scheduled_at' => $request->scheduled_at]);
         $this->ticketService->updateStatus($ticket, 'postponed', $request->user(), $request->comment);
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author', 'comments.attachments', 'attachments']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -225,10 +225,17 @@ class TicketController extends Controller
             'brigade'  => $t->brigade?->name,
             'assignee' => $t->assignee?->name,
             'comments' => $t->comments->map(fn($c) => [
-                'id'         => $c->id,
-                'body'       => $c->body,
-                'author'     => $c->author?->name,
-                'created_at' => $c->created_at->toIso8601String(),
+                'id'          => $c->id,
+                'body'        => $c->body,
+                'author'      => $c->author?->name,
+                'created_at'  => $c->created_at->toIso8601String(),
+                'attachments' => ($c->relationLoaded('attachments') ? $c->attachments : collect())->map(fn($a) => [
+                    'id'            => $a->id,
+                    'original_name' => $a->original_name,
+                    'url'           => Storage::url($a->stored_path),
+                    'mime_type'     => $a->mime_type,
+                    'size'          => $a->size,
+                ])->values()->all(),
             ])->values()->all(),
             'attachments' => ($t->relationLoaded('attachments') ? $t->attachments : collect())->map(fn($a) => [
                 'id'            => $a->id,
