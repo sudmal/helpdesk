@@ -115,6 +115,7 @@ class TicketController extends Controller
             $address = Address::with('territory')->find($request->address_id);
             $addressHistory = Ticket::with(['type', 'status', 'creator'])
                 ->where('address_id', $request->address_id)
+                ->when($request->apartment, fn($q) => $q->where('apartment', $request->apartment))
                 ->latest()
                 ->take(50)
                 ->get();

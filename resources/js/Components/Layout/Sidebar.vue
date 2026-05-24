@@ -76,7 +76,7 @@ const apk = ref(null)
 
 onMounted(async () => {
   try {
-    const res = await fetch('/apk/version.json')
+    const res = await fetch('/apk/version.json?_=' + Date.now())
     if (res.ok) apk.value = await res.json()
   } catch {}
 })

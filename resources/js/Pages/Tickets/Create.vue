@@ -534,9 +534,11 @@ function selectAddress(a) {
   historyPage.value = 1
 
   // Загружаем историю
+  const histParams = { address_id: a.id }
+  if (a.apartment) histParams.apartment = a.apartment
   router.get(
     route('tickets.create'),
-    { address_id: a.id },
+    histParams,
     {
       preserveState: true,
       only: ['addressHistory'],
