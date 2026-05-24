@@ -26,7 +26,7 @@
 ## Заявки
 
 ### GET /tickets
-Возвращает списки заявок для текущего пользователя.
+Возвращает четыре списка заявок для текущего пользователя (бригада определяется по токену).
 
 **200:**
 ```json
@@ -40,7 +40,7 @@
 ```
 
 ### GET /tickets/{id}
-**200:** объект ticket (см. структуру ниже)
+**200:** полный объект ticket (см. структуру ниже)
 
 ---
 
@@ -58,7 +58,7 @@
   "close_notes": null,
   "act_number": null,
   "address": {
-    "full": "ул. Ленина, 5, кв. 15",
+    "full": "ул. Ленина, 5",
     "street": "ул. Ленина",
     "building": "5"
   },
@@ -72,20 +72,32 @@
       "id": 5,
       "body": "Позвонил клиенту",
       "author": "Иванов И.И.",
-      "created_at": "2026-05-22T09:30:00+03:00"
+      "created_at": "2026-05-22T09:30:00+03:00",
+      "attachments": [
+        {
+          "id": 14,
+          "original_name": "screen.jpg",
+          "url": "https://<host>/storage/tickets/123/attachments/uuid.jpg",
+          "mime_type": "image/jpeg",
+          "size": 102400
+        }
+      ]
     }
   ],
   "attachments": [
     {
       "id": 12,
       "original_name": "photo1.jpg",
-      "url": "/storage/tickets/123/attachments/uuid.jpg",
+      "url": "https://<host>/storage/tickets/123/attachments/uuid.jpg",
       "mime_type": "image/jpeg",
       "size": 204800
     }
   ]
 }
 ```
+
+> **`url`** — абсолютный, готов к использованию напрямую.  
+> Комментарии без вложений возвращают `"attachments": []`.
 
 ---
 
@@ -113,15 +125,15 @@ Content-Type: application/json
 ```
 Content-Type: multipart/form-data
 
-close_notes     = "Заменили роутер"
-act_number      = "А-123"
+close_notes               = "Заменили роутер"
+act_number                = "А-123"
 materials[0][material_id] = 5
 materials[0][quantity]    = 2
-attachments[]   = <file: photo1.jpg>
-attachments[]   = <file: photo2.jpg>
+attachments[]             = <file: photo1.jpg>
+attachments[]             = <file: photo2.jpg>
 ```
 
-Все поля опциональны. `act_number` — если не передан или пустой, ставится `"б/а"`.
+Все поля опциональны. `act_number` — если не передан или пустой, сервер подставляет `"б/а"`.
 
 **200:** полный объект ticket (включая вложения).
 
@@ -131,7 +143,7 @@ attachments[]   = <file: photo2.jpg>
 
 ### POST /tickets/{id}/attachments
 
-Загрузка одного или нескольких файлов к заявке. Можно вызывать в любой момент — до или после закрытия.
+Загрузка файлов к заявке. Можно вызывать в любой момент — до или после закрытия.
 
 ```
 Content-Type: multipart/form-data
@@ -140,9 +152,7 @@ attachments[]  = <file: photo1.jpg>
 attachments[]  = <file: photo2.jpg>
 ```
 
-Ограничения:
-- Форматы: `jpeg`, `jpg`, `png`, `gif`, `pdf`
-- Максимум: 20 МБ на файл, 10 файлов за раз
+Ограничения: форматы `jpeg/jpg/png/gif/pdf`, до 20 МБ на файл, до 10 файлов за раз.
 
 **201:**
 ```json
@@ -151,7 +161,7 @@ attachments[]  = <file: photo2.jpg>
     {
       "id": 12,
       "original_name": "photo1.jpg",
-      "url": "/storage/tickets/123/attachments/uuid.jpg",
+      "url": "https://<host>/storage/tickets/123/attachments/uuid.jpg",
       "mime_type": "image/jpeg",
       "size": 204800
     }
@@ -168,14 +178,13 @@ attachments[]  = <file: photo2.jpg>
 Добавить комментарий с опциональными вложениями.  
 Нужно передать `body` или `attachments[]` (или оба).
 
+**С фото (multipart/form-data):**
 ```
-Content-Type: multipart/form-data
-
 body           = "Проверил линию — обрыв на 3 этаже"
 attachments[]  = <file: photo.jpg>
 ```
 
-Или только текст (Content-Type: application/json):
+**Только текст (application/json):**
 ```json
 { "body": "Текст комментария" }
 ```
@@ -191,13 +200,15 @@ attachments[]  = <file: photo.jpg>
     {
       "id": 13,
       "original_name": "photo.jpg",
-      "url": "/storage/tickets/123/attachments/uuid.jpg",
+      "url": "https://<host>/storage/tickets/123/attachments/uuid.jpg",
       "mime_type": "image/jpeg",
       "size": 153600
     }
   ]
 }
 ```
+
+Комментарий без вложений возвращает `"attachments": []`.
 
 ---
 
@@ -212,7 +223,7 @@ attachments[]  = <file: photo.jpg>
 }
 ```
 
-`scheduled_at` — обязательный, дата/время в будущем.  
+`scheduled_at` — обязательный, дата/время строго в будущем.  
 **200:** полный объект ticket.
 
 ---
@@ -236,15 +247,15 @@ attachments[]  = <file: photo.jpg>
 **Вариант А — один запрос (проще):**
 ```
 POST /tickets/{id}/close   multipart/form-data
-  close_notes = "..."
-  act_number  = "..."
+  close_notes   = "..."
+  act_number    = "..."
   attachments[] = photo1.jpg
   attachments[] = photo2.jpg
 ```
 
-**Вариант Б — два запроса (если загрузка идёт заранее):**
+**Вариант Б — два запроса (если фото загружаются заранее):**
 ```
-1. POST /tickets/{id}/attachments   → получаем id вложений
+1. POST /tickets/{id}/attachments   → фото уже привязаны к заявке
 2. POST /tickets/{id}/close         → JSON без файлов
 ```
 
@@ -256,10 +267,10 @@ POST /tickets/{id}/close   multipart/form-data
 
 | Код | Причина |
 |-----|---------|
-| 401 | Нет или истёк токен |
+| 401 | Нет или неверный токен |
 | 403 | Нет прав на операцию (чужая заявка / не та бригада) |
 | 404 | Заявка не найдена |
-| 422 | Ошибка валидации — тело ответа содержит `errors` |
+| 422 | Ошибка валидации — тело содержит `errors` |
 | 500 | Серверная ошибка |
 
 **422 пример:**
@@ -278,6 +289,6 @@ POST /tickets/{id}/close   multipart/form-data
 
 - Для multipart в Retrofit используй `@Multipart` + `@Part("attachments[]") List<MultipartBody.Part>`
 - Файл создаётся через `MultipartBody.Part.createFormData("attachments[]", filename, requestBody)`
-- `url` в ответе — относительный путь, добавь `https://<host>` для полного URL
-- Токен храни в EncryptedSharedPreferences
+- `url` в ответе — абсолютный, строить полный URL не нужно
+- Токен храни в `EncryptedSharedPreferences`; при повторном логине старый токен `mobile` удаляется
 - Все даты в ISO 8601, таймзона сервера — Москва (+03:00)
