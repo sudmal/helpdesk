@@ -84,6 +84,9 @@
                 <span v-if="selectedAddress.phone" class="text-xs text-blue-500">
                   {{ selectedAddress.phone }}
                 </span>
+                <span v-if="form.apartment" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                  кв. {{ form.apartment }}
+                </span>
               </div>
             </div>
             <button @click="clearAddress" type="button"
@@ -377,14 +380,14 @@ function defaultType() {
 }
 
 // Адрес
-const addressQuery    = ref(props.address ? (props.address.full_address ?? props.address.street) : '')
+const addressQuery    = ref(props.address ? ((props.address.full_address ?? props.address.street) + (props.initialApartment ? ', кв. ' + props.initialApartment : '')) : '')
 const suggestions     = ref([])
 const showAddressError = ref(false)
 const selectedAddress = ref(
   props.address
     ? {
         id: props.address.id,
-        label: props.address.full_address ?? props.address.street,
+        label: (props.address.full_address ?? props.address.street) + (props.initialApartment ? ', кв. ' + props.initialApartment : ''),
         ...props.address,
         territory: typeof props.address.territory === 'object'
           ? (props.address.territory?.name ?? '')
