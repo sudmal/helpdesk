@@ -127,6 +127,8 @@ class TicketController extends Controller
             'brigades'     => Brigade::with('territories')->orderBy('name')->get(),
             'address'      => $address,
             'addressHistory' => $addressHistory,
+            'initialPhone'    => $request->input('phone', ''),
+            'initialApartment' => $request->input('apartment', ''),
 'territories'  => \App\Models\Territory::orderBy('name')->get(['id', 'name']),
             'lanbillingEnabled' => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),
             'settings'     => [
