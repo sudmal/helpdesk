@@ -46,18 +46,22 @@
           <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
               <th class="px-4 py-3 text-left">Время</th>
+              <th class="px-4 py-3 text-left"></th>
               <th class="px-4 py-3 text-left">Телефон</th>
               <th class="px-4 py-3 text-left">Адрес из биллинга</th>
               <th class="px-4 py-3 text-left">Адрес в базе</th>
               <th class="px-4 py-3 text-left">Кв.</th>
               <th class="px-4 py-3 text-left">Заявки</th>
-              <th class="px-4 py-3 text-left"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="c in calls.data" :key="c.id" class="hover:bg-gray-50">
               <td class="px-3 py-0.5 whitespace-nowrap text-gray-500 text-xs">
                 {{ formatDate(c.called_at) }}
+              </td>
+              <td class="px-3 py-0.5 whitespace-nowrap">
+                <a :href="createTicketUrl(c)"
+                   class="text-xs text-green-600 hover:text-green-800 font-medium hover:underline">+ заявка</a>
               </td>
               <td class="px-3 py-0.5 font-mono whitespace-nowrap">
                 <a :href="route('tickets.index', { search: c.phone })"
@@ -75,10 +79,6 @@
                 <a v-if="c.address"
                    :href="route('tickets.index', { address_id: c.address.id, apartment: c.apartment })"
                    class="text-xs text-blue-500 hover:underline">заявки →</a>
-              </td>
-              <td class="px-3 py-0.5 whitespace-nowrap">
-                <a :href="createTicketUrl(c)"
-                   class="text-xs text-green-600 hover:text-green-800 font-medium hover:underline">+ заявка</a>
               </td>
             </tr>
             <tr v-if="!calls.data.length">
