@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <Head title="Дашборд" />
   <AppLayout title="Дашборд">
 
