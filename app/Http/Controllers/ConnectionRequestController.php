@@ -6,7 +6,6 @@ use App\Models\Brigade;
 use App\Models\ConnectionRequest;
 use App\Models\Material;
 use App\Models\Territory;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -49,7 +48,7 @@ class ConnectionRequestController extends Controller
             'selectedTerritory'  => $territory ? (int)$territory : null,
             'pendingByTerritory' => $pendingByTerritory,
             'totalPending'       => $pendingByTerritory->sum(),
-            'users'              => User::orderBy('name')->get(['id', 'name']),
+
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
         ]);
     }
@@ -77,7 +76,7 @@ class ConnectionRequestController extends Controller
             'status'       => 'required|in:pending,scheduled,rejected,closed',
             'scheduled_at' => 'nullable|date',
             'notes'        => 'nullable|string|max:2000',
-            'assigned_to'  => 'nullable|exists:users,id',
+            'territory_id' => 'nullable|exists:territories,id',
         ]);
 
         $connectionRequest->update($data);
