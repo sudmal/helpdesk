@@ -67,32 +67,52 @@ class ReportsController extends Controller
 
     private function materialDynamics(Carbon $from, Carbon $to): array
     {
-        $weekly = DB::table('ticket_materials as tm')
+        $union = DB::table('ticket_materials as tm')
             ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
             ->whereBetween('tm.created_at', [$from, $to])
             ->whereNull('t.deleted_at')
+            ->selectRaw('tm.created_at, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time')
+            ->unionAll(
+                DB::table('connection_request_materials as crm')
+                    ->join('connection_requests as cr', 'crm.connection_request_id', '=', 'cr.id')
+                    ->whereBetween('crm.created_at', [$from, $to])
+                    ->selectRaw('crm.created_at, crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time')
+            );
+
+        $weekly = DB::table(DB::raw("({$union->toSql()}) as all_materials"))
+            ->mergeBindings($union->getQuery())
             ->selectRaw('
-                YEARWEEK(tm.created_at, 1) as week_key,
-                DATE_FORMAT(MIN(tm.created_at), "%d.%m") as week_label,
-                ROUND(SUM(tm.quantity), 2) as qty,
-                ROUND(SUM(tm.quantity * tm.price_at_time), 2) as amount
+                YEARWEEK(created_at, 1) as week_key,
+                DATE_FORMAT(MIN(created_at), "%d.%m") as week_label,
+                ROUND(SUM(quantity), 2) as qty,
+                ROUND(SUM(quantity * price_at_time), 2) as amount
             ')
             ->groupBy('week_key')
             ->orderBy('week_key')
             ->get();
 
-        $top = DB::table('ticket_materials as tm')
+        $union2 = DB::table('ticket_materials as tm')
             ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
             ->whereBetween('tm.created_at', [$from, $to])
             ->whereNull('t.deleted_at')
+            ->selectRaw('tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time')
+            ->unionAll(
+                DB::table('connection_request_materials as crm')
+                    ->join('connection_requests as cr', 'crm.connection_request_id', '=', 'cr.id')
+                    ->whereBetween('crm.created_at', [$from, $to])
+                    ->selectRaw('crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time')
+            );
+
+        $top = DB::table(DB::raw("({$union2->toSql()}) as all_materials"))
+            ->mergeBindings($union2->getQuery())
             ->selectRaw('
-                tm.material_name as name,
-                tm.material_code as code,
-                tm.material_unit as unit,
-                ROUND(SUM(tm.quantity), 2) as qty,
-                ROUND(SUM(tm.quantity * tm.price_at_time), 2) as amount
+                material_name as name,
+                material_code as code,
+                material_unit as unit,
+                ROUND(SUM(quantity), 2) as qty,
+                ROUND(SUM(quantity * price_at_time), 2) as amount
             ')
-            ->groupBy(DB::raw('COALESCE(tm.material_code, tm.material_name)'), 'tm.material_name', 'tm.material_code', 'tm.material_unit')
+            ->groupBy(DB::raw('COALESCE(material_code, material_name)'), 'material_name', 'material_code', 'material_unit')
             ->orderByDesc('amount')
             ->limit(10)
             ->get();

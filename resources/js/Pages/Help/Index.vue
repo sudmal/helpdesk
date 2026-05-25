@@ -88,9 +88,15 @@
           </div>
 
           <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+            <div class="text-2xl">🔌</div>
+            <h3 class="font-semibold text-gray-800">Заявки на подключение</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">Отдельный модуль для новых подключений: приём заявки, назначение даты, завершение с актом и материалами. Фильтрация по территориям, учёт расхода в общих отчётах.</p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
             <div class="text-2xl">📊</div>
             <h3 class="font-semibold text-gray-800">Аналитика и отчёты</h3>
-            <p class="text-sm text-gray-500 leading-relaxed">Нагрузка на бригады, частота по территориям, динамика расхода материалов, соблюдение сроков — за любой период.</p>
+            <p class="text-sm text-gray-500 leading-relaxed">Нагрузка на бригады, частота по территориям, динамика расхода материалов (включая подключения), соблюдение сроков — за любой период.</p>
           </div>
 
         </div>
@@ -111,7 +117,7 @@
             </div>
             <div class="flex items-start gap-2.5">
               <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
-              <span><b class="text-gray-700">Расходные материалы</b> — справочник с кодами и ценами, учёт при закрытии заявки</span>
+              <span><b class="text-gray-700">Расходные материалы</b> — справочник с кодами и ценами, учёт при закрытии заявки и подключения, сводная аналитика в отчётах</span>
             </div>
             <div class="flex items-start gap-2.5">
               <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
