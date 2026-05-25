@@ -290,14 +290,21 @@
               <select v-model="row.material_id" class="field-input flex-1 text-xs">
                 <option :value="null">— выберите материал —</option>
                 <option v-for="m in materialsCatalog" :key="m.id" :value="m.id">
-                  {{ m.name }} ({{ m.unit }})
+                  {{ m.code ? '[' + m.code + '] ' : '' }}{{ m.name }} — {{ m.price }} ₽/{{ m.unit }}
                 </option>
               </select>
               <input v-model="row.quantity" type="number" min="0.01" step="0.01"
-                     class="field-input w-24 text-xs" placeholder="кол-во" />
-              <button @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-600 px-1">✕</button>
+                     class="field-input w-20 text-xs text-center" placeholder="кол-во" />
+              <div class="w-24 text-xs text-gray-500 text-right tabular-nums shrink-0">
+                {{ matRowTotal(row) }} ₽
+              </div>
+              <button @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-600 px-1 shrink-0">✕</button>
             </div>
             <div v-if="!closeForm.materials.length" class="text-xs text-gray-400">Материалы не добавлены</div>
+            <div v-if="closeMaterialsTotal > 0"
+                 class="text-right text-sm font-semibold text-gray-700 mt-2 pr-7">
+              Итого: <span class="text-blue-600">{{ closeMaterialsTotal.toFixed(2) }} ₽</span>
+            </div>
           </div>
         </div>
         <div v-if="closeErrors" class="text-xs text-red-600 mt-2">{{ closeErrors }}</div>
@@ -364,7 +371,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -464,6 +471,20 @@ function openView(r) {
   viewRecord.value = r
   modals.view = true
 }
+
+function matRowTotal(row) {
+  if (!row.material_id || !row.quantity) return '0.00'
+  const m = props.materialsCatalog?.find(m => m.id === row.material_id)
+  return m ? (m.price * parseFloat(row.quantity || 0)).toFixed(2) : '0.00'
+}
+
+const closeMaterialsTotal = computed(() =>
+  closeForm.materials.reduce((sum, row) => {
+    if (!row.material_id || !row.quantity) return sum
+    const m = props.materialsCatalog?.find(m => m.id === row.material_id)
+    return sum + (m ? m.price * parseFloat(row.quantity || 0) : 0)
+  }, 0)
+)
 
 function addMaterialRow()       { closeForm.materials.push({ material_id: null, quantity: '' }) }
 function removeMaterialRow(idx) { closeForm.materials.splice(idx, 1) }
