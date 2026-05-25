@@ -308,7 +308,7 @@
 
     <!-- Модал: Просмотр акта -->
     <div v-if="modals.view" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 p-6">
         <h3 class="text-base font-semibold mb-4">Акт выполненных работ</h3>
         <div class="space-y-2 text-sm mb-4">
           <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Клиент:</span><span class="font-medium">{{ viewRecord?.name }}</span></div>
