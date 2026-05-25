@@ -24,11 +24,12 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // Заявки на подключение
     Route::prefix('connection-requests')->name('connection-requests.')->group(function () {
-        Route::get('/',                           [ConnectionRequestController::class, 'index'])->name('index');
-        Route::post('/',                          [ConnectionRequestController::class, 'store'])->name('store');
-        Route::put('/{connectionRequest}',        [ConnectionRequestController::class, 'update'])->name('update');
-        Route::post('/{connectionRequest}/close', [ConnectionRequestController::class, 'close'])->name('close');
-        Route::delete('/{connectionRequest}',     [ConnectionRequestController::class, 'destroy'])->name('destroy');
+        Route::get('/',                                   [ConnectionRequestController::class, 'index'])->name('index');
+        Route::post('/',                                  [ConnectionRequestController::class, 'store'])->name('store');
+        Route::put('/{connectionRequest}',                [ConnectionRequestController::class, 'update'])->name('update');
+        Route::post('/{connectionRequest}/close',         [ConnectionRequestController::class, 'close'])->name('close');
+        Route::post('/{connectionRequest}/mark-called',   [ConnectionRequestController::class, 'markCalled'])->name('mark-called');
+        Route::delete('/{connectionRequest}',             [ConnectionRequestController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');

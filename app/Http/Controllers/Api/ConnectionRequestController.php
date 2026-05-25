@@ -15,8 +15,8 @@ class ConnectionRequestController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $user        = $request->user();
-        $territories = $this->getUserTerritories($user);
+        $user         = $request->user();
+        $territories  = $this->getUserTerritories($user);
         $territoryIds = $territories->pluck('id');
 
         $query = ConnectionRequest::with(['territory', 'creator'])
@@ -89,6 +89,10 @@ class ConnectionRequestController extends Controller
             'notes'          => 'nullable|string|max:2000',
         ]);
 
+        if (isset($data['status'])) {
+            $data['needs_callback'] = in_array($data['status'], ['scheduled', 'rejected']);
+        }
+
         $connectionRequest->update($data);
         $connectionRequest->load(['territory', 'creator', 'materials']);
 
@@ -98,8 +102,8 @@ class ConnectionRequestController extends Controller
     public function close(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
         $request->validate([
-            'notes'                   => 'nullable|string|max:2000',
-            'act_number'              => [
+            'notes'      => 'nullable|string|max:2000',
+            'act_number' => [
                 'nullable', 'string', 'max:50',
                 function ($attribute, $value, $fail) use ($request) {
                     if (!empty($request->input('materials')) && (empty($value) || mb_strlen(trim($value)) < 5)) {
@@ -116,9 +120,10 @@ class ConnectionRequestController extends Controller
 
         DB::transaction(function () use ($connectionRequest, $actNumber, $request) {
             $connectionRequest->update([
-                'status'     => 'closed',
-                'act_number' => $actNumber,
-                'notes'      => $request->notes,
+                'status'         => 'closed',
+                'act_number'     => $actNumber,
+                'notes'          => $request->notes,
+                'needs_callback' => false,
             ]);
 
             if (!empty($request->materials)) {
@@ -144,6 +149,12 @@ class ConnectionRequestController extends Controller
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
 
+    public function markCalled(ConnectionRequest $connectionRequest): JsonResponse
+    {
+        $connectionRequest->update(['needs_callback' => false]);
+        return response()->json(['message' => 'Отмечено: прозвонили']);
+    }
+
     public function destroy(ConnectionRequest $connectionRequest): JsonResponse
     {
         $connectionRequest->delete();
@@ -162,6 +173,7 @@ class ConnectionRequestController extends Controller
             'scheduled_at'   => $r->scheduled_at?->toIso8601String(),
             'notes'          => $r->notes,
             'act_number'     => $r->act_number,
+            'needs_callback' => (bool) $r->needs_callback,
             'territory'      => $r->territory ? ['id' => $r->territory->id, 'name' => $r->territory->name] : null,
             'creator'        => $r->creator?->name,
             'created_at'     => $r->created_at->toIso8601String(),

@@ -5,18 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Territory;
 
 class ConnectionRequest extends Model
 {
     protected $fillable = [
         'name', 'phone', 'address_string', 'description',
         'status', 'scheduled_at', 'notes', 'act_number',
-        'assigned_to', 'created_by', 'territory_id',
+        'assigned_to', 'created_by', 'territory_id', 'needs_callback',
     ];
 
     protected $casts = [
-        'scheduled_at' => 'datetime',
+        'scheduled_at'   => 'datetime',
+        'needs_callback' => 'boolean',
     ];
 
     public function assignee(): BelongsTo

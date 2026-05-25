@@ -14,7 +14,23 @@
       </a>
       <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" />
       <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" />
-      <NavItem :href="route('connection-requests.index')" icon="wifi"     label="Подключения" />
+      <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения">
+        <span v-if="connectionAlerts.pending > 0 || connectionAlerts.needs_callback > 0"
+              class="ml-auto flex items-center gap-1">
+          <!-- Пульсирующий ! — есть необработанные -->
+          <span v-if="connectionAlerts.pending > 0"
+                class="animate-pulse flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none"
+                title="Есть ожидающие заявки">!</span>
+          <!-- Прыгающий телефон — нужно прозвонить -->
+          <span v-if="connectionAlerts.needs_callback > 0"
+                class="animate-bounce"
+                title="Требуется прозвон">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+            </svg>
+          </span>
+        </span>
+      </NavItem>
       <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" />
       <NavItem v-if="isForeman && foremanBrigadeId"
                :href="route('brigades.show', foremanBrigadeId)"
@@ -82,11 +98,17 @@ onMounted(async () => {
   } catch {}
 })
 
+const page = usePage()
+
+const connectionAlerts = computed(() =>
+  page.props.connectionAlerts ?? { pending: 0, needs_callback: 0 }
+)
+
 const canManageSettings = computed(() =>
   ['admin', 'head_support'].includes(props.user?.role?.slug)
 )
 const isForeman = computed(() => props.user?.role?.slug === 'foreman')
-const foremanBrigadeId = computed(() => usePage().props.auth?.foreman_brigade_id)
+const foremanBrigadeId = computed(() => page.props.auth?.foreman_brigade_id)
 
 function can(permission) {
   const perms = props.user?.role?.permissions ?? []
