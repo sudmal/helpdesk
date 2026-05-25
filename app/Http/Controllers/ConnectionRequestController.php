@@ -18,10 +18,7 @@ class ConnectionRequestController extends Controller
         $user            = $request->user();
         $userTerritories = $this->getUserTerritories($user);
 
-        $territory = $request->get('territory');
-        if (!$territory && $userTerritories->isNotEmpty()) {
-            $territory = $userTerritories->first()->id;
-        }
+        $territory = $request->get('territory') ?: null;
 
         $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory'])
             ->when($territory, fn($q) => $q->where('territory_id', $territory))
@@ -39,13 +36,21 @@ class ConnectionRequestController extends Controller
             });
         }
 
+        $pendingByTerritory = ConnectionRequest::where('status', 'pending')
+            ->whereIn('territory_id', $userTerritories->pluck('id'))
+            ->selectRaw('territory_id, COUNT(*) as cnt')
+            ->groupBy('territory_id')
+            ->pluck('cnt', 'territory_id');
+
         return Inertia::render('ConnectionRequests/Index', [
-            'requests'          => $query->paginate(50)->withQueryString(),
-            'filters'           => $request->only(['status', 'search', 'territory']),
-            'territories'       => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
-            'selectedTerritory' => $territory ? (int)$territory : null,
-            'users'             => User::orderBy('name')->get(['id', 'name']),
-            'materialsCatalog'  => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
+            'requests'           => $query->paginate(50)->withQueryString(),
+            'filters'            => $request->only(['status', 'search', 'territory']),
+            'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+            'selectedTerritory'  => $territory ? (int)$territory : null,
+            'pendingByTerritory' => $pendingByTerritory,
+            'totalPending'       => $pendingByTerritory->sum(),
+            'users'              => User::orderBy('name')->get(['id', 'name']),
+            'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
         ]);
     }
 
