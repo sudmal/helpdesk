@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <aside class="flex flex-col w-64 bg-[#141c2b] text-white shrink-0">
     <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
       <div class="w-9 h-9 rounded-lg bg-blue-500 flex items-center justify-center font-bold text-sm">HD</div>
@@ -27,6 +27,7 @@
       <NavItem v-if="canManageSettings"
                :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" />
       <NavItem :href="route('calls.index')" icon="phone" label="Звонки" />
+      <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения" />
       <NavItem v-if="canManageSettings"
                :href="route('settings.index')"      icon="settings" label="Настройки" />
       <NavItem :href="route('help')" icon="help-circle" label="Справка" />

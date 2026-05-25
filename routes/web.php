@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\{
     DashboardController,
@@ -12,6 +12,7 @@ use App\Http\Controllers\{
     SettingsController,
     AttachmentController,
     LanBillingController,
+    ConnectionRequestController,
 };
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,15 @@ require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/pbx/lookup', [\App\Http\Controllers\PbxController::class, 'lookup'])->name('pbx.lookup');
     Route::get('/calls', [\App\Http\Controllers\CallLogController::class, 'index'])->name('calls.index');
+
+    // Заявки на подключение
+    Route::prefix('connection-requests')->name('connection-requests.')->group(function () {
+        Route::get('/',                           [ConnectionRequestController::class, 'index'])->name('index');
+        Route::post('/',                          [ConnectionRequestController::class, 'store'])->name('store');
+        Route::put('/{connectionRequest}',        [ConnectionRequestController::class, 'update'])->name('update');
+        Route::post('/{connectionRequest}/close', [ConnectionRequestController::class, 'close'])->name('close');
+        Route::delete('/{connectionRequest}',     [ConnectionRequestController::class, 'destroy'])->name('destroy');
+    });
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/new-since', [DashboardController::class, 'newTicketsSince'])->name('dashboard.new-since');

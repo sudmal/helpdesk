@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Head title="Дашборд" />
   <AppLayout title="Дашборд">
 
@@ -246,6 +246,19 @@
       </div>
     </div>
 
+    <!-- ── ЗАЯВКИ НА ПОДКЛЮЧЕНИЕ ── -->
+    <div v-if="pendingConnectionsCount > 0"
+         class="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 flex items-center gap-3 mb-4">
+      <span class="text-orange-500 text-lg">🔌</span>
+      <span class="text-sm text-orange-800 font-medium">
+        Новых заявок на подключение: <strong>{{ pendingConnectionsCount }}</strong>
+      </span>
+      <a :href="route('connection-requests.index', { status: 'pending' })"
+         class="ml-auto text-xs text-orange-700 hover:text-orange-900 font-medium hover:underline">
+        Перейти →
+      </a>
+    </div>
+
     <!-- ── Модалка закрытия ── -->
     <Modal v-if="closingTicket" :title="`Закрыть заявку #${closingTicket.number}`" size="lg"
            @close="closingTicket = null">
@@ -361,6 +374,7 @@ const props = defineProps({
   serviceType:       Number,
   sort:              { type: String, default: 'scheduled_at' },
   sortDir:           { type: String, default: 'asc' },
+  pendingConnectionsCount: { type: Number, default: 0 },
 })
 
 // ── Тосты ──
