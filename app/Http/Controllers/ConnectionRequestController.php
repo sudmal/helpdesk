@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Brigade;
 use App\Models\ConnectionRequest;
-use App\Models\ConnectionRequestMaterial;
 use App\Models\Material;
+use App\Models\Territory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,16 @@ class ConnectionRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ConnectionRequest::with(['assignee', 'creator', 'materials'])
+        $user            = $request->user();
+        $userTerritories = $this->getUserTerritories($user);
+
+        $territory = $request->get('territory');
+        if (!$territory && $userTerritories->isNotEmpty()) {
+            $territory = $userTerritories->first()->id;
+        }
+
+        $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory'])
+            ->when($territory, fn($q) => $q->where('territory_id', $territory))
             ->latest();
 
         if ($request->filled('status')) {
@@ -30,10 +40,12 @@ class ConnectionRequestController extends Controller
         }
 
         return Inertia::render('ConnectionRequests/Index', [
-            'requests'        => $query->paginate(50)->withQueryString(),
-            'filters'         => $request->only(['status', 'search']),
-            'users'           => User::orderBy('name')->get(['id', 'name']),
-            'materialsCatalog' => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
+            'requests'          => $query->paginate(50)->withQueryString(),
+            'filters'           => $request->only(['status', 'search', 'territory']),
+            'territories'       => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+            'selectedTerritory' => $territory ? (int)$territory : null,
+            'users'             => User::orderBy('name')->get(['id', 'name']),
+            'materialsCatalog'  => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
         ]);
     }
 
@@ -44,6 +56,7 @@ class ConnectionRequestController extends Controller
             'phone'          => 'required|string|max:30',
             'address_string' => 'required|string|max:255',
             'description'    => 'nullable|string|max:2000',
+            'territory_id'   => 'required|exists:territories,id',
         ]);
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
@@ -69,7 +82,7 @@ class ConnectionRequestController extends Controller
 
     public function close(Request $request, ConnectionRequest $connectionRequest)
     {
-        $data = $request->validate([
+        $request->validate([
             'notes'                   => 'nullable|string|max:2000',
             'act_number'              => 'nullable|string|max:50',
             'materials'               => 'nullable|array',
@@ -112,5 +125,24 @@ class ConnectionRequestController extends Controller
         $connectionRequest->delete();
 
         return back()->with('success', 'Заявка удалена');
+    }
+
+    private function getUserTerritories($user)
+    {
+        if ($user->hasPermission('*') || $user->hasPermission('settings.*')) {
+            return Territory::orderBy('sort_order')->orderBy('name')->get();
+        }
+        $ids = collect();
+        $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+        if ($brigadeIds->isNotEmpty()) {
+            $ids = $ids->merge(
+                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+            );
+        }
+        $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
+        if ($ids->isNotEmpty()) {
+            return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
+        }
+        return Territory::orderBy('sort_order')->orderBy('name')->get();
     }
 }

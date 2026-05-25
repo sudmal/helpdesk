@@ -2,7 +2,20 @@
   <Head title="Подключения" />
   <AppLayout title="Подключения">
 
-    <!-- Верхняя панель -->
+    <!-- Вкладки территорий -->
+    <div class="bg-white rounded-2xl border border-gray-200 px-4 py-2.5 mb-4 flex items-center gap-2 flex-wrap">
+      <span class="text-xs text-gray-400 font-medium">Территория:</span>
+      <button v-for="t in territories" :key="t.id"
+              @click="selectTerritory(t.id)"
+              :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors',
+                       selectedTerritory === t.id
+                         ? 'bg-blue-600 text-white'
+                         : 'text-gray-600 hover:bg-gray-100']">
+        {{ t.name }}
+      </button>
+    </div>
+
+    <!-- Фильтры -->
     <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
       <div class="flex-1 min-w-48">
         <label class="block text-xs text-gray-500 mb-1">Поиск</label>
@@ -22,15 +35,16 @@
         <button @click="apply" class="btn-primary text-sm">Найти</button>
         <button @click="reset" class="btn-outline text-sm">Сброс</button>
       </div>
-      <div class="ml-auto">
-        <button @click="openCreate" class="btn-primary text-sm">+ Новая заявка</button>
-      </div>
     </div>
 
     <!-- Таблица -->
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      <div class="px-5 py-3 border-b border-gray-100">
+      <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm text-gray-500">Всего: {{ requests.total }}</span>
+        <button @click="openCreate"
+                class="px-3 py-1.5 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
+          + Новая заявка
+        </button>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -82,14 +96,9 @@
                           class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
                     Выполнено
                   </button>
-                  <button v-if="r.status === 'scheduled'"
+                  <button v-if="r.status === 'scheduled' || r.status === 'rejected' || r.status === 'closed'"
                           @click="openSchedule(r)"
                           class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs">
-                    Изменить
-                  </button>
-                  <button v-if="r.status === 'rejected' || r.status === 'closed'"
-                          @click="openSchedule(r)"
-                          class="px-2 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 text-xs">
                     Изменить
                   </button>
                 </div>
@@ -120,20 +129,28 @@
         <h3 class="text-base font-semibold mb-4">Новая заявка на подключение</h3>
         <div class="space-y-3">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Имя клиента *</label>
+            <label class="block text-xs text-gray-500 mb-1">Имя клиента <span class="text-red-400">*</span></label>
             <input v-model="createForm.name" class="field-input w-full" placeholder="Иванов Иван" />
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Телефон *</label>
+            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
             <input v-model="createForm.phone" class="field-input w-full" placeholder="+7..." />
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Адрес *</label>
+            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
             <input v-model="createForm.address_string" class="field-input w-full" placeholder="ул. Ленина, 5, кв. 10" />
           </div>
           <div>
+            <label class="block text-xs text-gray-500 mb-1">Территория <span class="text-red-400">*</span></label>
+            <select v-model="createForm.territory_id" class="field-input w-full">
+              <option :value="null">— выберите территорию —</option>
+              <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs text-gray-500 mb-1">Описание</label>
-            <textarea v-model="createForm.description" class="field-input w-full" rows="3" placeholder="Желаемый тариф, заметки..."></textarea>
+            <textarea v-model="createForm.description" class="field-input w-full" rows="3"
+                      placeholder="Желаемый тариф, заметки..."></textarea>
           </div>
         </div>
         <div v-if="createErrors" class="mt-3 text-xs text-red-600">{{ createErrors }}</div>
@@ -147,9 +164,7 @@
     <!-- Модал: Назначить/Изменить -->
     <div v-if="modals.schedule" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">
-          {{ scheduleForm.status === 'scheduled' ? 'Назначить дату подключения' : 'Изменить заявку' }}
-        </h3>
+        <h3 class="text-base font-semibold mb-4">Изменить заявку</h3>
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-gray-500 mb-1">Статус</label>
@@ -188,30 +203,33 @@
         <h3 class="text-base font-semibold mb-4">Отклонить заявку</h3>
         <div>
           <label class="block text-xs text-gray-500 mb-1">Причина отклонения</label>
-          <textarea v-model="rejectForm.notes" class="field-input w-full" rows="4" placeholder="Нет технической возможности..."></textarea>
+          <textarea v-model="rejectForm.notes" class="field-input w-full" rows="4"
+                    placeholder="Нет технической возможности..."></textarea>
         </div>
         <div class="mt-5 flex justify-end gap-2">
           <button @click="modals.reject = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitReject" :disabled="submitting" class="btn-primary text-sm bg-red-600 hover:bg-red-700 border-red-600">Отклонить</button>
+          <button @click="submitReject" :disabled="submitting"
+                  class="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
+            Отклонить
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Модал: Выполнено (закрытие) -->
+    <!-- Модал: Выполнено -->
     <div v-if="modals.close" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
         <h3 class="text-base font-semibold mb-4">Закрыть — подключение выполнено</h3>
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-gray-500 mb-1">Номер акта</label>
-            <input v-model="closeForm.act_number" class="field-input w-full" placeholder="А-123 (или оставьте пустым → б/а)" />
+            <input v-model="closeForm.act_number" class="field-input w-full"
+                   placeholder="А-123 (или оставьте пустым → б/а)" />
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">Примечания</label>
             <textarea v-model="closeForm.notes" class="field-input w-full" rows="3"></textarea>
           </div>
-
-          <!-- Материалы -->
           <div>
             <div class="flex items-center justify-between mb-2">
               <label class="text-xs text-gray-500 font-medium">Использованные материалы</label>
@@ -227,14 +245,17 @@
               </select>
               <input v-model="row.quantity" type="number" min="0.01" step="0.01"
                      class="field-input w-24 text-xs" placeholder="кол-во" />
-              <button @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-600 text-sm px-1">✕</button>
+              <button @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-600 px-1">✕</button>
             </div>
             <div v-if="!closeForm.materials.length" class="text-xs text-gray-400">Материалы не добавлены</div>
           </div>
         </div>
         <div class="mt-5 flex justify-end gap-2">
           <button @click="modals.close = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitClose" :disabled="submitting" class="btn-primary text-sm bg-green-600 hover:bg-green-700 border-green-600">Выполнено</button>
+          <button @click="submitClose" :disabled="submitting"
+                  class="px-4 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
+            Выполнено
+          </button>
         </div>
       </div>
     </div>
@@ -249,10 +270,12 @@ import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
-  requests:         Object,
-  filters:          Object,
-  users:            Array,
-  materialsCatalog: Array,
+  requests:          Object,
+  filters:           Object,
+  territories:       Array,
+  selectedTerritory: Number,
+  users:             Array,
+  materialsCatalog:  Array,
 })
 
 const f = ref({
@@ -260,31 +283,42 @@ const f = ref({
   status: props.filters?.status ?? '',
 })
 
-function apply() {
-  router.get(route('connection-requests.index'), f.value, { preserveState: true })
+function selectTerritory(id) {
+  router.get(route('connection-requests.index'), { ...f.value, territory: id }, { preserveState: true })
 }
+
+function apply() {
+  router.get(route('connection-requests.index'), {
+    ...f.value,
+    territory: props.selectedTerritory,
+  }, { preserveState: true })
+}
+
 function reset() {
   f.value = { search: '', status: '' }
-  apply()
+  router.get(route('connection-requests.index'), { territory: props.selectedTerritory }, { preserveState: true })
 }
 
 // Модалы
-const modals    = reactive({ create: false, schedule: false, reject: false, close: false })
-const submitting = ref(false)
+const modals      = reactive({ create: false, schedule: false, reject: false, close: false })
+const submitting  = ref(false)
 const activeRecord = ref(null)
 
-// Формы
-const createForm  = reactive({ name: '', phone: '', address_string: '', description: '' })
+const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null })
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', assigned_to: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })
 const closeForm    = reactive({ act_number: '', notes: '', materials: [] })
 
 function openCreate() {
-  Object.assign(createForm, { name: '', phone: '', address_string: '', description: '' })
+  Object.assign(createForm, {
+    name: '', phone: '', address_string: '', description: '',
+    territory_id: props.selectedTerritory ?? null,
+  })
   createErrors.value = ''
   modals.create = true
 }
+
 function openSchedule(r) {
   activeRecord.value = r
   Object.assign(scheduleForm, {
@@ -295,23 +329,29 @@ function openSchedule(r) {
   })
   modals.schedule = true
 }
+
 function openReject(r) {
   activeRecord.value = r
   rejectForm.notes = ''
   modals.reject = true
 }
+
 function openClose(r) {
   activeRecord.value = r
   Object.assign(closeForm, { act_number: '', notes: r.notes ?? '', materials: [] })
   modals.close = true
 }
 
-function addMaterialRow()        { closeForm.materials.push({ material_id: null, quantity: '' }) }
-function removeMaterialRow(idx)  { closeForm.materials.splice(idx, 1) }
+function addMaterialRow()       { closeForm.materials.push({ material_id: null, quantity: '' }) }
+function removeMaterialRow(idx) { closeForm.materials.splice(idx, 1) }
 
 function submitCreate() {
   if (!createForm.name || !createForm.phone || !createForm.address_string) {
     createErrors.value = 'Заполните обязательные поля'
+    return
+  }
+  if (!createForm.territory_id) {
+    createErrors.value = 'Выберите территорию'
     return
   }
   submitting.value = true
