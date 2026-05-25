@@ -14,6 +14,7 @@
       </a>
       <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" />
       <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" />
+      <NavItem :href="route('connection-requests.index')" icon="wifi"     label="Подключения" />
       <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" />
       <NavItem v-if="isForeman && foremanBrigadeId"
                :href="route('brigades.show', foremanBrigadeId)"
@@ -27,7 +28,6 @@
       <NavItem v-if="canManageSettings"
                :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" />
       <NavItem :href="route('calls.index')" icon="phone" label="Звонки" />
-      <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения" />
       <NavItem v-if="canManageSettings"
                :href="route('settings.index')"      icon="settings" label="Настройки" />
       <NavItem :href="route('help')" icon="help-circle" label="Справка" />

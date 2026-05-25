@@ -42,6 +42,12 @@
           Все
         </button>
       </div>
+      <!-- Подключения ожидают -->
+      <a v-if="pendingConnectionsCount > 0"
+         :href="route('connection-requests.index', { status: 'pending' })"
+         class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-100 text-orange-700 text-xs font-medium hover:bg-orange-200 transition-colors whitespace-nowrap">
+        🔌 {{ pendingConnectionsCount }} подключений
+      </a>
       <!-- Дата справа -->
       <div class="flex items-center gap-1 ml-auto">
         <button @click="changeDate(-1)"
@@ -244,19 +250,6 @@
         </tbody>
       </table>
       </div>
-    </div>
-
-    <!-- ── ЗАЯВКИ НА ПОДКЛЮЧЕНИЕ ── -->
-    <div v-if="pendingConnectionsCount > 0"
-         class="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 flex items-center gap-3 mb-4">
-      <span class="text-orange-500 text-lg">🔌</span>
-      <span class="text-sm text-orange-800 font-medium">
-        Новых заявок на подключение: <strong>{{ pendingConnectionsCount }}</strong>
-      </span>
-      <a :href="route('connection-requests.index', { status: 'pending' })"
-         class="ml-auto text-xs text-orange-700 hover:text-orange-900 font-medium hover:underline">
-        Перейти →
-      </a>
     </div>
 
     <!-- ── Модалка закрытия ── -->
