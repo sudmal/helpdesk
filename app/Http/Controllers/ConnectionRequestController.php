@@ -48,7 +48,6 @@ class ConnectionRequestController extends Controller
             'selectedTerritory'  => $territory ? (int)$territory : null,
             'pendingByTerritory' => $pendingByTerritory,
             'totalPending'       => $pendingByTerritory->sum(),
-
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
         ]);
     }
@@ -83,6 +82,10 @@ class ConnectionRequestController extends Controller
             'territory_id'   => 'nullable|exists:territories,id',
         ]);
 
+        if (isset($data['status'])) {
+            $data['needs_callback'] = in_array($data['status'], ['scheduled', 'rejected']);
+        }
+
         $connectionRequest->update($data);
 
         return back()->with('success', 'Заявка обновлена');
@@ -91,7 +94,7 @@ class ConnectionRequestController extends Controller
     public function close(Request $request, ConnectionRequest $connectionRequest)
     {
         $request->validate([
-            'notes'                   => 'nullable|string|max:2000',
+            'notes'      => 'nullable|string|max:2000',
             'act_number' => [
                 'nullable', 'string', 'max:50',
                 function ($attribute, $value, $fail) use ($request) {
@@ -109,9 +112,10 @@ class ConnectionRequestController extends Controller
 
         DB::transaction(function () use ($connectionRequest, $actNumber, $request) {
             $connectionRequest->update([
-                'status'     => 'closed',
-                'act_number' => $actNumber,
-                'notes'      => $request->notes,
+                'status'         => 'closed',
+                'act_number'     => $actNumber,
+                'notes'          => $request->notes,
+                'needs_callback' => false,
             ]);
 
             if (!empty($request->materials)) {
@@ -135,10 +139,15 @@ class ConnectionRequestController extends Controller
         return back()->with('success', 'Подключение выполнено');
     }
 
+    public function markCalled(ConnectionRequest $connectionRequest)
+    {
+        $connectionRequest->update(['needs_callback' => false]);
+        return back()->with('success', 'Отмечено: прозвонили');
+    }
+
     public function destroy(ConnectionRequest $connectionRequest)
     {
         $connectionRequest->delete();
-
         return back()->with('success', 'Заявка удалена');
     }
 

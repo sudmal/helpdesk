@@ -91,9 +91,18 @@
               <td class="px-3 py-1.5 text-gray-700">{{ r.address_string }}</td>
               <td class="px-3 py-1.5 text-gray-500 max-w-48 truncate" :title="r.description">{{ r.description || '—' }}</td>
               <td class="px-3 py-1.5">
-                <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ statusLabel(r.status) }}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+                    {{ statusLabel(r.status) }}
+                  </span>
+                  <span v-if="r.needs_callback"
+                        class="animate-bounce text-amber-500"
+                        title="Требуется прозвон">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                    </svg>
+                  </span>
+                </div>
               </td>
               <td class="px-3 py-1.5 whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDate(r.scheduled_at) : '—' }}</td>
               <td class="px-3 py-1.5 text-gray-600 max-w-48 truncate" :title="r.notes">
@@ -119,6 +128,12 @@
                           @click="openClose(r)"
                           class="px-2 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs font-medium">
                     Завершить
+                  </button>
+                  <button v-if="r.needs_callback"
+                          @click="submitMarkCalled(r)"
+                          class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-medium"
+                          title="Отметить: прозвонили клиенту">
+                    Прозвонил
                   </button>
                 </div>
               </td>
@@ -234,7 +249,6 @@
             <label class="block text-xs text-gray-500 mb-1">Дата подключения</label>
             <input v-model="scheduleForm.scheduled_at" type="datetime-local" class="field-input w-full" />
           </div>
-
           <div>
             <label class="block text-xs text-gray-500 mb-1">Примечания</label>
             <textarea v-model="scheduleForm.notes" class="field-input w-full" rows="3"></textarea>
@@ -552,6 +566,10 @@ function submitClose() {
     onSuccess: () => { modals.close = false },
     onFinish:  () => { submitting.value = false },
   })
+}
+
+function submitMarkCalled(r) {
+  router.post(route('connection-requests.mark-called', r.id))
 }
 
 function statusLabel(s) {

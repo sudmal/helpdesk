@@ -6,6 +6,7 @@
                    : 'text-white/70 hover:bg-white/10 hover:text-white']">
     <Icon :name="icon" class="w-4 h-4 shrink-0" />
     {{ label }}
+    <slot />
   </InertiaLink>
 </template>
 
