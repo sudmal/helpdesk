@@ -88,7 +88,11 @@
               </td>
               <td class="px-3 py-1.5 whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDate(r.scheduled_at) : '—' }}</td>
               <td class="px-3 py-1.5 text-gray-600 max-w-48 truncate" :title="r.notes">
-                <span v-if="r.act_number" class="mr-1 text-gray-400">[{{ r.act_number }}]</span>{{ r.notes || '—' }}
+                <button v-if="r.act_number && r.materials?.length"
+                        @click="openView(r)"
+                        class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act_number }}]</button>
+                <span v-else-if="r.act_number" class="mr-1 text-gray-400">[{{ r.act_number }}]</span>
+                {{ r.notes || '—' }}
               </td>
               <td class="px-3 py-1.5 whitespace-nowrap">
                 <div class="flex gap-1">
@@ -261,12 +265,59 @@
             <div v-if="!closeForm.materials.length" class="text-xs text-gray-400">Материалы не добавлены</div>
           </div>
         </div>
+        <div v-if="closeErrors" class="text-xs text-red-600 mt-2">{{ closeErrors }}</div>
         <div class="mt-5 flex justify-end gap-2">
           <button @click="modals.close = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitClose" :disabled="submitting"
                   class="px-4 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
             Выполнено
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модал: Просмотр акта -->
+    <div v-if="modals.view" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
+        <h3 class="text-base font-semibold mb-4">Акт выполненных работ</h3>
+        <div class="space-y-2 text-sm mb-4">
+          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Клиент:</span><span class="font-medium">{{ viewRecord?.name }}</span></div>
+          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Телефон:</span><span>{{ viewRecord?.phone }}</span></div>
+          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Адрес:</span><span>{{ viewRecord?.address_string }}</span></div>
+          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Номер акта:</span><span class="font-semibold">{{ viewRecord?.act_number }}</span></div>
+          <div v-if="viewRecord?.notes" class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Примечания:</span><span>{{ viewRecord?.notes }}</span></div>
+        </div>
+        <div v-if="viewRecord?.materials?.length">
+          <div class="text-xs font-medium text-gray-500 mb-2">Использованные материалы:</div>
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-3 py-2 text-left text-gray-500">Материал</th>
+                <th class="px-3 py-2 text-right text-gray-500">Кол-во</th>
+                <th class="px-3 py-2 text-right text-gray-500">Цена</th>
+                <th class="px-3 py-2 text-right text-gray-500">Сумма</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-for="m in viewRecord.materials" :key="m.id">
+                <td class="px-3 py-1.5">{{ m.material_name }} <span class="text-gray-400">{{ m.material_unit }}</span></td>
+                <td class="px-3 py-1.5 text-right">{{ m.quantity }}</td>
+                <td class="px-3 py-1.5 text-right text-gray-500">{{ m.price_at_time }}</td>
+                <td class="px-3 py-1.5 text-right font-medium">{{ (m.quantity * m.price_at_time).toFixed(2) }}</td>
+              </tr>
+            </tbody>
+            <tfoot class="border-t-2 border-gray-200">
+              <tr>
+                <td colspan="3" class="px-3 py-2 text-right text-gray-500 font-medium">Итого:</td>
+                <td class="px-3 py-2 text-right font-bold">
+                  {{ viewRecord.materials.reduce((s,m) => s + m.quantity * m.price_at_time, 0).toFixed(2) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="mt-5 flex justify-end">
+          <button @click="modals.view = false" class="btn-outline text-sm">Закрыть</button>
         </div>
       </div>
     </div>
@@ -312,9 +363,11 @@ function reset() {
 }
 
 // Модалы
-const modals      = reactive({ create: false, schedule: false, reject: false, close: false })
+const modals      = reactive({ create: false, schedule: false, reject: false, close: false, view: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
+const viewRecord   = ref(null)
+const closeErrors  = ref('')
 
 const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null })
 const createErrors = ref('')
@@ -352,6 +405,11 @@ function openClose(r) {
   activeRecord.value = r
   Object.assign(closeForm, { act_number: '', notes: r.notes ?? '', materials: [] })
   modals.close = true
+}
+
+function openView(r) {
+  viewRecord.value = r
+  modals.view = true
 }
 
 function addMaterialRow()       { closeForm.materials.push({ material_id: null, quantity: '' }) }
@@ -394,6 +452,11 @@ function submitReject() {
 
 function submitClose() {
   const materials = closeForm.materials.filter(m => m.material_id && m.quantity)
+  if (materials.length > 0 && (!closeForm.act_number || closeForm.act_number.trim().length < 5)) {
+    closeErrors.value = 'При использовании материалов обязателен номер акта (минимум 5 символов)'
+    return
+  }
+  closeErrors.value = ''
   submitting.value = true
   router.post(route('connection-requests.close', activeRecord.value.id), {
     act_number: closeForm.act_number,
