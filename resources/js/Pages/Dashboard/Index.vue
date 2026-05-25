@@ -205,7 +205,7 @@
              class="text-xs text-red-600 hover:text-red-800 font-medium">Открыть список →</a>
         </div>
       </div>
-      <div class="overflow-y-auto" style="max-height:50vh">
+      <div>
       <table class="w-full text-xs">
         <tbody class="divide-y divide-red-100">
           <tr v-for="t in (overdue ?? [])" :key="t.id"
