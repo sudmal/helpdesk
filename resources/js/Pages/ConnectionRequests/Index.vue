@@ -322,6 +322,8 @@
           <table class="w-full text-xs">
             <thead class="bg-gray-50">
               <tr>
+                <th class="px-3 py-2 text-left text-gray-500">№</th>
+                <th class="px-3 py-2 text-left text-gray-500">Код</th>
                 <th class="px-3 py-2 text-left text-gray-500">Материал</th>
                 <th class="px-3 py-2 text-right text-gray-500">Кол-во</th>
                 <th class="px-3 py-2 text-right text-gray-500">Цена</th>
@@ -329,8 +331,10 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-for="m in viewRecord.materials" :key="m.id">
-                <td class="px-3 py-1.5">{{ m.material_name }} <span class="text-gray-400">{{ m.material_unit }}</span><span v-if="m.material_code" class="text-gray-400 ml-1 font-mono">[{{ m.material_code }}]</span></td>
+              <tr v-for="(m, idx) in viewRecord.materials" :key="m.id">
+                <td class="px-3 py-1.5 text-gray-400">{{ idx + 1 }}</td>
+                <td class="px-3 py-1.5 font-mono text-gray-600">{{ m.material_code || '—' }}</td>
+                <td class="px-3 py-1.5">{{ m.material_name }} <span class="text-gray-400">{{ m.material_unit }}</span></td>
                 <td class="px-3 py-1.5 text-right">{{ m.quantity }}</td>
                 <td class="px-3 py-1.5 text-right text-gray-500">{{ m.price_at_time }}</td>
                 <td class="px-3 py-1.5 text-right font-medium">{{ (m.quantity * m.price_at_time).toFixed(2) }}</td>
@@ -338,7 +342,7 @@
             </tbody>
             <tfoot class="border-t-2 border-gray-200">
               <tr>
-                <td colspan="3" class="px-3 py-2 text-right text-gray-500 font-medium">Итого:</td>
+                <td colspan="5" class="px-3 py-2 text-right text-gray-500 font-medium">Итого:</td>
                 <td class="px-3 py-2 text-right font-bold">
                   {{ viewRecord.materials.reduce((s,m) => s + m.quantity * m.price_at_time, 0).toFixed(2) }}
                 </td>
