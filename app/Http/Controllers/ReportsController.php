@@ -80,7 +80,7 @@ class ReportsController extends Controller
             );
 
         $weekly = DB::table(DB::raw("({$union->toSql()}) as all_materials"))
-            ->mergeBindings($union->getQuery())
+            ->mergeBindings($union)
             ->selectRaw('
                 YEARWEEK(created_at, 1) as week_key,
                 DATE_FORMAT(MIN(created_at), "%d.%m") as week_label,
@@ -104,7 +104,7 @@ class ReportsController extends Controller
             );
 
         $top = DB::table(DB::raw("({$union2->toSql()}) as all_materials"))
-            ->mergeBindings($union2->getQuery())
+            ->mergeBindings($union2)
             ->selectRaw('
                 material_name as name,
                 material_code as code,
