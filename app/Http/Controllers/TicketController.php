@@ -279,6 +279,10 @@ class TicketController extends Controller
             $materialsData = json_decode($materialsData, true) ?? [];
         }
 
+        if (!empty($materialsData) && (empty($request->act_number) || mb_strlen(trim($request->act_number)) < 5)) {
+            return back()->withErrors(['act_number' => 'При использовании материалов обязателен номер акта (минимум 5 символов).'])->withInput();
+        }
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $actNumber, $materialsData, $request) {
             $ticket->update(['act_number' => $actNumber]);
             $this->ticketService->updateStatus($ticket, 'closed', auth()->user(), $request->comment);

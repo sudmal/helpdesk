@@ -133,7 +133,14 @@ class TicketController extends Controller
 
         $request->validate([
             'close_notes'   => 'nullable|string|max:2000',
-            'act_number'    => 'nullable|string|max:50',
+            'act_number'    => [
+                'nullable', 'string', 'max:50',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!empty($request->input('materials')) && (empty($value) || mb_strlen(trim($value)) < 5)) {
+                        $fail('При использовании материалов обязателен номер акта (минимум 5 символов).');
+                    }
+                },
+            ],
             'materials'     => 'nullable|array',
             'materials.*.material_id' => 'required|integer|exists:materials,id',
             'materials.*.quantity'    => 'required|numeric|min:0.01',

@@ -88,7 +88,14 @@ class ConnectionRequestController extends Controller
     {
         $request->validate([
             'notes'                   => 'nullable|string|max:2000',
-            'act_number'              => 'nullable|string|max:50',
+            'act_number' => [
+                'nullable', 'string', 'max:50',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!empty($request->input('materials')) && (empty($value) || mb_strlen(trim($value)) < 5)) {
+                        $fail('При использовании материалов обязателен номер акта (минимум 5 символов).');
+                    }
+                },
+            ],
             'materials'               => 'nullable|array',
             'materials.*.material_id' => 'required_with:materials.*|integer|exists:materials,id',
             'materials.*.quantity'    => 'required_with:materials.*|numeric|min:0.01',
