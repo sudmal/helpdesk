@@ -71,7 +71,6 @@
               <th class="px-4 py-3 text-left">Статус</th>
               <th class="px-4 py-3 text-left">Дата подкл.</th>
               <th class="px-4 py-3 text-left">Примечания / Акт</th>
-              <th class="px-4 py-3 text-left">Исполнитель</th>
               <th class="px-4 py-3 text-left"></th>
             </tr>
           </thead>
@@ -91,7 +90,6 @@
               <td class="px-3 py-1.5 text-gray-600 max-w-48 truncate" :title="r.notes">
                 <span v-if="r.act_number" class="mr-1 text-gray-400">[{{ r.act_number }}]</span>{{ r.notes || '—' }}
               </td>
-              <td class="px-3 py-1.5 text-gray-600">{{ r.assignee?.name || '—' }}</td>
               <td class="px-3 py-1.5 whitespace-nowrap">
                 <div class="flex gap-1">
                   <button v-if="r.status === 'pending'"
@@ -192,10 +190,10 @@
             <input v-model="scheduleForm.scheduled_at" type="datetime-local" class="field-input w-full" />
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Исполнитель</label>
-            <select v-model="scheduleForm.assigned_to" class="field-input w-full">
-              <option :value="null">— не назначен —</option>
-              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+            <label class="block text-xs text-gray-500 mb-1">Передать на территорию</label>
+            <select v-model="scheduleForm.territory_id" class="field-input w-full">
+              <option :value="null">— без изменений —</option>
+              <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </div>
           <div>
@@ -289,7 +287,6 @@ const props = defineProps({
   selectedTerritory:  { type: Number, default: null },
   pendingByTerritory: { type: Object, default: () => ({}) },
   totalPending:       { type: Number, default: 0 },
-  users:             Array,
   materialsCatalog:  Array,
 })
 
@@ -321,7 +318,7 @@ const activeRecord = ref(null)
 
 const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null })
 const createErrors = ref('')
-const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', assigned_to: null, notes: '' })
+const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })
 const closeForm    = reactive({ act_number: '', notes: '', materials: [] })
 
@@ -339,7 +336,7 @@ function openSchedule(r) {
   Object.assign(scheduleForm, {
     status:       r.status === 'pending' ? 'scheduled' : r.status,
     scheduled_at: r.scheduled_at ? r.scheduled_at.slice(0, 16) : '',
-    assigned_to:  r.assigned_to ?? null,
+    territory_id: r.territory_id ?? null,
     notes:        r.notes ?? '',
   })
   modals.schedule = true
