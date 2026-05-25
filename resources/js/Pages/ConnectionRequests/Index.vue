@@ -63,6 +63,7 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
+              <th class="px-3 py-3 text-left w-8"></th>
               <th class="px-4 py-3 text-left">Дата</th>
               <th class="px-4 py-3 text-left">Имя</th>
               <th class="px-4 py-3 text-left">Телефон</th>
@@ -71,11 +72,19 @@
               <th class="px-4 py-3 text-left">Статус</th>
               <th class="px-4 py-3 text-left">Дата подкл.</th>
               <th class="px-4 py-3 text-left">Примечания / Акт</th>
-              <th class="px-4 py-3 text-left"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50">
+              <td class="px-2 py-1.5 text-center">
+                <button @click="openEdit(r)" title="Редактировать"
+                        class="text-gray-400 hover:text-blue-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+              </td>
               <td class="px-3 py-1.5 whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
               <td class="px-3 py-1.5 font-medium">{{ r.name }}</td>
               <td class="px-3 py-1.5 font-mono whitespace-nowrap">{{ r.phone }}</td>
@@ -108,12 +117,8 @@
                   </button>
                   <button v-if="r.status === 'scheduled'"
                           @click="openClose(r)"
-                          class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
-                    Выполнено
-                  </button>
-                  <button @click="openEdit(r)"
-                          class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs">
-                    Изменить
+                          class="px-2 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs font-medium">
+                    Завершить
                   </button>
                 </div>
               </td>
@@ -309,12 +314,11 @@
     <!-- Модал: Просмотр акта -->
     <div v-if="modals.view" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Акт выполненных работ</h3>
+        <h3 class="text-base font-semibold mb-4">Акт выполненных работ № {{ viewRecord?.act_number }}</h3>
         <div class="space-y-2 text-sm mb-4">
           <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Клиент:</span><span class="font-medium">{{ viewRecord?.name }}</span></div>
           <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Телефон:</span><span>{{ viewRecord?.phone }}</span></div>
           <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Адрес:</span><span>{{ viewRecord?.address_string }}</span></div>
-          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Номер акта:</span><span class="font-semibold">{{ viewRecord?.act_number }}</span></div>
           <div v-if="viewRecord?.notes" class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Примечания:</span><span>{{ viewRecord?.notes }}</span></div>
         </div>
         <div v-if="viewRecord?.materials?.length">
