@@ -111,8 +111,7 @@
                           class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
                     Выполнено
                   </button>
-                  <button v-if="r.status === 'scheduled' || r.status === 'rejected' || r.status === 'closed'"
-                          @click="openSchedule(r)"
+                  <button @click="openEdit(r)"
                           class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs">
                     Изменить
                   </button>
@@ -176,6 +175,43 @@
       </div>
     </div>
 
+    <!-- Модал: Редактировать -->
+    <div v-if="modals.edit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+        <h3 class="text-base font-semibold mb-4">Редактировать заявку</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Имя клиента <span class="text-red-400">*</span></label>
+            <input v-model="editForm.name" class="field-input w-full" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
+            <input v-model="editForm.phone" class="field-input w-full" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
+            <input v-model="editForm.address_string" class="field-input w-full" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Территория</label>
+            <select v-model="editForm.territory_id" class="field-input w-full">
+              <option :value="null">— не указана —</option>
+              <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Описание</label>
+            <textarea v-model="editForm.description" class="field-input w-full" rows="3"></textarea>
+          </div>
+        </div>
+        <div v-if="editErrors" class="mt-3 text-xs text-red-600">{{ editErrors }}</div>
+        <div class="mt-5 flex justify-end gap-2">
+          <button @click="modals.edit = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="submitEdit" :disabled="submitting" class="btn-primary text-sm">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Модал: Назначить/Изменить -->
     <div v-if="modals.schedule" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
@@ -193,13 +229,7 @@
             <label class="block text-xs text-gray-500 mb-1">Дата подключения</label>
             <input v-model="scheduleForm.scheduled_at" type="datetime-local" class="field-input w-full" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Передать на территорию</label>
-            <select v-model="scheduleForm.territory_id" class="field-input w-full">
-              <option :value="null">— без изменений —</option>
-              <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
-          </div>
+
           <div>
             <label class="block text-xs text-gray-500 mb-1">Примечания</label>
             <textarea v-model="scheduleForm.notes" class="field-input w-full" rows="3"></textarea>
@@ -300,7 +330,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr v-for="m in viewRecord.materials" :key="m.id">
-                <td class="px-3 py-1.5">{{ m.material_name }} <span class="text-gray-400">{{ m.material_unit }}</span></td>
+                <td class="px-3 py-1.5">{{ m.material_name }} <span class="text-gray-400">{{ m.material_unit }}</span><span v-if="m.material_code" class="text-gray-400 ml-1 font-mono">[{{ m.material_code }}]</span></td>
                 <td class="px-3 py-1.5 text-right">{{ m.quantity }}</td>
                 <td class="px-3 py-1.5 text-right text-gray-500">{{ m.price_at_time }}</td>
                 <td class="px-3 py-1.5 text-right font-medium">{{ (m.quantity * m.price_at_time).toFixed(2) }}</td>
@@ -363,13 +393,15 @@ function reset() {
 }
 
 // Модалы
-const modals      = reactive({ create: false, schedule: false, reject: false, close: false, view: false })
+const modals      = reactive({ create: false, edit: false, schedule: false, reject: false, close: false, view: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
 const viewRecord   = ref(null)
 const closeErrors  = ref('')
 
 const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null })
+const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null })
+const editErrors  = ref('')
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })
@@ -382,6 +414,19 @@ function openCreate() {
   })
   createErrors.value = ''
   modals.create = true
+}
+
+function openEdit(r) {
+  activeRecord.value = r
+  Object.assign(editForm, {
+    name:           r.name,
+    phone:          r.phone,
+    address_string: r.address_string,
+    description:    r.description ?? '',
+    territory_id:   r.territory_id ?? null,
+  })
+  editErrors.value = ''
+  modals.edit = true
 }
 
 function openSchedule(r) {
@@ -427,6 +472,18 @@ function submitCreate() {
   submitting.value = true
   router.post(route('connection-requests.store'), { ...createForm }, {
     onSuccess: () => { modals.create = false },
+    onFinish:  () => { submitting.value = false },
+  })
+}
+
+function submitEdit() {
+  if (!editForm.name || !editForm.phone || !editForm.address_string) {
+    editErrors.value = 'Заполните обязательные поля'
+    return
+  }
+  submitting.value = true
+  router.put(route('connection-requests.update', activeRecord.value.id), { ...editForm }, {
+    onSuccess: () => { modals.edit = false },
     onFinish:  () => { submitting.value = false },
   })
 }

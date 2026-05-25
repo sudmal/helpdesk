@@ -73,10 +73,14 @@ class ConnectionRequestController extends Controller
     public function update(Request $request, ConnectionRequest $connectionRequest)
     {
         $data = $request->validate([
-            'status'       => 'required|in:pending,scheduled,rejected,closed',
-            'scheduled_at' => 'nullable|date',
-            'notes'        => 'nullable|string|max:2000',
-            'territory_id' => 'nullable|exists:territories,id',
+            'name'           => 'sometimes|required|string|max:100',
+            'phone'          => 'sometimes|required|string|max:30',
+            'address_string' => 'sometimes|required|string|max:255',
+            'description'    => 'nullable|string|max:2000',
+            'status'         => 'sometimes|in:pending,scheduled,rejected,closed',
+            'scheduled_at'   => 'nullable|date',
+            'notes'          => 'nullable|string|max:2000',
+            'territory_id'   => 'nullable|exists:territories,id',
         ]);
 
         $connectionRequest->update($data);
