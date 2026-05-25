@@ -5,13 +5,26 @@
     <!-- Вкладки территорий -->
     <div class="bg-white rounded-2xl border border-gray-200 px-4 py-2.5 mb-4 flex items-center gap-2 flex-wrap">
       <span class="text-xs text-gray-400 font-medium">Территория:</span>
+      <button @click="selectTerritory(null)"
+              :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-1',
+                       selectedTerritory === null
+                         ? 'bg-blue-600 text-white'
+                         : 'text-gray-600 hover:bg-gray-100']">
+        Все
+        <span v-if="totalPending > 0"
+              :class="selectedTerritory === null ? 'text-orange-300' : 'text-orange-500'"
+              class="font-bold text-sm leading-none">✱</span>
+      </button>
       <button v-for="t in territories" :key="t.id"
               @click="selectTerritory(t.id)"
-              :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors',
+              :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-1',
                        selectedTerritory === t.id
                          ? 'bg-blue-600 text-white'
                          : 'text-gray-600 hover:bg-gray-100']">
         {{ t.name }}
+        <span v-if="pendingByTerritory[t.id]"
+              :class="selectedTerritory === t.id ? 'text-orange-300' : 'text-orange-500'"
+              class="font-bold text-sm leading-none">✱</span>
       </button>
     </div>
 
@@ -272,8 +285,10 @@ import AppLayout from '@/Components/Layout/AppLayout.vue'
 const props = defineProps({
   requests:          Object,
   filters:           Object,
-  territories:       Array,
-  selectedTerritory: Number,
+  territories:        Array,
+  selectedTerritory:  { type: Number, default: null },
+  pendingByTerritory: { type: Object, default: () => ({}) },
+  totalPending:       { type: Number, default: 0 },
   users:             Array,
   materialsCatalog:  Array,
 })
