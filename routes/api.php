@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConnectionRequestController;
 use App\Http\Controllers\Api\TicketController;
+use App\Http\Controllers\Api\ScheduleController;
 use App\Models\Material;
 use App\Models\ServiceType;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,8 @@ Route::middleware('auth:sanctum')->group(function () {
             ServiceType::active()->get(['id', 'name', 'color'])
         );
     });
+
+    Route::get('/schedule', [ScheduleController::class, 'index']);
 
     Route::get('/materials', function () {
         return response()->json(
