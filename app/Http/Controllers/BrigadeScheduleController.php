@@ -6,12 +6,7 @@ use App\Models\{Brigade, BrigadeSchedule, ScheduleHoliday};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
+use Shuchkin\SimpleXLSXGen;
 
 class BrigadeScheduleController extends Controller
 {
@@ -89,6 +84,7 @@ class BrigadeScheduleController extends Controller
 
         $firstDay    = Carbon::create($year, $mon, 1);
         $daysInMonth = $firstDay->daysInMonth;
+        $totalCols   = 1 + $daysInMonth + 1;
 
         $dowMap = [0 => 'Вс', 1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб'];
 
@@ -124,67 +120,37 @@ class BrigadeScheduleController extends Controller
             $schedule[$row->user_id][$row->date->format('Y-m-d')] = $row->status;
         }
 
-        // === Spreadsheet ===
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Расписание');
+        // Row 1: merged title
+        $title = "Расписание бригады «{$brigade->name}» — {$this->monthNames[$mon]} {$year}";
+        $rows  = [["<colspan:{$totalCols}><fill:#DBEAFE><size:12><b><align:center>{$title}</align></b></size></fill>"]];
 
-        $totalCols  = 1 + $daysInMonth + 1;
-        $lastColLtr = Coordinate::stringFromColumnIndex($totalCols);
-        $totColLtr  = Coordinate::stringFromColumnIndex($totalCols);
-
-        // Row 1: Title
-        $sheet->mergeCells("A1:{$lastColLtr}1");
-        $sheet->setCellValue('A1', "Расписание бригады «{$brigade->name}» — {$this->monthNames[$mon]} {$year}");
-        $s = $sheet->getStyle('A1');
-        $s->getFont()->setBold(true)->setSize(12);
-        $s->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        $s->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFDBEAFE');
-        $sheet->getRowDimension(1)->setRowHeight(22);
-
-        // Row 2: Day headers
-        $sheet->setCellValue('A2', 'Сотрудник');
-        $this->styleHeader($sheet, 'A2', 'FFF3F4F6');
-        $sheet->getColumnDimension('A')->setWidth(22);
-
-        foreach ($days as $i => $day) {
-            $col = $i + 2;
-            $ltr = Coordinate::stringFromColumnIndex($col);
-            $sheet->setCellValue($ltr . '2', $day['day'] . "\n" . $day['dow']);
-            $bg = $day['isHoliday'] ? 'FFEDE9FE'
-                : ($day['isSaturday'] ? 'FFE0E7FF'
-                : ($day['isWeekend']  ? 'FFFEE2E2'
-                : 'FFF3F4F6'));
-            $this->styleHeader($sheet, $ltr . '2', $bg, wrapText: true, fontSize: 8);
-            $sheet->getColumnDimensionByColumn($col)->setWidth(4.5);
+        // Row 2: column headers
+        $headerRow = ['<fill:#F3F4F6><b><align:center>Сотрудник</align></b></fill>'];
+        foreach ($days as $day) {
+            $bg = $day['isHoliday'] ? '#EDE9FE'
+                : ($day['isSaturday'] ? '#E0E7FF'
+                : ($day['isWeekend']  ? '#FEE2E2'
+                : '#F3F4F6'));
+            $headerRow[] = "<fill:{$bg}><b><size:8><align:center>{$day['day']}<br>{$day['dow']}</align></size></b></fill>";
         }
-
-        $sheet->setCellValue($totColLtr . '2', 'Вых.');
-        $this->styleHeader($sheet, $totColLtr . '2', 'FFF3F4F6');
-        $sheet->getColumnDimensionByColumn($totalCols)->setWidth(6);
-        $sheet->getRowDimension(2)->setRowHeight(30);
+        $headerRow[] = '<fill:#F3F4F6><b><align:center>Вых.</align></b></fill>';
+        $rows[] = $headerRow;
 
         // Data rows
-        $rowNum        = 3;
         $workersPerDay = array_fill(0, $daysInMonth, 0);
 
         foreach ($members as $member) {
-            $sheet->setCellValue('A' . $rowNum, $member->name);
-            $sheet->getStyle('A' . $rowNum)->getFont()->setSize(9);
-            $sheet->getStyle('A' . $rowNum)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-
+            $row      = [$member->name];
             $offCount = 0;
+
             foreach ($days as $i => $day) {
-                $col    = $i + 2;
-                $ltr    = Coordinate::stringFromColumnIndex($col);
-                $ref    = $ltr . $rowNum;
                 $status = $day['isHoliday'] ? 'holiday' : ($schedule[$member->id][$day['date']] ?? 'work');
 
                 [$label, $bg] = match ($status) {
-                    'holiday'   => ['П', 'FFEDE9FE'],
-                    'off'       => ['В', 'FFD1D5DB'],
-                    'requested' => ['?', 'FFFCD34D'],
-                    default     => ['Р', 'FF86EFAC'],
+                    'holiday'   => ['П', '#EDE9FE'],
+                    'off'       => ['В', '#D1D5DB'],
+                    'requested' => ['?', '#FCD34D'],
+                    default     => ['Р', '#86EFAC'],
                 };
 
                 if ($status !== 'work') {
@@ -193,72 +159,40 @@ class BrigadeScheduleController extends Controller
                     $workersPerDay[$i]++;
                 }
 
-                $sheet->setCellValue($ref, $label);
-                $cs = $sheet->getStyle($ref);
-                $cs->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($bg);
-                $cs->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-                $cs->getFont()->setSize(8)->setBold(true);
+                $row[] = "<fill:{$bg}><b><size:8><align:center>{$label}</align></size></b></fill>";
             }
 
-            $sheet->setCellValue($totColLtr . $rowNum, $offCount);
-            $sheet->getStyle($totColLtr . $rowNum)->getAlignment()
-                ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                ->setVertical(Alignment::VERTICAL_CENTER);
-            $sheet->getRowDimension($rowNum)->setRowHeight(16);
-            $rowNum++;
+            $row[]  = "<align:center>{$offCount}</align>";
+            $rows[] = $row;
         }
 
-        // "На участке" footer row
-        $sheet->setCellValue('A' . $rowNum, 'На участке');
-        $sheet->getStyle('A' . $rowNum)->getFont()->setBold(true)->setSize(9);
-        $sheet->getStyle('A' . $rowNum)->getFill()->setFillType(Fill::FILL_SOLID)
-            ->getStartColor()->setARGB('FFF9FAFB');
-
+        // Footer row
+        $footerRow = ['<fill:#F9FAFB><b>На участке</b></fill>'];
         foreach ($days as $i => $day) {
-            $ltr = Coordinate::stringFromColumnIndex($i + 2);
-            $ref = $ltr . $rowNum;
             if ($day['isHoliday']) {
-                $sheet->setCellValue($ref, '—');
-                $sheet->getStyle($ref)->getFont()->getColor()->setARGB('FFD1D5DB');
+                $footerRow[] = '<fill:#F9FAFB><color:#D1D5DB><align:center>—</align></color></fill>';
             } else {
-                $sheet->setCellValue($ref, $workersPerDay[$i]);
-                $sheet->getStyle($ref)->getFont()->setBold(true)->setSize(8);
+                $footerRow[] = "<fill:#F9FAFB><b><size:8><align:center>{$workersPerDay[$i]}</align></size></b></fill>";
             }
-            $sheet->getStyle($ref)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle($ref)->getFill()->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setARGB('FFF9FAFB');
         }
-        $sheet->getRowDimension($rowNum)->setRowHeight(16);
+        $footerRow[] = '';
+        $rows[] = $footerRow;
 
-        // Borders
-        $sheet->getStyle("A1:{$lastColLtr}{$rowNum}")->getBorders()->getAllBorders()
-            ->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('FFD1D5DB');
-        $sheet->getStyle("A2:{$lastColLtr}2")->getBorders()->getBottom()
-            ->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setARGB('FF6B7280');
-
-        // Save and stream
-        $writer  = IOFactory::createWriter($spreadsheet, 'Xlsx');
-        $tmpFile = tempnam(sys_get_temp_dir(), 'sched');
-        $writer->save($tmpFile);
+        // Build xlsx
+        $xlsx = SimpleXLSXGen::fromArray($rows);
+        $xlsx->setColWidth(1, 22);
+        for ($c = 2; $c <= $daysInMonth + 1; $c++) {
+            $xlsx->setColWidth($c, 4.5);
+        }
+        $xlsx->setColWidth($daysInMonth + 2, 6);
 
         $filename = 'schedule_' . preg_replace('/[^\w]/', '_', $brigade->name) . "_{$month}.xlsx";
+        $tmpFile  = tempnam(sys_get_temp_dir(), 'sched') . '.xlsx';
+        $xlsx->saveAs($tmpFile);
 
         return response()->download($tmpFile, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
-    }
-
-    private function styleHeader($sheet, string $ref, string $bg, bool $wrapText = false, int $fontSize = 9): void
-    {
-        $s = $sheet->getStyle($ref);
-        $s->getFont()->setBold(true)->setSize($fontSize);
-        $s->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER)
-            ->setWrapText($wrapText);
-        $s->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($bg);
     }
 
     public function save(Brigade $brigade, Request $request)
