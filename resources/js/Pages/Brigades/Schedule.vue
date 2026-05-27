@@ -67,6 +67,14 @@
         Печать
       </button>
 
+      <a :href="exportUrl"
+         class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Excel
+      </a>
+
       <span v-if="savedMsg" class="text-sm text-green-600 font-medium">✓ Сохранено</span>
     </div>
 
@@ -206,6 +214,10 @@ const monthLabel = computed(() => {
   return `${names[parseInt(m) - 1]} ${y}`
 })
 
+const exportUrl = computed(() =>
+  route('brigades.schedule.export', props.brigade.id) + '?month=' + props.month
+)
+
 function cellStatus(userId, date) {
   if (localHolidays[date]?.isHoliday) return 'holiday'
   return cells[userId]?.[date] ?? 'work'
@@ -219,7 +231,6 @@ function cellClass(userId, day) {
   return 'bg-green-200 hover:bg-green-300'
 }
 
-// Метка: пустая на экране (цвет достаточен), текст в печати через CSS
 function cellLabel(userId, day) {
   const s = cellStatus(userId, day.date)
   if (s === 'holiday')   return 'П'

@@ -85,6 +85,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Расписание бригад — доступно бригадиру своей бригады (авторизация в контроллере)
     Route::prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
         Route::get('/',          [App\Http\Controllers\BrigadeScheduleController::class, 'show'])->name('show');
+        Route::get('/export',    [App\Http\Controllers\BrigadeScheduleController::class, 'export'])->name('export');
         Route::post('/save',     [App\Http\Controllers\BrigadeScheduleController::class, 'save'])->name('save');
         Route::post('/generate', [App\Http\Controllers\BrigadeScheduleController::class, 'generate'])->name('generate');
     });
