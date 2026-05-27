@@ -6,7 +6,7 @@ use App\Models\{Brigade, BrigadeSchedule, ScheduleHoliday};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
-use Shuchkin\SimpleXLSXGen;
+// SimpleXLSXGen loaded via require_once in export() to avoid autoloader dependency
 
 class BrigadeScheduleController extends Controller
 {
@@ -179,7 +179,8 @@ class BrigadeScheduleController extends Controller
         $rows[] = $footerRow;
 
         // Build xlsx
-        $xlsx = SimpleXLSXGen::fromArray($rows);
+        require_once base_path('vendor/shuchkin/simplexlsxgen/src/SimpleXLSXGen.php');
+        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($rows);
         $xlsx->setColWidth(1, 22);
         for ($c = 2; $c <= $daysInMonth + 1; $c++) {
             $xlsx->setColWidth($c, 4.5);
