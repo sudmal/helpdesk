@@ -19,7 +19,8 @@ class Brigade extends Model
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'brigade_user');
+        return \->belongsToMany(User::class, 'brigade_user')
+            ->withPivot('exclude_from_schedule');
     }
 
     public function tickets(): HasMany

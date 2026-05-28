@@ -49,7 +49,7 @@ class BrigadeScheduleController extends Controller
             ];
         }
 
-        $members = $brigade->members()->orderBy('name')->get(['users.id', 'users.name']);
+        $membersCollection = $brigade->members()->orderBy('name')->get(['users.id', 'users.name']);
 
         $savedRows = BrigadeSchedule::where('brigade_id', $brigade->id)
             ->whereYear('date', $year)
@@ -57,15 +57,21 @@ class BrigadeScheduleController extends Controller
             ->get();
 
         $schedule = [];
-        foreach ($members as $m) {
+        foreach ($membersCollection as $m) {
             $schedule[$m->id] = [];
         }
         foreach ($savedRows as $row) {
             $schedule[$row->user_id][$row->date->format('Y-m-d')] = $row->status;
         }
 
+        $members = $membersCollection->map(fn($m) => [
+            'id'       => $m->id,
+            'name'     => $m->name,
+            'excluded' => (bool) $m->pivot->exclude_from_schedule,
+        ]);
+
         return Inertia::render('Brigades/Schedule', [
-            'brigade'  => ['id' => $brigade->id, 'name' => $brigade->name],
+            'brigade'  => ['id' => $brigade->id, 'name' => $brigade->name, 'min_workers' => $brigade->min_workers],
             'members'  => $members,
             'month'    => $month,
             'days'     => $days,
@@ -108,7 +114,12 @@ class BrigadeScheduleController extends Controller
             ];
         }
 
-        $members = $brigade->members()->orderBy('name')->get(['users.id', 'users.name']);
+        // Excluded members are skipped in the export
+        $members = $brigade->members()
+            ->orderBy('name')
+            ->get(['users.id', 'users.name'])
+            ->filter(fn($m) => !$m->pivot->exclude_from_schedule)
+            ->values();
 
         $savedRows = BrigadeSchedule::where('brigade_id', $brigade->id)
             ->whereYear('date', $year)
@@ -260,7 +271,14 @@ class BrigadeScheduleController extends Controller
             ->flip()
             ->toArray();
 
-        $members     = $brigade->members()->orderBy('name')->pluck('users.id')->toArray();
+        // Excluded members do not participate in generation
+        $members = $brigade->members()
+            ->orderBy('name')
+            ->get()
+            ->filter(fn($m) => !$m->pivot->exclude_from_schedule)
+            ->pluck('id')
+            ->toArray();
+
         $memberCount = count($members);
         $minWorkers  = min((int)($request->min_workers ?? $brigade->min_workers ?? 2), $memberCount);
         $targetDays  = (int)($request->target_days ?? 24);
@@ -367,6 +385,22 @@ class BrigadeScheduleController extends Controller
         }
 
         return response()->json(['schedule' => $schedule]);
+    }
+
+    public function toggleExclude(Brigade $brigade, Request $request)
+    {
+        $this->authorizeForBrigade($brigade);
+        $request->validate(['user_id' => 'required|integer|exists:users,id']);
+
+        $member = $brigade->members()->where('users.id', $request->user_id)->first();
+        if (!$member) abort(404, 'Пользователь не в бригаде');
+
+        $newValue = !$member->pivot->exclude_from_schedule;
+        $brigade->members()->updateExistingPivot($request->user_id, [
+            'exclude_from_schedule' => $newValue,
+        ]);
+
+        return response()->json(['excluded' => $newValue]);
     }
 
     public function toggleHoliday(Request $request)
