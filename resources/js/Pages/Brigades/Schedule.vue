@@ -130,7 +130,7 @@
               <td class="sched-name-col bg-white border-r border-b border-gray-200 px-4 py-1.5 text-sm text-gray-800 font-semibold whitespace-nowrap">
                 <div class="flex items-center justify-between gap-1">
                   <span>{{ member.name }}</span>
-                  <button v-if="mode === 'edit'"
+                  <button
                           @click="toggleExclude(member.id)"
                           :title="localExcluded[member.id] ? 'Включить в расписание' : 'Исключить из расписания'"
                           :class="['p-0.5 rounded transition-colors flex-shrink-0',
