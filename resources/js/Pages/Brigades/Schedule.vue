@@ -86,6 +86,10 @@
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-purple-200 border border-purple-300"></span>Праздник</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-blue-100 border border-blue-200"></span>Сб (заголовок)</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-red-100 border border-red-200"></span>Вс (заголовок)</span>
+      <span v-if="mode === 'edit'" class="flex items-center gap-1.5 text-gray-400">
+        <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+        — не участвует в расписании
+      </span>
       <span class="flex items-center gap-1.5 ml-4 text-gray-400">Клик по ячейке — статус · Клик по числу — праздник</span>
     </div>
 
@@ -121,20 +125,34 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="member in members" :key="member.id" class="hover:brightness-95 transition-all">
+            <tr v-for="member in members" :key="member.id"
+                :class="['transition-all', localExcluded[member.id] ? 'opacity-40' : 'hover:brightness-95']">
               <td class="sched-name-col bg-white border-r border-b border-gray-200 px-4 py-1.5 text-sm text-gray-800 font-semibold whitespace-nowrap">
-                {{ member.name }}
+                <div class="flex items-center justify-between gap-1">
+                  <span>{{ member.name }}</span>
+                  <button v-if="mode === 'edit'"
+                          @click="toggleExclude(member.id)"
+                          :title="localExcluded[member.id] ? 'Включить в расписание' : 'Исключить из расписания'"
+                          :class="['p-0.5 rounded transition-colors flex-shrink-0',
+                                   localExcluded[member.id] ? 'text-red-400 hover:text-red-600' : 'text-gray-300 hover:text-gray-500']">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                    </svg>
+                  </button>
+                </div>
               </td>
               <td v-for="day in days" :key="day.date"
                   @click="toggleCell(member.id, day)"
-                  :class="['border-r border-b border-gray-200 text-center cursor-pointer select-none transition-all w-9 h-9 sched-cell',
-                           cellClass(member.id, day)]"
-                  :data-status="cellStatus(member.id, day.date)">
-                <span class="text-[11px] font-bold select-none cell-label">{{ cellLabel(member.id, day) }}</span>
+                  :class="['border-r border-b border-gray-200 text-center select-none transition-all w-9 h-9 sched-cell',
+                           localExcluded[member.id] ? 'bg-gray-100 cursor-default' : cellClass(member.id, day)]"
+                  :data-status="localExcluded[member.id] ? 'excluded' : cellStatus(member.id, day.date)">
+                <span class="text-[11px] font-bold select-none cell-label">
+                  {{ localExcluded[member.id] ? '' : cellLabel(member.id, day) }}
+                </span>
               </td>
               <td class="sched-count-col border-b border-gray-200 px-3 text-center font-mono tabular-nums text-sm font-bold"
-                  :class="workCount(member.id) >= targetDays ? 'text-green-700' : 'text-orange-600'">
-                {{ workCount(member.id) }}
+                  :class="workCount(member.id) !== null && workCount(member.id) >= targetDays ? 'text-green-700' : 'text-orange-600'">
+                {{ workCount(member.id) !== null ? workCount(member.id) : '—' }}
               </td>
             </tr>
 
@@ -208,6 +226,11 @@ for (const day of props.days) {
   localHolidays[day.date] = { isHoliday: day.isHoliday, name: day.holidayName }
 }
 
+const localExcluded = reactive({})
+for (const m of props.members) {
+  localExcluded[m.id] = m.excluded ?? false
+}
+
 const monthLabel = computed(() => {
   const [y, m] = props.month.split('-')
   const names = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
@@ -241,6 +264,7 @@ function cellLabel(userId, day) {
 
 function toggleCell(userId, day) {
   if (localHolidays[day.date]?.isHoliday) return
+  if (localExcluded[userId]) return
   const current = cells[userId][day.date] ?? 'work'
   if (mode.value === 'mark') {
     cells[userId][day.date] = current === 'requested' ? 'work' : 'requested'
@@ -262,6 +286,7 @@ async function toggleHoliday(day) {
 }
 
 function workCount(userId) {
+  if (localExcluded[userId]) return null
   return props.days.filter(day => {
     if (localHolidays[day.date]?.isHoliday) return false
     return (cells[userId]?.[day.date] ?? 'work') === 'work'
@@ -269,8 +294,8 @@ function workCount(userId) {
 }
 
 function workerCountOnDay(date) {
-  if (localHolidays[date]?.isHoliday) return props.members.length
-  return props.members.filter(m => (cells[m.id]?.[date] ?? 'work') === 'work').length
+  if (localHolidays[date]?.isHoliday) return props.members.filter(m => !localExcluded[m.id]).length
+  return props.members.filter(m => !localExcluded[m.id] && (cells[m.id]?.[date] ?? 'work') === 'work').length
 }
 
 const hasConflicts = computed(() =>
@@ -289,11 +314,24 @@ async function saveMinWorkers() {
   }
 }
 
+async function toggleExclude(memberId) {
+  try {
+    const res = await axios.post(
+      route('brigades.schedule.toggle-exclude', props.brigade.id),
+      { user_id: memberId }
+    )
+    localExcluded[memberId] = res.data.excluded
+  } catch {
+    alert('Ошибка изменения статуса участника')
+  }
+}
+
 async function runGenerate() {
   generating.value = true
   try {
     const preMark = {}
     for (const m of props.members) {
+      if (localExcluded[m.id]) continue
       preMark[m.id] = {}
       for (const day of props.days) {
         const s = cells[m.id][day.date]
@@ -305,6 +343,7 @@ async function runGenerate() {
       { month: props.month, pre_marks: preMark, target_days: targetDays.value, min_workers: minWorkers.value }
     )
     for (const m of props.members) {
+      if (localExcluded[m.id]) continue
       for (const day of props.days) {
         cells[m.id][day.date] = res.data.schedule[m.id]?.[day.date] ?? 'work'
       }
@@ -324,6 +363,7 @@ async function saveSchedule() {
   try {
     const s = {}
     for (const m of props.members) {
+      if (localExcluded[m.id]) continue
       s[m.id] = {}
       for (const day of props.days) s[m.id][day.date] = cells[m.id][day.date] ?? 'work'
     }
