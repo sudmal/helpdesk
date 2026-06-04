@@ -100,6 +100,10 @@
                           class="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
                     Отклонить
                   </button>
+                  <button v-if="canProcess"
+                          @click="confirmDelete(r)"
+                          class="px-2 py-0.5 rounded bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 text-xs font-medium"
+                          title="Удалить">✕</button>
                 </div>
               </td>
             </tr>
@@ -318,6 +322,11 @@ function openReject(r) {
   processForm.admin_comment = ''
   processErrors.value = ''
   modals.reject = true
+}
+
+function confirmDelete(r) {
+  if (!confirm('Удалить запрос от ' + r.name + ' (' + r.service_name + ')?')) return
+  router.delete(route('service-requests.destroy', r.id))
 }
 
 function submitCreate() {
