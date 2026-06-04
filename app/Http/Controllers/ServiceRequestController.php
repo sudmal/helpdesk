@@ -27,11 +27,11 @@ class ServiceRequestController extends Controller
         }
 
         return Inertia::render('ServiceRequests/Index', [
-            'requests'       => $query->paginate(50)->withQueryString(),
-            'filters'        => $request->only(['status', 'search']),
-            'servicesList'   => $this->getServicesList(),
-            'totalPending'   => ServiceRequest::where('status', 'pending')->count(),
-            'canProcess'     => $request->user()->canManageSettings(),
+            'requests'     => $query->paginate(50)->withQueryString(),
+            'filters'      => $request->only(['status', 'search']),
+            'servicesList' => $this->getServicesList(),
+            'totalPending' => ServiceRequest::where('status', 'pending')->count(),
+            'canProcess'   => $request->user()->canManageSettings(),
         ]);
     }
 
@@ -50,6 +50,23 @@ class ServiceRequestController extends Controller
         ServiceRequest::create($data);
 
         return back()->with('success', 'Заявка на услугу создана');
+    }
+
+    public function update(Request $request, ServiceRequest $serviceRequest)
+    {
+        abort_unless($serviceRequest->status === 'pending', 403, 'Редактировать можно только ожидающие заявки');
+
+        $data = $request->validate([
+            'name'           => 'required|string|max:100',
+            'phone'          => 'required|string|max:30',
+            'address_string' => 'required|string|max:255',
+            'service_name'   => 'required|string|max:100',
+            'description'    => 'nullable|string|max:2000',
+        ]);
+
+        $serviceRequest->update($data);
+
+        return back()->with('success', 'Заявка обновлена');
     }
 
     public function accept(Request $request, ServiceRequest $serviceRequest)

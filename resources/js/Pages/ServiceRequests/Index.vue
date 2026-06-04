@@ -60,7 +60,7 @@
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50">
               <!-- Редактировать (только создатель/все операторы — просто просмотр) -->
               <td class="px-2 py-1.5 text-center">
-                <button v-if="r.status === 'pending' && !canProcess"
+                <button v-if="r.status === 'pending'"
                         @click="openEdit(r)" title="Редактировать"
                         class="text-gray-400 hover:text-blue-600 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -338,7 +338,7 @@ function submitEdit() {
     return
   }
   submitting.value = true
-  router.post(route('service-requests.store'), { ...editForm }, {
+  router.put(route('service-requests.update', activeRecord.value.id), { ...editForm }, {
     onSuccess: () => { modals.edit = false },
     onFinish:  () => { submitting.value = false },
   })

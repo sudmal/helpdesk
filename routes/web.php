@@ -192,6 +192,7 @@ Route::middleware('auth')->prefix('push')->group(function () {
 Route::middleware(['auth', 'active'])->prefix('service-requests')->name('service-requests.')->group(function () {
     Route::get('/',                         [ServiceRequestController::class, 'index'])->name('index');
     Route::post('/',                        [ServiceRequestController::class, 'store'])->name('store');
+    Route::put('/{serviceRequest}',           [ServiceRequestController::class, 'update'])->name('update');
     Route::post('/{serviceRequest}/accept', [ServiceRequestController::class, 'accept'])->name('accept');
     Route::post('/{serviceRequest}/reject', [ServiceRequestController::class, 'reject'])->name('reject');
     Route::delete('/{serviceRequest}',      [ServiceRequestController::class, 'destroy'])->name('destroy');
