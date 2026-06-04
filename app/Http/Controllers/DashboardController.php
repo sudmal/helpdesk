@@ -1,8 +1,8 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
-use App\Models\{Ticket, TicketStatus, Territory, Brigade, ServiceType, Material, ConnectionRequest};
+use App\Models\{Ticket, TicketStatus, Territory, Brigade, ServiceType, Material, ConnectionRequest, ServiceRequest};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -100,7 +100,8 @@ class DashboardController extends Controller
             'serviceType'       => $serviceType ? (int)$serviceType : null,
             'sort'              => $sort,
             'sortDir'           => $sortDir,
-            'pendingConnectionsCount' => ConnectionRequest::where('status', 'pending')->count(),
+            'pendingConnectionsCount'        => ConnectionRequest::where('status', 'pending')->count(),
+            'pendingServiceRequestsCount' => ServiceRequest::where('status', 'pending')->count(),
         ]);
     }
 

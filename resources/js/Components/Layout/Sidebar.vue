@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <aside class="flex flex-col w-64 bg-[#141c2b] text-white shrink-0">
     <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
       <div class="w-9 h-9 rounded-lg bg-blue-500 flex items-center justify-center font-bold text-sm">HD</div>
@@ -30,6 +30,11 @@
             </svg>
           </span>
         </span>
+      </NavItem>
+      <NavItem :href="route('service-requests.index')" icon="tool" label="Запросы услуг">
+        <span v-if="serviceRequestAlerts.pending > 0"
+              class="ml-auto animate-pulse flex items-center justify-center w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold leading-none"
+              title="Есть необработанные запросы">!</span>
       </NavItem>
       <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" />
       <NavItem v-if="isForeman && foremanBrigadeId"
@@ -104,6 +109,10 @@ const connectionAlerts = computed(() =>
   page.props.connectionAlerts ?? { pending: 0, needs_callback: 0 }
 )
 
+const serviceRequestAlerts = computed(() =>
+  page.props.serviceRequestAlerts ?? { pending: 0 }
+)
+
 const canManageSettings = computed(() =>
   ['admin', 'head_support'].includes(props.user?.role?.slug)
 )
@@ -119,3 +128,4 @@ function logout() {
   router.post(route('logout'))
 }
 </script>
+

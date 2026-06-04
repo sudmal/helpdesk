@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Head title="Дашборд" />
   <AppLayout title="Дашборд">
 
@@ -47,6 +47,12 @@
          :href="route('connection-requests.index', { status: 'pending' })"
          class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-100 text-orange-700 text-xs font-medium hover:bg-orange-200 transition-colors whitespace-nowrap">
         🔌 {{ pendingConnectionsCount }} подключений
+      </a>
+      <!-- Запросы услуг ожидают -->
+      <a v-if="pendingServiceRequestsCount > 0"
+         :href="route('service-requests.index', { status: 'pending' })"
+         class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-100 text-purple-700 text-xs font-medium hover:bg-purple-200 transition-colors whitespace-nowrap">
+        ⚙️ {{ pendingServiceRequestsCount }} запросов услуг
       </a>
       <!-- Дата справа -->
       <div class="flex items-center gap-1 ml-auto">
@@ -368,6 +374,7 @@ const props = defineProps({
   sort:              { type: String, default: 'scheduled_at' },
   sortDir:           { type: String, default: 'asc' },
   pendingConnectionsCount: { type: Number, default: 0 },
+  pendingServiceRequestsCount: { type: Number, default: 0 },
 })
 
 // ── Тосты ──
@@ -571,3 +578,4 @@ async function doBulkRescheduleOverdue() {
 .toast-enter-from { opacity: 0; transform: translateX(1rem); }
 .toast-leave-to   { opacity: 0; transform: translateX(1rem); }
 </style>
+

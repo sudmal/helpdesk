@@ -1,9 +1,10 @@
-<?php
+﻿<?php
 
 namespace App\Http\Middleware;
 
 use App\Models\Brigade;
 use App\Models\ConnectionRequest;
+use App\Models\ServiceRequest;
 use App\Models\Territory;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -32,6 +33,13 @@ class HandleInertiaRequests extends Middleware
                 'import_result' => session('import_result'),
             ],
             'closeReasons'      => config('tickets.close_reasons', []),
+            'serviceRequestAlerts' => function () use ($request) {
+                $user = $request->user();
+                if (!$user) return ['pending' => 0];
+                return [
+                    'pending' => ServiceRequest::where('status', 'pending')->count(),
+                ];
+            },
             'connectionAlerts'  => function () use ($request) {
                 $user = $request->user();
                 if (!$user) return ['pending' => 0, 'needs_callback' => 0];
@@ -60,3 +68,4 @@ class HandleInertiaRequests extends Middleware
         ]);
     }
 }
+
