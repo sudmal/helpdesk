@@ -19,8 +19,6 @@ class SettingsController extends Controller
             ? Territory::orderBy('sort_order')->orderBy('name')
             : $user->territories()->orderBy('sort_order')->orderBy('name');
 
-        header('X-Debug-Svc: ' . json_encode($this->getServiceRequestServices(), JSON_UNESCAPED_UNICODE));
-        file_put_contents('/var/www/sites/helpdesk/storage/logs/svc_live.txt', json_encode($this->getServiceRequestServices(), JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
         return Inertia::render('Settings/Index', [
             'ticketTypes'      => TicketType::orderBy('sort_order')->get(),
             'ticketStatuses'   => TicketStatus::orderBy('sort_order')->get(),
@@ -396,7 +394,6 @@ class SettingsController extends Controller
         ]);
         $services = array_values(array_filter(array_map('trim', $data['services'])));
         $json = json_encode($services, JSON_UNESCAPED_UNICODE);
-        \Log::info('svc_save', ['received' => $data, 'json' => $json]);
         \DB::table('system_settings')->updateOrInsert(
             ['key' => 'service_request_services'],
             ['value' => $json, 'type' => 'json', 'updated_at' => now()]
@@ -448,7 +445,10 @@ class SettingsController extends Controller
 
     private function getServiceRequestServices(): array
     {
-        return ['DEBUG_MARKER_XYZ', 'Реальный IP', 'IPTV'];
+        $json = \Cache::remember('setting:service_request_services', 3600, fn () =>
+            \DB::table('system_settings')->where('key', 'service_request_services')->value('value')
+        );
+        return $json ? json_decode($json, true) : ['Реальный IP', 'IPTV'];
     }
 
 }
