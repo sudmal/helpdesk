@@ -101,125 +101,6 @@
                     Отклонить
                   </button>
                   <button v-if="canProcess"
-                          @click="confirmDelete(r)"
-                          class="px-2 py-0.5 rounded bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 text-xs font-medium"
-                          title="Удалить">✕</button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="!requests.data.length">
-              <td colspan="11" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Пагинация -->
-      <div v-if="requests.last_page > 1"
-           class="px-5 py-3 border-t border-gray-100 flex items-center gap-2">
-        <button v-for="link in requests.links" :key="link.label"
-                :disabled="!link.url || link.active"
-                @click="link.url && router.get(link.url, {}, { preserveState: true })"
-                v-html="link.label"
-                :class="['px-3 py-0.5 rounded-lg text-sm transition-colors',
-                         link.active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600 disabled:opacity-40 disabled:cursor-default']" />
-      </div>
-    </div>
-
-    <!-- Модал: Создать запрос -->
-    <div v-if="modals.create" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Новый запрос на услугу</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Имя абонента <span class="text-red-400">*</span></label>
-            <input v-model="createForm.name" class="field-input w-full" placeholder="Иванов Иван Иванович" />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
-            <input v-model="createForm.phone" class="field-input w-full" placeholder="+7..." />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
-            <input v-model="createForm.address_string" class="field-input w-full" placeholder="ул. Ленина, 5, кв. 10" />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Запрашиваемая услуга <span class="text-red-400">*</span></label>
-            <select v-model="createForm.service_name" class="field-input w-full">
-              <option value="">— выберите услугу —</option>
-              <option v-for="s in servicesList" :key="s" :value="s">{{ s }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Описание / пожелания</label>
-            <textarea v-model="createForm.description" class="field-input w-full" rows="3"
-                      placeholder="Дополнительная информация..."></textarea>
-          </div>
-        </div>
-        <div v-if="createErrors" class="mt-3 text-xs text-red-600">{{ createErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
-          <button @click="modals.create = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitCreate" :disabled="submitting" class="btn-primary text-sm">Создать</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модал: Редактировать (оператор, пока pending) -->
-    <div v-if="modals.edit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Редактировать запрос</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Имя абонента <span class="text-red-400">*</span></label>
-            <input v-model="editForm.name" class="field-input w-full" />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
-            <input v-model="editForm.phone" class="field-input w-full" />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
-            <input v-model="editForm.address_string" class="field-input w-full" />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Услуга <span class="text-red-400">*</span></label>
-            <select v-model="editForm.service_name" class="field-input w-full">
-              <option value="">— выберите услугу —</option>
-              <option v-for="s in servicesList" :key="s" :value="s">{{ s }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Описание</label>
-            <textarea v-model="editForm.description" class="field-input w-full" rows="3"></textarea>
-          </div>
-        </div>
-        <div v-if="editErrors" class="mt-3 text-xs text-red-600">{{ editErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
-          <button @click="modals.edit = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitEdit" :disabled="submitting" class="btn-primary text-sm">Сохранить</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модал: Принять (администратор) -->
-    <div v-if="modals.accept" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-1">Принять запрос</h3>
-        <p class="text-xs text-gray-500 mb-4">
-          {{ activeRecord?.name }} — {{ activeRecord?.service_name }}
-        </p>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Комментарий <span class="text-red-400">*</span></label>
-          <textarea v-model="processForm.admin_comment" class="field-input w-full" rows="4"
-                    placeholder="Услуга будет подключена в течение..."></textarea>
-        </div>
-        <div v-if="processErrors" class="mt-2 text-xs text-red-600">{{ processErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
-          <button @click="modals.accept = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitAccept" :disabled="submitting"
-                  class="px-4 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
-            Принять
-          </button>
         </div>
       </div>
     </div>
@@ -322,11 +203,6 @@ function openReject(r) {
   processForm.admin_comment = ''
   processErrors.value = ''
   modals.reject = true
-}
-
-function confirmDelete(r) {
-  if (!confirm('Удалить запрос от ' + r.name + ' (' + r.service_name + ')?')) return
-  router.delete(route('service-requests.destroy', r.id))
 }
 
 function submitCreate() {
