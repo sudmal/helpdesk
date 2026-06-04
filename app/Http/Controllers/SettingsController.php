@@ -27,10 +27,7 @@ class SettingsController extends Controller
             'roles'            => Role::orderBy('name')->get(),
             'territories'      => $territoriesQuery->get(['id', 'name']),
             'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),
-            'serviceRequestServices' => (function() {
-                $val = SystemSetting::get('service_request_services');
-                return (is_array($val) && count($val)) ? $val : ['Реальный IP', 'IPTV'];
-            })(),
+            'serviceRequestServices' => $this->getServiceRequestServices(),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),
             'lanbillingConfig' => [
                 'url'   => config('lanbilling.url'),
@@ -444,5 +441,11 @@ class SettingsController extends Controller
 
         return response()->json(['ok' => true]);
     }
-}
 
+    private function getServiceRequestServices(): array
+    {
+        $val = SystemSetting::get('service_request_services');
+        return (is_array($val) && count($val)) ? $val : ['Реальный IP', 'IPTV'];
+    }
+
+}

@@ -888,7 +888,7 @@ const tabs = [
 ]
 
 // ── Список услуг (Запросы услуг) ────────────────────────────────────
-const svcList  = ref([...props.serviceRequestServices])
+const svcList  = ref(Array.isArray(props.serviceRequestServices) ? [...props.serviceRequestServices] : ['Реальный IP', 'IPTV'])
 const svcSaving = ref(false)
 
 function addSvc()              { svcList.value.push('') }
