@@ -393,9 +393,10 @@ class SettingsController extends Controller
             'services.*' => 'required|string|max:100',
         ]);
         $services = array_values(array_filter(array_map('trim', $data['services'])));
-        SystemSetting::updateOrCreate(
+        $json = json_encode($services, JSON_UNESCAPED_UNICODE);
+        \DB::table('system_settings')->updateOrInsert(
             ['key' => 'service_request_services'],
-            ['value' => json_encode($services, JSON_UNESCAPED_UNICODE), 'type' => 'json']
+            ['value' => $json, 'type' => 'json', 'updated_at' => now()]
         );
         \Illuminate\Support\Facades\Cache::forget('setting:service_request_services');
         return back()->with('success', 'Список услуг сохранён');
