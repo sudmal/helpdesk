@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Head title="Настройки" />
   <AppLayout title="Настройки">
 
@@ -453,6 +453,33 @@
       </form>
     </div>
 
+    <!-- ── Список услуг для запросов ── -->
+    <div v-if="activeTab === 'svc-list'" class="bg-white rounded-2xl border border-gray-200 max-w-lg">
+      <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold">Услуги для запросов</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Список услуг, которые абоненты могут запросить</p>
+        </div>
+      </div>
+      <div class="p-4 space-y-2">
+        <div v-for="(svc, idx) in svcList" :key="idx"
+             class="flex items-center gap-2">
+          <input v-model="svcList[idx]" class="field-input flex-1 text-sm" placeholder="Название услуги" />
+          <button @click="removeSvc(idx)"
+                  class="text-red-400 hover:text-red-600 px-2 py-1 rounded-lg shrink-0">✕</button>
+        </div>
+        <div v-if="!svcList.length" class="text-xs text-gray-400 py-2">Список пуст</div>
+        <button @click="addSvc"
+                class="text-sm text-blue-600 hover:underline mt-1">+ Добавить услугу</button>
+      </div>
+      <div class="px-4 pb-4 flex gap-2">
+        <button @click="saveSvcList" :disabled="svcSaving"
+                class="btn-primary text-sm">
+          {{ svcSaving ? 'Сохранение...' : 'Сохранить' }}
+        </button>
+      </div>
+    </div>
+
     <!-- ══ МОДАЛКИ ══════════════════════════════════════════════════ -->
 
     <!-- Тип заявки -->
@@ -857,7 +884,24 @@ const tabs = [
   { key: 'general',       label: 'Общие' },
   { key: 'notifications', label: 'Уведомления' },
   { key: 'lanbilling',    label: 'LANBilling' },
+  { key: 'svc-list',      label: 'Услуги (запросы)' },
 ]
+
+// ── Список услуг (Запросы услуг) ────────────────────────────────────
+const svcList  = ref([...props.serviceRequestServices])
+const svcSaving = ref(false)
+
+function addSvc()              { svcList.value.push('') }
+function removeSvc(idx)        { svcList.value.splice(idx, 1) }
+function saveSvcList() {
+  const clean = svcList.value.map(s => s.trim()).filter(Boolean)
+  if (!clean.length) return
+  svcSaving.value = true
+  router.put(route('settings.service-request-services.update'), { services: clean }, {
+    onSuccess: () => { svcList.value = [...clean] },
+    onFinish:  () => { svcSaving.value = false },
+  })
+}
 
 // ── Типы ────────────────────────────────────────────────────────────
 const showTypeModal = ref(false)
@@ -1307,3 +1351,4 @@ async function unblockIp(ip) {
 .field-label  { @apply block text-xs text-gray-500 mb-1; }
 .field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-slate-50; }
 </style>
+

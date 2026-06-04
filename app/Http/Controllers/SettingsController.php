@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -27,6 +27,10 @@ class SettingsController extends Controller
             'roles'            => Role::orderBy('name')->get(),
             'territories'      => $territoriesQuery->get(['id', 'name']),
             'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),
+            'serviceRequestServices' => (function() {
+                \ = SystemSetting::get('service_request_services');
+                return (is_array(\) && count(\)) ? \ : ['Реальный IP', 'IPTV'];
+            })(),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),
             'lanbillingConfig' => [
                 'url'   => config('lanbilling.url'),
@@ -382,6 +386,24 @@ class SettingsController extends Controller
         file_put_contents($path, $content);
     }
 
+    // ── Запросы услуг: список услуг ─────────────────────────────────
+
+    public function updateServiceRequestServices(Request $request)
+    {
+        $this->authorize('manage-settings');
+        $data = $request->validate([
+            'services'   => 'required|array|min:1',
+            'services.*' => 'required|string|max:100',
+        ]);
+        $services = array_values(array_filter(array_map('trim', $data['services'])));
+        SystemSetting::updateOrCreate(
+            ['key' => 'service_request_services'],
+            ['value' => json_encode($services, JSON_UNESCAPED_UNICODE), 'type' => 'json']
+        );
+        \Illuminate\Support\Facades\Cache::forget('setting:service_request_services');
+        return back()->with('success', 'Список услуг сохранён');
+    }
+
     // ── Безопасность: журнал и блокировки ────────────────────────────
 
     public function securityData()
@@ -423,3 +445,4 @@ class SettingsController extends Controller
         return response()->json(['ok' => true]);
     }
 }
+

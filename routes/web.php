@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\{
     DashboardController,
@@ -13,6 +13,7 @@ use App\Http\Controllers\{
     AttachmentController,
     LanBillingController,
     ConnectionRequestController,
+    ServiceRequestController,
 };
 use Illuminate\Support\Facades\Route;
 
@@ -22,7 +23,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/pbx/lookup', [\App\Http\Controllers\PbxController::class, 'lookup'])->name('pbx.lookup');
     Route::get('/calls', [\App\Http\Controllers\CallLogController::class, 'index'])->name('calls.index');
 
-    // Заявки на подключение
+    // Р—Р°СЏРІРєРё РЅР° РїРѕРґРєР»СЋС‡РµРЅРёРµ
     Route::prefix('connection-requests')->name('connection-requests.')->group(function () {
         Route::get('/',                                   [ConnectionRequestController::class, 'index'])->name('index');
         Route::post('/',                                  [ConnectionRequestController::class, 'store'])->name('store');
@@ -35,7 +36,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/new-since', [DashboardController::class, 'newTicketsSince'])->name('dashboard.new-since');
 
-    // Заявки
+    // Р—Р°СЏРІРєРё
     Route::prefix('tickets')->name('tickets.')->group(function () {
         Route::get('/',              [TicketController::class, 'index'])->name('index');
         Route::get('/create',        [TicketController::class, 'create'])->name('create');
@@ -57,18 +58,18 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/{ticket}/comments',[TicketController::class, 'addComment'])->name('comment');
     });
 
-    // Вложения
+    // Р’Р»РѕР¶РµРЅРёСЏ
     Route::post('/attachments',              [AttachmentController::class, 'store'])->name('attachments.store');
     Route::delete('/attachments/{id}',       [AttachmentController::class, 'destroy'])->name('attachments.destroy');
     Route::get('/attachments/{id}/download', [AttachmentController::class, 'download'])->name('attachments.download');
 
-    // Календарь
+    // РљР°Р»РµРЅРґР°СЂСЊ
     Route::prefix('calendar')->name('calendar.')->group(function () {
         Route::get('/',       [CalendarController::class, 'index'])->name('index');
         Route::get('/events', [CalendarController::class, 'events'])->name('events');
     });
 
-    // Территории
+    // РўРµСЂСЂРёС‚РѕСЂРёРё
     Route::middleware('can:manage-settings')->prefix('territories')->name('territories.')->group(function () {
         Route::get('/',               [TerritoryController::class, 'index'])->name('index');
         Route::post('/',              [TerritoryController::class, 'store'])->name('store');
@@ -76,13 +77,13 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/{territory}', [TerritoryController::class, 'destroy'])->name('destroy');
     });
 
-    // Просмотр бригады — доступно бригадиру своей бригады
+    // РџСЂРѕСЃРјРѕС‚СЂ Р±СЂРёРіР°РґС‹ вЂ” РґРѕСЃС‚СѓРїРЅРѕ Р±СЂРёРіР°РґРёСЂСѓ СЃРІРѕРµР№ Р±СЂРёРіР°РґС‹
     Route::get('/brigades/{brigade}', [BrigadeController::class, 'show'])->name('brigades.show');
 
-    // Состав бригады — доступно бригадиру своей бригады
+    // РЎРѕСЃС‚Р°РІ Р±СЂРёРіР°РґС‹ вЂ” РґРѕСЃС‚СѓРїРЅРѕ Р±СЂРёРіР°РґРёСЂСѓ СЃРІРѕРµР№ Р±СЂРёРіР°РґС‹
     Route::put('/brigades/{brigade}/members', [BrigadeController::class, 'updateMembers'])->name('brigades.members.update');
 
-    // Расписание бригад — доступно бригадиру своей бригады (авторизация в контроллере)
+    // Р Р°СЃРїРёСЃР°РЅРёРµ Р±СЂРёРіР°Рґ вЂ” РґРѕСЃС‚СѓРїРЅРѕ Р±СЂРёРіР°РґРёСЂСѓ СЃРІРѕРµР№ Р±СЂРёРіР°РґС‹ (Р°РІС‚РѕСЂРёР·Р°С†РёСЏ РІ РєРѕРЅС‚СЂРѕР»Р»РµСЂРµ)
     Route::prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
         Route::get('/',          [App\Http\Controllers\BrigadeScheduleController::class, 'show'])->name('show');
         Route::get('/export',    [App\Http\Controllers\BrigadeScheduleController::class, 'export'])->name('export');
@@ -93,7 +94,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/schedule/holiday', [App\Http\Controllers\BrigadeScheduleController::class, 'toggleHoliday'])->name('brigades.schedule.holiday');
     Route::patch('/brigades/{brigade}/min-workers', [BrigadeController::class, 'updateMinWorkers'])->name('brigades.min-workers');
 
-    // Бригады — только управляющие настройками
+    // Р‘СЂРёРіР°РґС‹ вЂ” С‚РѕР»СЊРєРѕ СѓРїСЂР°РІР»СЏСЋС‰РёРµ РЅР°СЃС‚СЂРѕР№РєР°РјРё
     Route::middleware('can:manage-settings')->prefix('brigades')->name('brigades.')->group(function () {
         Route::get('/',             [BrigadeController::class, 'index'])->name('index');
         Route::post('/',            [BrigadeController::class, 'store'])->name('store');
@@ -101,7 +102,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/{brigade}', [BrigadeController::class, 'destroy'])->name('destroy');
     });
 
-    // Адреса
+    // РђРґСЂРµСЃР°
     Route::prefix('addresses')->name('addresses.')->group(function () {
         Route::get('/',             [AddressController::class, 'index'])->name('index');
         Route::post('/',            [AddressController::class, 'store'])->name('store');
@@ -115,42 +116,42 @@ Route::middleware(['auth', 'active'])->group(function () {
     // LANBilling
     Route::get('/lanbilling/lookup', [LanBillingController::class, 'lookup'])->name('lanbilling.lookup');
 
-    // Настройки
+    // РќР°СЃС‚СЂРѕР№РєРё
     Route::middleware('can:manage-settings')->prefix('settings')->name('settings.')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
 
-        // Типы заявок
+        // РўРёРїС‹ Р·Р°СЏРІРѕРє
         Route::post('/ticket-types',          [SettingsController::class, 'storeType'])->name('ticket-types.store');
         Route::put('/ticket-types/{ticketType}',    [SettingsController::class, 'updateType'])->name('ticket-types.update');
         Route::delete('/ticket-types/{ticketType}', [SettingsController::class, 'destroyType'])->name('ticket-types.destroy');
 
-        // Статусы
+        // РЎС‚Р°С‚СѓСЃС‹
         Route::post('/ticket-statuses',             [SettingsController::class, 'storeStatus'])->name('ticket-statuses.store');
         Route::put('/ticket-statuses/{ticketStatus}',    [SettingsController::class, 'updateStatus'])->name('ticket-statuses.update');
         Route::delete('/ticket-statuses/{ticketStatus}', [SettingsController::class, 'destroyStatus'])->name('ticket-statuses.destroy');
 
-        // Пользователи
+        // РџРѕР»СЊР·РѕРІР°С‚РµР»Рё
         Route::post('/users',        [SettingsController::class, 'storeUser'])->name('users.store');
         Route::put('/users/{user}',  [SettingsController::class, 'updateUser'])->name('users.update');
         Route::delete('/users/{user}', [SettingsController::class, 'destroyUser'])->name('users.destroy');
         Route::post('/users/{user}/test-notify', [SettingsController::class, 'testNotify'])->name('users.test-notify');
 
-        // Участки
+        // РЈС‡Р°СЃС‚РєРё
         Route::post('/services',             [ServiceTypeController::class, 'store'])->name('services.store');
         Route::put('/services/{serviceType}',    [ServiceTypeController::class, 'update'])->name('services.update');
         Route::delete('/services/{serviceType}', [ServiceTypeController::class, 'destroy'])->name('services.destroy');
 
-        // Роли
+        // Р РѕР»Рё
         Route::put('/roles/{role}',  [SettingsController::class, 'updateRole'])->name('roles.update');
 
-        // Общие настройки
+        // РћР±С‰РёРµ РЅР°СЃС‚СЂРѕР№РєРё
         Route::put('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
 
-        // Сортировка
+        // РЎРѕСЂС‚РёСЂРѕРІРєР°
         Route::post('/sort/service-types', [SettingsController::class, 'sortServiceTypes'])->name('sort.service-types');
         Route::post('/sort/territories',   [SettingsController::class, 'sortTerritories'])->name('sort.territories');
 
-        // Уведомления — ручной запуск
+        // РЈРІРµРґРѕРјР»РµРЅРёСЏ вЂ” СЂСѓС‡РЅРѕР№ Р·Р°РїСѓСЃРє
         Route::put('/notifications', [SettingsController::class, 'updateNotifications'])->name('notifications.update');
         Route::post('/notifications/daily-summary', [SettingsController::class, 'sendDailySummary'])->name('notifications.send-summary');
         Route::post('/notifications/evening-report',[SettingsController::class, 'sendEveningReport'])->name('notifications.send-report');
@@ -159,7 +160,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/lanbilling',    [SettingsController::class, 'lanbilling'])->name('lanbilling');
         Route::put('/lanbilling',    [SettingsController::class, 'updateLanbilling'])->name('lanbilling.update');
 
-        // Безопасность
+        // Р‘РµР·РѕРїР°СЃРЅРѕСЃС‚СЊ
         Route::get('/security/data',    [SettingsController::class, 'securityData'])->name('security.data');
         Route::post('/security/unblock', [SettingsController::class, 'unblockIp'])->name('security.unblock');
     });
@@ -169,24 +170,33 @@ Route::middleware(['auth', 'active'])->group(function () {
 
 });
 
-// Материалы (справочник)
+// РњР°С‚РµСЂРёР°Р»С‹ (СЃРїСЂР°РІРѕС‡РЅРёРє)
 Route::resource('materials', App\Http\Controllers\MaterialController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware('auth');
 
-// Расходники по заявке
+// Р Р°СЃС…РѕРґРЅРёРєРё РїРѕ Р·Р°СЏРІРєРµ
 Route::post('tickets/{ticket}/materials', [App\Http\Controllers\MaterialController::class, 'storeForTicket'])
     ->name('tickets.materials.store')
     ->middleware('auth');
 
-// Push уведомления
+// Push СѓРІРµРґРѕРјР»РµРЅРёСЏ
 Route::middleware('auth')->prefix('push')->group(function () {
     Route::get('/vapid-key',    [App\Http\Controllers\PushController::class, 'vapidKey'])->name('push.vapid-key');
     Route::post('/subscribe',   [App\Http\Controllers\PushController::class, 'subscribe'])->name('push.subscribe');
     Route::post('/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe'])->name('push.unsubscribe');
 });
 
-// Sync API (для скрипта синхронизации)
+
+// Запросы на услуги
+Route::middleware(['auth', 'active'])->prefix('service-requests')->name('service-requests.')->group(function () {
+    Route::get('/',                         [ServiceRequestController::class, 'index'])->name('index');
+    Route::post('/',                        [ServiceRequestController::class, 'store'])->name('store');
+    Route::post('/{serviceRequest}/accept', [ServiceRequestController::class, 'accept'])->name('accept');
+    Route::post('/{serviceRequest}/reject', [ServiceRequestController::class, 'reject'])->name('reject');
+    Route::delete('/{serviceRequest}',      [ServiceRequestController::class, 'destroy'])->name('destroy');
+});
+// Sync API (РґР»СЏ СЃРєСЂРёРїС‚Р° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё)
 Route::post('/sync/ticket', [SyncController::class, 'store'])->name('sync.ticket');
 
 // Telegram Bot
@@ -195,3 +205,6 @@ Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class
 Route::get('/telegram/set-webhook', [App\Http\Controllers\TelegramController::class, 'setWebhook'])
     ->middleware('auth')
     ->name('telegram.set-webhook');
+
+
+
