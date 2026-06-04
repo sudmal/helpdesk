@@ -871,6 +871,7 @@ const props = defineProps({
   lanbillingConfig:       { type: Object, default: () => ({}) },
   generalSettings:        { type: Object, default: () => ({}) },
   notificationSettings:   { type: Object, default: () => ({}) },
+  serviceRequestServices: { type: Array,  default: () => [] },
 })
 
 const activeTab = ref('types')
