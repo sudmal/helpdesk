@@ -162,6 +162,8 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         // Р‘РµР·РѕРїР°СЃРЅРѕСЃС‚СЊ
         Route::get('/security/data',    [SettingsController::class, 'securityData'])->name('security.data');
+        Route::put('/service-request-services', [SettingsController::class, 'updateServiceRequestServices'])->name('service-request-services.update');
+
         Route::post('/security/unblock', [SettingsController::class, 'unblockIp'])->name('security.unblock');
     });
 
