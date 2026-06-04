@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Http\Controllers;
 
@@ -28,8 +28,8 @@ class SettingsController extends Controller
             'territories'      => $territoriesQuery->get(['id', 'name']),
             'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),
             'serviceRequestServices' => (function() {
-                \ = SystemSetting::get('service_request_services');
-                return (is_array(\) && count(\)) ? \ : ['Реальный IP', 'IPTV'];
+                $val = SystemSetting::get('service_request_services');
+                return (is_array($val) && count($val)) ? $val : ['Реальный IP', 'IPTV'];
             })(),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),
             'lanbillingConfig' => [

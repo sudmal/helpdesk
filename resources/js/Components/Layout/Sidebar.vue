@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <aside class="flex flex-col w-64 bg-[#141c2b] text-white shrink-0">
     <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
       <div class="w-9 h-9 rounded-lg bg-blue-500 flex items-center justify-center font-bold text-sm">HD</div>
