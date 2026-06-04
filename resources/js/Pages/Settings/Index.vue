@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <Head title="Настройки" />
   <AppLayout title="Настройки">
 
