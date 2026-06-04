@@ -890,6 +890,7 @@ const tabs = [
 // ── Список услуг (Запросы услуг) ────────────────────────────────────
 const svcList  = ref(Array.isArray(props.serviceRequestServices) ? [...props.serviceRequestServices] : ['Реальный IP', 'IPTV'])
 const svcSaving = ref(false)
+watch(() => props.serviceRequestServices, (val) => { if (Array.isArray(val)) svcList.value = [...val] })
 
 function addSvc()              { svcList.value.push('') }
 function removeSvc(idx)        { svcList.value.splice(idx, 1) }
