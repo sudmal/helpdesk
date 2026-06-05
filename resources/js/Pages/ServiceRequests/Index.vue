@@ -13,7 +13,7 @@
         <select v-model="f.status" class="field-input">
           <option value="">Все</option>
           <option value="pending">Ожидает</option>
-          <option value="accepted">Принято</option>
+          <option value="accepted">Выполнено</option>
           <option value="rejected">Отклонено</option>
         </select>
       </div>
@@ -94,7 +94,7 @@
                 <div v-if="canProcess && r.status === 'pending'" class="flex gap-1">
                   <button @click="openAccept(r)"
                           class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
-                    Принять
+                    Выполнить
                   </button>
                   <button @click="openReject(r)"
                           class="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
@@ -197,10 +197,10 @@
       </div>
     </div>
 
-    <!-- Модал: Принять (администратор) -->
+    <!-- Модал: Выполнить (администратор) -->
     <div v-if="modals.accept" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-1">Принять запрос</h3>
+        <h3 class="text-base font-semibold mb-1">Выполнить запрос</h3>
         <p class="text-xs text-gray-500 mb-4">
           {{ activeRecord?.name }} — {{ activeRecord?.service_name }}
         </p>
@@ -214,7 +214,7 @@
           <button @click="modals.accept = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitAccept" :disabled="submitting"
                   class="px-4 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
-            Принять
+            Выполнить
           </button>
         </div>
       </div>
@@ -369,7 +369,7 @@ function submitReject() {
 }
 
 function statusLabel(s) {
-  return { pending: 'Ожидает', accepted: 'Принято', rejected: 'Отклонено' }[s] ?? s
+  return { pending: 'Ожидает', accepted: 'Выполнено', rejected: 'Отклонено' }[s] ?? s
 }
 function statusClass(s) {
   return {
