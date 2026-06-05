@@ -1,12 +1,12 @@
 <template>
-  <aside class="flex flex-col w-64 bg-[#141c2b] text-white shrink-0">
-    <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+  <aside class="flex flex-col w-64 bg-[#141c2b] text-white shrink-0 h-full">
+    <div class="flex items-center gap-3 px-5 py-3 border-b border-white/10">
       <div class="w-9 h-9 rounded-lg bg-blue-500 flex items-center justify-center font-bold text-sm">HD</div>
       <span class="font-semibold text-lg tracking-tight">HelpDesk</span>
     </div>
     <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
       <a :href="route('tickets.create')"
-          class="flex items-center gap-2.5 px-3 py-2.5 mb-2 rounded-xl
+          class="flex items-center gap-2.5 px-3 py-2 mb-1.5 rounded-xl
                  bg-green-600 hover:bg-green-700 text-white font-medium text-sm
                  transition-colors shadow-sm">
         <span class="text-base">+</span>
@@ -53,7 +53,7 @@
                :href="route('settings.index')"      icon="settings" label="Настройки" />
       <NavItem :href="route('help')" icon="help-circle" label="Справка" />
     </nav>
-    <div class="px-4 py-4 border-t border-white/10">
+    <div class="px-4 py-2 border-t border-white/10">
       <div class="text-sm font-medium truncate">{{ user.name }}</div>
       <div class="text-xs text-white/50 truncate mb-3">{{ user.email }}</div>
       <button @click="logout"
@@ -64,7 +64,7 @@
         Выход
       </button>
     </div>
-    <div v-if="apk" class="px-4 py-3 border-t border-white/10">
+    <div v-if="apk" class="px-4 py-2 border-t border-white/10">
       <a :href="apk.apk_url" target="_blank"
          title="Приложение для выездных сотрудников (Android 11+)"
          class="flex items-center gap-2.5 text-sm text-green-400 hover:text-green-300 transition-colors font-medium">
@@ -81,7 +81,7 @@
         Инструкция
       </a>
     </div>
-    <div class="px-4 py-2 border-t border-white/5">
+    <div class="px-4 py-1 border-t border-white/5">
       <div class="text-[10px] text-white/20 leading-tight">Sudmal @ Claude</div>
     </div>
   </aside>
