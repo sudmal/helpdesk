@@ -73,14 +73,35 @@
         </svg>
         <span>SP-Helpdesk {{ apk.version_name }}</span>
       </a>
-      <a :href="route('help') + '?tab=app'"
-         class="flex items-center gap-1.5 mt-1.5 text-xs text-white/35 hover:text-white/70 transition-colors pl-0.5">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-        Инструкция
-      </a>
+      <div class="flex items-center gap-3 mt-1.5 pl-0.5">
+        <a :href="route('help') + '?tab=app'"
+           class="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          Инструкция
+        </a>
+        <button @click="openQr" class="flex items-center gap-1 text-xs text-white/35 hover:text-white/70 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+            <path d="M14 14h1v1h-1zm2 0h1v1h-1zm2 0h1v1h-1zm-4 2h1v1h-1zm2 0h1v1h-1zm2 0h1v1h-1zm-4 2h1v1h-1zm2 0h1v1h-1zm2 0h1v1h-1z"/>
+          </svg>
+          QR
+        </button>
+      </div>
     </div>
+
+    <!-- QR-модалка -->
+    <teleport to="body">
+      <div v-if="qrOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="qrOpen = false">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center gap-4 min-w-[220px]">
+          <div class="text-sm font-semibold text-slate-700">Скачать SP-Helpdesk {{ apk?.version_name }}</div>
+          <canvas ref="qrCanvas" class="rounded-lg"></canvas>
+          <a :href="apk?.apk_url" target="_blank" class="text-xs text-blue-600 hover:underline">Прямая ссылка</a>
+          <button @click="qrOpen = false" class="text-xs text-slate-400 hover:text-slate-600">Закрыть</button>
+        </div>
+      </div>
+    </teleport>
     <div class="px-4 py-1 border-t border-white/5">
       <div class="text-[10px] text-white/20 leading-tight">Sudmal @ Claude</div>
     </div>
@@ -88,9 +109,10 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch, nextTick } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import NavItem from './NavItem.vue'
+import QRCode from 'qrcode'
 
 const props = defineProps({ user: Object })
 
@@ -126,6 +148,17 @@ function can(permission) {
 
 function logout() {
   router.post(route('logout'))
+}
+
+const qrOpen = ref(false)
+const qrCanvas = ref(null)
+
+async function openQr() {
+  qrOpen.value = true
+  await nextTick()
+  if (qrCanvas.value && apk.value?.apk_url) {
+    QRCode.toCanvas(qrCanvas.value, apk.value.apk_url, { width: 200, margin: 2 })
+  }
 }
 </script>
 
