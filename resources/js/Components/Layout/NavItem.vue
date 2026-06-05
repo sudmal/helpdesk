@@ -1,6 +1,6 @@
 <template>
   <InertiaLink :href="href"
-        :class="['flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
+        :class="['flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer',
                  isActive
                    ? 'bg-blue-600 text-white'
                    : 'text-white/70 hover:bg-white/10 hover:text-white']">
