@@ -448,6 +448,7 @@ class SettingsController extends Controller
         $json = \Cache::remember('setting:service_request_services', 3600, fn () =>
             \DB::table('system_settings')->where('key', 'service_request_services')->value('value')
         );
+        if (is_array($json)) return $json;
         return $json ? json_decode($json, true) : ['Реальный IP', 'IPTV'];
     }
 
