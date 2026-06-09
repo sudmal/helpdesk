@@ -131,11 +131,13 @@
               {{ qDetail.callers.length }}
             </span>
           </div>
-          <div v-if="!qDetail.callers.length" class="px-4 py-6 text-sm text-gray-400 text-center">Пусто</div>
-          <div v-for="c in qDetail.callers" :key="c.pos"
-               class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-            <span class="text-sm text-gray-500">#{{ c.pos }}</span>
-            <span class="text-xl font-bold font-mono text-amber-600">{{ c.wait }}</span>
+          <div v-if="!qDetail.callers.length" class="px-4 py-4 text-sm text-gray-400 text-center">Пусто</div>
+          <div v-else class="divide-y divide-gray-50">
+            <div v-for="c in qDetail.callers" :key="c.pos"
+                 class="flex items-center justify-between px-3 py-1">
+              <span class="text-xs text-gray-400">#{{ c.pos }}</span>
+              <span class="text-sm font-bold font-mono text-amber-600 tabular-nums">{{ c.wait }}</span>
+            </div>
           </div>
         </div>
         <div class="lg:col-span-3 bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -148,23 +150,28 @@
           <table v-else class="w-full text-sm">
             <thead class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100">
               <tr>
-                <th class="px-4 py-2 text-left w-20">Доб.</th>
-                <th class="px-4 py-2 text-left">Статус</th>
-                <th class="px-4 py-2 text-right">Посл. активность</th>
+                <th class="px-3 py-1.5 text-left w-14">Доб.</th>
+                <th class="px-3 py-1.5 text-left">Статус</th>
+                <th class="px-3 py-1.5 text-right">Время</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
               <tr v-for="m in sortedMembers" :key="m.ext" class="hover:bg-gray-50">
-                <td class="px-4 py-2.5 font-mono font-bold text-gray-800 text-base">{{ m.ext }}</td>
-                <td class="px-4 py-2.5">
+                <td class="px-3 py-1 font-mono font-bold text-gray-800">{{ m.ext }}</td>
+                <td class="px-3 py-1">
                   <span :class="statusBadge(m.status)"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
                     <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
                     {{ statusLabel(m.status) }}
                   </span>
                 </td>
-                <td class="px-4 py-2.5 text-xs text-gray-400 text-right font-mono tabular-nums">
-                  {{ formatSecs(m.secs) }}
+                <td class="px-3 py-1 text-right">
+                  <template v-if="m.secs > 0">
+                    <span v-if="m.status === 'in_call'"
+                          class="text-xs font-mono font-semibold text-red-600 tabular-nums">{{ formatSecs(m.secs) }}</span>
+                    <span v-else class="text-xs text-gray-400 font-mono tabular-nums">{{ formatSecs(m.secs) }} назад</span>
+                  </template>
+                  <span v-else class="text-xs text-gray-300">—</span>
                 </td>
               </tr>
             </tbody>
