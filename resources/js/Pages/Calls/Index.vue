@@ -120,6 +120,58 @@
           <div class="text-xs text-gray-500 mt-1">Всего операторов</div>
         </div>
       </div>
+
+      <!-- Очередь + Операторы -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <span class="text-sm font-semibold text-gray-700">В очереди</span>
+            <span v-if="qDetail.callers.length"
+                  class="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              {{ qDetail.callers.length }}
+            </span>
+          </div>
+          <div v-if="!qDetail.callers.length" class="px-4 py-6 text-sm text-gray-400 text-center">Пусто</div>
+          <div v-for="c in qDetail.callers" :key="c.pos"
+               class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+            <span class="text-sm text-gray-500">#{{ c.pos }}</span>
+            <span class="text-xl font-bold font-mono text-amber-600">{{ c.wait }}</span>
+          </div>
+        </div>
+        <div class="lg:col-span-3 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+            <span class="text-sm font-semibold text-gray-700">Операторы</span>
+          </div>
+          <div v-if="!qDetail.members.length" class="px-4 py-6 text-sm text-gray-400 text-center">
+            Нет данных от АТС
+          </div>
+          <table v-else class="w-full text-sm">
+            <thead class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th class="px-4 py-2 text-left w-20">Доб.</th>
+                <th class="px-4 py-2 text-left">Статус</th>
+                <th class="px-4 py-2 text-right">Посл. активность</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="m in sortedMembers" :key="m.ext" class="hover:bg-gray-50">
+                <td class="px-4 py-2.5 font-mono font-bold text-gray-800 text-base">{{ m.ext }}</td>
+                <td class="px-4 py-2.5">
+                  <span :class="statusBadge(m.status)"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+                    <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
+                    {{ statusLabel(m.status) }}
+                  </span>
+                </td>
+                <td class="px-4 py-2.5 text-xs text-gray-400 text-right font-mono tabular-nums">
+                  {{ formatSecs(m.secs) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div class="flex gap-1 bg-white border border-gray-200 rounded-xl p-1">
           <button v-for="h in [1, 3, 6, 12, 24]" :key="h"
