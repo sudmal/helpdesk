@@ -193,24 +193,63 @@ class PbxController extends Controller
 
     private function parseQueueOutput(string $raw, string $channelsRaw = ''): array
     {
-        $members  = [];
-        $callers  = [];
-        $inCallers = false;
+        $members           = [];
+        $callers           = [];
+        $inCallers         = false;
+        $channelPhones     = [];
+        $memberCallerPhone = [];
 
-        $channelPhones = [];
         if ($channelsRaw) {
-            foreach (explode("
-", $channelsRaw) as $line) {
-                if (!str_contains($line, 'Queue')) continue;
-                if (!preg_match('/^(Local\/\S+)\s/', $line, $cm)) continue;
-                if (preg_match('/(\+?7\d{10})\s+\d{2}:\d{2}:\d{2}/', $line, $pm)) {
-                    $channelPhones[$cm[1]] = $pm[1];
+            $channelInfo = [];
+            foreach (explode("\n", $channelsRaw) as $line) {
+                $line = rtrim($line);
+                if (!$line || !preg_match('/^(\S+)\s/', $line, $cm)) continue;
+                $channel = $cm[1];
+
+                $callerId = null;
+                if (preg_match('/(\S+)\s+\d{2}:\d{2}:\d{2}/', $line, $pm)) {
+                    $callerId = $pm[1];
+                }
+
+                $bridgeId = null;
+                if (preg_match('/\s+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1,})\s*$/i', $line, $bm)) {
+                    $bridgeId = $bm[1];
+                }
+
+                $channelInfo[$channel] = ['callerID' => $callerId, 'bridgeID' => $bridgeId];
+
+                // Для звонящих в очереди: канал из queue show → телефон
+                if (str_contains($line, 'Queue') && preg_match('/(\+?7\d{10})\s+\d{2}:\d{2}:\d{2}/', $line, $pm)) {
+                    $channelPhones[$channel] = $pm[1];
+                }
+            }
+
+            // Группируем каналы по BridgeID
+            $bridgeGroups = [];
+            foreach ($channelInfo as $ch => $info) {
+                if ($info['bridgeID']) {
+                    $bridgeGroups[$info['bridgeID']][] = $ch;
+                }
+            }
+
+            // Для каждого Local/EXT@internal-...;1 ищем собеседника в том же бридже
+            foreach ($channelInfo as $ch => $info) {
+                if (!preg_match('/^Local\/(\d+)@internal-[^;]+;1$/', $ch, $em)) continue;
+                $ext      = $em[1];
+                $bridgeId = $info['bridgeID'];
+                if (!$bridgeId || !isset($bridgeGroups[$bridgeId])) continue;
+
+                foreach ($bridgeGroups[$bridgeId] as $bridgeCh) {
+                    $cid = $channelInfo[$bridgeCh]['callerID'] ?? null;
+                    if ($cid && preg_match('/^\+?7\d{10}$/', $cid)) {
+                        $memberCallerPhone[$ext] = $cid;
+                        break;
+                    }
                 }
             }
         }
 
-        foreach (explode("
-", $raw) as $line) {
+        foreach (explode("\n", $raw) as $line) {
             if (str_contains($line, 'Callers:'))  { $inCallers = true;  continue; }
             if (str_contains($line, 'Members:'))  { $inCallers = false; continue; }
             if (trim($line) === 'No Callers')     { continue; }
@@ -240,27 +279,39 @@ class PbxController extends Controller
             }
         }
 
-        // Обогащаем callers адресами по последнему звонку с этого номера
-        $phones = array_unique(array_filter(array_column($callers, 'phone')));
-        if ($phones) {
-            $addressByPhone = [];
-            foreach ($phones as $phone) {
-                $digits = preg_replace('/\D/', '', $phone);
-                if (strlen($digits) === 11 && $digits[0] === '8') $digits = '7' . substr($digits, 1);
-                $suffix = substr($digits, -7);
-                $call = Call::where('phone', 'like', "%{$suffix}")
-                    ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id'))
-                    ->with('address')
-                    ->latest('called_at')
-                    ->first();
-                if ($call) {
-                    $addressByPhone[$phone] = $call->address_string ?? $call->address?->full_address;
-                }
+        // Собираем все номера для поиска адресов (очередь + операторы в разговоре)
+        $allPhones = array_unique(array_filter(array_merge(
+            array_column($callers, 'phone'),
+            array_values($memberCallerPhone)
+        )));
+
+        $addressByPhone = [];
+        foreach ($allPhones as $phone) {
+            $digits = preg_replace('/\D/', '', $phone);
+            if (strlen($digits) === 11 && $digits[0] === '8') $digits = '7' . substr($digits, 1);
+            $suffix = substr($digits, -7);
+            $call = Call::where('phone', 'like', "%{$suffix}")
+                ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id'))
+                ->with('address')
+                ->latest('called_at')
+                ->first();
+            if ($call) {
+                $addressByPhone[$phone] = $call->address_string ?? $call->address?->full_address;
             }
-            $callers = array_map(fn($c) => array_merge($c, [
-                'address' => $addressByPhone[$c['phone'] ?? ''] ?? null,
-            ]), $callers);
         }
+
+        $callers = array_map(fn($c) => array_merge($c, [
+            'address' => $addressByPhone[$c['phone'] ?? ''] ?? null,
+        ]), $callers);
+
+        $members = array_map(function ($m) use ($memberCallerPhone, $addressByPhone) {
+            if ($m['status'] !== 'in_call') return $m;
+            $phone = $memberCallerPhone[$m['ext']] ?? null;
+            return array_merge($m, [
+                'caller_phone'   => $phone,
+                'caller_address' => $phone ? ($addressByPhone[$phone] ?? null) : null,
+            ]);
+        }, $members);
 
         return ['members' => $members, 'callers' => $callers];
     }

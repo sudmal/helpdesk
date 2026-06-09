@@ -168,6 +168,8 @@
                     <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
                     {{ statusLabel(m.status) }}
                   </span>
+                  <div v-if="m.caller_phone" class="text-xs font-mono text-gray-700 mt-0.5">{{ m.caller_phone }}</div>
+                  <div v-if="m.caller_address" class="text-xs text-gray-500 leading-tight">{{ m.caller_address }}</div>
                 </td>
                 <td class="px-3 py-1 text-right">
                   <template v-if="m.secs > 0">
