@@ -1,10 +1,14 @@
 #!/bin/sh
 # Monitoring Asterisk queue -> HelpDesk
 # Cron: * * * * * /storage/usbdisk1/mikopbx/queue_monitor.sh >> /var/log/queue_monitor.log 2>&1
+#
+# НАСТРОЙКА: задайте токен и URL здесь или через переменные окружения
+# export HELPDESK_TOKEN=ВАШ_ТОКЕН
+# export HELPDESK_URL=https://vega8.ru/pbx/queue-status
 
 QUEUE_NAME="QUEUE-F38325E796B3FFB8938BA383AA119148"
-HELPDESK_URL="https://vega8.ru/pbx/queue-status"
-TOKEN="REDACTED"
+HELPDESK_URL=${HELPDESK_URL:-"https://vega8.ru/pbx/queue-status"}
+TOKEN=${HELPDESK_TOKEN:-"REPLACE_WITH_YOUR_TOKEN"}
 
 RAW=$(asterisk -rx "queue show $QUEUE_NAME" 2>/dev/null)
 OUTPUT=$(echo "$RAW" | tr -d '\033' | sed 's/\[[0-9;]*m//g')
