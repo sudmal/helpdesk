@@ -249,12 +249,12 @@ class PbxController extends Controller
                 if (strlen($digits) === 11 && $digits[0] === '8') $digits = '7' . substr($digits, 1);
                 $suffix = substr($digits, -7);
                 $call = Call::where('phone', 'like', "%{$suffix}")
-                    ->whereNotNull('address_id')
+                    ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id'))
                     ->with('address')
                     ->latest('called_at')
                     ->first();
-                if ($call?->address) {
-                    $addressByPhone[$phone] = $call->address->full_address;
+                if ($call) {
+                    $addressByPhone[$phone] = $call->address_string ?? $call->address?->full_address;
                 }
             }
             $callers = array_map(fn($c) => array_merge($c, [
