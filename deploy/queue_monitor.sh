@@ -6,23 +6,29 @@ QUEUE_NAME="QUEUE-F38325E796B3FFB8938BA383AA119148"
 HELPDESK_URL="https://helpdesk.browsersdnr.ru/pbx/queue-status"
 TOKEN="REDACTED"
 
-OUTPUT=$(asterisk -rx "queue show $QUEUE_NAME" 2>/dev/null)
+# Получить вывод и убрать ANSI-коды (цвета терминала)
+RAW=$(asterisk -rx "queue show $QUEUE_NAME" 2>/dev/null)
+OUTPUT=$(echo "$RAW" | tr -d "\033" | sed "s/\[[0-9;]*m//g")
 
 if [ -z "$OUTPUT" ]; then
   echo "$(date): ERROR - no output from asterisk" >&2
   exit 1
 fi
 
-WAITING=$(echo "$OUTPUT" | sed -n "s/.*has \([0-9]*\) call.*/\1/p" | head -1)
+# Ожидают в очереди: строка 'has N calls'
+WAITING=$(echo "$OUTPUT" | awk "/has [0-9]+ call/{for(i=1;i<=NF;i++){if($i==\"has\"){print $(i+1); exit}}}")
 WAITING=${WAITING:-0}
 
-TOTAL=$(echo "$OUTPUT" | grep -cE "\(dynamic\)|\(static\)")
+# Всего операторов: строки с 'has taken'
+TOTAL=$(echo "$OUTPUT" | grep -c "has taken")
 TOTAL=${TOTAL:-0}
 
-TALKING=$(echo "$OUTPUT" | grep -cE "\(In use\)|\(Ringing\)|\(Busy\)")
+# Разговаривают: 'has taken' + '(in call)' или '(Busy)'
+TALKING=$(echo "$OUTPUT" | grep "has taken" | grep -cE "\(in call\)|\(Busy\)")
 TALKING=${TALKING:-0}
 
-ACTIVE=$(echo "$OUTPUT" | grep -E "\(dynamic\)|\(static\)" | grep -cvE "\(Paused\)|\(Unavailable\)")
+# Активных (не Unavailable): строки 'has taken' без '(Unavailable)'
+ACTIVE=$(echo "$OUTPUT" | grep "has taken" | grep -cvE "\(Unavailable\)")
 ACTIVE=${ACTIVE:-0}
 
 JSON="{\"token\":\"$TOKEN\",\"queue\":\"$QUEUE_NAME\",\"waiting\":$WAITING,\"talking\":$TALKING,\"active_members\":$ACTIVE,\"total_members\":$TOTAL}"
