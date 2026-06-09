@@ -3,7 +3,7 @@
 # Cron: * * * * * /storage/usbdisk1/mikopbx/queue_monitor.sh >> /var/log/queue_monitor.log 2>&1
 
 QUEUE_NAME="QUEUE-F38325E796B3FFB8938BA383AA119148"
-HELPDESK_URL="https://helpdesk.browsersdnr.ru/pbx/queue-status"
+HELPDESK_URL="https://vega8.ru/pbx/queue-status"
 TOKEN="REDACTED"
 
 RAW=$(asterisk -rx "queue show $QUEUE_NAME" 2>/dev/null)
@@ -14,7 +14,6 @@ if [ -z "$OUTPUT" ]; then
   exit 1
 fi
 
-# Первая строка: 'QUEUE-NAME has N calls' - поле 3 это N
 WAITING=$(echo "$OUTPUT" | awk 'NR==1{print $3}' | tr -dc '0-9')
 WAITING=${WAITING:-0}
 
