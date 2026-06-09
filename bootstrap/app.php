@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->validateCsrfTokens(except: ['telegram/webhook', 'sync/ticket']);
+        $middleware->validateCsrfTokens(except: ['telegram/webhook', 'sync/ticket', 'pbx/queue-status']);
         $middleware->alias([
             'active' => EnsureUserIsActive::class,
         ]);

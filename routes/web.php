@@ -202,6 +202,10 @@ Route::middleware(['auth', 'active'])->prefix('service-requests')->name('service
 // Sync API (РґР»СЏ СЃРєСЂРёРїС‚Р° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё)
 Route::post('/sync/ticket', [SyncController::class, 'store'])->name('sync.ticket');
 
+// АТС — состояние очереди (без CSRF, защищено токеном)
+Route::post('/pbx/queue-status', [\App\Http\Controllers\PbxController::class, 'queueStatus'])->name('pbx.queue-status');
+Route::middleware(['auth', 'active'])->get('/pbx/queue-history', [\App\Http\Controllers\PbxController::class, 'queueHistory'])->name('pbx.queue-history');
+
 // Telegram Bot
 Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class, 'webhook'])
     ->name('telegram.webhook');
