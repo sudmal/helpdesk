@@ -141,6 +141,7 @@ class PbxController extends Controller
             'talking'        => 'required|integer|min:0',
             'active_members' => 'required|integer|min:0',
             'total_members'  => 'required|integer|min:0',
+            'raw'            => 'nullable|string',
         ]);
 
         QueueStat::create([
@@ -152,8 +153,12 @@ class PbxController extends Controller
             'recorded_at'    => now(),
         ]);
 
-        // Удалить записи старше 24 часов
         QueueStat::where('recorded_at', '<', now()->subHours(24))->delete();
+
+        if (!empty($data['raw'])) {
+            $detail = $this->parseQueueOutput(base64_decode($data['raw']));
+            \Cache::put('queue:detail:' . $data['queue'], $detail, 300);
+        }
 
         return response()->json(['status' => 'ok']);
     }
@@ -174,10 +179,53 @@ class PbxController extends Controller
 
         $latest = QueueStat::orderByDesc('recorded_at')->first();
 
+        $queueName = $queue ?: QueueStat::orderByDesc('recorded_at')->value('queue_name');
+        $detail = $queueName ? \Cache::get('queue:detail:' . $queueName) : null;
+
         return response()->json([
             'latest'  => $latest,
             'history' => $rows,
+            'detail'  => $detail ?? ['members' => [], 'callers' => []],
         ]);
+    }
+
+    private function parseQueueOutput(string $raw): array
+    {
+        $members  = [];
+        $callers  = [];
+        $inCallers = false;
+
+        foreach (explode("
+", $raw) as $line) {
+            if (str_contains($line, 'Callers:'))  { $inCallers = true;  continue; }
+            if (str_contains($line, 'Members:'))  { $inCallers = false; continue; }
+            if (trim($line) === 'No Callers')     { continue; }
+
+            if (!$inCallers && preg_match('/^\s+(\d+)\s+\(/', $line) && str_contains($line, 'has taken')) {
+                preg_match('/^\s+(\d+)\s+/', $line, $m);
+                $ext = $m[1];
+                if (str_contains($line, '(in call)') || str_contains($line, '(Busy)')) {
+                    $status = 'in_call';
+                } elseif (str_contains($line, '(Ringing)')) {
+                    $status = 'ringing';
+                } elseif (str_contains($line, '(Unavailable)')) {
+                    $status = 'unavailable';
+                } else {
+                    $status = 'idle';
+                }
+                $secs = 0;
+                if (preg_match('/last was (\d+) secs/', $line, $m)) {
+                    $secs = (int) $m[1];
+                }
+                $members[] = compact('ext', 'status', 'secs');
+            }
+
+            if ($inCallers && preg_match('/^\s+(\d+)\.\s+\S+\s+\(wait:\s*([\d:]+)/', $line, $m)) {
+                $callers[] = ['pos' => (int)$m[1], 'wait' => $m[2]];
+            }
+        }
+
+        return ['members' => $members, 'callers' => $callers];
     }
 
 }

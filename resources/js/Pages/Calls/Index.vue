@@ -148,7 +148,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { router, Head } from '@inertiajs/vue3'
 import Chart from 'chart.js/auto'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -188,6 +188,7 @@ function formatDate(val) {
 }
 const qLatest     = ref(null)
 const qHistory    = ref([])
+const qDetail     = ref({ members: [], callers: [] })
 const qHours      = ref(3)
 const qLoading    = ref(false)
 const queueCanvas = ref(null)
@@ -202,9 +203,32 @@ async function loadQueue() {
     const data = await res.json()
     qLatest.value  = data.latest
     qHistory.value = data.history
+    qDetail.value  = data.detail ?? { members: [], callers: [] }
   } catch (e) {}
   qLoading.value = false
 }
+
+const STATUS_ORDER = { in_call: 0, ringing: 1, idle: 2, unavailable: 3 }
+const sortedMembers = computed(() =>
+  [...qDetail.value.members].sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9))
+)
+function statusLabel(s) {
+  return { in_call: "В разговоре", ringing: "Звонит", idle: "Свободен", unavailable: "Недоступен" }[s] ?? s
+}
+function statusBadge(s) {
+  return { in_call: "bg-red-50 text-red-700", ringing: "bg-yellow-50 text-yellow-700", idle: "bg-green-50 text-green-700", unavailable: "bg-gray-100 text-gray-500" }[s] ?? "bg-gray-100 text-gray-500"
+}
+function statusDot(s) {
+  return { in_call: "bg-red-500", ringing: "bg-yellow-400 animate-pulse", idle: "bg-green-500", unavailable: "bg-gray-300" }[s] ?? "bg-gray-300"
+}
+function formatSecs(sucs) {
+  if (!secs || secs <= 0) return "—"
+  if (secs < 60) return secs + " с"
+  if (secs < 3600) return Math.floor(secs / 60) + " мин"
+  if (secs < 86400) return Math.floor(secs / 3600) + " ч " + Math.floor((secs % 3600) / 60) + " мин"
+  return Math.floor(secs / 86400) + " дн"
+}
+
 function renderChart() {
   if (!queueCanvas.value || qHistory.value.length === 0) return
   if (qChart) { qChart.destroy(); qChart = null }
