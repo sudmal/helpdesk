@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Call, Address, Ticket};
+use App\Models\{Call, Address, Ticket, QueueStat};
 use Illuminate\Http\{Request, JsonResponse};
 
 class PbxController extends Controller
@@ -125,4 +125,59 @@ class PbxController extends Controller
         }
         return $digits;
     }
+
+    // ── Состояние очереди АТС ───────────────────────────────────────────
+
+    public function queueStatus(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->input('token');
+        if ($token !== config('services.pbx.token')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $data = $request->validate([
+            'queue'          => 'required|string|max:100',
+            'waiting'        => 'required|integer|min:0',
+            'talking'        => 'required|integer|min:0',
+            'active_members' => 'required|integer|min:0',
+            'total_members'  => 'required|integer|min:0',
+        ]);
+
+        QueueStat::create([
+            'queue_name'     => $data['queue'],
+            'waiting'        => $data['waiting'],
+            'talking'        => $data['talking'],
+            'active_members' => $data['active_members'],
+            'total_members'  => $data['total_members'],
+            'recorded_at'    => now(),
+        ]);
+
+        // Удалить записи старше 24 часов
+        QueueStat::where('recorded_at', '<', now()->subHours(24))->delete();
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function queueHistory(Request $request): JsonResponse
+    {
+        $queue = $request->input('queue');
+        $hours = min((int) $request->input('hours', 3), 24);
+
+        $query = QueueStat::where('recorded_at', '>=', now()->subHours($hours))
+            ->orderBy('recorded_at');
+
+        if ($queue) {
+            $query->where('queue_name', $queue);
+        }
+
+        $rows = $query->get(['recorded_at', 'waiting', 'talking', 'active_members', 'total_members']);
+
+        $latest = QueueStat::orderByDesc('recorded_at')->first();
+
+        return response()->json([
+            'latest'  => $latest,
+            'history' => $rows,
+        ]);
+    }
+
 }
