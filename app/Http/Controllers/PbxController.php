@@ -240,6 +240,28 @@ class PbxController extends Controller
             }
         }
 
+        // Обогащаем callers адресами по последнему звонку с этого номера
+        $phones = array_unique(array_filter(array_column($callers, 'phone')));
+        if ($phones) {
+            $addressByPhone = [];
+            foreach ($phones as $phone) {
+                $digits = preg_replace('/\D/', '', $phone);
+                if (strlen($digits) === 11 && $digits[0] === '8') $digits = '7' . substr($digits, 1);
+                $suffix = substr($digits, -7);
+                $call = Call::where('phone', 'like', "%{$suffix}")
+                    ->whereNotNull('address_id')
+                    ->with('address')
+                    ->latest('called_at')
+                    ->first();
+                if ($call?->address) {
+                    $addressByPhone[$phone] = $call->address->full_address;
+                }
+            }
+            $callers = array_map(fn($c) => array_merge($c, [
+                'address' => $addressByPhone[$c['phone'] ?? ''] ?? null,
+            ]), $callers);
+        }
+
         return ['members' => $members, 'callers' => $callers];
     }
 
