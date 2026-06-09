@@ -32,7 +32,12 @@ ACTIVE=${ACTIVE:-0}
 # Сырой вывод в base64 для детального разбора на сервере
 RAW_B64=$(printf "%s" "$OUTPUT" | base64 | tr -d '\n')
 
-JSON="{\"token\":\"$TOKEN\",\"queue\":\"$QUEUE_NAME\",\"waiting\":$WAITING,\"talking\":$TALKING,\"active_members\":$ACTIVE,\"total_members\":$TOTAL,\"raw\":\"$RAW_B64\"}"
+# Данные о каналах для получения номеров звонящих
+CHANNELS_RAW=$(asterisk -rx "core show channels verbose" 2>/dev/null)
+CHANNELS_OUTPUT=$(echo "$CHANNELS_RAW" | tr -d '\033' | sed 's/\[[0-9;]*m//g')
+CHANNELS_B64=$(printf "%s" "$CHANNELS_OUTPUT" | base64 | tr -d '\n')
+
+JSON="{\"token\":\"$TOKEN\",\"queue\":\"$QUEUE_NAME\",\"waiting\":$WAITING,\"talking\":$TALKING,\"active_members\":$ACTIVE,\"total_members\":$TOTAL,\"raw\":\"$RAW_B64\",\"channels_raw\":\"$CHANNELS_B64\"}"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$HELPDESK_URL" -H "Content-Type: application/json" -d "$JSON")
 
 echo "$(date +%H:%M:%S) HTTP:$HTTP_CODE W:$WAITING T:$TALKING A:$ACTIVE/$TOTAL"

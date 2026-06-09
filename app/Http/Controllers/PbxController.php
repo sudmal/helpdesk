@@ -142,6 +142,7 @@ class PbxController extends Controller
             'active_members' => 'required|integer|min:0',
             'total_members'  => 'required|integer|min:0',
             'raw'            => 'nullable|string',
+            'channels_raw'   => 'nullable|string',
         ]);
 
         QueueStat::create([
@@ -156,7 +157,8 @@ class PbxController extends Controller
         QueueStat::where('recorded_at', '<', now()->subHours(24))->delete();
 
         if (!empty($data['raw'])) {
-            $detail = $this->parseQueueOutput(base64_decode($data['raw']));
+            $channelsRaw = !empty($data['channels_raw']) ? base64_decode($data['channels_raw']) : '';
+            $detail = $this->parseQueueOutput(base64_decode($data['raw']), $channelsRaw);
             \Cache::put('queue:detail:' . $data['queue'], $detail, 300);
         }
 
@@ -189,11 +191,23 @@ class PbxController extends Controller
         ]);
     }
 
-    private function parseQueueOutput(string $raw): array
+    private function parseQueueOutput(string $raw, string $channelsRaw = ''): array
     {
         $members  = [];
         $callers  = [];
         $inCallers = false;
+
+        $channelPhones = [];
+        if ($channelsRaw) {
+            foreach (explode("
+", $channelsRaw) as $line) {
+                if (!str_contains($line, 'Queue')) continue;
+                if (!preg_match('/^(Local\/\S+)\s/', $line, $cm)) continue;
+                if (preg_match('/(\+?7\d{10})\s+\d{2}:\d{2}:\d{2}/', $line, $pm)) {
+                    $channelPhones[$cm[1]] = $pm[1];
+                }
+            }
+        }
 
         foreach (explode("
 ", $raw) as $line) {
@@ -220,8 +234,9 @@ class PbxController extends Controller
                 $members[] = compact('ext', 'status', 'secs');
             }
 
-            if ($inCallers && preg_match('/^\s+(\d+)\.\s+\S+\s+\(wait:\s*([\d:]+)/', $line, $m)) {
-                $callers[] = ['pos' => (int)$m[1], 'wait' => $m[2]];
+            if ($inCallers && preg_match('/^\s+(\d+)\.\s+(\S+)\s+\(wait:\s*([\d:]+)/', $line, $m)) {
+                $phone = $channelPhones[$m[2]] ?? null;
+                $callers[] = ['pos' => (int)$m[1], 'wait' => $m[3], 'phone' => $phone];
             }
         }
 

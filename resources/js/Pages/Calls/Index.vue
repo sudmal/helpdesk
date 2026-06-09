@@ -134,9 +134,12 @@
           <div v-if="!qDetail.callers.length" class="px-4 py-4 text-sm text-gray-400 text-center">Пусто</div>
           <div v-else class="divide-y divide-gray-50">
             <div v-for="c in qDetail.callers" :key="c.pos"
-                 class="flex items-center justify-between px-3 py-1">
-              <span class="text-xs text-gray-400">#{{ c.pos }}</span>
-              <span class="text-sm font-bold font-mono text-amber-600 tabular-nums">{{ c.wait }}</span>
+                 class="flex items-center gap-2 px-3 py-1.5">
+              <span class="text-xs text-gray-400 w-5 shrink-0">#{{ c.pos }}</span>
+              <span class="text-xs font-mono font-semibold text-gray-700 flex-1 truncate">
+                {{ c.phone ?? '—' }}
+              </span>
+              <span class="text-xs font-bold font-mono text-amber-600 tabular-nums shrink-0">{{ c.wait }}</span>
             </div>
           </div>
         </div>
