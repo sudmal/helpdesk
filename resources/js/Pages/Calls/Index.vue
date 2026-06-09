@@ -122,8 +122,8 @@
       </div>
 
       <!-- Очередь + Операторы -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
-        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden min-w-0">
           <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <span class="text-sm font-semibold text-gray-700">В очереди</span>
             <span v-if="qDetail.callers.length"
@@ -134,16 +134,17 @@
           <div v-if="!qDetail.callers.length" class="px-4 py-4 text-sm text-gray-400 text-center">Пусто</div>
           <div v-else class="divide-y divide-gray-50">
             <div v-for="c in qDetail.callers" :key="c.pos"
-                 class="flex items-center gap-2 px-3 py-1.5">
-              <span class="text-xs text-gray-400 w-5 shrink-0">#{{ c.pos }}</span>
-              <span class="text-xs font-mono font-semibold text-gray-700 flex-1 truncate">
-                {{ c.phone ?? '—' }}
-              </span>
-              <span class="text-xs font-bold font-mono text-amber-600 tabular-nums shrink-0">{{ c.wait }}</span>
+                 class="px-3 py-1.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400 w-5 shrink-0">#{{ c.pos }}</span>
+                <span class="text-xs font-mono font-semibold text-gray-800 flex-1">{{ c.phone ?? '—' }}</span>
+                <span class="text-xs font-bold font-mono text-amber-600 tabular-nums shrink-0">{{ c.wait }}</span>
+              </div>
+              <div v-if="c.address" class="ml-7 text-xs text-gray-500 leading-tight mt-0.5">{{ c.address }}</div>
             </div>
           </div>
         </div>
-        <div class="lg:col-span-3 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
             <span class="text-sm font-semibold text-gray-700">Операторы</span>
           </div>
