@@ -273,7 +273,7 @@ function statusBadge(s) {
 function statusDot(s) {
   return { in_call: "bg-red-500", ringing: "bg-yellow-400 animate-pulse", idle: "bg-green-500", unavailable: "bg-gray-300" }[s] ?? "bg-gray-300"
 }
-function formatSecs(sucs) {
+function formatSecs(secs) {
   if (!secs || secs <= 0) return "—"
   if (secs < 60) return secs + " с"
   if (secs < 3600) return Math.floor(secs / 60) + " мин"
