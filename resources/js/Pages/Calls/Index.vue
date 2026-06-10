@@ -331,7 +331,7 @@ onMounted(() => {
   }, 10000)
   qRefreshTimer = setInterval(() => {
     if (activeTab.value === 'queue') loadQueue()
-  }, 60000)
+  }, 15000)
 })
 onUnmounted(() => {
   clearInterval(callsRefreshTimer)
