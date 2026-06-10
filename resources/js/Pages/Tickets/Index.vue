@@ -27,7 +27,7 @@
       <span v-if="localFilters.address_id || localFilters.street"
             class="inline-flex items-center gap-1 bg-blue-100 border border-blue-200 text-blue-700
                    text-xs px-2 py-0.5 rounded-full">
-        📍 {{ [localFilters.city, localFilters.street, localFilters.building ? 'д.'+localFilters.building : null, localFilters.apartment ? 'кв.'+localFilters.apartment : null].filter(Boolean).join(' ') || 'Адрес' }}
+        📍 {{ addressFilterLabel ? addressFilterLabel + (localFilters.apartment ? ' кв.' + localFilters.apartment : '') : ([localFilters.city, localFilters.street, localFilters.building ? 'д.'+localFilters.building : null, localFilters.apartment ? 'кв.'+localFilters.apartment : null].filter(Boolean).join(' ') || 'Адрес') }}
         <button @click="clearAddressFilter" class="hover:text-blue-900">✕</button>
       </span>
     </div>
@@ -345,6 +345,7 @@ import axios from 'axios'
 const props = defineProps({
   tickets:      { type: Object, default: () => ({ data: [], total: 0, current_page: 1, last_page: 1 }) },
   filters:      Object,
+  addressFilterLabel: { type: String, default: null },
   statuses:     Array,
   types:        Array,
   serviceTypes: { type: Array, default: () => [] },

@@ -92,6 +92,7 @@ class TicketController extends Controller
         return Inertia::render('Tickets/Index', [
             'tickets'  => $tickets,
             'filters'  => $request->only(['search', 'status', 'type', 'brigade', 'priority', 'date_from', 'date_to', 'address_id', 'city', 'street', 'building', 'apartment', 'service_type', 'overdue', 'closed_today', 'sort', 'sortDir']),
+            'addressFilterLabel' => $request->address_id ? \App\Models\Address::find($request->address_id)?->full_address : null,
             'statuses' => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
             'types'    => TicketType::active()->get(['id', 'name', 'color']),
             'brigades'     => Brigade::orderBy('name')->get(['id', 'name']),
