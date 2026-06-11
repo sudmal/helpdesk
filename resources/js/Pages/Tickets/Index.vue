@@ -159,7 +159,7 @@
 
               <!-- Автор -->
               <td class="px-2 py-0.5 hidden sm:table-cell text-xs text-gray-500 whitespace-nowrap truncate max-w-[80px]">
-                {{ t.creator?.name?.split(' ')[0] ?? '—' }}
+                {{ t.creator?.name ?? '—' }}
               </td>
               <!-- Адрес + телефон + описание -->
               <td class="px-2 py-0.5 min-w-0">
