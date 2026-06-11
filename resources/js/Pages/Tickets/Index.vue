@@ -108,7 +108,7 @@
               <th class="w-5 px-1 py-0.5"></th>
               <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
-                Дата <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
+                Добавлена <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
               </th>
               <th class="text-left px-2 py-0.5 w-20 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('number')">
@@ -158,7 +158,7 @@
               </td>
 
               <!-- Автор -->
-              <td class="px-2 py-0.5 hidden sm:table-cell text-xs text-gray-500 whitespace-nowrap truncate max-w-[80px]">
+              <td class="px-2 py-0.5 hidden sm:table-cell text-xs text-gray-500 line-clamp-2 max-w-[96px]">
                 {{ t.creator?.name ?? '—' }}
               </td>
               <!-- Адрес + телефон + описание -->
@@ -166,8 +166,8 @@
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
                 <p class="text-gray-600 text-xs leading-tight" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
                   <span v-if="t.phone" class="text-gray-600 mr-1.5">{{ t.phone }}</span>
-                  <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 60) }}</span>
-                  <button v-if="(t.description?.length ?? 0) > 60" @click.stop="toggleDesc(t.id)"
+                  <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 100) }}</span>
+                  <button v-if="(t.description?.length ?? 0) > 100" @click.stop="toggleDesc(t.id)"
                           class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
                     {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
                   </button>
