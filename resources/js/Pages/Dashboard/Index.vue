@@ -70,27 +70,28 @@
 
     <!-- ── Основная таблица заявок ── -->
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-wrap gap-3">
-        <div class="flex gap-1 flex-wrap">
-          <button v-for="t in territories" :key="t.id"
-                  @click="selectTerritory(t.id)"
-                  :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-1',
-                           selectedTerritory === t.id
-                             ? 'bg-blue-600 text-white'
-                             : 'text-gray-600 hover:bg-gray-100']">
-            {{ t.name }}
-            <span v-if="t.open_count > 0"
-                  :class="['text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none',
-                           selectedTerritory === t.id ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700']">
-              {{ t.open_count }}
-            </span>
-            <span v-if="t.closed_count > 0"
-                  :class="['text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none',
-                           selectedTerritory === t.id ? 'bg-green-400 text-white' : 'bg-green-100 text-green-700']">
-              {{ t.closed_count }}
-            </span>
-          </button>
-        </div>
+      <!-- Вкладки территорий -->
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
+        <button v-for="t in territories" :key="t.id"
+                @click="selectTerritory(t.id)"
+                :class="['px-3 py-2 text-sm font-medium flex items-center gap-1.5 rounded-t-xl transition-colors relative',
+                         selectedTerritory === t.id
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          {{ t.name }}
+          <span v-if="t.overdue_count > 0"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
+            {{ t.overdue_count }}
+          </span>
+          <span v-if="t.open_count > 0"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
+            {{ t.open_count }}
+          </span>
+          <span v-if="t.closed_count > 0"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-green-500 text-white leading-none">
+            {{ t.closed_count }}
+          </span>
+        </button>
       </div>
 
       <div class="overflow-x-auto">

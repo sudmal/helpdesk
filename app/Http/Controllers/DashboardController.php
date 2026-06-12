@@ -75,11 +75,25 @@ class DashboardController extends Controller
             ->groupBy('service_type_id')
             ->pluck('cnt', 'service_type_id');
 
+        $overdueByTerritory = \DB::table('tickets')
+            ->join('addresses', 'tickets.address_id', '=', 'addresses.id')
+            ->whereIn('addresses.territory_id', $userTerritories->pluck('id'))
+            ->when($serviceType, fn($q) => $q->where('tickets.service_type_id', $serviceType))
+            ->whereIn('tickets.status_id', $openIds)
+            ->whereNotNull('tickets.scheduled_at')
+            ->where('tickets.scheduled_at', '<', $overdueThreshold)
+            ->whereNull('tickets.deleted_at')
+            ->selectRaw('addresses.territory_id, COUNT(*) as cnt')
+            ->groupBy('addresses.territory_id')
+            ->get()
+            ->keyBy('territory_id');
+
         $territoriesWithCounts = $userTerritories->map(fn($t) => [
-            'id'           => $t->id,
-            'name'         => $t->name,
-            'open_count'   => (int)($territoryStats[$t->id]->open_count   ?? 0),
-            'closed_count' => (int)($territoryStats[$t->id]->closed_count ?? 0),
+            'id'            => $t->id,
+            'name'          => $t->name,
+            'open_count'    => (int)($territoryStats[$t->id]->open_count   ?? 0),
+            'closed_count'  => (int)($territoryStats[$t->id]->closed_count ?? 0),
+            'overdue_count' => (int)($overdueByTerritory[$t->id]->cnt      ?? 0),
         ]);
 
         $serviceTypesWithCounts = $serviceTypes->map(fn($s) => [
