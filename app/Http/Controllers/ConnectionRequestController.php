@@ -41,6 +41,14 @@ class ConnectionRequestController extends Controller
             ->groupBy('territory_id')
             ->pluck('cnt', 'territory_id');
 
+        $overdueByTerritory = ConnectionRequest::where('status', 'scheduled')
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<', today())
+            ->whereIn('territory_id', $userTerritories->pluck('id'))
+            ->selectRaw('territory_id, COUNT(*) as cnt')
+            ->groupBy('territory_id')
+            ->pluck('cnt', 'territory_id');
+
         return Inertia::render('ConnectionRequests/Index', [
             'requests'           => $query->paginate(50)->withQueryString(),
             'filters'            => $request->only(['status', 'search', 'territory']),
@@ -48,6 +56,7 @@ class ConnectionRequestController extends Controller
             'selectedTerritory'  => $territory ? (int)$territory : null,
             'pendingByTerritory' => $pendingByTerritory,
             'totalPending'       => $pendingByTerritory->sum(),
+            'overdueByTerritory' => $overdueByTerritory,
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
         ]);
     }

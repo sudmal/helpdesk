@@ -2,51 +2,64 @@
   <Head title="Подключения" />
   <AppLayout title="Подключения">
 
-    <!-- Вкладки территорий -->
-    <div class="bg-white rounded-2xl border border-gray-200 px-4 py-2.5 mb-4 flex items-center gap-2 flex-wrap">
-      <span class="text-xs text-gray-400 font-medium">Территория:</span>
-      <button @click="selectTerritory(null)"
-              :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-1',
-                       selectedTerritory === null
-                         ? 'bg-blue-600 text-white'
-                         : 'text-gray-600 hover:bg-gray-100']">
-        Все
-        <span v-if="totalPending > 0"
-              :class="selectedTerritory === null ? 'text-orange-300' : 'text-orange-500'"
-              class="font-bold text-sm leading-none">✱</span>
-      </button>
-      <button v-for="t in territories" :key="t.id"
-              @click="selectTerritory(t.id)"
-              :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-1',
-                       selectedTerritory === t.id
-                         ? 'bg-blue-600 text-white'
-                         : 'text-gray-600 hover:bg-gray-100']">
-        {{ t.name }}
-        <span v-if="pendingByTerritory[t.id]"
-              :class="selectedTerritory === t.id ? 'text-orange-300' : 'text-orange-500'"
-              class="font-bold text-sm leading-none">✱</span>
-      </button>
-    </div>
+    <!-- Вкладки территорий + Фильтры -->
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
 
-    <!-- Фильтры -->
-    <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
-      <div class="flex-1 min-w-48">
-        <label class="block text-xs text-gray-500 mb-1">Поиск</label>
-        <input v-model="f.search" @keydown.enter="apply" class="field-input" placeholder="Имя, телефон, адрес..." />
+      <!-- Вкладки -->
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
+        <button @click="selectTerritory(null)"
+                :class="['px-3 py-2 text-sm font-medium flex items-center gap-1.5 rounded-t-xl transition-colors relative',
+                         selectedTerritory === null
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          Все
+          <span v-if="totalPending > 0"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
+            {{ totalPending }}
+          </span>
+          <span v-if="totalOverdue > 0"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
+            {{ totalOverdue }}
+          </span>
+        </button>
+        <button v-for="t in territories" :key="t.id"
+                @click="selectTerritory(t.id)"
+                :class="['px-3 py-2 text-sm font-medium flex items-center gap-1.5 rounded-t-xl transition-colors relative',
+                         selectedTerritory === t.id
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          {{ t.name }}
+          <span v-if="pendingByTerritory[t.id]"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
+            {{ pendingByTerritory[t.id] }}
+          </span>
+          <span v-if="overdueByTerritory[t.id]"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
+            {{ overdueByTerritory[t.id] }}
+          </span>
+        </button>
       </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Статус</label>
-        <select v-model="f.status" class="field-input">
-          <option value="">Все</option>
-          <option value="pending">Ожидает</option>
-          <option value="scheduled">Назначено</option>
-          <option value="rejected">Отклонено</option>
-          <option value="closed">Выполнено</option>
-        </select>
-      </div>
-      <div class="flex gap-2">
-        <button @click="apply" class="btn-primary text-sm">Найти</button>
-        <button @click="reset" class="btn-outline text-sm">Сброс</button>
+
+      <!-- Фильтры -->
+      <div class="p-4 flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-48">
+          <label class="block text-xs text-gray-500 mb-1">Поиск</label>
+          <input v-model="f.search" @keydown.enter="apply" class="field-input" placeholder="Имя, телефон, адрес..." />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Статус</label>
+          <select v-model="f.status" class="field-input">
+            <option value="">Все</option>
+            <option value="pending">Ожидает</option>
+            <option value="scheduled">Назначено</option>
+            <option value="rejected">Отклонено</option>
+            <option value="closed">Выполнено</option>
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button @click="apply" class="btn-primary text-sm">Найти</button>
+          <button @click="reset" class="btn-outline text-sm">Сброс</button>
+        </div>
       </div>
     </div>
 
@@ -395,10 +408,15 @@ const props = defineProps({
   filters:           Object,
   territories:        Array,
   selectedTerritory:  { type: Number, default: null },
-  pendingByTerritory: { type: Object, default: () => ({}) },
-  totalPending:       { type: Number, default: 0 },
+  pendingByTerritory:  { type: Object, default: () => ({}) },
+  totalPending:        { type: Number, default: 0 },
+  overdueByTerritory:  { type: Object, default: () => ({}) },
   materialsCatalog:  Array,
 })
+
+const totalOverdue = computed(() =>
+  Object.values(props.overdueByTerritory ?? {}).reduce((a, b) => a + b, 0)
+)
 
 const f = ref({
   search: props.filters?.search ?? '',
