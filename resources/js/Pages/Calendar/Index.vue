@@ -177,7 +177,16 @@
     </template>
 
     <!-- МЕСЯЦ -->
-    <div v-if="view === 'month'" class="bg-white rounded-2xl border border-gray-200 p-4">
+    <div v-if="view === 'month'" class="bg-white rounded-2xl border border-gray-200 p-4 relative">
+      <!-- Оверлей загрузки -->
+      <div v-if="monthLoading"
+           class="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center z-20">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-10 h-10 rounded-full animate-spin"
+               style="border: 3px solid #e5e7eb; border-top-color: #2563eb;"></div>
+          <span class="text-sm text-gray-500">Загрузка событий…</span>
+        </div>
+      </div>
       <FullCalendar :key="calKey" ref="calRef" :options="calOptions" />
     </div>
 
@@ -270,6 +279,7 @@ const selectedBrigade     = ref(null)
 const selectedTerritory   = ref(null)
 const selectedServiceType = ref(null)
 const loading             = ref(false)
+const monthLoading        = ref(false)
 const overviewEvents      = ref({ overdue: [], today: [], tomorrow: [] })
 
 const tooltip = reactive({
@@ -483,6 +493,8 @@ const calOptions = computed(() => ({
   initialView:   'dayGridMonth',
   timeZone:      'local',
   contentHeight: 'auto',
+  dayMaxEvents:   5,
+  fixedWeekCount: false,
   headerToolbar: {
     left:   'prev,next today',
     center: 'title',
@@ -509,6 +521,10 @@ const calOptions = computed(() => ({
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(successCallback)
       .catch(e => { console.error('Calendar load failed:', e); failureCallback(e) })
+  },
+
+  loading(isLoading) {
+    monthLoading.value = isLoading
   },
 
   eventClick(info) {
