@@ -160,6 +160,7 @@ class PbxController extends Controller
             $channelsRaw = !empty($data['channels_raw']) ? base64_decode($data['channels_raw']) : '';
             $detail = $this->parseQueueOutput(base64_decode($data['raw']), $channelsRaw);
             \Cache::put('queue:detail:' . $data['queue'], $detail, 300);
+            $this->trackCallEvents($data['queue'], $detail);
         }
 
         return response()->json(['status' => 'ok']);
@@ -189,6 +190,80 @@ class PbxController extends Controller
             'history' => $rows,
             'detail'  => $detail ?? ['members' => [], 'callers' => []],
         ]);
+    }
+
+    private function trackCallEvents(string $queueName, array $detail): void
+    {
+        $cacheKey  = 'queue:callers_state:' . $queueName;
+        $prevState = \Cache::get($cacheKey, []);
+
+        $currentPhones = [];
+        foreach ($detail['callers'] as $caller) {
+            if ($caller['phone'] ?? null) {
+                $currentPhones[$caller['phone']] = $caller['wait'];
+            }
+        }
+
+        $inCallPhones = [];
+        foreach ($detail['members'] as $member) {
+            if (($member['status'] ?? '') === 'in_call' && ($member['caller_phone'] ?? null)) {
+                $inCallPhones[$member['caller_phone']] = $member['ext'];
+            }
+        }
+
+        foreach ($prevState as $phone => $state) {
+            if (isset($currentPhones[$phone])) continue;
+
+            $status      = isset($inCallPhones[$phone]) ? 'answered' : 'missed';
+            $operatorExt = $inCallPhones[$phone] ?? null;
+
+            $parts   = array_map('intval', explode(':', $state['last_wait'] ?? '0:00'));
+            $waitSec = count($parts) === 3
+                ? $parts[0] * 3600 + $parts[1] * 60 + $parts[2]
+                : ($parts[0] * 60 + ($parts[1] ?? 0));
+
+            $digits = preg_replace('/\D/', '', $phone);
+            if (strlen($digits) === 11 && $digits[0] === '8') {
+                $digits = '7' . substr($digits, 1);
+            }
+            $suffix = substr($digits, -7);
+
+            $call = Call::where('phone', 'like', '%' . $suffix)
+                ->where('called_at', '>=', now()->subHours(2))
+                ->whereNull('queue_status')
+                ->orderByDesc('called_at')
+                ->first();
+
+            if ($call) {
+                $call->update([
+                    'queue_status' => $status,
+                    'operator_ext' => $operatorExt,
+                    'wait_seconds' => $waitSec,
+                ]);
+            } else {
+                Call::create([
+                    'phone'        => $phone,
+                    'called_at'    => $state['entered_at'],
+                    'event'        => 'queue',
+                    'queue_status' => $status,
+                    'operator_ext' => $operatorExt,
+                    'wait_seconds' => $waitSec,
+                ]);
+            }
+        }
+
+        $newState = [];
+        foreach ($detail['callers'] as $caller) {
+            $phone = $caller['phone'] ?? null;
+            if (!$phone) continue;
+            $newState[$phone] = [
+                'phone'      => $phone,
+                'entered_at' => $prevState[$phone]['entered_at'] ?? now()->toIso8601String(),
+                'last_wait'  => $caller['wait'],
+            ];
+        }
+
+        \Cache::put($cacheKey, $newState, 600);
     }
 
     private function parseQueueOutput(string $raw, string $channelsRaw = ''): array
