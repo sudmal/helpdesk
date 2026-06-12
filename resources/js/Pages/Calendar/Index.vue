@@ -2,45 +2,25 @@
   <Head title="Календарь заявок" />
   <AppLayout title="Календарь заявок">
 
-    <!-- Участки -->
     <!-- main card -->
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
 
-      <!-- territory tabs + view switcher -->
-      <div class="bg-gray-50 border-b border-gray-200 flex items-end justify-between gap-2 px-3 pt-2 flex-wrap">
-        <div class="flex items-end gap-0.5 flex-wrap">
+      <!-- filters: territory + serviceType + brigade -->
+      <div class="px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-3">
+        <div v-if="territories.length" class="flex gap-1 flex-wrap">
           <button @click="selectedTerritory = null; onFilterChange()"
-                  :class="['px-3 py-1.5 rounded-t-xl text-sm font-medium transition-colors',
-                           !selectedTerritory
-                             ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
-                             : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+                  :class="['px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                           !selectedTerritory ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100']">
             Все
           </button>
           <button v-for="t in territories" :key="t.id"
                   @click="selectedTerritory = t.id; onFilterChange()"
-                  :class="['px-3 py-1.5 rounded-t-xl text-sm font-medium transition-colors',
-                           selectedTerritory === t.id
-                             ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
-                             : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+                  :class="['px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                           selectedTerritory === t.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100']">
             {{ t.name }}
           </button>
         </div>
-        <div class="flex gap-1 mb-2 bg-gray-200/60 p-0.5 rounded-lg self-center">
-          <button @click="view = 'overview'"
-                  :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors',
-                           view === 'overview' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-            Обзор
-          </button>
-          <button @click="view = 'month'"
-                  :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors',
-                           view === 'month' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-            Месяц
-          </button>
-        </div>
-      </div>
-
-      <!-- filters -->
-      <div class="px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-3">
+        <div v-if="territories.length" class="h-4 border-l border-gray-200 hidden md:block"></div>
         <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-0.5">
           <button @click="selectedServiceType = null; onFilterChange()"
                   :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
@@ -62,7 +42,25 @@
         </select>
       </div>
 
-          <template v-if="view === 'overview'">
+      <!-- Обзор / Месяц connected tabs -->
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2">
+        <button @click="view = 'overview'"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         view === 'overview'
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          Обзор
+        </button>
+        <button @click="view = 'month'"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         view === 'month'
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          Месяц
+        </button>
+      </div>
+
+            <template v-if="view === 'overview'">
         <div class="overflow-y-auto" style="max-height: 680px">
           <!-- Sticky header -->
           <div class="flex sticky top-0 bg-white z-10 border-b border-gray-200">
