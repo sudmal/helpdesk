@@ -74,7 +74,17 @@
                 <td class="px-3 py-0.5">
                   <a :href="createTicketUrl(c)" class="text-xs text-green-600 hover:underline whitespace-nowrap">+ заявка</a>
                 </td>
+                <td class="px-3 py-0.5">
+                  <span v-if="c.queue_status === 'answered'" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Принят</span>
+                  <span v-else-if="c.queue_status === 'missed'" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Упущен</span>
+                  <span v-else class="text-gray-300 text-xs">—</span>
+                </td>
                 <td class="px-3 py-0.5 font-mono">{{ c.phone }}</td>
+                <td class="px-3 py-0.5 tabular-nums text-gray-500">
+                  <span v-if="c.wait_seconds">{{ Math.floor(c.wait_seconds / 60) + ':' + String(c.wait_seconds % 60).padStart(2, '0') }}</span>
+                  <span v-else class="text-gray-300">—</span>
+                </td>
+                <td class="px-3 py-0.5 text-gray-600 font-mono">{{ c.operator_ext ?? '—' }}</td>
                 <td class="px-3 py-0.5 text-gray-700">{{ c.address_string ?? '—' }}</td>
                 <td class="px-3 py-0.5">
                   <span v-if="c.address" class="text-green-700">{{ c.address.full_address }}</span>
@@ -88,7 +98,7 @@
                 </td>
               </tr>
               <tr v-if="!calls.data.length">
-                <td colspan="7" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
+                <td colspan="10" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
               </tr>
             </tbody>
           </table>

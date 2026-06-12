@@ -31,12 +31,15 @@ class CallLogController extends Controller
         } elseif ($request->matched === 'no') {
             $q->whereNull('address_id');
         }
+        if ($request->filled('queue_status')) {
+            $q->where('queue_status', $request->queue_status);
+        }
 
         $calls = $q->paginate(50)->withQueryString();
 
         return Inertia::render('Calls/Index', [
             'calls'   => $calls,
-            'filters' => $request->only(['phone', 'address', 'date_from', 'date_to', 'matched']),
+            'filters' => $request->only(['phone', 'address', 'date_from', 'date_to', 'matched', 'queue_status']),
         ]);
     }
 }
