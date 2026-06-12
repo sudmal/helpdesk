@@ -177,7 +177,7 @@
     </template>
 
     <!-- МЕСЯЦ -->
-    <div v-if="view === 'month'" class="bg-white rounded-2xl border border-gray-200 p-4 relative">
+    <div v-if="view === 'month'" class="bg-white rounded-2xl border border-gray-200 relative overflow-x-auto">
       <!-- Оверлей загрузки -->
       <div v-if="monthLoading"
            class="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center z-20">
