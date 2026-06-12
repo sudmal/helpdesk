@@ -46,6 +46,14 @@
             <option value="no">Нет</option>
           </select>
         </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Статус</label>
+          <select v-model="f.queue_status" class="field-input">
+            <option value="">Все</option>
+            <option value="answered">Принят</option>
+            <option value="missed">Упущен</option>
+          </select>
+        </div>
         <div class="flex gap-2">
           <button @click="apply" class="btn-primary text-sm">Найти</button>
           <button @click="reset" class="btn-outline text-sm">Сброс</button>
@@ -61,7 +69,10 @@
               <tr>
                 <th class="px-4 py-3 text-left">Время</th>
                 <th class="px-4 py-3 text-left"></th>
+                <th class="px-4 py-3 text-left">Статус</th>
                 <th class="px-4 py-3 text-left">Телефон</th>
+                <th class="px-4 py-3 text-left">Ожидание</th>
+                <th class="px-4 py-3 text-left">Оператор</th>
                 <th class="px-4 py-3 text-left">Адрес из биллинга</th>
                 <th class="px-4 py-3 text-left">Адрес в базе</th>
                 <th class="px-4 py-3 text-left">Кв.</th>
@@ -245,13 +256,14 @@ const f = ref({
   address:   props.filters?.address   ?? '',
   date_from: props.filters?.date_from ?? '',
   date_to:   props.filters?.date_to   ?? '',
-  matched:   props.filters?.matched   ?? '',
+  matched:      props.filters?.matched      ?? '',
+  queue_status: props.filters?.queue_status ?? '',
 })
 function apply() {
   router.get(route('calls.index'), f.value, { preserveState: true })
 }
 function reset() {
-  f.value = { phone: '', address: '', date_from: '', date_to: '', matched: '' }
+  f.value = { phone: '', address: '', date_from: '', date_to: '', matched: '', queue_status: '' }
   apply()
 }
 function createTicketUrl(c) {
