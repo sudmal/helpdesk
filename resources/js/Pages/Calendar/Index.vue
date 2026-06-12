@@ -3,65 +3,66 @@
   <AppLayout title="Календарь заявок">
 
     <!-- Участки -->
-    <div class="bg-white rounded-2xl border border-gray-200 px-4 py-3 mb-2 flex items-center gap-2 flex-wrap">
-      <span class="text-xs text-gray-400 font-medium">Участок:</span>
-      <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto">
-        <button @click="selectedServiceType = null; onFilterChange()"
-                :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                         !selectedServiceType ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-          Все
-        </button>
-        <button v-for="st in serviceTypes" :key="st.id"
-                @click="selectedServiceType = st.id; onFilterChange()"
-                :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                         selectedServiceType === st.id ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-          {{ serviceIcon(st.name) }} {{ st.name }}
-        </button>
+    <!-- main card -->
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+
+      <!-- territory tabs + view switcher -->
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end justify-between gap-2 px-3 pt-2 flex-wrap">
+        <div class="flex items-end gap-0.5 flex-wrap">
+          <button @click="selectedTerritory = null; onFilterChange()"
+                  :class="['px-3 py-1.5 rounded-t-xl text-sm font-medium transition-colors',
+                           !selectedTerritory
+                             ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                             : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+            Все
+          </button>
+          <button v-for="t in territories" :key="t.id"
+                  @click="selectedTerritory = t.id; onFilterChange()"
+                  :class="['px-3 py-1.5 rounded-t-xl text-sm font-medium transition-colors',
+                           selectedTerritory === t.id
+                             ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                             : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+            {{ t.name }}
+          </button>
+        </div>
+        <div class="flex gap-1 mb-2 bg-gray-200/60 p-0.5 rounded-lg self-center">
+          <button @click="view = 'overview'"
+                  :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors',
+                           view === 'overview' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+            Обзор
+          </button>
+          <button @click="view = 'month'"
+                  :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors',
+                           view === 'month' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+            Месяц
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- Территории + бригада -->
-    <div class="bg-white rounded-2xl border border-gray-200 px-4 py-3 mb-3 flex flex-wrap items-center gap-3">
-      <div class="flex gap-1 flex-wrap">
-        <button @click="selectedTerritory = null; onFilterChange()"
-                :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors',
-                         !selectedTerritory ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100']">
-          Все
-        </button>
-        <button v-for="t in territories" :key="t.id"
-                @click="selectedTerritory = t.id; onFilterChange()"
-                :class="['px-3 py-1.5 rounded-xl text-sm font-medium transition-colors',
-                         selectedTerritory === t.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100']">
-          {{ t.name }}
-        </button>
+      <!-- filters -->
+      <div class="px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-0.5">
+          <button @click="selectedServiceType = null; onFilterChange()"
+                  :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                           !selectedServiceType ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+            Все
+          </button>
+          <button v-for="st in serviceTypes" :key="st.id"
+                  @click="selectedServiceType = st.id; onFilterChange()"
+                  :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                           selectedServiceType === st.id ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+            {{ serviceIcon(st.name) }} {{ st.name }}
+          </button>
+        </div>
+        <select v-model="selectedBrigade" @change="onFilterChange()"
+                class="border border-gray-200 rounded-xl px-3 py-1 text-sm bg-white
+                       focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+          <option :value="null">Все бригады</option>
+          <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+        </select>
       </div>
-      <div class="h-5 border-l border-gray-200 hidden md:block"></div>
-      <select v-model="selectedBrigade" @change="onFilterChange()"
-              class="border border-gray-200 rounded-xl px-3 py-1.5 text-sm bg-white
-                     focus:outline-none focus:ring-2 focus:ring-blue-500/30">
-        <option :value="null">Все бригады</option>
-        <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
-      </select>
-    </div>
 
-    <!-- Переключатель вида -->
-    <div class="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
-      <button @click="view = 'overview'"
-              :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                       view === 'overview' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-        Обзор
-      </button>
-      <button @click="view = 'month'"
-              :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                       view === 'month' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-        Месяц
-      </button>
-    </div>
-
-    <!-- ОБЗОР -->
-    <template v-if="view === 'overview'">
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-
+          <template v-if="view === 'overview'">
         <div class="overflow-y-auto" style="max-height: 680px">
           <!-- Sticky header -->
           <div class="flex sticky top-0 bg-white z-10 border-b border-gray-200">
@@ -172,12 +173,10 @@
 
           </div>
         </div>
+      </template>
 
-      </div>
-    </template>
-
-    <!-- МЕСЯЦ -->
-    <div v-if="view === 'month'" class="bg-white rounded-2xl border border-gray-200 relative overflow-x-auto">
+      <!-- МЕСЯЦ -->
+      <div v-if="view === 'month'" class="relative overflow-x-auto">
       <!-- Оверлей загрузки -->
       <div v-if="monthLoading"
            class="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center z-20">
@@ -188,7 +187,9 @@
         </div>
       </div>
       <FullCalendar :key="calKey" ref="calRef" :options="calOptions" />
-    </div>
+      </div>
+
+    </div><!-- end main card -->
 
     <!-- Tooltip при наведении -->
     <Teleport to="body">
