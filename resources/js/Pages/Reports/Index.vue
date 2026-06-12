@@ -19,18 +19,18 @@
       </button>
     </div>
 
-    <div class="flex gap-1 mb-6 bg-white border border-gray-200 rounded-2xl p-1 w-fit flex-wrap">
-      <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
-              :class="['px-4 py-2 rounded-xl text-sm font-medium transition-colors',
-                       activeTab === tab.id
-                         ? 'bg-blue-600 text-white shadow-sm'
-                         : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100']">
-        {{ tab.label }}
-      </button>
-    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
+        <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         activeTab === tab.id
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          {{ tab.label }}
+        </button>
+      </div>
 
-    <!-- Нагрузка на бригады -->
-    <div v-show="activeTab === 'brigade'" class="space-y-4">
+    <div v-show="activeTab === 'brigade'" class="p-4 space-y-4">
       <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="text-sm font-semibold text-gray-600 mb-4">Количество заявок по бригадам</h2>
         <div v-if="!brigadeLoad.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
@@ -62,7 +62,7 @@
     </div>
 
     <!-- Частота по территориям -->
-    <div v-show="activeTab === 'territory'" class="space-y-4">
+    <div v-show="activeTab === 'territory'" class="p-4 space-y-4">
       <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="text-sm font-semibold text-gray-600 mb-4">Частота обращений по территориям</h2>
         <div v-if="!territoryFrequency.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
@@ -94,7 +94,7 @@
     </div>
 
     <!-- Расход материалов -->
-    <div v-show="activeTab === 'materials'" class="space-y-4">
+    <div v-show="activeTab === 'materials'" class="p-4 space-y-4">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 class="text-sm font-semibold text-gray-600 mb-4">Динамика расхода (ед.) по неделям</h2>
@@ -136,7 +136,7 @@
     </div>
 
     <!-- Соблюдение сроков -->
-    <div v-show="activeTab === 'deadlines'" class="space-y-4">
+    <div v-show="activeTab === 'deadlines'" class="p-4 space-y-4">
       <div class="grid grid-cols-3 gap-4">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
           <div class="text-3xl font-bold text-gray-800">{{ deadlineCompliance.summary.total }}</div>
@@ -193,7 +193,7 @@
     </div>
 
     <!-- Распределение по дням -->
-    <div v-show="activeTab === 'distribution'" class="space-y-4">
+    <div v-show="activeTab === 'distribution'" class="p-4 space-y-4">
       <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-5">
           <h2 class="text-sm font-semibold text-gray-600">Распределение заявок по типу обращения</h2>
@@ -241,6 +241,8 @@
         </table>
       </div>
     </div>
+
+    </div><!-- end reports card -->
 
   </AppLayout>
 </template>
