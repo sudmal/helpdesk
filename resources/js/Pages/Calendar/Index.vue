@@ -493,7 +493,7 @@ const calOptions = computed(() => ({
   initialView:   'dayGridMonth',
   timeZone:      'local',
   contentHeight: 'auto',
-  dayMaxEvents:   5,
+  dayMaxEvents:   false,
   fixedWeekCount: false,
   headerToolbar: {
     left:   'prev,next today',
@@ -563,3 +563,10 @@ const calOptions = computed(() => ({
   },
 }))
 </script>
+
+<style>
+.fc-day-sat .fc-daygrid-day-frame { background-color: rgba(59, 130, 246, 0.06); }
+.fc-day-sun .fc-daygrid-day-frame { background-color: rgba(239, 68, 68, 0.06); }
+.fc-day-sat.fc-day-today .fc-daygrid-day-frame { background-color: rgba(59, 130, 246, 0.12); }
+.fc-day-sun.fc-day-today .fc-daygrid-day-frame { background-color: rgba(239, 68, 68, 0.12); }
+</style>
