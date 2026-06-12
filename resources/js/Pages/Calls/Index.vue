@@ -2,20 +2,25 @@
   <Head :title="activeTab === 'queue' ? 'Очередь АТС' : 'Журнал звонков'" />
   <AppLayout :title="activeTab === 'queue' ? 'Очередь АТС' : 'Журнал звонков'">
 
-    <div class="flex gap-1 mb-4 bg-white border border-gray-200 rounded-2xl p-1 w-fit">
-      <button @click="activeTab = 'calls'"
-              :class="['px-4 py-1.5 rounded-xl text-sm font-medium transition-colors',
-                       activeTab === 'calls' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100']">
-        Журнал звонков
-      </button>
-      <button @click="activeTab = 'queue'"
-              :class="['px-4 py-1.5 rounded-xl text-sm font-medium transition-colors',
-                       activeTab === 'queue' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100']">
-        Очередь АТС
-      </button>
-    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2">
+        <button @click="activeTab = 'calls'"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         activeTab === 'calls'
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          Журнал звонков
+        </button>
+        <button @click="activeTab = 'queue'"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         activeTab === 'queue'
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          Очередь АТС
+        </button>
+      </div>
+    <div v-if="activeTab === 'calls'" class="p-4 space-y-4">
 
-    <template v-if="activeTab === 'calls'">
       <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-36">
           <label class="block text-xs text-gray-500 mb-1">Телефон</label>
@@ -97,9 +102,8 @@
                            link.active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600 disabled:opacity-40 disabled:cursor-default']" />
         </div>
       </div>
-    </template>
-
-    <template v-if="activeTab === 'queue'">
+    </div>
+    <div v-if="activeTab === 'queue'" class="p-4">
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
           <div class="text-3xl font-bold" :class="qLatest?.waiting > 0 ? 'text-amber-500' : 'text-gray-300'">
@@ -207,7 +211,9 @@
         </div>
         <canvas v-else ref="queueCanvas" style="max-height:300px"></canvas>
       </div>
-    </template>
+    </div>
+
+    </div><!-- end main card -->
 
   </AppLayout>
 </template>
