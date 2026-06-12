@@ -3,18 +3,18 @@
   <AppLayout title="Настройки">
 
     <!-- Табы -->
-    <div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6 flex-wrap">
-      <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
-              :class="['px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                       activeTab === tab.key
-                         ? 'bg-white shadow text-blue-600'
-                         : 'text-gray-600 hover:text-gray-800']">
-        {{ tab.label }}
-      </button>
-    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
+        <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         activeTab === tab.key
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          {{ tab.label }}
+        </button>
+      </div>
 
-    <!-- ── Типы заявок ── -->
-    <div v-if="activeTab === 'types'" class="bg-white rounded-2xl border border-gray-200">
+    <div v-if="activeTab === 'types'">
       <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-semibold">Типы заявок</h2>
         <button @click="openTypeModal()" class="btn-primary text-sm">+ Добавить</button>
@@ -36,7 +36,7 @@
     </div>
 
     <!-- ── Участки (сервисы) ── -->
-    <div v-if="activeTab === 'services'" class="bg-white rounded-2xl border border-gray-200">
+    <div v-if="activeTab === 'services'">
       <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <div>
           <h2 class="font-semibold">Участки</h2>
@@ -69,7 +69,7 @@
     </div>
 
     <!-- ── Общие настройки ── -->
-    <div v-if="activeTab === 'general'" class="max-w-xl">
+    <div v-if="activeTab === 'general'" class="p-4 max-w-xl">
       <form @submit.prevent="saveGeneral" class="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
         <h2 class="font-semibold mb-1">Рабочее время и расписание</h2>
 
@@ -152,7 +152,7 @@
     </div>
 
     <!-- ── Территории ── -->
-    <div v-if="activeTab === 'territories'" class="bg-white rounded-2xl border border-gray-200">
+    <div v-if="activeTab === 'territories'">
       <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <div>
           <h2 class="font-semibold">Территории</h2>
@@ -183,7 +183,7 @@
     </div>
 
     <!-- ── Статусы ── -->
-    <div v-if="activeTab === 'statuses'" class="bg-white rounded-2xl border border-gray-200">
+    <div v-if="activeTab === 'statuses'">
       <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-semibold">Статусы заявок</h2>
         <button @click="openStatusModal()" class="btn-primary text-sm">+ Добавить</button>
@@ -203,7 +203,7 @@
     </div>
 
     <!-- ── Пользователи ── -->
-    <div v-if="activeTab === 'users'" class="bg-white rounded-2xl border border-gray-200">
+    <div v-if="activeTab === 'users'">
       <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-semibold">Пользователи ({{ users.length }})</h2>
         <button @click="openUserModal()" class="btn-primary text-sm">+ Добавить</button>
@@ -266,7 +266,7 @@
     </div>
 
     <!-- ── Роли ── -->
-    <div v-if="activeTab === 'roles'" class="space-y-3">
+    <div v-if="activeTab === 'roles'" class="p-4 space-y-3">
       <div v-for="role in roles" :key="role.id"
            class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
 
@@ -322,7 +322,7 @@
     </div>
 
     <!-- ── Уведомления ── -->
-    <div v-if="activeTab === 'notifications'" class="space-y-5">
+    <div v-if="activeTab === 'notifications'" class="p-5 space-y-5">
       <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="font-semibold mb-4">Расписание уведомлений</h2>
         <div class="space-y-4 text-sm">
@@ -402,7 +402,7 @@
     </div>
 
     <!-- ── LANBilling ── -->
-    <div v-if="activeTab === 'lanbilling'" class="max-w-xl">
+    <div v-if="activeTab === 'lanbilling'" class="p-4 max-w-xl">
       <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex items-center justify-between">
         <div>
           <p class="text-sm font-medium text-gray-800">LANBilling интеграция</p>
@@ -454,7 +454,7 @@
     </div>
 
     <!-- ── Список услуг для запросов ── -->
-    <div v-if="activeTab === 'svc-list'" class="bg-white rounded-2xl border border-gray-200 max-w-lg">
+    <div v-if="activeTab === 'svc-list'">
       <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <div>
           <h2 class="font-semibold">Услуги для запросов</h2>
@@ -483,6 +483,8 @@
     <!-- ══ МОДАЛКИ ══════════════════════════════════════════════════ -->
 
     <!-- Тип заявки -->
+    </div><!-- end settings card -->
+
     <Modal v-if="showTypeModal" :title="editingType ? 'Редактировать тип' : 'Новый тип'" @close="closeTypeModal">
       <form @submit.prevent="submitType" class="space-y-4">
         <div>
