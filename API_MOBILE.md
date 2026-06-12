@@ -263,6 +263,201 @@ POST /tickets/{id}/close   multipart/form-data
 
 ---
 
+
+---
+
+## Подключения
+
+### GET /connection-requests
+
+Список заявок на подключение для текущего пользователя (территории определяются по токену).
+
+**Фильтр по умолчанию:** активные (`pending`, `scheduled`, `rejected`) + закрытые (`closed`) не старше 2 суток.
+
+**Query-параметры (все опциональны):**
+
+| Параметр | Описание |
+|----------|----------|
+| `territory_id` | Фильтр по территории |
+| `status` | `pending` / `scheduled` / `rejected` / `closed` |
+| `search` | Поиск по имени, телефону, адресу |
+| `per_page` | Размер страницы (по умолчанию 50, макс. 100) |
+| `page` | Номер страницы |
+
+**200:**
+```json
+{
+  "data": [ ...ConnectionRequest ],
+  "current_page": 1,
+  "last_page": 3,
+  "total": 120,
+  "territories": [
+    { "id": 1, "name": "Северный район" }
+  ],
+  "synced_at": "2026-06-12T10:00:00+03:00"
+}
+```
+
+### GET /connection-requests/{id}
+
+**200:** полный объект `ConnectionRequest` (включая `materials`)
+
+---
+
+## Структура объекта ConnectionRequest
+
+```json
+{
+  "id": 42,
+  "name": "Иванов Иван Иванович",
+  "phone": "+79991234567",
+  "address_string": "ул. Ленина, 5, кв. 10",
+  "description": "Хочет подключить интернет, 3 этаж",
+  "status": "scheduled",
+  "scheduled_at": "2026-06-15T14:00:00+03:00",
+  "notes": null,
+  "act_number": null,
+  "needs_callback": true,
+  "territory": { "id": 1, "name": "Северный район" },
+  "creator": "Диспетчер Сидорова А.П.",
+  "assigned_to": 5,
+  "assignee": { "id": 5, "name": "Монтажник Петров И.В." },
+  "created_at": "2026-06-10T09:30:00+03:00",
+  "updated_at": "2026-06-11T11:00:00+03:00",
+  "materials": [
+    {
+      "id": 1,
+      "material_id": 5,
+      "name": "Коннектор RJ-45",
+      "code": "RJ45",
+      "unit": "шт",
+      "price_at_time": 15.00,
+      "quantity": 2.0,
+      "total": 30.00
+    }
+  ]
+}
+```
+
+> `materials` возвращается только в `/connection-requests/{id}` и ответах экшн-эндпоинтов (`/close`, `/update`).  
+> В списке (`GET /connection-requests`) поле `materials` **отсутствует**.
+
+**Статусы:**
+
+| Значение | Отображение | Терминальный |
+|----------|-------------|:---:|
+| `pending` | Ожидает | — |
+| `scheduled` | Назначено | — |
+| `rejected` | Отклонено | ✓ |
+| `closed` | Выполнено | ✓ |
+
+**Флаг `needs_callback`:** `true` — клиента нужно прозвонить (подтвердить визит или сообщить об отклонении). Устанавливается автоматически при смене статуса на `scheduled`/`rejected`. Сбрасывается через `/mark-called` или при закрытии (`/close`).
+
+---
+
+### POST /connection-requests
+
+Создать новую заявку. Статус автоматически `pending`.
+
+```json
+{
+  "name":           "Петров Пётр Петрович",
+  "phone":          "+79991112233",
+  "address_string": "ул. Советская, 10, кв. 5",
+  "description":    "Хочет интернет и кабельное ТВ",
+  "territory_id":   1
+}
+```
+
+**Валидация:** `name` макс. 100 · `phone` макс. 30 · `address_string` макс. 255 · `territory_id` обязателен.
+
+**201:** полный объект `ConnectionRequest`
+
+---
+
+### PUT /connection-requests/{id}
+
+Обновить данные или статус. Все поля опциональны.
+
+**Назначить дату (→ scheduled):**
+```json
+{
+  "status": "scheduled",
+  "scheduled_at": "2026-06-15T14:00:00+03:00",
+  "notes": "Договорились на 14:00"
+}
+```
+
+**Отклонить (→ rejected):**
+```json
+{
+  "status": "rejected",
+  "notes": "Технически невозможно — нет кабеля в доме"
+}
+```
+
+**Изменить контактные данные:**
+```json
+{
+  "name": "Иванов И.И.",
+  "phone": "+79991234567",
+  "address_string": "ул. Ленина, 5, кв. 10",
+  "description": "Уточнённое описание",
+  "territory_id": 2
+}
+```
+
+> При смене статуса на `scheduled` или `rejected` сервер автоматически ставит `needs_callback = true`.  
+> Закрытие через PUT **недоступно** — используй `/close`.
+
+**200:** полный объект `ConnectionRequest` (включая `materials`)
+
+---
+
+### POST /connection-requests/{id}/close
+
+Завершить подключение. Устанавливает статус `closed`.
+
+```json
+{
+  "notes":      "Проложили кабель на 3 этаж, настроили роутер.",
+  "act_number": "А-001",
+  "materials": [
+    { "material_id": 5, "quantity": 2 },
+    { "material_id": 8, "quantity": 1 }
+  ]
+}
+```
+
+Все поля опциональны:
+- `act_number` — если пустой или не передан, сервер подставляет `"б/а"`;  
+  **обязателен (минимум 5 символов), если переданы `materials`**
+- Старые материалы заменяются новыми; цена фиксируется на момент закрытия
+
+**200:** полный объект `ConnectionRequest` (включая `materials`)
+
+---
+
+### POST /connection-requests/{id}/mark-called
+
+Отметить, что клиент прозвонен — сбрасывает `needs_callback`. Тело пустое.
+
+**200:**
+```json
+{ "message": "Отмечено: прозвонили" }
+```
+
+---
+
+### DELETE /connection-requests/{id}
+
+Удалить заявку.
+
+**200:**
+```json
+{ "message": "Заявка удалена" }
+```
+
 ## Коды ошибок
 
 | Код | Причина |

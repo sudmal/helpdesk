@@ -19,8 +19,15 @@ class ConnectionRequestController extends Controller
         $territories  = $this->getUserTerritories($user);
         $territoryIds = $territories->pluck('id');
 
-        $query = ConnectionRequest::with(['territory', 'creator'])
+        $query = ConnectionRequest::with(['territory', 'creator', 'assignee'])
             ->whereIn('territory_id', $territoryIds)
+            ->where(function ($q) {
+                $q->whereIn('status', ['pending', 'scheduled', 'rejected'])
+                  ->orWhere(function ($q2) {
+                      $q2->where('status', 'closed')
+                         ->where('updated_at', '>=', now()->subDays(2));
+                  });
+            })
             ->latest();
 
         if ($request->filled('territory_id')) {
@@ -53,7 +60,7 @@ class ConnectionRequestController extends Controller
 
     public function show(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
-        $connectionRequest->load(['territory', 'creator', 'materials']);
+        $connectionRequest->load(['territory', 'creator', 'assignee', 'materials']);
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
 
@@ -71,7 +78,7 @@ class ConnectionRequestController extends Controller
         $data['status']     = 'pending';
 
         $cr = ConnectionRequest::create($data);
-        $cr->load(['territory', 'creator']);
+        $cr->load(['territory', 'creator', 'assignee']);
 
         return response()->json($this->formatOne($cr), 201);
     }
@@ -94,7 +101,7 @@ class ConnectionRequestController extends Controller
         }
 
         $connectionRequest->update($data);
-        $connectionRequest->load(['territory', 'creator', 'materials']);
+        $connectionRequest->load(['territory', 'creator', 'assignee', 'materials']);
 
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
@@ -144,7 +151,7 @@ class ConnectionRequestController extends Controller
             }
         });
 
-        $connectionRequest->load(['territory', 'creator', 'materials']);
+        $connectionRequest->load(['territory', 'creator', 'assignee', 'materials']);
 
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
@@ -176,6 +183,8 @@ class ConnectionRequestController extends Controller
             'needs_callback' => (bool) $r->needs_callback,
             'territory'      => $r->territory ? ['id' => $r->territory->id, 'name' => $r->territory->name] : null,
             'creator'        => $r->creator?->name,
+            'assigned_to'    => $r->assigned_to,
+            'assignee'       => $r->assignee ? ['id' => $r->assignee->id, 'name' => $r->assignee->name] : null,
             'created_at'     => $r->created_at->toIso8601String(),
             'updated_at'     => $r->updated_at->toIso8601String(),
         ];
