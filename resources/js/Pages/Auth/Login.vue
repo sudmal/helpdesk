@@ -10,7 +10,7 @@
       <!-- Логотип -->
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-16 h-16 mb-4 drop-shadow-xl">
-          <img src="/logo.svg" alt="Logo" class="w-full h-full"/>
+          <img src="/logo.png" alt="Logo" class="w-full h-full"/>
         </div>
         <h1 class="text-2xl font-bold text-white">HelpDesk</h1>
         <p class="text-blue-300 text-sm mt-1">Система управления заявками</p>

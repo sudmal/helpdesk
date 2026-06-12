@@ -1,7 +1,7 @@
 <template>
   <aside class="flex flex-col w-64 bg-[#141c2b] text-white shrink-0 h-full">
     <div class="flex items-center gap-3 px-5 py-3 border-b border-white/10">
-      <img src="/logo.svg" alt="Logo" class="w-9 h-9"/>
+      <img src="/logo.png" alt="Logo" class="w-9 h-9"/>
       <span class="font-semibold text-lg tracking-tight">HelpDesk</span>
     </div>
     <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
