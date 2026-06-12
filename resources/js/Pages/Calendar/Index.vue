@@ -253,7 +253,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -525,6 +525,12 @@ const calOptions = computed(() => ({
 
   loading(isLoading) {
     monthLoading.value = isLoading
+    if (!isLoading) {
+      nextTick(() => {
+        const todayEl = document.querySelector('.fc-day-today')
+        if (todayEl) todayEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    }
   },
 
   eventClick(info) {
@@ -557,8 +563,9 @@ const calOptions = computed(() => ({
     const typeHtml = type
       ? `<span style="font-size:10px;font-weight:400;color:#9ca3af;text-transform:lowercase;white-space:nowrap;flex-shrink:0;margin-left:4px">${type}</span>`
       : ''
+    const isFinal = p.isFinal
     return {
-      html: `<div style="display:flex;align-items:center;padding:1px 4px;font-size:0.75rem;cursor:pointer;min-width:0"><b style="flex-shrink:0;margin-right:2px">${time}</b><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${left}</span>${typeHtml}</div>`,
+      html: `<div style="display:flex;align-items:center;padding:1px 4px;font-size:0.75rem;cursor:pointer;min-width:0;opacity:${isFinal ? '0.5' : '1'}"><b style="flex-shrink:0;margin-right:2px">${time}</b><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;text-decoration:${isFinal ? 'line-through' : 'none'}">${left}</span>${typeHtml}</div>`,
     }
   },
 }))
@@ -569,4 +576,8 @@ const calOptions = computed(() => ({
 .fc-day-sun .fc-daygrid-day-frame { background-color: rgba(239, 68, 68, 0.06); }
 .fc-day-sat.fc-day-today .fc-daygrid-day-frame { background-color: rgba(59, 130, 246, 0.12); }
 .fc-day-sun.fc-day-today .fc-daygrid-day-frame { background-color: rgba(239, 68, 68, 0.12); }
+.fc-col-header-cell.fc-day-sat { background-color: rgba(59, 130, 246, 0.12); }
+.fc-col-header-cell.fc-day-sun { background-color: rgba(239, 68, 68, 0.12); }
+.fc-col-header-cell.fc-day-sat a { color: #1d4ed8 !important; }
+.fc-col-header-cell.fc-day-sun a { color: #b91c1c !important; }
 </style>

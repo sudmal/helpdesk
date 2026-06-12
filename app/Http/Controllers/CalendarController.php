@@ -88,6 +88,7 @@ class CalendarController extends Controller
                     'description'  => $ticket->description,
                     'phone'        => $ticket->phone,
                     'url'          => route('tickets.show', $ticket->id),
+                    'isFinal'      => (bool) $ticket->status->is_final,
                 ],
             ];
         });
