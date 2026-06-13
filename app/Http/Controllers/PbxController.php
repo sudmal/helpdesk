@@ -185,10 +185,16 @@ class PbxController extends Controller
         $queueName = $queue ?: QueueStat::orderByDesc('recorded_at')->value('queue_name');
         $detail = $queueName ? \Cache::get('queue:detail:' . $queueName) : null;
 
+        $missedCalls = \App\Models\Call::where('queue_status', 'missed')
+            ->where('called_at', '>=', now()->subHours($hours))
+            ->orderBy('called_at')
+            ->pluck('called_at');
+
         return response()->json([
-            'latest'  => $latest,
-            'history' => $rows,
-            'detail'  => $detail ?? ['members' => [], 'callers' => []],
+            'latest'       => $latest,
+            'history'      => $rows,
+            'detail'       => $detail ?? ['members' => [], 'callers' => []],
+            'missed_calls' => $missedCalls,
         ]);
     }
 

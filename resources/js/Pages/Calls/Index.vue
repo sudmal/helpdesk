@@ -59,30 +59,41 @@
           <button @click="reset" class="btn-outline text-sm">Сброс</button>
         </div>
       </div>
-      <div v-if="stats" class="bg-white rounded-2xl border border-gray-200 px-5 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-        <div class="flex items-baseline gap-1.5">
-          <span class="font-semibold text-gray-700">{{ stats.total }}</span>
-          <span class="text-xs text-gray-400">всего</span>
+      <div v-if="stats" class="flex flex-wrap items-center gap-3">
+        <div class="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 shrink-0">
+          <button v-for="p in [{k:'day',l:'Сегодня'},{k:'week',l:'Неделя'},{k:'month',l:'Месяц'}]"
+                  :key="p.k" @click="applyPeriod(p.k)"
+                  :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                           activePeriod === p.k ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100']">
+            {{ p.l }}
+          </button>
         </div>
-        <div class="w-px h-4 bg-gray-200"></div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="font-semibold text-green-600">{{ stats.answered }}</span>
-          <span class="text-xs text-gray-400">принято</span>
-          <span v-if="stats.answered + stats.missed > 0" class="text-xs text-green-500">
-            ({{ Math.round(stats.answered / (stats.answered + stats.missed) * 100) }}%)
-          </span>
-        </div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="font-semibold text-red-500">{{ stats.missed }}</span>
-          <span class="text-xs text-gray-400">упущено</span>
-          <span v-if="stats.answered + stats.missed > 0" class="text-xs text-red-400">
-            ({{ Math.round(stats.missed / (stats.answered + stats.missed) * 100) }}%)
-          </span>
-        </div>
-        <div class="w-px h-4 bg-gray-200"></div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="font-semibold text-gray-300">{{ stats.no_status }}</span>
-          <span class="text-xs text-gray-300">без статуса</span>
+        <div class="bg-white rounded-2xl border border-gray-200 px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm flex-1">
+          <canvas ref="pieCanvas" width="44" height="44" class="shrink-0"></canvas>
+          <div class="flex items-baseline gap-1.5">
+            <span class="font-semibold text-gray-700">{{ stats.total }}</span>
+            <span class="text-xs text-gray-400">всего</span>
+          </div>
+          <div class="w-px h-4 bg-gray-200"></div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="font-semibold text-green-600">{{ stats.answered }}</span>
+            <span class="text-xs text-gray-400">принято</span>
+            <span v-if="stats.answered + stats.missed > 0" class="text-xs text-green-500">
+              ({{ Math.round(stats.answered / (stats.answered + stats.missed) * 100) }}%)
+            </span>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="font-semibold text-red-500">{{ stats.missed }}</span>
+            <span class="text-xs text-gray-400">упущено</span>
+            <span v-if="stats.answered + stats.missed > 0" class="text-xs text-red-400">
+              ({{ Math.round(stats.missed / (stats.answered + stats.missed) * 100) }}%)
+            </span>
+          </div>
+          <div class="w-px h-4 bg-gray-200"></div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="font-semibold text-gray-300">{{ stats.no_status }}</span>
+            <span class="text-xs text-gray-300">без статуса</span>
+          </div>
         </div>
       </div>
 
@@ -152,24 +163,24 @@
       </div>
     </div>
     <div v-if="activeTab === 'queue'" class="p-4">
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-3xl font-bold" :class="qLatest?.waiting > 0 ? 'text-amber-500' : 'text-gray-300'">
-            {{ qLatest?.waiting ?? '—' }}
-          </div>
-          <div class="text-xs text-gray-500 mt-1">Ожидают в очереди</div>
+      <div class="bg-white rounded-2xl border border-gray-200 px-5 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm mb-4">
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-lg font-bold" :class="qLatest?.waiting > 0 ? 'text-amber-500' : 'text-gray-300'">{{ qLatest?.waiting ?? '—' }}</span>
+          <span class="text-xs text-gray-400">ожидают</span>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-3xl font-bold text-blue-500">{{ qLatest?.talking ?? '—' }}</div>
-          <div class="text-xs text-gray-500 mt-1">Разговаривают</div>
+        <div class="w-px h-4 bg-gray-200"></div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-lg font-bold text-blue-500">{{ qLatest?.talking ?? '—' }}</span>
+          <span class="text-xs text-gray-400">разговаривают</span>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-3xl font-bold text-green-500">{{ qLatest?.active_members ?? '—' }}</div>
-          <div class="text-xs text-gray-500 mt-1">Активных операторов</div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-lg font-bold text-green-500">{{ qLatest?.active_members ?? '—' }}</span>
+          <span class="text-xs text-gray-400">активных операторов</span>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-3xl font-bold text-gray-400">{{ qLatest?.total_members ?? '—' }}</div>
-          <div class="text-xs text-gray-500 mt-1">Всего операторов</div>
+        <div class="w-px h-4 bg-gray-200"></div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-lg font-bold text-gray-400">{{ qLatest?.total_members ?? '—' }}</span>
+          <span class="text-xs text-gray-400">всего</span>
         </div>
       </div>
 
@@ -292,6 +303,18 @@ function apply() {
 }
 function reset() {
   f.value = { phone: '', address: '', date_from: '', date_to: '', matched: '', queue_status: '' }
+  activePeriod.value = null
+  apply()
+}
+function applyPeriod(key) {
+  activePeriod.value = key
+  const pad = n => String(n).padStart(2, '0')
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+  const today = new Date()
+  f.value.date_to = fmt(today)
+  if (key === 'day')   { const s = new Date(); s.setHours(0,0,0,0);      f.value.date_from = fmt(s) }
+  if (key === 'week')  { const s = new Date(); s.setDate(s.getDate()-7);  f.value.date_from = fmt(s) }
+  if (key === 'month') { const s = new Date(); s.setDate(s.getDate()-30); f.value.date_from = fmt(s) }
   apply()
 }
 function createTicketUrl(c) {
@@ -312,8 +335,12 @@ const qHistory    = ref([])
 const qDetail     = ref({ members: [], callers: [] })
 const qHours      = ref(3)
 const qLoading    = ref(false)
-const queueCanvas = ref(null)
+const qMissedCalls = ref([])
+const activePeriod = ref(null)
+const queueCanvas  = ref(null)
+const pieCanvas    = ref(null)
 let qChart = null
+let pieChart = null
 let qRefreshTimer = null
 let callsRefreshTimer = null
 
@@ -324,7 +351,8 @@ async function loadQueue() {
     const data = await res.json()
     qLatest.value  = data.latest
     qHistory.value = data.history
-    qDetail.value  = data.detail ?? { members: [], callers: [] }
+    qDetail.value    = data.detail ?? { members: [], callers: [] }
+    qMissedCalls.value = data.missed_calls ?? []
   } catch (e) {}
   qLoading.value = false
 }
@@ -350,6 +378,24 @@ function formatSecs(secs) {
   return Math.floor(secs / 86400) + " дн"
 }
 
+function renderPie() {
+  if (!pieCanvas.value || !props.stats) return
+  if (pieChart) { pieChart.destroy(); pieChart = null }
+  const { answered, missed, no_status } = props.stats
+  if (answered + missed + no_status === 0) return
+  pieChart = new Chart(pieCanvas.value, {
+    type: 'doughnut',
+    data: {
+      labels: ['Принято', 'Упущено', 'Не в очереди'],
+      datasets: [{ data: [answered, missed, no_status], backgroundColor: ['#22c55e', '#ef4444', '#d1d5db'], borderWidth: 0 }],
+    },
+    options: {
+      responsive: false,
+      cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } } },
+    },
+  })
+}
 function renderChart() {
   if (!queueCanvas.value || qHistory.value.length === 0) return
   if (qChart) { qChart.destroy(); qChart = null }
@@ -358,6 +404,14 @@ function renderChart() {
     return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   })
   const few = qHistory.value.length <= 60
+  const histMs = qHistory.value.map(r => new Date(r.recorded_at).getTime())
+  const missedCounts = new Array(histMs.length).fill(0)
+  for (const mt of (qMissedCalls.value ?? [])) {
+    const ms = new Date(mt).getTime()
+    let idx = 0, best = Infinity
+    histMs.forEach((h, i) => { const d = Math.abs(h - ms); if (d < best) { best = d; idx = i } })
+    missedCounts[idx]++
+  }
   qChart = new Chart(queueCanvas.value, {
     type: 'line',
     data: {
@@ -366,6 +420,7 @@ function renderChart() {
         { label: 'Ожидают в очереди',  data: qHistory.value.map(r => r.waiting),        borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
         { label: 'Разговаривают',       data: qHistory.value.map(r => r.talking),        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
         { label: 'Активных операторов', data: qHistory.value.map(r => r.active_members), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)',  tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
+        { label: 'Пропущено', data: missedCounts, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.85)', tension: 0, fill: false, showLine: false, pointRadius: missedCounts.map(v => v > 0 ? 7 : 0), pointHoverRadius: 9 },
       ],
     },
     options: {
@@ -381,7 +436,9 @@ function renderChart() {
 }
 watch(activeTab, val => { if (val === 'queue') loadQueue() })
 watch(qHistory, async () => { await nextTick(); renderChart() }, { deep: true })
+watch(() => props.stats, async () => { await nextTick(); renderPie() }, { deep: true })
 onMounted(() => {
+  nextTick().then(renderPie)
   callsRefreshTimer = setInterval(() => {
     if (activeTab.value === 'calls') router.reload({ only: ['calls'], preserveState: true })
   }, 10000)
@@ -393,5 +450,6 @@ onUnmounted(() => {
   clearInterval(callsRefreshTimer)
   clearInterval(qRefreshTimer)
   if (qChart) qChart.destroy()
+  if (pieChart) pieChart.destroy()
 })
 </script>
