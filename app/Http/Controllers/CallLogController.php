@@ -35,10 +35,19 @@ class CallLogController extends Controller
             $q->where('queue_status', $request->queue_status);
         }
 
+        $qStats = clone $q;
+        $stats = [
+            'total'     => (clone $qStats)->count(),
+            'answered'  => (clone $qStats)->where('queue_status', 'answered')->count(),
+            'missed'    => (clone $qStats)->where('queue_status', 'missed')->count(),
+            'no_status' => (clone $qStats)->whereNull('queue_status')->count(),
+        ];
+
         $calls = $q->paginate(50)->withQueryString();
 
         return Inertia::render('Calls/Index', [
             'calls'   => $calls,
+            'stats'   => $stats,
             'filters' => $request->only(['phone', 'address', 'date_from', 'date_to', 'matched', 'queue_status']),
         ]);
     }
