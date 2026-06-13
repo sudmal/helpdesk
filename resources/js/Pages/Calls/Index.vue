@@ -412,6 +412,28 @@ function renderChart() {
     histMs.forEach((h, i) => { const d = Math.abs(h - ms); if (d < best) { best = d; idx = i } })
     missedCounts[idx]++
   }
+  const missedPlugin = {
+    id: 'missedMarkers',
+    afterDraw(chart) {
+      const xAxis = chart.scales.x
+      if (!xAxis) return
+      const ctx = chart.ctx
+      const b = xAxis.bottom
+      missedCounts.forEach((cnt, i) => {
+        if (!cnt) return
+        const x = xAxis.getPixelForIndex(i)
+        ctx.save()
+        ctx.fillStyle = '#ef4444'
+        ctx.beginPath()
+        ctx.moveTo(x, b + 1)
+        ctx.lineTo(x - 5, b + 10)
+        ctx.lineTo(x + 5, b + 10)
+        ctx.closePath()
+        ctx.fill()
+        ctx.restore()
+      })
+    },
+  }
   qChart = new Chart(queueCanvas.value, {
     type: 'line',
     data: {
@@ -420,7 +442,6 @@ function renderChart() {
         { label: 'Ожидают в очереди',  data: qHistory.value.map(r => r.waiting),        borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
         { label: 'Разговаривают',       data: qHistory.value.map(r => r.talking),        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
         { label: 'Активных операторов', data: qHistory.value.map(r => r.active_members), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)',  tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
-        { label: 'Пропущено', data: missedCounts, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.85)', tension: 0, fill: false, showLine: false, pointRadius: missedCounts.map(v => v > 0 ? 7 : 0), pointHoverRadius: 9 },
       ],
     },
     options: {
@@ -432,6 +453,7 @@ function renderChart() {
         y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },
       },
     },
+    plugins: [missedPlugin],
   })
 }
 watch(activeTab, val => { if (val === 'queue') loadQueue() })
