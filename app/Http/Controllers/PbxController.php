@@ -263,6 +263,36 @@ class PbxController extends Controller
             ];
         }
 
+        // Звонки, принятые мгновенно (не попали в очередь)
+        $prevInCallKey    = 'queue:incall_state:' . $queueName;
+        $prevInCallPhones = \Cache::get($prevInCallKey, []);
+
+        foreach ($inCallPhones as $phone => $ext) {
+            // пропускаем: был в очереди (уже обработан выше) или уже был в разговоре
+            if (isset($prevState[$phone]) || isset($prevInCallPhones[$phone])) continue;
+
+            $digits = preg_replace('/\D/', '', $phone);
+            if (strlen($digits) === 11 && $digits[0] === '8') {
+                $digits = '7' . substr($digits, 1);
+            }
+            $suffix = substr($digits, -7);
+
+            $call = Call::where('phone', 'like', '%' . $suffix)
+                ->where('called_at', '>=', now()->subHours(2))
+                ->whereNull('queue_status')
+                ->orderByDesc('called_at')
+                ->first();
+
+            if ($call) {
+                $call->update([
+                    'queue_status' => 'answered',
+                    'operator_ext' => $ext,
+                    'wait_seconds' => 0,
+                ]);
+            }
+        }
+
+        \Cache::put($prevInCallKey, $inCallPhones, 600);
         \Cache::put($cacheKey, $newState, 600);
     }
 
