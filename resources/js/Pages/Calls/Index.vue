@@ -59,6 +59,31 @@
           <button @click="reset" class="btn-outline text-sm">Сброс</button>
         </div>
       </div>
+      <div v-if="stats" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+          <div class="text-2xl font-bold text-gray-700">{{ stats.total }}</div>
+          <div class="text-xs text-gray-400 mt-1">Всего звонков</div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+          <div class="text-2xl font-bold text-green-600">{{ stats.answered }}</div>
+          <div class="text-xs text-gray-400 mt-1">Принято</div>
+          <div v-if="stats.answered + stats.missed > 0" class="text-xs text-gray-400">
+            {{ Math.round(stats.answered / (stats.answered + stats.missed) * 100) }}% из очереди
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+          <div class="text-2xl font-bold text-red-500">{{ stats.missed }}</div>
+          <div class="text-xs text-gray-400 mt-1">Упущено</div>
+          <div v-if="stats.answered + stats.missed > 0" class="text-xs text-gray-400">
+            {{ Math.round(stats.missed / (stats.answered + stats.missed) * 100) }}% из очереди
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+          <div class="text-2xl font-bold text-gray-300">{{ stats.no_status }}</div>
+          <div class="text-xs text-gray-400 mt-1">Без статуса</div>
+        </div>
+      </div>
+
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-100">
           <span class="text-sm text-gray-500">Всего: {{ calls.total }}</span>
@@ -248,6 +273,7 @@ import AppLayout from '@/Components/Layout/AppLayout.vue'
 const props = defineProps({
   calls:   Object,
   filters: Object,
+  stats:   Object,
 })
 
 const activeTab = ref('calls')
