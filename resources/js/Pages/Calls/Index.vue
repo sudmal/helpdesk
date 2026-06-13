@@ -418,22 +418,22 @@ function renderChart() {
       const meta = chart.getDatasetMeta(0)
       if (!meta?.data?.length) return
       const ctx = chart.ctx
-      const b = chart.scales.x?.bottom
-      if (!b) return
+      const y0 = chart.chartArea?.bottom
+      if (!y0) return
+      ctx.save()
       missedCounts.forEach((cnt, i) => {
         if (!cnt) return
         const pt = meta.data[i]
         if (!pt) return
-        ctx.save()
         ctx.fillStyle = '#ef4444'
         ctx.beginPath()
-        ctx.moveTo(pt.x, b + 1)
-        ctx.lineTo(pt.x - 5, b + 10)
-        ctx.lineTo(pt.x + 5, b + 10)
+        ctx.moveTo(pt.x,     y0)
+        ctx.lineTo(pt.x - 6, y0 - 11)
+        ctx.lineTo(pt.x + 6, y0 - 11)
         ctx.closePath()
         ctx.fill()
-        ctx.restore()
       })
+      ctx.restore()
     },
   }
   qChart = new Chart(queueCanvas.value, {
@@ -447,7 +447,7 @@ function renderChart() {
       ],
     },
     options: {
-      responsive: true, maintainAspectRatio: true,
+      responsive: true, maintainAspectRatio: true, animation: false,
       interaction: { mode: 'index', intersect: false },
       plugins: { legend: { position: 'top', labels: { font: { size: 12 } } } },
       scales: {
