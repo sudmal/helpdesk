@@ -415,19 +415,21 @@ function renderChart() {
   const missedPlugin = {
     id: 'missedMarkers',
     afterDraw(chart) {
-      const xAxis = chart.scales.x
-      if (!xAxis) return
+      const meta = chart.getDatasetMeta(0)
+      if (!meta?.data?.length) return
       const ctx = chart.ctx
-      const b = xAxis.bottom
+      const b = chart.scales.x?.bottom
+      if (!b) return
       missedCounts.forEach((cnt, i) => {
         if (!cnt) return
-        const x = xAxis.getPixelForIndex(i)
+        const pt = meta.data[i]
+        if (!pt) return
         ctx.save()
         ctx.fillStyle = '#ef4444'
         ctx.beginPath()
-        ctx.moveTo(x, b + 1)
-        ctx.lineTo(x - 5, b + 10)
-        ctx.lineTo(x + 5, b + 10)
+        ctx.moveTo(pt.x, b + 1)
+        ctx.lineTo(pt.x - 5, b + 10)
+        ctx.lineTo(pt.x + 5, b + 10)
         ctx.closePath()
         ctx.fill()
         ctx.restore()
