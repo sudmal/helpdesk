@@ -309,7 +309,7 @@ function reset() {
 function applyPeriod(key) {
   activePeriod.value = key
   const pad = n => String(n).padStart(2, '0')
-  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+  const fmt = fmtD
   const today = new Date()
   f.value.date_to = fmt(today)
   if (key === 'day')   { const s = new Date(); s.setHours(0,0,0,0);      f.value.date_from = fmt(s) }
@@ -336,7 +336,22 @@ const qDetail     = ref({ members: [], callers: [] })
 const qHours      = ref(3)
 const qLoading    = ref(false)
 const qMissedCalls = ref([])
-const activePeriod = ref(null)
+const fmtD = d => {
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+}
+function initPeriod() {
+  const today = fmtD(new Date())
+  const df = props.filters?.date_from
+  const dt = props.filters?.date_to
+  if (df === today && dt === today) return 'day'
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
+  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30)
+  if (dt === today && df === fmtD(weekAgo))  return 'week'
+  if (dt === today && df === fmtD(monthAgo)) return 'month'
+  return null
+}
+const activePeriod = ref(initPeriod())
 const queueCanvas  = ref(null)
 const pieCanvas    = ref(null)
 let qChart = null

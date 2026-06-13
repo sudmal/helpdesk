@@ -20,12 +20,11 @@ class CallLogController extends Controller
         if ($request->filled('address')) {
             $q->where('address_string', 'like', '%' . $request->address . '%');
         }
-        if ($request->filled('date_from')) {
-            $q->whereDate('called_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $q->whereDate('called_at', '<=', $request->date_to);
-        }
+        // default to today if no date filter provided (initial load)
+        $dateFrom = $request->has('date_from') ? $request->date_from : now()->toDateString();
+        $dateTo   = $request->has('date_to')   ? $request->date_to   : now()->toDateString();
+        if ($dateFrom) { $q->whereDate('called_at', '>=', $dateFrom); }
+        if ($dateTo)   { $q->whereDate('called_at', '<=', $dateTo);   }
         if ($request->matched === 'yes') {
             $q->whereNotNull('address_id');
         } elseif ($request->matched === 'no') {
@@ -48,7 +47,10 @@ class CallLogController extends Controller
         return Inertia::render('Calls/Index', [
             'calls'   => $calls,
             'stats'   => $stats,
-            'filters' => $request->only(['phone', 'address', 'date_from', 'date_to', 'matched', 'queue_status']),
+            'filters' => array_merge(
+                $request->only(['phone', 'address', 'matched', 'queue_status']),
+                ['date_from' => $dateFrom, 'date_to' => $dateTo]
+            ),
         ]);
     }
 }
