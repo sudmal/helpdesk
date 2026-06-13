@@ -40,71 +40,61 @@
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+        <table class="w-full text-xs">
+          <thead class="bg-gray-50 text-[11px] text-gray-400 uppercase tracking-wide">
             <tr>
-              <th class="px-3 py-3 text-left w-8"></th>
-              <th class="px-4 py-3 text-left">Дата</th>
-              <th class="px-4 py-3 text-left">Имя</th>
-              <th class="px-4 py-3 text-left">Телефон</th>
-              <th class="px-4 py-3 text-left">Адрес</th>
-              <th class="px-4 py-3 text-left">Услуга</th>
-              <th class="px-4 py-3 text-left">Описание</th>
-              <th class="px-4 py-3 text-left">Статус</th>
-              <th class="px-4 py-3 text-left">Комментарий адм.</th>
-              <th class="px-4 py-3 text-left">Обработал</th>
-              <th class="px-4 py-3 text-left"></th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Дата</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Имя</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Телефон</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Адрес</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Услуга</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Описание</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Статус</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Комм. адм.</th>
+              <th class="px-3 py-2 text-left whitespace-nowrap">Обработал</th>
+              <th class="px-3 py-2"></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100 text-xs">
+          <tbody class="divide-y divide-gray-100">
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50">
-              <!-- Редактировать (только создатель/все операторы — просто просмотр) -->
-              <td class="px-2 py-1.5 text-center">
-                <button v-if="r.status === 'pending'"
-                        @click="openEdit(r)" title="Редактировать"
-                        class="text-gray-400 hover:text-blue-600 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </button>
+              <td class="px-3 py-2 whitespace-nowrap text-gray-400">{{ fmtDate(r.created_at) }}</td>
+              <td class="px-3 py-2 whitespace-nowrap font-medium text-gray-800">{{ r.name }}</td>
+              <td class="px-3 py-2 whitespace-nowrap font-mono text-gray-600">{{ r.phone }}</td>
+              <td class="px-3 py-2 text-gray-600 max-w-[160px] truncate" :title="r.address_string">{{ r.address_string }}</td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ r.service_name }}</span>
               </td>
-              <td class="px-3 py-1.5 whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
-              <td class="px-3 py-1.5 font-medium">{{ r.name }}</td>
-              <td class="px-3 py-1.5 font-mono whitespace-nowrap">{{ r.phone }}</td>
-              <td class="px-3 py-1.5 text-gray-700">{{ r.address_string }}</td>
-              <td class="px-3 py-1.5">
-                <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-xs font-medium">
-                  {{ r.service_name }}
-                </span>
+              <td class="px-3 py-2 text-gray-500 max-w-[140px] truncate" :title="r.description">{{ r.description || '—' }}</td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                <span :class="statusClass(r.status)" class="px-1.5 py-0.5 rounded font-medium">{{ statusLabel(r.status) }}</span>
               </td>
-              <td class="px-3 py-1.5 text-gray-500 max-w-48 truncate" :title="r.description">{{ r.description || '—' }}</td>
-              <td class="px-3 py-1.5">
-                <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ statusLabel(r.status) }}
-                </span>
-              </td>
-              <td class="px-3 py-1.5 text-gray-600 max-w-48 truncate" :title="r.admin_comment">
-                {{ r.admin_comment || '—' }}
-              </td>
-              <td class="px-3 py-1.5 text-gray-500 whitespace-nowrap">
-                {{ r.processor?.name || '—' }}
-              </td>
-              <td class="px-3 py-1.5 whitespace-nowrap">
-                <div v-if="canProcess && r.status === 'pending'" class="flex gap-1">
-                  <button @click="openAccept(r)"
-                          class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
-                    Выполнить
+              <td class="px-3 py-2 text-gray-600 max-w-[150px] truncate" :title="r.admin_comment">{{ r.admin_comment || '—' }}</td>
+              <td class="px-3 py-2 text-gray-500 max-w-[130px] truncate" :title="r.processor?.name">{{ r.processor?.name || '—' }}</td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                <div class="flex gap-1 items-center">
+                  <button v-if="r.status === 'pending'"
+                          @click="openEdit(r)" title="Редактировать"
+                          class="text-gray-300 hover:text-blue-500 transition-colors mr-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
                   </button>
-                  <button @click="openReject(r)"
-                          class="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
-                    Отклонить
-                  </button>
+                  <template v-if="canProcess && r.status === 'pending'">
+                    <button @click="openAccept(r)"
+                            class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 font-medium">
+                      Выполнить
+                    </button>
+                    <button @click="openReject(r)"
+                            class="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 font-medium">
+                      Отклонить
+                    </button>
+                  </template>
                 </div>
               </td>
             </tr>
             <tr v-if="!requests.data.length">
-              <td colspan="11" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
+              <td colspan="10" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
             </tr>
           </tbody>
         </table>
