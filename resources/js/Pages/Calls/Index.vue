@@ -59,28 +59,30 @@
           <button @click="reset" class="btn-outline text-sm">Сброс</button>
         </div>
       </div>
-      <div v-if="stats" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-gray-700">{{ stats.total }}</div>
-          <div class="text-xs text-gray-400 mt-1">Всего звонков</div>
+      <div v-if="stats" class="bg-white rounded-2xl border border-gray-200 px-5 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+        <div class="flex items-baseline gap-1.5">
+          <span class="font-semibold text-gray-700">{{ stats.total }}</span>
+          <span class="text-xs text-gray-400">всего</span>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-green-600">{{ stats.answered }}</div>
-          <div class="text-xs text-gray-400 mt-1">Принято</div>
-          <div v-if="stats.answered + stats.missed > 0" class="text-xs text-gray-400">
-            {{ Math.round(stats.answered / (stats.answered + stats.missed) * 100) }}% из очереди
-          </div>
+        <div class="w-px h-4 bg-gray-200"></div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="font-semibold text-green-600">{{ stats.answered }}</span>
+          <span class="text-xs text-gray-400">принято</span>
+          <span v-if="stats.answered + stats.missed > 0" class="text-xs text-green-500">
+            ({{ Math.round(stats.answered / (stats.answered + stats.missed) * 100) }}%)
+          </span>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-red-500">{{ stats.missed }}</div>
-          <div class="text-xs text-gray-400 mt-1">Упущено</div>
-          <div v-if="stats.answered + stats.missed > 0" class="text-xs text-gray-400">
-            {{ Math.round(stats.missed / (stats.answered + stats.missed) * 100) }}% из очереди
-          </div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="font-semibold text-red-500">{{ stats.missed }}</span>
+          <span class="text-xs text-gray-400">упущено</span>
+          <span v-if="stats.answered + stats.missed > 0" class="text-xs text-red-400">
+            ({{ Math.round(stats.missed / (stats.answered + stats.missed) * 100) }}%)
+          </span>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-gray-300">{{ stats.no_status }}</div>
-          <div class="text-xs text-gray-400 mt-1">Без статуса</div>
+        <div class="w-px h-4 bg-gray-200"></div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="font-semibold text-gray-300">{{ stats.no_status }}</span>
+          <span class="text-xs text-gray-300">без статуса</span>
         </div>
       </div>
 
