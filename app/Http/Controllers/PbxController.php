@@ -21,9 +21,11 @@ class PbxController extends Controller
             return response()->json(['status' => 'skipped']);
         }
 
-        [$addressId, $apartment] = $addressString
-            ? $this->matchAddress($addressString)
-            : [null, null];
+        if ($addressString) {
+            [$addressId, $apartment] = $this->matchAddress($addressString);
+        } else {
+            [$addressId, $addressString, $apartment] = $this->fallbackAddress($phone);
+        }
 
         Call::create([
             'phone'          => $phone,
@@ -115,6 +117,34 @@ class PbxController extends Controller
             ->first();
 
         return [$address?->id, $apartment];
+    }
+
+    // Fallback: find address from previous calls or tickets by phone suffix
+    private function fallbackAddress(string $phone): array
+    {
+        $suffix = substr($phone, -7);
+
+        $prevCall = Call::where('phone', 'like', "%{$suffix}")
+            ->whereNotNull('address_id')
+            ->whereNotNull('address_string')
+            ->latest('called_at')
+            ->first();
+
+        if ($prevCall) {
+            return [$prevCall->address_id, $prevCall->address_string, $prevCall->apartment];
+        }
+
+        $ticket = Ticket::where('phone', 'like', "%{$suffix}")
+            ->whereNotNull('address_id')
+            ->with('address')
+            ->latest()
+            ->first();
+
+        if ($ticket?->address) {
+            return [$ticket->address_id, $ticket->address->full_address, $ticket->apartment];
+        }
+
+        return [null, null, null];
     }
 
     private function normalizePhone(string $phone): string
