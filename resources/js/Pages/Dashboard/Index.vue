@@ -403,7 +403,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
@@ -625,6 +625,17 @@ async function doBulkRescheduleOverdue() {
     router.reload({ only: ['overdue', 'todayTickets'], preserveState: true })
   } finally { bulkOverdueLoading.value = false }
 }
+
+// ── Тултип ──
+const tooltip = reactive({ show: false, x: 0, y: 0, ticket: null })
+function showTooltip(e, t) {
+  const rect = e.currentTarget.getBoundingClientRect()
+  tooltip.x = Math.min(rect.right + 10, window.innerWidth - 340)
+  tooltip.y = Math.max(rect.top, 8)
+  tooltip.ticket = t
+  tooltip.show = true
+}
+
 
 </script>
 
