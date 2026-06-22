@@ -220,9 +220,7 @@ class ReportsController extends Controller
             'byWeekday' => ['labels' => $dowLabels,  'datasets' => $byDow],
         ];
     }
-}
 
-// NOTE: appended method - move inside class manually if needed
     private function callStats(Carbon $from, Carbon $to): array
     {
         $rows = DB::table('call_daily_stats')
