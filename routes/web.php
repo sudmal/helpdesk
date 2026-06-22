@@ -200,7 +200,8 @@ Route::middleware(['auth', 'active'])->prefix('service-requests')->name('service
     Route::delete('/{serviceRequest}',      [ServiceRequestController::class, 'destroy'])->name('destroy');
 });
 // Sync API (РґР»СЏ СЃРєСЂРёРїС‚Р° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё)
-Route::post('/sync/ticket', [SyncController::class, 'store'])->name('sync.ticket');
+Route::post('/sync/ticket',        [SyncController::class, 'store'])->name('sync.ticket');
+Route::post('/sync/legacy-ticket', [SyncController::class, 'storeLegacy'])->name('sync.legacy-ticket');
 
 // АТС — состояние очереди (без CSRF, защищено токеном)
 Route::post('/pbx/queue-status', [\App\Http\Controllers\PbxController::class, 'queueStatus'])->name('pbx.queue-status');

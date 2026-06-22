@@ -7,7 +7,8 @@ return [
         'token' => env('MAX_BOT_TOKEN'),
     ],
     'sync' => [
-        'token' => env('SYNC_TOKEN'),
+        'token'       => env('SYNC_TOKEN'),
+        'allowed_ips' => env('SYNC_ALLOWED_IPS', ''),
     ],
     'pbx' => [
         'token' => env('PBX_TOKEN'),
