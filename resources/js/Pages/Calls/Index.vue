@@ -224,8 +224,8 @@
             <thead class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100">
               <tr>
                 <th class="px-3 py-1.5 text-left w-14">Доб.</th>
-                <th class="px-3 py-1.5 text-left">Статус</th>
-                <th class="px-3 py-1.5 text-right">Время</th>
+                <th class="px-3 py-1.5 text-left w-full">Статус</th>
+                <th class="px-3 py-1.5 text-right w-24 whitespace-nowrap">Время</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
@@ -237,7 +237,7 @@
                           :title="sipTitle(m.ext)"></span>
                   </div>
                 </td>
-                <td class="px-3 py-1">
+                <td class="px-3 py-1 w-full">
                   <span :class="statusBadge(m.status)"
                         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
                     <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
