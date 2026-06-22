@@ -175,7 +175,7 @@
               <td class="px-2 py-0.5 hidden md:table-cell">
                 <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
               </td>
-              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs">{{ t.phone ?? '—' }}</td>
+              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap">{{ t.phone ?? '—' }}</td>
               <td class="px-2 py-0.5">
                 <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
               </td>
@@ -397,7 +397,7 @@
             </div>
           </div>
         </template>
-        <div v-if="tooltip.ticket.phone" class="text-gray-400 mt-1">📞 {{ tooltip.ticket.phone }}</div>
+        <div v-if="tooltip.ticket.phone" class="text-gray-400 mt-1 whitespace-nowrap">📞 {{ tooltip.ticket.phone }}</div>
       </div>
     </Teleport>
 </template>
