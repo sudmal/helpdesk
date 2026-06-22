@@ -143,7 +143,7 @@ class SyncController extends Controller
             'service_type_id' => $serviceTypeId,
             'status_id'       => $statusId,
             'phone'           => $request->input('phone') ?: null,
-            'description'     => $request->input('description', ''),
+            'description'     => $request->input('description') ?? '',
             'act_number'      => $request->input('act_number') ?: null,
             'close_notes'     => $request->input('executor_comment') ?: null,
             'scheduled_at'    => $scheduledAt,
