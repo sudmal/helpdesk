@@ -44,7 +44,7 @@
       <div class="p-4 flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-48">
           <label class="block text-xs text-gray-500 mb-1">Поиск</label>
-          <input v-model="f.search" @keydown.enter="apply" class="field-input" placeholder="Имя, телефон, адрес..." />
+          <input v-model="f.search" @keydown.enter="apply" class="field-input w-full" placeholder="Имя, телефон, адрес..." />
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">Статус</label>
