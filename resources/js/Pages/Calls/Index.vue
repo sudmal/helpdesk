@@ -182,6 +182,12 @@
           <span class="text-lg font-bold text-gray-400">{{ qLatest?.total_members ?? '—' }}</span>
           <span class="text-xs text-gray-400">всего</span>
         </div>
+        <div class="w-px h-4 bg-gray-200 ml-auto"></div>
+        <div class="flex items-center gap-1.5"
+             :title="trunkTitle(trunkStatus, qDetail.trunk?.rtt_ms)">
+          <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', trunkDotClass(trunkStatus)]"></span>
+          <span class="text-xs text-gray-500 font-medium">PHOENIX SIP</span>
+        </div>
       </div>
 
       <!-- Очередь + Операторы -->
@@ -338,7 +344,7 @@ function formatDate(val) {
 }
 const qLatest     = ref(null)
 const qHistory    = ref([])
-const qDetail     = ref({ members: [], callers: [], phones: [] })
+const qDetail     = ref({ members: [], callers: [], phones: [], trunk: null })
 const qHours      = ref(3)
 const qLoading    = ref(false)
 const qMissedCalls = ref([])
@@ -396,6 +402,22 @@ function sipTitle(ext) {
   if (p.status === 'Avail') return `SIP: Зарегистрирован (${p.rtt_ms} мс)`
   if (p.status === 'Unreachable') return 'SIP: Недоступен'
   return 'SIP: Неизвестно'
+}
+const trunkStatus = computed(() => qDetail.value.trunk?.status ?? null)
+function trunkDotClass(s) {
+  if (s === 'Avail')       return 'bg-green-400'
+  if (s === 'Unreachable') return 'bg-red-400'
+  return 'bg-gray-300'
+}
+function trunkLabel(s) {
+  if (s === 'Avail')       return 'Авail'
+  if (s === 'Unreachable') return 'Недоступен'
+  return 'Нет данных'
+}
+function trunkTitle(s, rtt) {
+  if (s === 'Avail')       return `PHOENIX SIP: подключён (${rtt} мс)`
+  if (s === 'Unreachable') return 'PHOENIX SIP: недоступен'
+  return 'PHOENIX SIP: нет данных'
 }
 const sortedMembers = computed(() =>
   [...qDetail.value.members].sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9))

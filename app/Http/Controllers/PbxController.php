@@ -174,6 +174,7 @@ class PbxController extends Controller
             'raw'            => 'nullable|string',
             'channels_raw'   => 'nullable|string',
             'phones'         => 'nullable|array',
+            'trunk'          => 'nullable|array',
         ]);
 
         QueueStat::create([
@@ -191,6 +192,7 @@ class PbxController extends Controller
             $channelsRaw = !empty($data['channels_raw']) ? base64_decode($data['channels_raw']) : '';
             $detail = $this->parseQueueOutput(base64_decode($data['raw']), $channelsRaw);
             $detail['phones'] = $data['phones'] ?? [];
+            $detail['trunk']  = $data['trunk']  ?? null;
             \Cache::put('queue:detail:' . $data['queue'], $detail, 300);
             $this->trackCallEvents($data['queue'], $detail);
         }
