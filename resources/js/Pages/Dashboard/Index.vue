@@ -141,8 +141,8 @@
             <tr v-for="t in (todayTickets ?? [])" :key="t.id"
                 :class="['cursor-pointer transition-all', t.status?.is_final ? 'opacity-60' : '']"
                 :style="{ backgroundColor: (t.status?.color ?? '#6b7280') + '1a' }"
-                @mouseover="e => e.currentTarget.style.filter='brightness(0.93)'"
-                @mouseout="e => e.currentTarget.style.filter=''"
+                @mouseenter="e => { e.currentTarget.style.filter='brightness(0.93)'; showTooltip(e, t) }"
+                @mouseleave="e => { e.currentTarget.style.filter=''; tooltip.show = false }"
                 @click="router.visit(route('tickets.show', t.id))">
 
               <!-- Полоска типа / галочка для закрытых -->
@@ -363,6 +363,43 @@
     </Modal>
 
   </AppLayout>
+
+    <!-- Тултип при наведении на строку дашборда -->
+    <Teleport to="body">
+      <div v-if="tooltip.show && tooltip.ticket"
+           :style="{ position: 'fixed', left: tooltip.x + 'px', top: tooltip.y + 'px', zIndex: 9999 }"
+           class="bg-gray-900 text-white rounded-xl shadow-2xl p-3 w-72 pointer-events-none text-xs">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="font-mono text-gray-400">{{ tooltip.ticket.number }}</span>
+          <span v-if="tooltip.ticket.type"
+                class="px-1.5 py-0.5 rounded text-[11px] font-medium"
+                :style="{ backgroundColor: tooltip.ticket.type.color + '33', color: tooltip.ticket.type.color }">
+            {{ tooltip.ticket.type.name }}
+          </span>
+        </div>
+        <p class="font-semibold text-sm mb-1 leading-tight">{{ fullAddress(tooltip.ticket) }}</p>
+        <p v-if="tooltip.ticket.description" class="text-gray-300 mb-1.5 leading-snug">
+          {{ tooltip.ticket.description }}
+        </p>
+        <template v-if="tooltip.ticket.status?.is_final">
+          <div class="border-t border-gray-700 pt-1.5 mt-1 flex flex-col gap-1">
+            <div v-if="tooltip.ticket.act_number" class="flex gap-1.5">
+              <span class="text-gray-500">Акт:</span>
+              <span class="text-green-400 font-medium">{{ tooltip.ticket.act_number }}</span>
+            </div>
+            <div v-if="tooltip.ticket.close_notes" class="flex gap-1.5">
+              <span class="text-gray-500 shrink-0">Итог:</span>
+              <span class="text-gray-300">{{ tooltip.ticket.close_notes }}</span>
+            </div>
+            <div v-if="tooltip.ticket.materials?.length" class="flex gap-1.5">
+              <span class="text-gray-500 shrink-0">Матер.:</span>
+              <span class="text-gray-300">{{ tooltip.ticket.materials.map(m => m.name + (m.qty > 1 ? ' ×' + m.qty : '')).join(', ') }}</span>
+            </div>
+          </div>
+        </template>
+        <div v-if="tooltip.ticket.phone" class="text-gray-400 mt-1">📞 {{ tooltip.ticket.phone }}</div>
+      </div>
+    </Teleport>
 </template>
 
 <script setup>
