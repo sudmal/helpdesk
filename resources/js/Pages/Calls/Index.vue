@@ -224,7 +224,13 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
               <tr v-for="m in sortedMembers" :key="m.ext" class="hover:bg-gray-50">
-                <td class="px-3 py-1 font-mono font-bold text-gray-800">{{ m.ext }}</td>
+                <td class="px-3 py-1 font-mono font-bold text-gray-800">
+                  <div class="flex items-center gap-1.5">
+                    {{ m.ext }}
+                    <span :class="['w-2 h-2 rounded-full flex-shrink-0', sipDotClass(m.ext)]"
+                          :title="sipTitle(m.ext)"></span>
+                  </div>
+                </td>
                 <td class="px-3 py-1">
                   <span :class="statusBadge(m.status)"
                         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
@@ -332,7 +338,7 @@ function formatDate(val) {
 }
 const qLatest     = ref(null)
 const qHistory    = ref([])
-const qDetail     = ref({ members: [], callers: [] })
+const qDetail     = ref({ members: [], callers: [], phones: [] })
 const qHours      = ref(3)
 const qLoading    = ref(false)
 const qMissedCalls = ref([])
@@ -373,6 +379,24 @@ async function loadQueue() {
 }
 
 const STATUS_ORDER = { in_call: 0, ringing: 1, idle: 2, unavailable: 3 }
+const sipByExt = computed(() => {
+  const map = {}
+  for (const p of (qDetail.value.phones ?? [])) map[p.extension] = p
+  return map
+})
+function sipDotClass(ext) {
+  const s = sipByExt.value[ext]?.status
+  if (s === 'Avail')       return 'bg-green-400'
+  if (s === 'Unreachable') return 'bg-orange-400'
+  return 'bg-gray-300'
+}
+function sipTitle(ext) {
+  const p = sipByExt.value[ext]
+  if (!p) return 'SIP: нет данных'
+  if (p.status === 'Avail') return `SIP: Зарегистрирован (${p.rtt_ms} мс)`
+  if (p.status === 'Unreachable') return 'SIP: Недоступен'
+  return 'SIP: Неизвестно'
+}
 const sortedMembers = computed(() =>
   [...qDetail.value.members].sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9))
 )
