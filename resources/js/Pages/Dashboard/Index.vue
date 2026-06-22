@@ -137,9 +137,12 @@
                 @mouseout="e => e.currentTarget.style.filter=''"
                 @click="router.visit(route('tickets.show', t.id))">
 
-              <!-- Галочка для закрытых -->
-              <td class="pl-2 pr-0 py-0.5 text-center w-5">
-                <span v-if="t.status?.is_final" class="text-green-500 font-bold text-sm">✓</span>
+              <!-- Полоска типа / галочка для закрытых -->
+              <td class="pr-0 py-0 w-5 relative">
+                <div v-if="!t.status?.is_final"
+                     class="absolute inset-y-0 left-0 w-[3px] rounded-r"
+                     :style="{ backgroundColor: t.type?.color ?? '#9ca3af' }"></div>
+                <span v-if="t.status?.is_final" class="text-green-500 font-bold text-sm pl-2">✓</span>
               </td>
               <!-- Иконка участка -->
               <td class="pl-1.5 pr-1 py-0.5 text-center text-sm leading-none">
