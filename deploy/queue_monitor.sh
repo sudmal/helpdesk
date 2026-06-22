@@ -3,10 +3,10 @@
 # Cron: * * * * * /storage/usbdisk1/mikopbx/queue_monitor.sh >> /var/log/queue_monitor.log 2>&1
 #
 # export HELPDESK_TOKEN=ВАШ_ТОКЕН
-# export HELPDESK_URL=https://vega8.ru/pbx/queue-status
+# export HELPDESK_URL=https://YOUR_DOMAIN/pbx/queue-status
 
 QUEUE_NAME="QUEUE-F38325E796B3FFB8938BA383AA119148"
-HELPDESK_URL=${HELPDESK_URL:-"https://vega8.ru/pbx/queue-status"}
+HELPDESK_URL=${HELPDESK_URL:?"Установите HELPDESK_URL в окружении или в cron: HELPDESK_URL=https://..."}
 TOKEN=${HELPDESK_TOKEN:-"REPLACE_WITH_YOUR_TOKEN"}
 
 RAW=$(asterisk -rx "queue show $QUEUE_NAME" 2>/dev/null)
