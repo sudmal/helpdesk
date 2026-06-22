@@ -65,22 +65,22 @@ protected $fillable = [
               ->orWhere('phone', 'like', "%{$term}%")
               ->orWhere('contract_no', 'like', "%{$term}%");
 
-            // Поиск по адресу с разбором улица+дом
-            if ($buildingHint) {
+            // Поиск по адресу с разбором улица+дом+квартира
+            if ($buildingHint && $aptHint) {
+                // Улица + дом + квартира — все три условия вместе
+                $q->orWhere(function ($sub) use ($streetTerm, $buildingHint, $aptHint) {
+                    $sub->where('apartment', $aptHint)
+                        ->whereHas('address', function ($a) use ($streetTerm, $buildingHint) {
+                            if ($streetTerm) $a->search($streetTerm);
+                            $a->where('building', $buildingHint);
+                        });
+                });
+            } elseif ($buildingHint) {
+                // Улица + дом (без квартиры)
                 $q->orWhereHas('address', function ($a) use ($streetTerm, $buildingHint) {
                     if ($streetTerm) $a->search($streetTerm);
                     $a->where('building', $buildingHint);
                 });
-                // Квартира из tickets
-                if ($aptHint) {
-                    $q->orWhere(function ($sub) use ($streetTerm, $buildingHint, $aptHint) {
-                        $sub->where('apartment', $aptHint)
-                            ->whereHas('address', function ($a) use ($streetTerm, $buildingHint) {
-                                if ($streetTerm) $a->search($streetTerm);
-                                $a->where('building', $buildingHint);
-                            });
-                    });
-                }
             } else {
                 $q->orWhereHas('address', fn($a) => $a->search($term));
             }
