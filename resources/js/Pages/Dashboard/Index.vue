@@ -22,12 +22,12 @@
     </Teleport>
 
     <!-- ── Переключатель участков + дата ── -->
-    <div class="bg-white rounded-2xl border border-gray-200 px-4 py-2.5 mb-2 flex items-center gap-2 flex-wrap">
+    <div class="bg-white rounded-2xl border border-gray-200 px-3 py-1.5 mb-1 flex items-center gap-2 flex-wrap">
       <span class="text-xs text-gray-400 font-medium">Участок:</span>
       <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
         <button v-for="st in serviceTypes" :key="st.id"
                 @click="navigate({ service_type: st.id })"
-                :class="['px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1',
+                :class="['px-2.5 py-0.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1',
                          serviceType === st.id
                            ? 'bg-white shadow-sm text-gray-800'
                            : 'text-gray-500 hover:text-gray-700']">
@@ -35,7 +35,7 @@
           <span v-if="st.has_open" class="text-orange-500 font-bold text-sm leading-none">✱</span>
         </button>
         <button @click="navigate({ service_type: null })"
-                :class="['px-3 py-1 rounded-lg text-sm font-medium transition-colors',
+                :class="['px-2.5 py-0.5 rounded-lg text-xs font-medium transition-colors',
                          !serviceType
                            ? 'bg-white shadow-sm text-gray-800'
                            : 'text-gray-500 hover:text-gray-700']">
@@ -71,10 +71,10 @@
     <!-- ── Основная таблица заявок ── -->
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
       <!-- Вкладки территорий -->
-      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end px-2 pt-1 flex-wrap">
         <button v-for="t in territories" :key="t.id"
                 @click="selectTerritory(t.id)"
-                :class="['px-3 py-1.5 text-sm font-medium flex flex-col items-center gap-0.5 rounded-t-xl transition-colors relative min-w-[80px]',
+                :class="['px-3 py-1 text-xs font-medium flex flex-col items-center gap-0.5 rounded-t-xl transition-colors relative min-w-[80px] border-r border-gray-200 last:border-r-0',
                          selectedTerritory === t.id
                            ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
@@ -131,7 +131,7 @@
               </td>
             </tr>
             <tr v-for="t in (todayTickets ?? [])" :key="t.id"
-                class="cursor-pointer transition-all"
+                :class="['cursor-pointer transition-all', t.status?.is_final ? 'opacity-60' : '']"
                 :style="{ backgroundColor: (t.status?.color ?? '#6b7280') + '1a' }"
                 @mouseover="e => e.currentTarget.style.filter='brightness(0.93)'"
                 @mouseout="e => e.currentTarget.style.filter=''"
@@ -151,11 +151,11 @@
               <td class="px-2 py-0.5">
                 <span class="font-mono text-blue-600 font-medium text-xs">{{ t.number }}</span>
               </td>
-              <td class="px-2 py-0.5 max-w-[240px]">
+              <td class="px-2 py-0.5 max-w-xs w-64">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
                 <p class="text-gray-600 text-xs leading-tight" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
-                  <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 60) }}</span>
-                  <button v-if="(t.description?.length ?? 0) > 60" @click.stop="toggleDesc(t.id)"
+                  <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 90) }}</span>
+                  <button v-if="(t.description?.length ?? 0) > 90" @click.stop="toggleDesc(t.id)"
                           class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
                     {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
                   </button>
@@ -174,7 +174,7 @@
                   {{ t.act_number || 'б/а' }}
                 </span>
               </td>
-              <td class="px-2 pr-1 py-0.5 max-w-0">
+              <td class="px-2 pr-1 py-0.5 min-w-[120px] max-w-[200px]">
                 <p v-if="t.status?.is_final && t.close_notes"
                    class="text-xs text-gray-400 truncate leading-tight" :title="t.close_notes">
                   {{ t.close_notes }}
@@ -240,8 +240,8 @@
             <td class="px-3 py-px">
               <p class="font-medium text-gray-800 truncate max-w-[180px]">{{ fullAddress(t) }}</p>
               <p class="text-gray-500 text-xs" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate max-w-[180px]'">
-                <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 60) }}</span>
-                <button v-if="(t.description?.length ?? 0) > 60" @click.stop="toggleDesc(t.id)"
+                <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 90) }}</span>
+                <button v-if="(t.description?.length ?? 0) > 90" @click.stop="toggleDesc(t.id)"
                         class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
                   {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
                 </button>
