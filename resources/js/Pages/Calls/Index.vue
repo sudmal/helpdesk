@@ -248,7 +248,7 @@
                     <span v-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
                   </div>
                 </td>
-                <td class="px-3 py-1 text-right">
+                <td class="px-3 py-1 text-right whitespace-nowrap">
                   <template v-if="m.secs > 0">
                     <span v-if="m.status === 'in_call'"
                           class="text-xs font-mono font-semibold text-red-600 tabular-nums">{{ formatSecs(m.secs) }}</span>
