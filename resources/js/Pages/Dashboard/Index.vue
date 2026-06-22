@@ -74,23 +74,27 @@
       <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
         <button v-for="t in territories" :key="t.id"
                 @click="selectTerritory(t.id)"
-                :class="['px-3 py-2 text-sm font-medium flex items-center gap-1.5 rounded-t-xl transition-colors relative',
+                :class="['px-3 py-1.5 text-sm font-medium flex flex-col items-center gap-0.5 rounded-t-xl transition-colors relative min-w-[80px]',
                          selectedTerritory === t.id
                            ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
-          {{ t.name }}
-          <span v-if="t.overdue_count > 0"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
-            {{ t.overdue_count }}
-          </span>
-          <span v-if="t.open_count > 0"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
-            {{ t.open_count }}
-          </span>
-          <span v-if="t.closed_count > 0"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-green-500 text-white leading-none">
-            {{ t.closed_count }}
-          </span>
+          <span class="leading-tight whitespace-nowrap">{{ t.name }}</span>
+          <div class="flex items-center gap-1 h-[18px]">
+            <span v-if="t.overdue_count > 0"
+                  class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
+              {{ t.overdue_count }}
+            </span>
+            <span v-if="t.open_count > 0"
+                  class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
+              {{ t.open_count }}
+            </span>
+            <span v-if="t.closed_count > 0"
+                  class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-green-500 text-white leading-none">
+              {{ t.closed_count }}
+            </span>
+            <span v-if="!t.overdue_count && !t.open_count && !t.closed_count"
+                  class="text-xs text-gray-300">—</span>
+          </div>
         </button>
       </div>
 
