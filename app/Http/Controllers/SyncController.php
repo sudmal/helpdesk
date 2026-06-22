@@ -44,7 +44,7 @@ class SyncController extends Controller
             'service_type_id' => $request->input('service_type_id'),
             'brigade_id'      => $brigade->id,
             'phone'           => $request->input('phone'),
-            'description'     => $request->input('description', ''),
+            'description'     => $request->input('description') ?? '',
             'scheduled_at'    => $scheduledAt,
             'priority'        => 'normal',
         ], $creator);
