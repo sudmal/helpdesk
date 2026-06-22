@@ -237,14 +237,16 @@
                           :title="sipTitle(m.ext)"></span>
                   </div>
                 </td>
-                <td class="px-3 py-1 w-full">
-                  <span :class="statusBadge(m.status)"
-                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
-                    <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
-                    {{ statusLabel(m.status) }}
-                  </span>
-                  <div v-if="m.caller_phone" class="text-xs font-mono text-gray-700 mt-0.5">{{ m.caller_phone }}</div>
-                  <div v-if="m.caller_address" class="text-xs text-gray-500 leading-tight">{{ m.caller_address }}</div>
+                <td class="px-3 py-1 w-full min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap min-w-0">
+                    <span :class="statusBadge(m.status)"
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0">
+                      <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
+                      {{ statusLabel(m.status) }}
+                    </span>
+                    <span v-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
+                    <span v-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
+                  </div>
                 </td>
                 <td class="px-3 py-1 text-right">
                   <template v-if="m.secs > 0">
@@ -280,7 +282,20 @@
         <div v-if="qHistory.length === 0" class="flex items-center justify-center h-48 text-gray-400 text-sm">
           {{ qLoading ? 'Загрузка...' : 'Нет данных за выбранный период' }}
         </div>
-        <canvas v-else ref="queueCanvas" style="max-height:300px"></canvas>
+        <template v-else>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-3 text-xs text-gray-500">
+            <div class="flex items-center gap-1.5">
+              <span class="inline-block w-5 h-0.5 rounded" style="background:#f59e0b"></span>Ожидают в очереди
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="inline-block w-5 h-0.5 rounded" style="background:#3b82f6"></span>Разговаривают
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="inline-block w-5 h-0.5 rounded" style="background:#22c55e"></span>Активных операторов
+            </div>
+          </div>
+          <canvas ref="queueCanvas" style="max-height:260px"></canvas>
+        </template>
       </div>
     </div>
 
@@ -510,7 +525,7 @@ function renderChart() {
     options: {
       responsive: true, maintainAspectRatio: true, animation: false,
       interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { position: 'top', labels: { font: { size: 12 } } } },
+      plugins: { legend: { display: false } },
       scales: {
         x: { ticks: { maxTicksLimit: 12, font: { size: 11 } } },
         y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },
