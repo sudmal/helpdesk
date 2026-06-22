@@ -629,8 +629,13 @@ async function doBulkRescheduleOverdue() {
 // ── Тултип ──
 const tooltip = reactive({ show: false, x: 0, y: 0, ticket: null })
 function showTooltip(e, t) {
+  const tooltipH = 220
+  const spaceBelow = window.innerHeight - e.clientY
+  const y = spaceBelow < tooltipH
+    ? Math.max(e.clientY - tooltipH - 10, 8)
+    : e.clientY - 10
   tooltip.x = Math.min(e.clientX + 16, window.innerWidth - 300)
-  tooltip.y = Math.max(e.clientY - 10, 8)
+  tooltip.y = y
   tooltip.ticket = t
   tooltip.show = true
 }
