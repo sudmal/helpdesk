@@ -879,6 +879,7 @@ const props = defineProps({
 const activeTab = ref('types')
 const tabs = [
   { key: 'types',         label: 'Типы заявок' },
+  { key: 'svc-list',      label: 'Услуги (запросы)' },
   { key: 'services',      label: 'Участки' },
   { key: 'territories',   label: 'Территории' },
   { key: 'statuses',      label: 'Статусы' },
@@ -887,7 +888,6 @@ const tabs = [
   { key: 'general',       label: 'Общие' },
   { key: 'notifications', label: 'Уведомления' },
   { key: 'lanbilling',    label: 'LANBilling' },
-  { key: 'svc-list',      label: 'Услуги (запросы)' },
 ]
 
 // ── Список услуг (Запросы услуг) ────────────────────────────────────
