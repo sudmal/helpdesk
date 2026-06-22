@@ -367,7 +367,7 @@ class TicketController extends Controller
     public function bulkClose(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
-            'ids'        => 'required|array|min:1|max:100',
+            'ids'        => 'required|array|min:1|max:500',
             'ids.*'      => 'integer|exists:tickets,id',
             'comment'    => 'nullable|string|max:2000',
             'act_number' => 'nullable|string|max:50',
@@ -391,7 +391,7 @@ class TicketController extends Controller
     public function bulkReschedule(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
-            'ids'          => 'required|array|min:1|max:100',
+            'ids'          => 'required|array|min:1|max:500',
             'ids.*'        => 'integer|exists:tickets,id',
             'scheduled_at' => 'required|date',
             'comment'      => 'nullable|string|max:2000',
