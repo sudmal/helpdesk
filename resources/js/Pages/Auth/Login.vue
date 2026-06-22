@@ -12,8 +12,6 @@
         <div class="inline-flex items-center justify-center w-16 h-16 mb-4 drop-shadow-xl">
           <img src="/logo.png" alt="Logo" class="w-full h-full"/>
         </div>
-        <h1 class="text-2xl font-bold text-white">HelpDesk</h1>
-        <p class="text-blue-300 text-sm mt-1">Система управления заявками</p>
       </div>
 
       <!-- Форма -->
@@ -36,7 +34,7 @@
           </div>
 
           <div>
-            <label class="block text-sm text-blue-200 mb-1.5">Логин или Email</label>
+            <label class="block text-sm text-blue-200 mb-1.5">Логин</label>
             <input v-model="form.email"
                    type="text"
                    required
@@ -109,9 +107,6 @@
         </form>
       </div>
 
-      <p class="text-center text-blue-400/60 text-xs mt-6">
-        HelpDesk v1.0 · Управление заявками техподдержки
-      </p>
     </div>
   </div>
 </template>
