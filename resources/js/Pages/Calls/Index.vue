@@ -28,7 +28,7 @@
         </div>
         <div class="flex-1 min-w-48">
           <label class="block text-xs text-gray-500 mb-1">Адрес (из биллинга)</label>
-          <input v-model="f.address" @keydown.enter="apply" class="field-input" placeholder="Железнодорожный..." />
+          <input v-model="f.address" @keydown.enter="apply" class="field-input" placeholder="Шахтерский 38 71" />
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">Дата с</label>

@@ -18,7 +18,28 @@ class CallLogController extends Controller
             $q->where('phone', 'like', "%{$suffix}");
         }
         if ($request->filled('address')) {
-            $q->where('address_string', 'like', '%' . $request->address . '%');
+            $parts     = preg_split('/\s+/', trim($request->address));
+            $textParts = [];
+            $numParts  = [];
+            foreach ($parts as $part) {
+                if ($part === '') continue;
+                if (preg_match('/^\d+$/', $part)) {
+                    $numParts[] = $part;
+                } else {
+                    $textParts[] = $part;
+                }
+            }
+            $q->where(function ($query) use ($textParts, $numParts) {
+                foreach ($textParts as $text) {
+                    $query->where('address_string', 'like', '%' . $text . '%');
+                }
+                if (isset($numParts[0])) {
+                    $query->where('address_string', 'like', '%дом ' . $numParts[0] . '%');
+                }
+                if (isset($numParts[1])) {
+                    $query->where('address_string', 'like', '%кв ' . $numParts[1] . '%');
+                }
+            });
         }
         // default to today if no date filter provided (initial load)
         $dateFrom = $request->has('date_from') ? $request->date_from : now()->toDateString();
