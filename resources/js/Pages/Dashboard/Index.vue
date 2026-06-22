@@ -54,6 +54,14 @@
          class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-100 text-purple-700 text-xs font-medium hover:bg-purple-200 transition-colors whitespace-nowrap">
         ⚙️ {{ pendingServiceRequestsCount }} запросов услуг
       </a>
+      <!-- Только невыполненные -->
+      <button @click="navigate({ only_open: !props.onlyOpen || undefined })"
+              :class="['flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-medium transition-colors border',
+                       props.onlyOpen
+                         ? 'bg-blue-600 text-white border-blue-600'
+                         : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300']">
+        <span>{{ props.onlyOpen ? '●' : '○' }}</span> Только открытые
+      </button>
       <!-- Дата справа -->
       <div class="flex items-center gap-1 ml-auto">
         <button @click="changeDate(-1)"
@@ -381,6 +389,7 @@ const props = defineProps({
   serviceType:       Number,
   sort:              { type: String, default: 'scheduled_at' },
   sortDir:           { type: String, default: 'asc' },
+  onlyOpen:          { type: Boolean, default: false },
   pendingConnectionsCount: { type: Number, default: 0 },
   pendingServiceRequestsCount: { type: Number, default: 0 },
 })
@@ -469,6 +478,7 @@ function navigate(extra = {}) {
     service_type: props.serviceType,
     sort:         props.sort,
     dir:          props.sortDir,
+    only_open:    props.onlyOpen || undefined,
     ...extra,
   }, { preserveState: true, replace: true })
 }

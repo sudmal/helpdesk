@@ -37,9 +37,12 @@ class DashboardController extends Controller
         $openIds          = TicketStatus::where('is_final', false)->pluck('id');
         $overdueThreshold = Carbon::today();
 
+        $onlyOpen = $request->boolean('only_open', false);
+
         $todayTickets = (clone $scoped)
             ->with(['address', 'type', 'serviceType', 'status', 'brigade'])
             ->whereDate('scheduled_at', $date)
+            ->when($onlyOpen, fn($q) => $q->whereIn('status_id', $openIds))
             ->orderBy($sort, $sortDir)
             ->get();
 
@@ -114,6 +117,7 @@ class DashboardController extends Controller
             'serviceType'       => $serviceType ? (int)$serviceType : null,
             'sort'              => $sort,
             'sortDir'           => $sortDir,
+            'onlyOpen'          => $onlyOpen,
             'pendingConnectionsCount'        => ConnectionRequest::where('status', 'pending')->count(),
             'pendingServiceRequestsCount' => ServiceRequest::where('status', 'pending')->count(),
         ]);
