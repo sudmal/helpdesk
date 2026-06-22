@@ -1,42 +1,42 @@
 {
-  "_AppLayout-BUM_I7Iz.js": {
-    "file": "assets/AppLayout-BUM_I7Iz.js",
+  "_AppLayout-PToq7nwz.js": {
+    "file": "assets/AppLayout-PToq7nwz.js",
     "name": "AppLayout",
     "imports": [
       "resources/js/app.js"
     ]
   },
-  "_AttachmentUpload-DutqYYzp.js": {
-    "file": "assets/AttachmentUpload-DutqYYzp.js",
+  "_AttachmentUpload-DrXyE8zb.js": {
+    "file": "assets/AttachmentUpload-DrXyE8zb.js",
     "name": "AttachmentUpload",
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ]
   },
-  "_Badge-B0Hjnr50.js": {
-    "file": "assets/Badge-B0Hjnr50.js",
+  "_Badge-DMPNJgGF.js": {
+    "file": "assets/Badge-DMPNJgGF.js",
     "name": "Badge",
     "imports": [
       "resources/js/app.js"
     ]
   },
-  "_MaterialsForm-DSXQN9Q-.js": {
-    "file": "assets/MaterialsForm-DSXQN9Q-.js",
+  "_MaterialsForm-Dci4GJOK.js": {
+    "file": "assets/MaterialsForm-Dci4GJOK.js",
     "name": "MaterialsForm",
     "imports": [
       "resources/js/app.js"
     ]
   },
-  "_Modal-DmoKdXak.js": {
-    "file": "assets/Modal-DmoKdXak.js",
+  "_Modal-C5q7j6Ca.js": {
+    "file": "assets/Modal-C5q7j6Ca.js",
     "name": "Modal",
     "imports": [
       "resources/js/app.js"
     ]
   },
-  "_TimePicker-CgmFqZC_.js": {
-    "file": "assets/TimePicker-CgmFqZC_.js",
+  "_TimePicker-DXXg5sFc.js": {
+    "file": "assets/TimePicker-DXXg5sFc.js",
     "name": "TimePicker",
     "imports": [
       "resources/js/app.js"
@@ -46,8 +46,8 @@
     "file": "assets/Tip-LTrxpAwp.css",
     "src": "_Tip-!~{00r}~.js"
   },
-  "_Tip-5hKYMap0.js": {
-    "file": "assets/Tip-5hKYMap0.js",
+  "_Tip-p4F5SoDr.js": {
+    "file": "assets/Tip-p4F5SoDr.js",
     "name": "Tip",
     "imports": [
       "__plugin-vue_export-helper-DlAUqK2U.js",
@@ -65,27 +65,27 @@
     "file": "assets/auto-CFNrZGOd.js",
     "name": "auto"
   },
-  "_ru-CZ3-oooq.js": {
-    "file": "assets/ru-CZ3-oooq.js",
+  "_ru-igPyHCBU.js": {
+    "file": "assets/ru-igPyHCBU.js",
     "name": "ru",
     "imports": [
       "resources/js/app.js"
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-Bepx5h1k.css",
+    "file": "assets/app-Bo_dvMxg.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/js/Pages/Addresses/Index.vue": {
-    "file": "assets/Index-389tSiVv.js",
+    "file": "assets/Index-BlQ1nmG5.js",
     "name": "Index",
     "src": "resources/js/Pages/Addresses/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Modal-DmoKdXak.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Modal-C5q7j6Ca.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -93,7 +93,7 @@
     ]
   },
   "resources/js/Pages/Auth/Login.vue": {
-    "file": "assets/Login-ygtts_iQ.js",
+    "file": "assets/Login-CXscL-sk.js",
     "name": "Login",
     "src": "resources/js/Pages/Auth/Login.vue",
     "isDynamicEntry": true,
@@ -102,15 +102,15 @@
     ]
   },
   "resources/js/Pages/Brigades/Index.vue": {
-    "file": "assets/Index-P8_imUCQ.js",
+    "file": "assets/Index-BPFB24d7.js",
     "name": "Index",
     "src": "resources/js/Pages/Brigades/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Modal-DmoKdXak.js",
-      "_Tip-5hKYMap0.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Modal-C5q7j6Ca.js",
+      "_Tip-p4F5SoDr.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -118,77 +118,77 @@
     ]
   },
   "resources/js/Pages/Brigades/Schedule.vue": {
-    "file": "assets/Schedule-CBc2hUMf.js",
+    "file": "assets/Schedule-B9y2AbF9.js",
     "name": "Schedule",
     "src": "resources/js/Pages/Brigades/Schedule.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ],
     "css": [
       "assets/Schedule-CbTXZkz5.css"
     ]
   },
   "resources/js/Pages/Brigades/Show.vue": {
-    "file": "assets/Show-CYMCv2M_.js",
+    "file": "assets/Show-D59u3Rsy.js",
     "name": "Show",
     "src": "resources/js/Pages/Brigades/Show.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Tip-5hKYMap0.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Tip-p4F5SoDr.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ]
   },
   "resources/js/Pages/Calendar/Index.vue": {
-    "file": "assets/Index-CHnov3mW.js",
+    "file": "assets/Index-D9GYeGKE.js",
     "name": "Index",
     "src": "resources/js/Pages/Calendar/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ],
     "css": [
       "assets/Index--7kknDlf.css"
     ]
   },
   "resources/js/Pages/Calls/Index.vue": {
-    "file": "assets/Index-URLosVZI.js",
+    "file": "assets/Index-EScvsk7X.js",
     "name": "Index",
     "src": "resources/js/Pages/Calls/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
       "_auto-CFNrZGOd.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ]
   },
   "resources/js/Pages/ConnectionRequests/Index.vue": {
-    "file": "assets/Index-BI19-lxs.js",
+    "file": "assets/Index-DsMTuBy5.js",
     "name": "Index",
     "src": "resources/js/Pages/ConnectionRequests/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ]
   },
   "resources/js/Pages/Dashboard/Index.vue": {
-    "file": "assets/Index-BaqzCnfv.js",
+    "file": "assets/Index-BPpqhhnA.js",
     "name": "Index",
     "src": "resources/js/Pages/Dashboard/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_ru-CZ3-oooq.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Badge-B0Hjnr50.js",
-      "_Modal-DmoKdXak.js",
-      "_AttachmentUpload-DutqYYzp.js",
-      "_MaterialsForm-DSXQN9Q-.js",
+      "_ru-igPyHCBU.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Badge-DMPNJgGF.js",
+      "_Modal-C5q7j6Ca.js",
+      "_AttachmentUpload-DrXyE8zb.js",
+      "_MaterialsForm-Dci4GJOK.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -196,56 +196,56 @@
     ]
   },
   "resources/js/Pages/Help/Index.vue": {
-    "file": "assets/Index-DmUowpa2.js",
+    "file": "assets/Index-oUVG6TGR.js",
     "name": "Index",
     "src": "resources/js/Pages/Help/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ]
   },
   "resources/js/Pages/Materials/Index.vue": {
-    "file": "assets/Index-DvYUNHex.js",
+    "file": "assets/Index-DNkXiCui.js",
     "name": "Index",
     "src": "resources/js/Pages/Materials/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Modal-DmoKdXak.js"
+      "_AppLayout-PToq7nwz.js",
+      "_Modal-C5q7j6Ca.js"
     ]
   },
   "resources/js/Pages/Reports/Index.vue": {
-    "file": "assets/Index-BOuiTwqz.js",
+    "file": "assets/Index-Dg66sxzu.js",
     "name": "Index",
     "src": "resources/js/Pages/Reports/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
       "_auto-CFNrZGOd.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ]
   },
   "resources/js/Pages/ServiceRequests/Index.vue": {
-    "file": "assets/Index-Dw6DFxFc.js",
+    "file": "assets/Index-CDbpUB66.js",
     "name": "Index",
     "src": "resources/js/Pages/ServiceRequests/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js"
+      "_AppLayout-PToq7nwz.js"
     ]
   },
   "resources/js/Pages/Settings/Index.vue": {
-    "file": "assets/Index-Bsohx8CM.js",
+    "file": "assets/Index-DsUAJBlv.js",
     "name": "Index",
     "src": "resources/js/Pages/Settings/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Modal-DmoKdXak.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Modal-C5q7j6Ca.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -253,13 +253,13 @@
     ]
   },
   "resources/js/Pages/Settings/LanBilling.vue": {
-    "file": "assets/LanBilling-Br75aYgr.js",
+    "file": "assets/LanBilling-BeKdnWP3.js",
     "name": "LanBilling",
     "src": "resources/js/Pages/Settings/LanBilling.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
+      "_AppLayout-PToq7nwz.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -267,14 +267,14 @@
     ]
   },
   "resources/js/Pages/Settings/Users.vue": {
-    "file": "assets/Users-D6HsnK2o.js",
+    "file": "assets/Users-DANsqoZ_.js",
     "name": "Users",
     "src": "resources/js/Pages/Settings/Users.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Modal-DmoKdXak.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Modal-C5q7j6Ca.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -282,14 +282,14 @@
     ]
   },
   "resources/js/Pages/Territories/Index.vue": {
-    "file": "assets/Index-CFYjdNf9.js",
+    "file": "assets/Index-xxSqxZys.js",
     "name": "Index",
     "src": "resources/js/Pages/Territories/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Modal-DmoKdXak.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Modal-C5q7j6Ca.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -297,17 +297,17 @@
     ]
   },
   "resources/js/Pages/Tickets/Create.vue": {
-    "file": "assets/Create-B3IqdT9h.js",
+    "file": "assets/Create-BNmjD5fT.js",
     "name": "Create",
     "src": "resources/js/Pages/Tickets/Create.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Badge-B0Hjnr50.js",
-      "_TimePicker-CgmFqZC_.js",
-      "_AttachmentUpload-DutqYYzp.js",
-      "_Modal-DmoKdXak.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Badge-DMPNJgGF.js",
+      "_TimePicker-DXXg5sFc.js",
+      "_AttachmentUpload-DrXyE8zb.js",
+      "_Modal-C5q7j6Ca.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -315,13 +315,13 @@
     ]
   },
   "resources/js/Pages/Tickets/Edit.vue": {
-    "file": "assets/Edit-BV5Kmir_.js",
+    "file": "assets/Edit-BR6TAowp.js",
     "name": "Edit",
     "src": "resources/js/Pages/Tickets/Edit.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_AppLayout-BUM_I7Iz.js",
+      "_AppLayout-PToq7nwz.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -329,32 +329,32 @@
     ]
   },
   "resources/js/Pages/Tickets/Index.vue": {
-    "file": "assets/Index-DuqoDnZg.js",
+    "file": "assets/Index-Bh-OXiXf.js",
     "name": "Index",
     "src": "resources/js/Pages/Tickets/Index.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_ru-CZ3-oooq.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Badge-B0Hjnr50.js",
-      "_Modal-DmoKdXak.js"
+      "_ru-igPyHCBU.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Badge-DMPNJgGF.js",
+      "_Modal-C5q7j6Ca.js"
     ]
   },
   "resources/js/Pages/Tickets/Show.vue": {
-    "file": "assets/Show-ZvI9nskz.js",
+    "file": "assets/Show-B3tW08HG.js",
     "name": "Show",
     "src": "resources/js/Pages/Tickets/Show.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_ru-CZ3-oooq.js",
-      "_AppLayout-BUM_I7Iz.js",
-      "_Badge-B0Hjnr50.js",
-      "_Modal-DmoKdXak.js",
-      "_TimePicker-CgmFqZC_.js",
-      "_MaterialsForm-DSXQN9Q-.js",
-      "_AttachmentUpload-DutqYYzp.js",
+      "_ru-igPyHCBU.js",
+      "_AppLayout-PToq7nwz.js",
+      "_Badge-DMPNJgGF.js",
+      "_Modal-C5q7j6Ca.js",
+      "_TimePicker-DXXg5sFc.js",
+      "_MaterialsForm-Dci4GJOK.js",
+      "_AttachmentUpload-DrXyE8zb.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -362,7 +362,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-C8lLPE4w.js",
+    "file": "assets/app-bN0ZrmPN.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,

@@ -17,6 +17,8 @@ class ReportsController extends Controller
         $fromDate = Carbon::parse($from)->startOfDay();
         $toDate   = Carbon::parse($to)->endOfDay();
 
+        $callStats = $this->callStats($fromDate, $toDate);
+
         return Inertia::render('Reports/Index', [
             'from'               => $from,
             'to'                 => $to,
@@ -25,6 +27,7 @@ class ReportsController extends Controller
             'materialDynamics'   => $this->materialDynamics($fromDate, $toDate),
             'deadlineCompliance' => $this->deadlineCompliance($fromDate, $toDate),
             'distribution'       => $this->distribution($fromDate, $toDate),
+            'callStats'          => $callStats,
         ]);
     }
 
@@ -217,4 +220,64 @@ class ReportsController extends Controller
             'byWeekday' => ['labels' => $dowLabels,  'datasets' => $byDow],
         ];
     }
+}
+
+// NOTE: appended method - move inside class manually if needed
+    private function callStats(Carbon $from, Carbon $to): array
+    {
+        $rows = DB::table('call_daily_stats')
+            ->whereBetween('stat_date', [$from->toDateString(), $to->toDateString()])
+            ->selectRaw('
+                hour,
+                SUM(total_calls)              as total_calls,
+                SUM(answered)                 as answered,
+                SUM(missed)                   as missed,
+                ROUND(AVG(avg_wait_sec), 1)   as avg_wait_sec,
+                MAX(max_wait_sec)             as max_wait_sec,
+                MAX(max_queue_depth)          as max_queue_depth,
+                ROUND(AVG(avg_operators), 1)  as avg_operators
+            ')
+            ->groupBy('hour')
+            ->orderBy('hour')
+            ->get()
+            ->keyBy('hour');
+
+        $hours = [];
+        for ($h = 0; $h < 24; $h++) {
+            $r      = $rows->get($h);
+            $total  = (int)($r?->total_calls ?? 0);
+            $ans    = (int)($r?->answered    ?? 0);
+            $missed = (int)($r?->missed      ?? 0);
+            $hours[] = [
+                'hour'         => $h,
+                'total'        => $total,
+                'answered'     => $ans,
+                'missed'       => $missed,
+                'miss_rate'    => $total > 0 ? round(100 * $missed / $total, 1) : 0,
+                'avg_wait'     => $r?->avg_wait_sec    ? (float)$r->avg_wait_sec    : null,
+                'max_wait'     => $r?->max_wait_sec    ? (int)$r->max_wait_sec      : null,
+                'max_queue'    => $r?->max_queue_depth ? (int)$r->max_queue_depth   : null,
+                'avg_operators'=> $r?->avg_operators   ? (float)$r->avg_operators   : null,
+            ];
+        }
+
+        $totalAll    = array_sum(array_column($hours, 'total'));
+        $totalAns    = array_sum(array_column($hours, 'answered'));
+        $totalMissed = array_sum(array_column($hours, 'missed'));
+        $peakHour    = collect($hours)->sortByDesc('total')->first();
+        $worstHour   = collect($hours)->where('total', '>', 2)->sortByDesc('miss_rate')->first();
+
+        return [
+            'hours'   => $hours,
+            'summary' => [
+                'total'       => $totalAll,
+                'answered'    => $totalAns,
+                'missed'      => $totalMissed,
+                'answer_rate' => $totalAll > 0 ? round(100 * $totalAns / $totalAll, 1) : 0,
+                'peak_hour'   => $peakHour  ? $peakHour['hour']  : null,
+                'worst_hour'  => $worstHour ? $worstHour['hour'] : null,
+            ],
+        ];
+    }
+
 }

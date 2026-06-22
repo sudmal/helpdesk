@@ -12,6 +12,7 @@ class Kernel extends ConsoleKernel
         // Утренняя сводка и вечерний отчёт — время берётся из настроек БД
         $schedule->command('helpdesk:daily-summary --scheduled')->everyMinute()->withoutOverlapping();
         $schedule->command('helpdesk:evening-report --scheduled')->everyMinute()->withoutOverlapping();
+        $schedule->command('helpdesk:aggregate-call-stats')->dailyAt('00:05');
     }
 
     protected function commands(): void

@@ -244,6 +244,40 @@
 
     </div><!-- end reports card -->
 
+
+    <!-- Работа ТП -->
+    <div v-show="activeTab === 'callcenter'" class="p-4 space-y-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-3 text-center"><p class="text-2xl font-bold text-gray-800">{{ callStats.summary?.total ?? 0 }}</p><p class="text-xs text-gray-500 mt-0.5">Всего звонков</p></div>
+        <div class="bg-green-50 rounded-xl border border-green-200 p-3 text-center"><p class="text-2xl font-bold text-green-700">{{ callStats.summary?.answer_rate ?? 0 }}%</p><p class="text-xs text-gray-500 mt-0.5">Отвечено</p></div>
+        <div class="bg-red-50 rounded-xl border border-red-200 p-3 text-center"><p class="text-2xl font-bold text-red-600">{{ callStats.summary?.missed ?? 0 }}</p><p class="text-xs text-gray-500 mt-0.5">Пропущено</p></div>
+        <div class="bg-blue-50 rounded-xl border border-blue-200 p-3 text-center"><p class="text-2xl font-bold text-blue-700">{{ callStats.summary?.peak_hour != null ? callStats.summary.peak_hour + ':00' : '—' }}</p><p class="text-xs text-gray-500 mt-0.5">Пиковый час</p></div>
+        <div class="bg-orange-50 rounded-xl border border-orange-200 p-3 text-center"><p class="text-2xl font-bold text-orange-600">{{ callStats.summary?.worst_hour != null ? callStats.summary.worst_hour + ':00' : '—' }}</p><p class="text-xs text-gray-500 mt-0.5">Больше пропусков</p></div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-200 p-4"><h2 class="text-sm font-semibold text-gray-600 mb-3">Распределение звонков по часам</h2>
+        <div v-if="!(callStats.hours ?? []).some(h => h.total > 0)" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
+        <canvas v-else ref="callcenterCanvas" style="max-height:320px" />
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium"><th class="text-left px-3 py-2.5">Час</th><th class="text-right px-3 py-2.5">Всего</th><th class="text-right px-3 py-2.5">Отвечено</th><th class="text-right px-3 py-2.5">Пропущено</th><th class="text-right px-3 py-2.5">Пропуск %</th><th class="text-right px-3 py-2.5 hidden md:table-cell">Ср. ожидание</th><th class="text-right px-3 py-2.5 hidden lg:table-cell">Макс. очередь</th><th class="text-right px-3 py-2.5 hidden lg:table-cell">Ср. операторов</th></tr></thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr v-if="!(callStats.hours ?? []).some(h => h.total > 0)"><td colspan="8" class="text-center py-6 text-gray-400 text-xs">—</td></tr>
+            <tr v-for="h in (callStats.hours ?? []).filter(h => h.total > 0)" :key="h.hour" :class="[h.miss_rate >= 40 ? 'bg-red-50 hover:bg-red-100' : h.miss_rate >= 20 ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-gray-50']">
+              <td class="px-3 py-1.5 font-medium text-gray-700 tabular-nums">{{ String(h.hour).padStart(2,'0') }}:00</td>
+              <td class="px-3 py-1.5 text-right tabular-nums font-medium">{{ h.total }}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums text-green-700">{{ h.answered }}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums text-red-600">{{ h.missed }}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums"><span :class="['px-1.5 py-0.5 rounded text-xs font-medium', h.miss_rate >= 40 ? 'bg-red-100 text-red-700' : h.miss_rate >= 20 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600']">{{ h.miss_rate }}%</span></td>
+              <td class="px-3 py-1.5 text-right tabular-nums text-gray-500 hidden md:table-cell">{{ h.avg_wait != null ? Math.round(h.avg_wait) + 'c' : '—' }}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums hidden lg:table-cell"><span v-if="h.max_queue != null" :class="['font-medium', h.max_queue > (h.avg_operators ?? 999) ? 'text-red-600' : 'text-gray-700']">{{ h.max_queue }}</span><span v-else class="text-gray-400">—</span></td>
+              <td class="px-3 py-1.5 text-right tabular-nums text-gray-500 hidden lg:table-cell">{{ h.avg_operators != null ? h.avg_operators : '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </AppLayout>
 </template>
 
@@ -459,6 +493,34 @@ function buildDistribution() {
 function switchDistMode(mode) {
   distMode.value = mode
   nextTick(() => buildDistribution())
+}
+
+
+function buildCallcenter() {
+  destroy('callcenter')
+  if (!callcenterCanvas.value) return
+  const hours = props.callStats?.hours ?? []
+  if (!hours.some(h => h.total > 0)) return
+  const labels = hours.map(h => h.hour + ':00')
+  const answered = hours.map(h => h.answered)
+  const missed = hours.map(h => h.missed)
+  const maxQ = hours.map(h => h.max_queue ?? null)
+  const avgOps = hours.map(h => h.avg_operators ?? null)
+  charts.callcenter = new Chart(callcenterCanvas.value, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Отвечено', data: answered, backgroundColor: '#22c55e', stack: 'a' },
+      { label: 'Пропущено', data: missed, backgroundColor: '#ef4444', stack: 'a' },
+      { label: 'Макс. очередь', data: maxQ, type: 'line', borderColor: '#f59e0b', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, yAxisID: 'y2', tension: 0.3 },
+      { label: 'Ср. операторов', data: avgOps, type: 'line', borderColor: '#6366f1', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [4,3], yAxisID: 'y2', tension: 0.3 },
+    ]},
+    options: { responsive: true, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top' } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 }, stacked: true, title: { display: true, text: 'Звонки' } },
+        y2: { beginAtZero: true, position: 'right', ticks: { precision: 1 }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Очередь / Операторы' } },
+      },
+    },
+  })
 }
 
 function buildForTab(tab) {
