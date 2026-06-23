@@ -88,7 +88,7 @@
               <div v-for="(slot, i) in timeSlots" :key="slot.minutes"
                    class="flex items-start justify-end pr-2 pt-0.5 border-b border-gray-100 text-xs text-gray-400"
                    :style="{ height: slotHeights[i] + 'px' }">
-                {{ slot.label }}
+                <span v-if="slotHeights[i] > COLLAPSED_H">{{ slot.label }}</span>
               </div>
             </div>
 
@@ -267,7 +267,8 @@ const props = defineProps({
 
 const BASE_H  = 22
 const EVENT_H = 20
-const PAD     = 2
+const PAD       = 2
+const COLLAPSED_H = 4
 
 const view                = ref('overview')
 const calKey              = ref(0)
@@ -325,7 +326,7 @@ function getSlotIdx(startStr) {
 }
 
 const slotHeights = computed(() => {
-  const heights = timeSlots.value.map(() => BASE_H)
+  const heights = timeSlots.value.map(() => COLLAPSED_H)
   for (const col of ['today', 'tomorrow']) {
     const bySlot = {}
     for (const ev of (overviewEvents.value[col] ?? [])) {
