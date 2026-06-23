@@ -9,6 +9,12 @@
       </button>
     </template>
 
+    <div class="mb-2">
+      <input v-model="search" type="search" placeholder="Поиск по коду или наименованию..."
+             class="w-full max-w-sm border border-gray-200 rounded-xl px-3 py-1.5 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
+    </div>
+
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
       <table class="w-full text-sm">
         <thead>
@@ -25,7 +31,7 @@
           <tr v-if="!materials.length">
             <td colspan="6" class="text-center py-8 text-gray-400 text-xs">Справочник пуст</td>
           </tr>
-          <tr v-for="m in materials" :key="m.id"
+          <tr v-for="m in filtered" :key="m.id"
               :class="['transition-colors', m.is_active ? 'hover:bg-gray-50' : 'opacity-40 hover:bg-gray-50']">
             <td v-if="canManage" class="px-3 py-0.5 text-center font-mono text-xs text-blue-400 cursor-pointer hover:text-blue-600 hover:underline" @click="openEdit(m)">{{ m.code || '—' }}</td>
             <td v-else class="px-3 py-0.5 text-center font-mono text-xs text-gray-400">{{ m.code || '—' }}</td>
@@ -131,12 +137,22 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
 
 const props = defineProps({ materials: Array, canManage: Boolean })
+
+const search = ref('')
+const filtered = computed(() => {
+  const q = search.value.toLowerCase().trim()
+  if (!q) return props.materials
+  return props.materials.filter(m =>
+    (m.code || '').toLowerCase().includes(q) ||
+    (m.name || '').toLowerCase().includes(q)
+  )
+})
 
 const showModal = ref(false)
 const editing   = ref(null)
