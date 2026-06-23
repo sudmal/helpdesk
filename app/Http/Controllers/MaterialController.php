@@ -10,7 +10,7 @@ class MaterialController extends Controller
     public function index()
     {
         return Inertia::render('Materials/Index', [
-            'materials'  => Material::orderBy('sort_order')->orderBy('name')->get(),
+            'materials'  => Material::orderBy('code')->get(),
             'canManage'  => auth()->user()->hasPermission('materials.manage'),
         ]);
     }
