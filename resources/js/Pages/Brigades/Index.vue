@@ -30,8 +30,8 @@
                  class="text-xs text-blue-600 hover:text-blue-800 font-medium mr-3 transition-colors">
                 Расписание
               </a>
-              <button @click="edit(b)" class="text-xs text-gray-400 hover:text-blue-600 mr-2 transition-colors">✏</button>
-              <button @click="del(b)" class="text-xs text-gray-400 hover:text-red-500 transition-colors">🗑</button>
+              <button @click="edit(b)" class="text-xs text-blue-600 hover:text-blue-800 mr-3 transition-colors">Изменить</button>
+              <button @click="del(b)" class="text-xs text-gray-400 hover:text-red-500 transition-colors">Удалить</button>
             </td>
           </tr>
         </tbody>

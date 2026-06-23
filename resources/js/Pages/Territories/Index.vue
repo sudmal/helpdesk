@@ -5,29 +5,33 @@
       <button @click="showModal = true" class="btn-primary text-sm">+ Добавить</button>
     </template>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="t in territories" :key="t.id"
-           class="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <span class="text-blue-500 text-lg">📍</span>
-            <div>
-              <h3 class="font-semibold text-gray-800">{{ t.name }}</h3>
-              <p class="text-xs text-gray-400">{{ t.description }}</p>
-            </div>
-          </div>
-          <div class="flex gap-1">
-            <button @click="edit(t)" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50">✏️</button>
-            <button @click="del(t)" class="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50">🗑</button>
-          </div>
-        </div>
-        <div class="text-sm text-gray-500">
-          Бригад: {{ t.brigades?.length ?? 0 }}
-          <span v-if="t.brigades?.length" class="text-gray-400 text-xs">
-            ({{ t.brigades.map(b => b.name).join(', ') }})
-          </span>
-        </div>
-      </div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-medium">
+            <th class="text-left px-4 py-2">Название</th>
+            <th class="text-left px-4 py-2">Описание</th>
+            <th class="text-left px-4 py-2">Бригады</th>
+            <th class="px-3 py-2 w-20"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr v-if="!territories.length">
+            <td colspan="4" class="text-center py-8 text-gray-400 text-xs">Территории не добавлены</td>
+          </tr>
+          <tr v-for="t in territories" :key="t.id" class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-2 font-medium text-gray-800">{{ t.name }}</td>
+            <td class="px-4 py-2 text-gray-500 text-xs">{{ t.description || '—' }}</td>
+            <td class="px-4 py-2 text-gray-500 text-xs">
+              {{ t.brigades?.length ? t.brigades.map(b => b.name).join(', ') : '—' }}
+            </td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <button @click="edit(t)" class="text-xs text-blue-600 hover:text-blue-800 mr-3 transition-colors">Изменить</button>
+              <button @click="del(t)" class="text-xs text-gray-400 hover:text-red-500 transition-colors">Удалить</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <Modal v-if="showModal" :title="editing ? 'Редактировать территорию' : 'Новая территория'" @close="close">
