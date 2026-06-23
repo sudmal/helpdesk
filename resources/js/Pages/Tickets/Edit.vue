@@ -2,17 +2,17 @@
   <Head :title="`Редактирование ${ticket.number}`" />
   <AppLayout :title="`Редактирование заявки ${ticket.number}`">
     <div class="max-w-3xl">
-      <form @submit.prevent="submit" class="space-y-5">
+      <form @submit.prevent="submit" class="space-y-3">
 
         <!-- Адрес -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <h3 class="font-medium text-sm text-gray-700">Адрес абонента</h3>
 
           <div class="relative">
             <Icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input v-model="addressQuery" @input="searchAddresses"
                    placeholder="Поиск адреса..."
-                   class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm
+                   class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm
                           focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
             <div v-if="suggestions.length"
                  class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
@@ -26,16 +26,16 @@
             </div>
           </div>
 
-          <div v-if="currentAddress" class="bg-blue-50 rounded-xl p-3 text-sm text-blue-800">
+          <div v-if="currentAddress" class="bg-blue-50 rounded-xl p-2.5 text-sm text-blue-800">
             📍 {{ currentAddress }}
           </div>
         </div>
 
         <!-- Детали -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <h3 class="font-medium text-sm text-gray-700">Детали заявки</h3>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="field-label">Тип заявки *</label>
               <select v-model="form.type_id" required class="field-input">
@@ -85,18 +85,11 @@
               </select>
             </div>
 
-            <div>
-              <label class="field-label">Монтажник</label>
-              <select v-model="form.assigned_to" class="field-input">
-                <option value="">— Не назначен —</option>
-                <option v-for="m in selectedBrigadeMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
-              </select>
-            </div>
           </div>
 
           <div>
             <label class="field-label">Описание *</label>
-            <textarea v-model="form.description" rows="5" required
+            <textarea v-model="form.description" rows="4" required
                       class="field-input resize-none"></textarea>
             <FieldError :error="form.errors.description" />
           </div>
@@ -178,5 +171,5 @@ const FieldError = {
 .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:opacity-40; }
 .btn-outline  { @apply border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors; }
 .field-label  { @apply block text-xs text-gray-500 mb-1; }
-.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-slate-50; }
+.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-slate-50; }
 </style>
