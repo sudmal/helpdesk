@@ -5,36 +5,37 @@
       <button @click="showModal = true" class="btn-primary text-sm">+ Добавить</button>
     </template>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="b in brigades" :key="b.id"
-           class="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-green-100 text-green-700 flex items-center justify-center text-lg">👷</div>
-            <div>
-              <h3 class="font-semibold text-gray-800">{{ b.name }}</h3>
-              <p class="text-xs text-gray-400">{{ b.territories?.map(t => t.name).join(', ') || 'Без территории' }}</p>
-            </div>
-          </div>
-          <div class="flex gap-1">
-            <button @click="edit(b)" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50">✏️</button>
-            <button @click="del(b)" class="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50">🗑</button>
-          </div>
-        </div>
-        <div class="text-sm text-gray-500 space-y-1">
-          <p>Бригадир: <span class="font-medium text-gray-700">{{ b.foreman?.name ?? '—' }}</span></p>
-          <p>Участников: <span class="font-medium">{{ b.members_count ?? 0 }}</span></p>
-        </div>
-        <div class="mt-3 pt-3 border-t border-gray-100">
-          <a :href="route('brigades.schedule.show', b.id)"
-             class="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
-            Расписание
-          </a>
-        </div>
-      </div>
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-medium">
+            <th class="text-left px-4 py-2">Название</th>
+            <th class="text-left px-4 py-2">Территории</th>
+            <th class="text-left px-4 py-2">Бригадир</th>
+            <th class="text-center px-3 py-2 w-24">Участников</th>
+            <th class="px-3 py-2 w-28"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr v-if="!brigades.length">
+            <td colspan="5" class="text-center py-8 text-gray-400 text-xs">Бригады не найдены</td>
+          </tr>
+          <tr v-for="b in brigades" :key="b.id" class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-2 font-medium text-gray-800">{{ b.name }}</td>
+            <td class="px-4 py-2 text-xs text-gray-400">{{ b.territories?.map(t => t.name).join(', ') || '—' }}</td>
+            <td class="px-4 py-2 text-gray-700">{{ b.foreman?.name ?? '—' }}</td>
+            <td class="px-3 py-2 text-center text-gray-600">{{ b.members_count ?? 0 }}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <a :href="route('brigades.schedule.show', b.id)"
+                 class="text-xs text-blue-600 hover:text-blue-800 font-medium mr-3 transition-colors">
+                Расписание
+              </a>
+              <button @click="edit(b)" class="text-xs text-gray-400 hover:text-blue-600 mr-2 transition-colors">✏</button>
+              <button @click="del(b)" class="text-xs text-gray-400 hover:text-red-500 transition-colors">🗑</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <Modal v-if="showModal" size="xl" :title="editing ? 'Редактировать бригаду' : 'Новая бригада'" @close="close">
