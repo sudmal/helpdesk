@@ -22,7 +22,7 @@ class BrigadeController extends Controller
                         ->join('brigades', 'brigade_user.brigade_id', '=', 'brigades.id')
                         ->select('brigade_user.user_id', 'brigades.id as brigade_id', 'brigades.name as brigade_name')
                         ->get()->keyBy('user_id');
-                    return User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
+                    return User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman', 'admin']))
                         ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
                         ->map(fn($u) => [
                             'id' => $u->id, 'name' => $u->name,
@@ -126,7 +126,7 @@ class BrigadeController extends Controller
             ->join('brigades', 'brigade_user.brigade_id', '=', 'brigades.id')
             ->where('brigade_user.brigade_id', '!=', $brigade->id)
             ->pluck('brigades.name', 'brigade_user.user_id')->toArray();
-        $technicians = User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman']))
+        $technicians = User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman', 'admin']))
             ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
             ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'in_brigade_name' => $otherBrigadeNames[$u->id] ?? null]);
         return \Inertia\Inertia::render('Brigades/Show', [
