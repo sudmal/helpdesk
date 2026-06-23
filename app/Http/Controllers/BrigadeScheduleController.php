@@ -131,20 +131,29 @@ class BrigadeScheduleController extends Controller
             $schedule[$row->user_id][$row->date->format('Y-m-d')] = $row->status;
         }
 
-        // Row 1: merged title
-        $title = "Расписание бригады «{$brigade->name}» — {$this->monthNames[$mon]} {$year}";
-        $rows  = [["<colspan:{$totalCols}><fill:#DBEAFE><size:12><b><align:center>{$title}</align></b></size></fill>"]];
+        // Helper: 1-based column number to Excel letter
+        $colLetter = static function (int $n): string {
+            $r = '';
+            while ($n > 0) { $n--; $r = chr(65 + $n % 26) . $r; $n = (int)($n / 26); }
+            return $r;
+        };
+
+        // Row 1: title (merged across all columns)
+        $title    = "Расписание бригады «{$brigade->name}» — {$this->monthNames[$mon]} {$year}";
+        $titleRow = ["<b><center><style bgcolor=\"DBEAFE\" font-size=\"12\">{$title}</style></center></b>"];
+        for ($i = 1; $i < $totalCols; $i++) { $titleRow[] = ''; }
+        $rows = [$titleRow];
 
         // Row 2: column headers
-        $headerRow = ['<fill:#F3F4F6><b><align:center>Сотрудник</align></b></fill>'];
+        $headerRow = ['<b><style bgcolor="F3F4F6">Сотрудник</style></b>'];
         foreach ($days as $day) {
-            $bg = $day['isHoliday'] ? '#EDE9FE'
-                : ($day['isSaturday'] ? '#E0E7FF'
-                : ($day['isWeekend']  ? '#FEE2E2'
-                : '#F3F4F6'));
-            $headerRow[] = "<fill:{$bg}><b><size:8><align:center>{$day['day']}<br>{$day['dow']}</align></size></b></fill>";
+            $bg = $day['isHoliday'] ? 'EDE9FE'
+                : ($day['isSaturday'] ? 'E0E7FF'
+                : ($day['isWeekend']  ? 'FEE2E2'
+                : 'F3F4F6'));
+            $headerRow[] = "<b><center><style bgcolor=\"{$bg}\" font-size=\"8\">{$day['day']} {$day['dow']}</style></center></b>";
         }
-        $headerRow[] = '<fill:#F3F4F6><b><align:center>Вых.</align></b></fill>';
+        $headerRow[] = '<b><center><style bgcolor="F3F4F6">Вых.</style></center></b>';
         $rows[] = $headerRow;
 
         // Data rows
@@ -158,10 +167,10 @@ class BrigadeScheduleController extends Controller
                 $status = $day['isHoliday'] ? 'holiday' : ($schedule[$member->id][$day['date']] ?? 'work');
 
                 [$label, $bg] = match ($status) {
-                    'holiday'   => ['П', '#EDE9FE'],
-                    'off'       => ['В', '#D1D5DB'],
-                    'requested' => ['?', '#FCD34D'],
-                    default     => ['Р', '#86EFAC'],
+                    'holiday'   => ['П', 'EDE9FE'],
+                    'off'       => ['В', 'D1D5DB'],
+                    'requested' => ['?', 'FCD34D'],
+                    default     => ['Р', '86EFAC'],
                 };
 
                 if ($status !== 'work') {
@@ -170,20 +179,20 @@ class BrigadeScheduleController extends Controller
                     $workersPerDay[$i]++;
                 }
 
-                $row[] = "<fill:{$bg}><b><size:8><align:center>{$label}</align></size></b></fill>";
+                $row[] = "<b><center><style bgcolor=\"{$bg}\">{$label}</style></center></b>";
             }
 
-            $row[]  = "<align:center>{$offCount}</align>";
+            $row[]  = "<center>{$offCount}</center>";
             $rows[] = $row;
         }
 
         // Footer row
-        $footerRow = ['<fill:#F9FAFB><b>На участке</b></fill>'];
+        $footerRow = ['<b><style bgcolor="F9FAFB">На участке</style></b>'];
         foreach ($days as $i => $day) {
             if ($day['isHoliday']) {
-                $footerRow[] = '<fill:#F9FAFB><color:#D1D5DB><align:center>—</align></color></fill>';
+                $footerRow[] = '<center><style color="9CA3AF" bgcolor="F9FAFB">—</style></center>';
             } else {
-                $footerRow[] = "<fill:#F9FAFB><b><size:8><align:center>{$workersPerDay[$i]}</align></size></b></fill>";
+                $footerRow[] = "<b><center><style bgcolor=\"F9FAFB\">{$workersPerDay[$i]}</style></center></b>";
             }
         }
         $footerRow[] = '';
@@ -192,6 +201,10 @@ class BrigadeScheduleController extends Controller
         // Build xlsx
         require_once base_path('vendor/shuchkin/simplexlsxgen/src/SimpleXLSXGen.php');
         $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($rows);
+
+        // Merge title row
+        $xlsx->mergeCells('A1:' . $colLetter($totalCols) . '1');
+
         $xlsx->setColWidth(1, 22);
         for ($c = 2; $c <= $daysInMonth + 1; $c++) {
             $xlsx->setColWidth($c, 4.5);
