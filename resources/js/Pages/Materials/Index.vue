@@ -27,7 +27,8 @@
           </tr>
           <tr v-for="m in materials" :key="m.id"
               :class="['transition-colors', m.is_active ? 'hover:bg-gray-50' : 'opacity-40 hover:bg-gray-50']">
-            <td class="px-3 py-0.5 text-center font-mono text-xs text-gray-400">{{ m.code || '—' }}</td>
+            <td v-if="canManage" class="px-3 py-0.5 text-center font-mono text-xs text-blue-400 cursor-pointer hover:text-blue-600 hover:underline" @click="openEdit(m)">{{ m.code || '—' }}</td>
+            <td v-else class="px-3 py-0.5 text-center font-mono text-xs text-gray-400">{{ m.code || '—' }}</td>
             <td class="px-4 py-0.5 text-gray-800 text-sm">{{ m.name }}</td>
             <td class="px-3 py-0.5 text-gray-500 text-xs text-center">{{ m.unit }}</td>
             <td class="px-4 py-0.5 text-right font-mono tabular-nums text-sm">{{ formatPrice(m.price) }}</td>
