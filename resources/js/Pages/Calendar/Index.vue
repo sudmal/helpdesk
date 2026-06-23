@@ -66,16 +66,14 @@
           <div class="flex sticky top-0 bg-white z-10 border-b border-gray-200">
             <div class="flex-shrink-0 border-r border-gray-100" style="width: 60px"></div>
             <div v-for="col in columns" :key="col.key"
-                 class="flex-1 px-3 py-3 border-r border-gray-100 last:border-r-0"
+                 class="flex-1 px-3 py-1.5 border-r border-gray-100 last:border-r-0"
                  :class="col.key === 'overdue' ? 'bg-red-50' : 'bg-gray-50'">
-              <div class="text-sm font-semibold"
+              <div class="flex items-baseline gap-1.5 flex-wrap"
                    :class="col.key === 'overdue' ? 'text-red-700' : 'text-gray-700'">
-                {{ col.title }}
-                <span class="ml-1 text-xs font-normal opacity-60">
-                  ({{ (overviewEvents[col.key] ?? []).length }})
-                </span>
+                <span class="text-sm font-semibold">{{ col.title }}</span>
+                <span class="text-xs font-normal opacity-60">({{ (overviewEvents[col.key] ?? []).length }})</span>
+                <span class="text-xs text-gray-400 font-normal">{{ col.subtitle }}</span>
               </div>
-              <div class="text-xs text-gray-400 mt-0.5">{{ col.subtitle }}</div>
             </div>
           </div>
 
