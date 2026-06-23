@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Support\Facades\Schedule;
 
@@ -17,5 +17,17 @@ Schedule::command('helpdesk:morning-report --scheduled')->everyMinute()->without
 // Очистка неопределённых звонков (без адреса из биллинга) старше 2 дней — каждую ночь в 03:30
 Schedule::command('helpdesk:prune-calls --days=2')
     ->dailyAt('03:30')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Агрегация почасовой статистики звонков:
+// -- в 00:05 за вчера (полные данные за истёкшие сутки)
+Schedule::command('helpdesk:aggregate-call-stats')
+    ->dailyAt('00:05')
+    ->withoutOverlapping()
+    ->runInBackground();
+// -- каждый час за сегодня (чтобы текущий день отображался в отчёте)
+Schedule::command('helpdesk:aggregate-call-stats today')
+    ->hourly()
     ->withoutOverlapping()
     ->runInBackground();

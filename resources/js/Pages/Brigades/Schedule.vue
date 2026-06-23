@@ -133,7 +133,7 @@
                   <button
                           @click="toggleExclude(member.id)"
                           :title="localExcluded[member.id] ? 'Включить в расписание' : 'Исключить из расписания'"
-                          :class="['p-0.5 rounded transition-colors flex-shrink-0',
+                          :class="['p-0.5 rounded transition-colors flex-shrink-0 print:hidden',
                                    localExcluded[member.id] ? 'text-red-400 hover:text-red-600' : 'text-gray-300 hover:text-gray-500']">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
@@ -423,7 +423,8 @@ function changeMonth(delta) {
     background: #f0f0f0 !important;
     min-width: 110px !important;
     max-width: 110px !important;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
     font-size: 8pt !important;
   }
 
@@ -438,13 +439,23 @@ function changeMonth(delta) {
     white-space: nowrap;
   }
 
-  /* Буквы скрыты — статус передаётся только заливкой */
-  .sched-cell .cell-label { opacity: 0 !important; }
+  /* Скрываем текст — статус передаётся символом ::after */
+  .sched-cell .cell-label { opacity: 1 !important; font-size: 0 !important; }
 
-  /* Статусы: оттенки серого для Ч/Б */
-  .sched-cell[data-status="off"]       { background: #bbb !important; }
-  .sched-cell[data-status="requested"] { background: #ddd !important; }
-  .sched-cell[data-status="holiday"]   { background: #999 !important; }
+  /* Рабочий день — пусто */
   .sched-cell[data-status="work"]      { background: #fff !important; }
+  .sched-cell[data-status="work"]      .cell-label::after { content: ""; }
+
+  /* Выходной — жирный крестик */
+  .sched-cell[data-status="off"]       { background: #fff !important; }
+  .sched-cell[data-status="off"]       .cell-label::after { content: "×"; font-size: 10pt; font-weight: bold; color: #444; }
+
+  /* Праздник — П */
+  .sched-cell[data-status="holiday"]   { background: #fff !important; }
+  .sched-cell[data-status="holiday"]   .cell-label::after { content: "П"; font-size: 8pt; font-weight: bold; color: #000; }
+
+  /* Пожелание — ? */
+  .sched-cell[data-status="requested"] { background: #fff !important; }
+  .sched-cell[data-status="requested"] .cell-label::after { content: "?"; font-size: 9pt; font-weight: bold; color: #666; }
 }
 </style>

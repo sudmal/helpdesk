@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Head title="Отчёты" />
   <AppLayout title="Отчёты">
 
@@ -242,7 +242,6 @@
       </div>
     </div>
 
-    </div><!-- end reports card -->
 
 
     <!-- Работа ТП -->
@@ -278,6 +277,8 @@
       </div>
     </div>
 
+    </div><!-- end reports card -->
+
   </AppLayout>
 </template>
 
@@ -285,6 +286,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import Chart from 'chart.js/auto'
+Chart.defaults.animation = false
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
@@ -295,6 +297,7 @@ const props = defineProps({
   materialDynamics: Object,
   deadlineCompliance: Object,
   distribution: Object,
+  callStats: { type: Object, default: () => ({ hours: [], summary: {} }) },
 })
 
 const tabs = [
@@ -303,6 +306,7 @@ const tabs = [
   { id: 'materials',    label: 'Расход материалов' },
   { id: 'deadlines',    label: 'Соблюдение сроков' },
   { id: 'distribution', label: 'Распределение по дням' },
+  { id: 'callcenter',    label: 'Обработка звонков' },
 ]
 
 const activeTab    = ref('brigade')
@@ -316,6 +320,7 @@ const materialQtyCanvas  = ref(null)
 const materialAmtCanvas  = ref(null)
 const deadlineCanvas     = ref(null)
 const distributionCanvas = ref(null)
+const callcenterCanvas    = ref(null)
 
 const charts = {}
 
@@ -530,6 +535,7 @@ function buildForTab(tab) {
     if (tab === 'materials')    buildMaterials()
     if (tab === 'deadlines')    buildDeadline()
     if (tab === 'distribution') buildDistribution()
+    if (tab === 'callcenter')   buildCallcenter()
   })
 }
 

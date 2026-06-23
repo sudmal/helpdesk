@@ -553,8 +553,8 @@ const genStep      = ref(1); const genAptFrom = ref(1); const genAptTo = ref(50)
 
 const modes = [
   { key: 'single',  label: '📍 Один' },
-  { key: 'private', label: '🏠 ЧС' },
-  { key: 'mkd',     label: '🏢 МКД' },
+  { key: 'private', label: '🏠 ЧС - Множеств.' },
+  { key: 'mkd',     label: '🏢 МКД - Множеств.' },
 ]
 
 const addrForm = useForm({
