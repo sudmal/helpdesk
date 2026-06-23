@@ -153,36 +153,36 @@ class BrigadeScheduleController extends Controller
                 : 'F3F4F6'));
             $headerRow[] = "<b><center><style bgcolor=\"{$bg}\" font-size=\"8\">{$day['day']} {$day['dow']}</style></center></b>";
         }
-        $headerRow[] = '<b><center><style bgcolor="F3F4F6">Вых.</style></center></b>';
+        $lastDayCol = $colLetter(1 + $daysInMonth); // last day column letter (e.g. AE for 30 days)
+        $headerRow[] = '<b><center><style bgcolor="F3F4F6">Выходов</style></center></b>';
         $rows[] = $headerRow;
 
-        // Data rows
+        // Data rows — 1 for work, empty for off/holiday
         $workersPerDay = array_fill(0, $daysInMonth, 0);
+        $dataStartRow  = 3; // row 1 = title, row 2 = header
 
-        foreach ($members as $member) {
-            $row      = [$member->name];
-            $offCount = 0;
+        foreach ($members as $idx => $member) {
+            $row    = [$member->name];
+            $rowNum = $dataStartRow + $idx;
 
             foreach ($days as $i => $day) {
                 $status = $day['isHoliday'] ? 'holiday' : ($schedule[$member->id][$day['date']] ?? 'work');
 
-                [$label, $bg] = match ($status) {
-                    'holiday'   => ['П', 'EDE9FE'],
-                    'off'       => ['В', 'D1D5DB'],
-                    'requested' => ['?', 'FCD34D'],
-                    default     => ['Р', '86EFAC'],
-                };
-
-                if ($status !== 'work') {
-                    $offCount++;
-                } else {
+                if ($status === 'work') {
                     $workersPerDay[$i]++;
+                    $row[] = "<center><style bgcolor=\"86EFAC\">1</style></center>";
+                } else {
+                    $bg = match ($status) {
+                        'holiday'   => 'EDE9FE',
+                        'requested' => 'FCD34D',
+                        default     => 'F3F4F6',
+                    };
+                    $row[] = "<style bgcolor=\"{$bg}\"></style>";
                 }
-
-                $row[] = "<b><center><style bgcolor=\"{$bg}\">{$label}</style></center></b>";
             }
 
-            $row[]  = "<center>{$offCount}</center>";
+            // SUM formula counts 1s = work days
+            $row[]  = "<f>=SUM(B{$rowNum}:{$lastDayCol}{$rowNum})</f>";
             $rows[] = $row;
         }
 
