@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\{
     DashboardController,
@@ -109,6 +109,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('/{address}',    [AddressController::class, 'update'])->name('update');
         Route::delete('/{address}', [AddressController::class, 'destroy'])->name('destroy');
         Route::post('/import',      [AddressController::class, 'import'])->name('import');
+        Route::post('/bulk-set-type', [AddressController::class, 'bulkSetType'])->name('bulk-set-type');
         Route::get('/search',       [AddressController::class, 'search'])->name('search');
         Route::get('/hierarchy',    [AddressController::class, 'hierarchy'])->name('hierarchy');
     });

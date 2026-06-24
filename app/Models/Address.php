@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
@@ -10,7 +10,7 @@ class Address extends Model
     protected $fillable = [
         'territory_id', 'city', 'street', 'building', 'apartment',
         'entrance', 'floor', 'subscriber_name', 'phone', 'contract_no',
-        'lanbilling_id', 'lanbilling_data', 'notes', 'lat', 'lng',
+        'lanbilling_id', 'lanbilling_data', 'notes', 'lat', 'lng', 'is_private',
     ];
 
     protected $casts = ['lanbilling_data' => 'array'];

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Head title="Адреса" />
   <AppLayout title="Адреса абонентов">
     <template #actions>
@@ -131,14 +131,41 @@
 
     <!-- ── Уровень 2: Дома ── -->
     <div v-if="level === 2">
-      <p class="text-xs text-gray-400 mb-3">{{ selected.city }}, {{ selected.street }} — выберите дом</p>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs text-gray-400">{{ selected.city }}, {{ selected.street }} — выберите дом</p>
+        <button @click="toggleEditTypeMode"
+                :class="['text-xs px-3 py-1.5 rounded-xl border transition-colors font-medium',
+                         editTypeMode ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
+          {{ editTypeMode ? '✓ Готово' : '⚙ Тип' }}
+        </button>
+      </div>
+      <!-- Панель массового переключения типа -->
+      <div v-if="editTypeMode && selectedBuildings.length"
+           class="flex items-center gap-3 mb-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+        <span class="text-xs text-amber-800 flex-1">Выбрано домов: {{ selectedBuildings.length }}</span>
+        <button @click="setBuildingType('private')" :disabled="typeChanging"
+                class="text-xs px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-40 transition-colors font-medium">
+          → ЧС
+        </button>
+        <button @click="setBuildingType('mkd')" :disabled="typeChanging"
+                class="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-40 transition-colors font-medium">
+          → МКД
+        </button>
+      </div>
       <div class="flex flex-wrap gap-2">
         <button v-for="b in items" :key="b.building"
-                @click="selectBuilding(b)"
-                :class="['flex flex-col items-center px-4 py-3 border rounded-xl transition-colors text-sm',
-                         b.has_apartments
-                           ? 'bg-white border-gray-200 hover:border-blue-400 hover:bg-blue-50'
-                           : 'bg-white border-gray-200 hover:border-green-400 hover:bg-green-50']">
+                @click="editTypeMode ? toggleBuildingSelect(b) : selectBuilding(b)"
+                :class="['flex flex-col items-center px-4 py-3 border rounded-xl transition-colors text-sm relative',
+                         editTypeMode && isBuildingSelected(b)
+                           ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-300'
+                           : b.has_apartments
+                             ? 'bg-white border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+                             : 'bg-white border-gray-200 hover:border-green-400 hover:bg-green-50']">
+          <span v-if="editTypeMode"
+                class="absolute top-1 right-1 w-4 h-4 rounded border flex items-center justify-center text-xs leading-none"
+                :class="isBuildingSelected(b) ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'">
+            <span v-if="isBuildingSelected(b)">✓</span>
+          </span>
           <span class="text-xl mb-1">{{ b.has_apartments ? '🏢' : '🏠' }}</span>
           <span class="font-semibold">{{ b.building }}</span>
           <span class="text-xs text-gray-400 mt-0.5">
@@ -536,6 +563,45 @@ function selectStreet(street) {
 function selectBuilding(b) {
   selected.value.building = b.building
   navigate({ city: selected.value.city, street: selected.value.street, building: b.building })
+}
+
+// ── Переключение ЧС/МКД ────────────────────────────────────────────
+const editTypeMode      = ref(false)
+const selectedBuildings = ref([])
+const typeChanging      = ref(false)
+
+function toggleEditTypeMode() {
+  editTypeMode.value = !editTypeMode.value
+  if (!editTypeMode.value) selectedBuildings.value = []
+}
+
+function isBuildingSelected(b) {
+  return selectedBuildings.value.some(s => s.building === b.building)
+}
+
+function toggleBuildingSelect(b) {
+  const idx = selectedBuildings.value.findIndex(s => s.building === b.building)
+  if (idx === -1) selectedBuildings.value.push(b)
+  else selectedBuildings.value.splice(idx, 1)
+}
+
+async function setBuildingType(type) {
+  if (!selectedBuildings.value.length) return
+  typeChanging.value = true
+  try {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+    await axios.post(route('addresses.bulk-set-type'), {
+      ids: selectedBuildings.value.map(b => b.id),
+      type,
+    }, { headers: { 'X-CSRF-TOKEN': csrf } })
+    selectedBuildings.value = []
+    editTypeMode.value = false
+    router.reload()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.message ?? e.message))
+  } finally {
+    typeChanging.value = false
+  }
 }
 
 function resetTo(lvl) {

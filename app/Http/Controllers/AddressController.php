@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -50,8 +50,6 @@ class AddressController extends Controller
 
         } elseif (!$building) {
             // Уровень 2 — дома на улице
-            // Было: 4 запроса на каждый дом (N+1). Теперь: 3 запроса суммарно.
-
             // Запрос 1: список домов с количеством адресных записей
             $buildingsRaw = Address::selectRaw('building, COUNT(*) as cnt, MAX(id) as id')
                 ->where('city', $city)->where('street', $street)->whereNotNull('building')
@@ -77,12 +75,27 @@ class AddressController extends Controller
                 ->groupBy('addresses.building')
                 ->pluck('apt_count', 'building');
 
-            $buildingList = $buildingsRaw->map(function ($r) use ($addrAptCounts, $ticketAptCounts) {
+            // Запрос 4: явное переопределение типа is_private (NULL = авто-определение)
+            $privateOverrides = Address::selectRaw('building, MAX(is_private) as override')
+                ->where('city', $city)->where('street', $street)
+                ->whereNotNull('building')
+                ->groupBy('building')
+                ->pluck('override', 'building');
+
+            $buildingList = $buildingsRaw->map(function ($r) use ($addrAptCounts, $ticketAptCounts, $privateOverrides) {
                 $b             = $r->building;
                 $aptsFromAddr  = (int)($addrAptCounts[$b]  ?? 0);
                 $aptsFromTicks = (int)($ticketAptCounts[$b] ?? 0);
-                $hasApts       = $aptsFromAddr > 0 || $aptsFromTicks > 0;
                 $aptCount      = max($aptsFromAddr, $aptsFromTicks);
+                $override      = $privateOverrides[$b] ?? null;
+
+                if ($override !== null) {
+                    // is_private=1 → ЧС; is_private=0 → МКД
+                    $hasApts = !(bool)(int)$override;
+                } else {
+                    $hasApts = $aptsFromAddr > 0 || $aptsFromTicks > 0;
+                }
+
                 return [
                     'building'       => $b,
                     'count'          => $aptCount ?: $r->cnt,
@@ -102,6 +115,9 @@ class AddressController extends Controller
 
             $isMkdFromAddresses = $allInBuilding->filter(fn($a) => !empty($a->apartment))->isNotEmpty();
 
+            // Проверяем явное переопределение типа
+            $isPrivateOverride = $allInBuilding->filter(fn($a) => $a->is_private !== null)->first()?->is_private;
+
             $addressIds = $allInBuilding->pluck('id');
             $ticketApartments = \App\Models\Ticket::whereIn('address_id', $addressIds)
                 ->whereNotNull('apartment')
@@ -111,10 +127,13 @@ class AddressController extends Controller
                 ->distinct()
                 ->pluck('apartment');
 
-            $isMkd = $isMkdFromAddresses || $ticketApartments->isNotEmpty();
+            if ($isPrivateOverride !== null) {
+                $isMkd = !(bool)(int)$isPrivateOverride;
+            } else {
+                $isMkd = $isMkdFromAddresses || $ticketApartments->isNotEmpty();
+            }
 
             // Единый запрос: количество заявок на квартиру (учитывает оба способа хранения).
-            // GROUP BY apt_val (алиас) обходит ONLY_FULL_GROUP_BY в MySQL.
             $rows = \DB::select(
                 "SELECT COALESCE(NULLIF(t.apartment,''),NULLIF(a.apartment,''),'') AS apt_val, COUNT(*) AS cnt
                  FROM tickets t
@@ -153,6 +172,44 @@ class AddressController extends Controller
             'currentBuilding' => $building,
             'territories'     => Territory::orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    public function bulkSetType(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'integer|exists:addresses,id',
+            'type'  => 'required|in:private,mkd',
+        ]);
+
+        $reps = Address::whereIn('id', $data['ids'])
+            ->get(['city', 'street', 'building'])
+            ->unique(fn($a) => $a->city . '|' . $a->street . '|' . $a->building);
+
+        DB::transaction(function () use ($reps, $data) {
+            foreach ($reps as $rep) {
+                if ($data['type'] === 'private') {
+                    Address::where('city', $rep->city)
+                        ->where('street', $rep->street)
+                        ->where('building', $rep->building)
+                        ->update(['is_private' => 1]);
+                    // Удаляем записи с квартирами (тип МКД → ЧС)
+                    Address::where('city', $rep->city)
+                        ->where('street', $rep->street)
+                        ->where('building', $rep->building)
+                        ->whereNotNull('apartment')
+                        ->where('apartment', '!=', '')
+                        ->delete();
+                } else {
+                    Address::where('city', $rep->city)
+                        ->where('street', $rep->street)
+                        ->where('building', $rep->building)
+                        ->update(['is_private' => 0]);
+                }
+            }
+        });
+
+        return response()->json(['ok' => true]);
     }
 
     public function store(Request $request)
