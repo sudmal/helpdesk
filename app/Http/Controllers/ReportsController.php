@@ -253,10 +253,11 @@ class ReportsController extends Controller
                 'answered'     => $ans,
                 'missed'       => $missed,
                 'miss_rate'    => $total > 0 ? round(100 * $missed / $total, 1) : 0,
-                'avg_wait'     => $r?->avg_wait_sec    ? (float)$r->avg_wait_sec    : null,
-                'max_wait'     => $r?->max_wait_sec    ? (int)$r->max_wait_sec      : null,
-                'max_queue'    => $r?->max_queue_depth ? (int)$r->max_queue_depth   : null,
-                'avg_operators'=> $r?->avg_operators   ? (float)$r->avg_operators   : null,
+                'avg_wait'     => $r?->avg_wait_sec    !== null ? (float)$r->avg_wait_sec    : null,
+                'max_wait'     => $r?->max_wait_sec    !== null ? (int)$r->max_wait_sec      : null,
+                'max_queue'    => $r?->max_queue_depth !== null ? (int)$r->max_queue_depth   : null,
+                'avg_queue'    => $r?->avg_queue_depth !== null ? round((float)$r->avg_queue_depth, 1) : null,
+                'avg_operators'=> $r?->avg_operators   !== null ? (int)$r->avg_operators     : null,
             ];
         }
 

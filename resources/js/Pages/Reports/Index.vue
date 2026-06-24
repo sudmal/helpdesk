@@ -610,30 +610,17 @@ function buildCallcenter() {
     },
   })
 
-  // График 2: очередь в виде свечей (floating bars) + операторы (ступенчатая линия)
-  const avgQ = hours.map(h => h.avg_queue ?? null)
-  // Нижняя часть свечи: до среднего; если avg нет — до максимума (fallback)
-  const candleBase  = hours.map(h => {
-    if (h.avg_queue != null) return [0, h.avg_queue]
-    if (h.max_queue != null) return [0, h.max_queue]
-    return null
-  })
-  // Верхняя часть свечи: от среднего до максимума (пиковый выброс над нормой)
-  const candleSpike = hours.map(h =>
-    (h.avg_queue != null && h.max_queue != null && h.max_queue > h.avg_queue)
-      ? [h.avg_queue, h.max_queue] : null
-  )
+  // График 2: очередь (overlapping bars) + операторы (ступенчатая линия)
+  // Оранжевый (макс) рисуется снизу, зелёный (среднее) поверх — виден оранжевый пик
+  const avgQData = hours.map(h => h.avg_queue ?? null)
 
   if (callcenterCanvas2.value && (maxQ.some(v => v != null) || avgOps.some(v => v != null))) {
     charts.callcenter2 = new Chart(callcenterCanvas2.value, {
       type: 'bar',
       data: { labels, datasets: [
-        // Нижнее тело свечи — норма (зелёное)
-        { label: 'Ср. очередь',   data: candleBase,  type: 'bar',  backgroundColor: 'rgba(34,197,94,0.45)',  borderColor: 'rgba(34,197,94,0.8)',  borderWidth: 1, yAxisID: 'yQ', order: 3 },
-        // Верхнее тело свечи — пик выше среднего (оранжевое)
-        { label: 'Макс. очередь', data: candleSpike, type: 'bar',  backgroundColor: 'rgba(249,115,22,0.55)', borderColor: 'rgba(249,115,22,0.9)', borderWidth: 1, yAxisID: 'yQ', order: 2 },
-        // Ступенчатая линия — количество операторов
-        { label: 'Операторов',    data: avgOps,      type: 'line', borderColor: '#6366f1', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 4, stepped: 'before', fill: false, yAxisID: 'yOps', order: 1 },
+        { label: 'Макс. очередь', data: maxQ,    type: 'bar',  backgroundColor: 'rgba(249,115,22,0.55)', borderColor: 'rgba(249,115,22,0.9)', borderWidth: 1, yAxisID: 'yQ', order: 3 },
+        { label: 'Ср. очередь',   data: avgQData, type: 'bar',  backgroundColor: 'rgba(34,197,94,0.55)',  borderColor: 'rgba(34,197,94,0.8)',  borderWidth: 1, yAxisID: 'yQ', order: 2 },
+        { label: 'Операторов',    data: avgOps,   type: 'line', borderColor: '#6366f1', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 4, stepped: 'before', fill: false, yAxisID: 'yOps', order: 1 },
       ]},
       options: {
         responsive: true,
@@ -643,9 +630,10 @@ function buildCallcenter() {
           tooltip: {
             callbacks: {
               label: ctx => {
-                if (ctx.dataset.label === 'Ср. очередь')   return `Ср. очередь: ${avgQ[ctx.dataIndex] ?? '—'}`
-                if (ctx.dataset.label === 'Макс. очередь') return `Макс. очередь: ${maxQ[ctx.dataIndex] ?? '—'}`
-                return `${ctx.dataset.label}: ${ctx.parsed.y}`
+                const v = ctx.raw ?? null
+                if (ctx.dataset.label === 'Ср. очередь')   return 'Ср. очередь: ' + (v ?? '—')
+                if (ctx.dataset.label === 'Макс. очередь') return 'Макс. очередь: ' + (v ?? '—')
+                return ctx.dataset.label + ': ' + ctx.parsed.y
               }
             }
           }
