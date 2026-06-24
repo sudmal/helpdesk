@@ -546,11 +546,11 @@ function buildCallcenter() {
       type: 'bar',
       data: { labels, datasets: [
         // Полупрозрачные бары — пиковая длина очереди (размах свечи)
-        { label: 'Макс. очередь',  data: maxQ,   type: 'bar',  backgroundColor: 'rgba(245,158,11,0.25)', borderColor: 'rgba(245,158,11,0.6)', borderWidth: 1, yAxisID: 'yQ', order: 3 },
-        // Линия — средняя очередь (тело свечи)
-        { label: 'Ср. очередь',    data: avgQ,   type: 'line', borderColor: '#d97706', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'yQ', order: 2 },
-        // Ступенчатая линия — количество операторов (целое, дискретное)
-        { label: 'Операторов',     data: avgOps, type: 'line', borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)', borderWidth: 2.5, pointRadius: 4, stepped: 'before', fill: true, yAxisID: 'yOps', order: 1 },
+        { label: 'Макс. очередь',  data: maxQ,   type: 'bar',  backgroundColor: 'rgba(245,158,11,0.3)', borderColor: 'rgba(245,158,11,0.7)', borderWidth: 1, yAxisID: 'yQ', order: 3 },
+        // Линия — средняя очередь (тело свечи), поверх баров
+        { label: 'Ср. очередь',    data: avgQ,   type: 'line', borderColor: '#dc2626', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#dc2626', tension: 0.3, yAxisID: 'yQ', order: 1 },
+        // Ступенчатая линия — количество операторов (без заливки)
+        { label: 'Операторов',     data: avgOps, type: 'line', borderColor: '#6366f1', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 4, stepped: 'before', fill: false, yAxisID: 'yOps', order: 2 },
       ]},
       options: {
         responsive: true,
