@@ -610,17 +610,48 @@ function buildCallcenter() {
     },
   })
 
-  // График 2: очередь (overlapping bars) + операторы (ступенчатая линия)
-  // Оранжевый (макс) рисуется снизу, зелёный (среднее) поверх — виден оранжевый пик
-  const avgQData = hours.map(h => h.avg_queue ?? null)
+
+  // График 2: среднее очереди = бары, пик = T-усик; операторы = ступени на единой оси
+  const avgQData  = hours.map(h => h.avg_queue ?? null)
+  const spikeData = hours.map(h => {
+    const avg = h.avg_queue ?? null
+    const max = h.max_queue ?? null
+    if (max == null || max === 0) return null
+    if (avg == null) return [0, max]
+    if (max > avg)   return [avg, max]
+    return null
+  })
 
   if (callcenterCanvas2.value && (maxQ.some(v => v != null) || avgOps.some(v => v != null))) {
+    const whiskerCap = {
+      id: 'whiskerCap',
+      afterDatasetsDraw(chart) {
+        const dsIdx = chart.data.datasets.findIndex(d => d.label === 'Макс. очередь')
+        if (dsIdx < 0) return
+        const meta = chart.getDatasetMeta(dsIdx)
+        const ds   = chart.data.datasets[dsIdx]
+        const ctx2 = chart.ctx
+        ctx2.save()
+        ctx2.strokeStyle = 'rgba(249,115,22,0.95)'
+        ctx2.lineWidth = 2
+        meta.data.forEach((bar, i) => {
+          if (ds.data[i] == null) return
+          const capW = Math.max((bar.width || 4) * 3, 10)
+          ctx2.beginPath()
+          ctx2.moveTo(bar.x - capW / 2, bar.y)
+          ctx2.lineTo(bar.x + capW / 2, bar.y)
+          ctx2.stroke()
+        })
+        ctx2.restore()
+      }
+    }
     charts.callcenter2 = new Chart(callcenterCanvas2.value, {
+      plugins: [whiskerCap],
       type: 'bar',
       data: { labels, datasets: [
-        { label: 'Макс. очередь', data: maxQ,    type: 'bar',  backgroundColor: 'rgba(249,115,22,0.55)', borderColor: 'rgba(249,115,22,0.9)', borderWidth: 1, yAxisID: 'yQ', order: 3 },
-        { label: 'Ср. очередь',   data: avgQData, type: 'bar',  backgroundColor: 'rgba(34,197,94,0.55)',  borderColor: 'rgba(34,197,94,0.8)',  borderWidth: 1, yAxisID: 'yQ', order: 2 },
-        { label: 'Операторов',    data: avgOps,   type: 'line', borderColor: '#6366f1', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 4, stepped: 'before', fill: false, yAxisID: 'yOps', order: 1 },
+        { label: 'Ср. очередь',   data: avgQData,  type: 'bar',  backgroundColor: 'rgba(34,197,94,0.55)',  borderColor: 'rgba(34,197,94,0.8)',  borderWidth: 1, order: 3 },
+        { label: 'Макс. очередь', data: spikeData, type: 'bar',  backgroundColor: 'rgba(249,115,22,0.65)', borderColor: 'rgba(249,115,22,0.9)', borderWidth: 1, barThickness: 4, order: 2 },
+        { label: 'Операторов',    data: avgOps,    type: 'line', borderColor: '#6366f1', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 4, stepped: 'before', fill: false, spanGaps: true, order: 1 },
       ]},
       options: {
         responsive: true,
@@ -630,9 +661,9 @@ function buildCallcenter() {
           tooltip: {
             callbacks: {
               label: ctx => {
-                const v = ctx.raw ?? null
-                if (ctx.dataset.label === 'Ср. очередь')   return 'Ср. очередь: ' + (v ?? '—')
-                if (ctx.dataset.label === 'Макс. очередь') return 'Макс. очередь: ' + (v ?? '—')
+                const i = ctx.dataIndex
+                if (ctx.dataset.label === 'Ср. очередь')   return 'Ср. очередь: '   + (hours[i].avg_queue ?? '—')
+                if (ctx.dataset.label === 'Макс. очередь') return 'Макс. очередь: ' + (hours[i].max_queue ?? '—')
                 return ctx.dataset.label + ': ' + ctx.parsed.y
               }
             }
@@ -640,8 +671,7 @@ function buildCallcenter() {
         },
         scales: {
           x: { ticks: { maxRotation: 0 } },
-          yQ:   { beginAtZero: true, position: 'left',  ticks: { precision: 0 }, title: { display: true, text: 'Очередь' } },
-          yOps: { beginAtZero: true, position: 'right', ticks: { precision: 0 }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Операторов' } },
+          y: { beginAtZero: true, ticks: { precision: 0 } },
         },
       },
     })
