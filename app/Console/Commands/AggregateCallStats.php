@@ -47,7 +47,7 @@ class AggregateCallStats extends Command
                 HOUR(recorded_at) as hour,
                 MAX(waiting)              as max_queue_depth,
                 ROUND(AVG(waiting), 1)    as avg_queue_depth,
-                ROUND(AVG(active_members), 1) as avg_operators
+                MAX(active_members) as avg_operators
             ")
             ->whereDate('recorded_at', $date)
             ->groupByRaw('HOUR(recorded_at)')

@@ -539,13 +539,18 @@ function buildCallcenter() {
     },
   })
 
-  // График 2: линии очереди и операторов
+  // График 2: очередь (свечи: бары=макс, линия=среднее) + операторы (ступенчатая линия)
+  const avgQ = hours.map(h => h.avg_queue ?? null)
   if (callcenterCanvas2.value && (maxQ.some(v => v != null) || avgOps.some(v => v != null))) {
     charts.callcenter2 = new Chart(callcenterCanvas2.value, {
-      type: 'line',
+      type: 'bar',
       data: { labels, datasets: [
-        { label: 'Макс. очередь',  data: maxQ,    borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, borderWidth: 2.5, pointRadius: 4, tension: 0.3 },
-        { label: 'Ср. операторов', data: avgOps,  borderColor: '#6366f1', backgroundColor: 'transparent',          fill: false, borderWidth: 2,   pointRadius: 4, borderDash: [5,4], tension: 0.3 },
+        // Полупрозрачные бары — пиковая длина очереди (размах свечи)
+        { label: 'Макс. очередь',  data: maxQ,   type: 'bar',  backgroundColor: 'rgba(245,158,11,0.25)', borderColor: 'rgba(245,158,11,0.6)', borderWidth: 1, yAxisID: 'yQ', order: 3 },
+        // Линия — средняя очередь (тело свечи)
+        { label: 'Ср. очередь',    data: avgQ,   type: 'line', borderColor: '#d97706', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, yAxisID: 'yQ', order: 2 },
+        // Ступенчатая линия — количество операторов (целое, дискретное)
+        { label: 'Операторов',     data: avgOps, type: 'line', borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)', borderWidth: 2.5, pointRadius: 4, stepped: 'before', fill: true, yAxisID: 'yOps', order: 1 },
       ]},
       options: {
         responsive: true,
@@ -553,7 +558,8 @@ function buildCallcenter() {
         plugins: { legend: { position: 'top' } },
         scales: {
           x: { ticks: { maxRotation: 0 } },
-          y: { beginAtZero: true, ticks: { precision: 1 }, title: { display: true, text: 'Ед.' } },
+          yQ:   { beginAtZero: true, position: 'left',  ticks: { precision: 0 }, title: { display: true, text: 'Очередь' } },
+          yOps: { beginAtZero: true, position: 'right', ticks: { precision: 0 }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Операторов' } },
         },
       },
     })

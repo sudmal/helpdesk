@@ -227,13 +227,14 @@ class ReportsController extends Controller
             ->whereBetween('stat_date', [$from->toDateString(), $to->toDateString()])
             ->selectRaw('
                 hour,
-                SUM(total_calls)              as total_calls,
-                SUM(answered)                 as answered,
-                SUM(missed)                   as missed,
-                ROUND(AVG(avg_wait_sec), 1)   as avg_wait_sec,
-                MAX(max_wait_sec)             as max_wait_sec,
-                MAX(max_queue_depth)          as max_queue_depth,
-                ROUND(AVG(avg_operators), 1)  as avg_operators
+                SUM(total_calls)                  as total_calls,
+                SUM(answered)                     as answered,
+                SUM(missed)                       as missed,
+                ROUND(AVG(avg_wait_sec), 1)       as avg_wait_sec,
+                MAX(max_wait_sec)                 as max_wait_sec,
+                MAX(max_queue_depth)              as max_queue_depth,
+                ROUND(AVG(avg_queue_depth), 1)    as avg_queue_depth,
+                MAX(avg_operators)                as avg_operators
             ')
             ->groupBy('hour')
             ->orderBy('hour')
