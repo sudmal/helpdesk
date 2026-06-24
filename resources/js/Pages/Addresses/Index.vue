@@ -132,7 +132,7 @@
     <!-- ── Уровень 2: Дома ── -->
     <div v-if="level === 2">
       <!-- Обычный режим: подсказка + кнопка -->
-      <div v-if="!editTypeMode" class="flex items-center justify-between mb-4">
+      <div v-if="!editTypeMode" class="flex items-center gap-3 mb-4">
         <p class="text-xs text-gray-400">{{ selected.city }}, {{ selected.street }} — выберите дом</p>
         <button @click="toggleEditTypeMode"
                 class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-gray-200
