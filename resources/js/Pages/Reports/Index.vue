@@ -2,21 +2,42 @@
   <Head title="Отчёты" />
   <AppLayout title="Отчёты">
 
+    <!-- ── Выбор периода ── -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-500">С</label>
-        <input type="date" v-model="localFrom"
-               class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <!-- Быстрые режимы -->
+      <div class="flex bg-gray-100 rounded-xl p-1 gap-0.5">
+        <button v-for="m in periodModes" :key="m.key" @click="setMode(m.key)"
+                :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                         periodMode === m.key
+                           ? 'bg-white shadow text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700']">
+          {{ m.label }}
+        </button>
       </div>
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-500">По</label>
-        <input type="date" v-model="localTo"
+
+      <!-- День: один пикер -->
+      <template v-if="periodMode === 'day'">
+        <input type="date" v-model="singleDay" @change="applyDay"
                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <button @click="applyFilter"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
-        Применить
-      </button>
+      </template>
+
+      <!-- Период: два пикера + кнопка -->
+      <template v-if="periodMode === 'period'">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-500">С</label>
+          <input type="date" v-model="localFrom"
+                 class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-500">По</label>
+          <input type="date" v-model="localTo"
+                 class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <button @click="applyFilter"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+          Применить
+        </button>
+      </template>
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -320,6 +341,56 @@ const activeTab    = ref('brigade')
 const localFrom    = ref(props.from)
 const localTo      = ref(props.to)
 const distMode     = ref('day') // 'day' | 'weekday'
+
+// ── Выбор периода ──────────────────────────────────────────────────
+const periodModes = [
+  { key: 'day',    label: 'День' },
+  { key: 'week',   label: 'Неделя' },
+  { key: 'month',  label: 'Месяц' },
+  { key: 'period', label: 'Период' },
+]
+
+function toIso(d) { return d.toISOString().split('T')[0] }
+
+function getMondayOfWeek() {
+  const d = new Date()
+  const day = d.getDay()
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  return toIso(d)
+}
+
+function detectMode(from, to) {
+  const today = toIso(new Date())
+  if (from === to) return 'day'
+  const d = new Date()
+  const monthStart = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`
+  if (from === monthStart && to === today) return 'month'
+  if (from === getMondayOfWeek() && to === today) return 'week'
+  return 'period'
+}
+
+const periodMode = ref(detectMode(props.from, props.to))
+const singleDay  = ref(props.from === props.to ? props.from : toIso(new Date()))
+
+function setMode(m) {
+  periodMode.value = m
+  const today = toIso(new Date())
+  if (m === 'day') {
+    singleDay.value = today
+    router.get(route('reports.index'), { from: today, to: today }, { preserveState: false })
+  } else if (m === 'week') {
+    router.get(route('reports.index'), { from: getMondayOfWeek(), to: today }, { preserveState: false })
+  } else if (m === 'month') {
+    const d = new Date()
+    const from = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`
+    router.get(route('reports.index'), { from, to: today }, { preserveState: false })
+  }
+  // 'period' — просто показываем пикеры, навигация по кнопке Применить
+}
+
+function applyDay() {
+  router.get(route('reports.index'), { from: singleDay.value, to: singleDay.value }, { preserveState: false })
+}
 
 const brigadeCanvas      = ref(null)
 const territoryCanvas    = ref(null)

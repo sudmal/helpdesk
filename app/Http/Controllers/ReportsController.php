@@ -11,8 +11,8 @@ class ReportsController extends Controller
 {
     public function index(Request $request)
     {
-        $from = $request->get('from', now()->startOfMonth()->toDateString());
-        $to   = $request->get('to',   now()->toDateString());
+        $from = $request->get('from', now()->toDateString());
+        $to   = $request->get('to',   now()->toDateString()); // day by default
 
         $fromDate = Carbon::parse($from)->startOfDay();
         $toDate   = Carbon::parse($to)->endOfDay();
