@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <Head title="Адреса" />
   <AppLayout title="Адреса абонентов">
     <template #actions>
@@ -131,25 +131,39 @@
 
     <!-- ── Уровень 2: Дома ── -->
     <div v-if="level === 2">
-      <div class="flex items-center justify-between mb-3">
+      <!-- Обычный режим: подсказка + кнопка -->
+      <div v-if="!editTypeMode" class="flex items-center justify-between mb-4">
         <p class="text-xs text-gray-400">{{ selected.city }}, {{ selected.street }} — выберите дом</p>
         <button @click="toggleEditTypeMode"
-                :class="['text-xs px-3 py-1.5 rounded-xl border transition-colors font-medium',
-                         editTypeMode ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
-          {{ editTypeMode ? '✓ Готово' : '⚙ Тип' }}
+                class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-gray-200
+                       text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+          </svg>
+          Изменить тип
         </button>
       </div>
-      <!-- Панель массового переключения типа -->
-      <div v-if="editTypeMode && selectedBuildings.length"
-           class="flex items-center gap-3 mb-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
-        <span class="text-xs text-amber-800 flex-1">Выбрано домов: {{ selectedBuildings.length }}</span>
-        <button @click="setBuildingType('private')" :disabled="typeChanging"
-                class="text-xs px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-40 transition-colors font-medium">
+      <!-- Режим выбора: инструкция-баннер + действия в одной строке -->
+      <div v-else class="flex items-center gap-3 mb-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+        <span class="text-sm text-blue-800 flex-1">
+          <span v-if="!selectedBuildings.length">Отметьте дома, затем выберите тип</span>
+          <span v-else>Выбрано домов: <strong>{{ selectedBuildings.length }}</strong></span>
+        </span>
+        <button @click="setBuildingType('private')" :disabled="typeChanging || !selectedBuildings.length"
+                class="text-sm px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg
+                       disabled:opacity-30 transition-colors font-medium whitespace-nowrap">
           → ЧС
         </button>
-        <button @click="setBuildingType('mkd')" :disabled="typeChanging"
-                class="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-40 transition-colors font-medium">
+        <button @click="setBuildingType('mkd')" :disabled="typeChanging || !selectedBuildings.length"
+                class="text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg
+                       disabled:opacity-30 transition-colors font-medium whitespace-nowrap">
           → МКД
+        </button>
+        <button @click="toggleEditTypeMode"
+                class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600
+                       hover:bg-gray-50 transition-colors whitespace-nowrap">
+          Отмена
         </button>
       </div>
       <div class="flex flex-wrap gap-2">
