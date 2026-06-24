@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <Head title="Отчёты" />
   <AppLayout title="Отчёты">
 
@@ -253,9 +253,16 @@
         <div class="bg-blue-50 rounded-xl border border-blue-200 p-3 text-center"><p class="text-2xl font-bold text-blue-700">{{ callStats.summary?.peak_hour != null ? callStats.summary.peak_hour + ':00' : '—' }}</p><p class="text-xs text-gray-500 mt-0.5">Пиковый час</p></div>
         <div class="bg-orange-50 rounded-xl border border-orange-200 p-3 text-center"><p class="text-2xl font-bold text-orange-600">{{ callStats.summary?.worst_hour != null ? callStats.summary.worst_hour + ':00' : '—' }}</p><p class="text-xs text-gray-500 mt-0.5">Больше пропусков</p></div>
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 p-4"><h2 class="text-sm font-semibold text-gray-600 mb-3">Распределение звонков по часам</h2>
+      <div class="bg-white rounded-2xl border border-gray-200 p-4">
         <div v-if="!(callStats.hours ?? []).some(h => h.total > 0)" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
-        <canvas v-else ref="callcenterCanvas" style="max-height:320px" />
+        <template v-else>
+          <h2 class="text-sm font-semibold text-gray-600 mb-3">Отвечено / Пропущено</h2>
+          <canvas ref="callcenterCanvas" style="max-height:240px" />
+          <div class="mt-5 pt-4 border-t border-gray-100">
+            <h2 class="text-sm font-semibold text-gray-600 mb-3">Очередь и операторы</h2>
+            <canvas ref="callcenterCanvas2" style="max-height:180px" />
+          </div>
+        </template>
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
@@ -321,6 +328,7 @@ const materialAmtCanvas  = ref(null)
 const deadlineCanvas     = ref(null)
 const distributionCanvas = ref(null)
 const callcenterCanvas    = ref(null)
+const callcenterCanvas2   = ref(null)
 
 const charts = {}
 
@@ -503,29 +511,53 @@ function switchDistMode(mode) {
 
 function buildCallcenter() {
   destroy('callcenter')
+  destroy('callcenter2')
   if (!callcenterCanvas.value) return
   const hours = props.callStats?.hours ?? []
   if (!hours.some(h => h.total > 0)) return
-  const labels = hours.map(h => h.hour + ':00')
+  const labels  = hours.map(h => h.hour + ':00')
   const answered = hours.map(h => h.answered)
-  const missed = hours.map(h => h.missed)
-  const maxQ = hours.map(h => h.max_queue ?? null)
-  const avgOps = hours.map(h => h.avg_operators ?? null)
+  const missed   = hours.map(h => h.missed)
+  const maxQ     = hours.map(h => h.max_queue ?? null)
+  const avgOps   = hours.map(h => h.avg_operators ?? null)
+
+  // График 1: столбцы звонков
   charts.callcenter = new Chart(callcenterCanvas.value, {
     type: 'bar',
     data: { labels, datasets: [
-      { label: 'Отвечено', data: answered, backgroundColor: '#22c55e', stack: 'a' },
-      { label: 'Пропущено', data: missed, backgroundColor: '#ef4444', stack: 'a' },
-      { label: 'Макс. очередь', data: maxQ, type: 'line', borderColor: '#f59e0b', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, yAxisID: 'y2', tension: 0.3 },
-      { label: 'Ср. операторов', data: avgOps, type: 'line', borderColor: '#6366f1', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, borderDash: [4,3], yAxisID: 'y2', tension: 0.3 },
+      { label: 'Отвечено',  data: answered, backgroundColor: '#22c55e', stack: 'a' },
+      { label: 'Пропущено', data: missed,   backgroundColor: '#ef4444', stack: 'a' },
     ]},
-    options: { responsive: true, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top' } },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top' } },
       scales: {
-        y: { beginAtZero: true, ticks: { precision: 0 }, stacked: true, title: { display: true, text: 'Звонки' } },
-        y2: { beginAtZero: true, position: 'right', ticks: { precision: 1 }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Очередь / Операторы' } },
+        x: { stacked: true, ticks: { maxRotation: 0 } },
+        y: { beginAtZero: true, stacked: true, ticks: { precision: 0 }, title: { display: true, text: 'Звонки' } },
       },
     },
   })
+
+  // График 2: линии очереди и операторов
+  if (callcenterCanvas2.value && (maxQ.some(v => v != null) || avgOps.some(v => v != null))) {
+    charts.callcenter2 = new Chart(callcenterCanvas2.value, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: 'Макс. очередь',  data: maxQ,    borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, borderWidth: 2.5, pointRadius: 4, tension: 0.3 },
+        { label: 'Ср. операторов', data: avgOps,  borderColor: '#6366f1', backgroundColor: 'transparent',          fill: false, borderWidth: 2,   pointRadius: 4, borderDash: [5,4], tension: 0.3 },
+      ]},
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          x: { ticks: { maxRotation: 0 } },
+          y: { beginAtZero: true, ticks: { precision: 1 }, title: { display: true, text: 'Ед.' } },
+        },
+      },
+    })
+  }
 }
 
 function buildForTab(tab) {
