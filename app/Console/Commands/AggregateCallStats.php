@@ -27,6 +27,7 @@ class AggregateCallStats extends Command
 
     private function aggregate(string $date): void
     {
+        // Звонки: ответившие, пропущенные, ожидание
         $callRows = DB::table('calls')
             ->selectRaw("
                 HOUR(called_at) as hour,
@@ -42,44 +43,70 @@ class AggregateCallStats extends Command
             ->get()
             ->keyBy('hour');
 
+        // Операторы: количество уникальных внутренних номеров, реально ответивших на звонок
+        // (DND-операторы не попадают, т.к. не отвечают)
+        $operatorRows = DB::table('calls')
+            ->selectRaw('HOUR(called_at) as hour, COUNT(DISTINCT operator_ext) as op_count')
+            ->whereDate('called_at', $date)
+            ->where('queue_status', 'answered')
+            ->whereNotNull('operator_ext')
+            ->where('operator_ext', '!=', '')
+            ->groupByRaw('HOUR(called_at)')
+            ->get()
+            ->keyBy('hour');
+
+        // Очередь: из queue_stats (хранится только 24ч, используется пока есть)
         $queueRows = DB::table('queue_stats')
             ->selectRaw("
                 HOUR(recorded_at) as hour,
-                MAX(waiting)              as max_queue_depth,
-                ROUND(AVG(waiting), 1)    as avg_queue_depth,
-                MAX(active_members) as avg_operators
+                MAX(waiting)           as max_queue_depth,
+                ROUND(AVG(waiting), 1) as avg_queue_depth
             ")
             ->whereDate('recorded_at', $date)
             ->groupByRaw('HOUR(recorded_at)')
             ->get()
             ->keyBy('hour');
 
-        $hours = $callRows->keys()->merge($queueRows->keys())->unique()->sort();
+        $hasQueueData = $queueRows->isNotEmpty();
+
+        $hours = $callRows->keys()
+            ->merge($queueRows->keys())
+            ->merge($operatorRows->keys())
+            ->unique()->sort();
+
         if ($hours->isEmpty()) {
-            DB::table('call_daily_stats')->where('stat_date', $date)->delete();
             return;
         }
 
         $rows = [];
         foreach ($hours as $h) {
-            $c = $callRows->get($h);
-            $q = $queueRows->get($h);
+            $c       = $callRows->get($h);
+            $q       = $queueRows->get($h);
+            $opCount = (int)($operatorRows->get($h)?->op_count ?? 0);
+
             $rows[] = [
                 'stat_date'       => $date,
                 'hour'            => (int)$h,
-                'total_calls'     => (int)($c?->total_calls  ?? 0),
-                'answered'        => (int)($c?->answered     ?? 0),
-                'missed'          => (int)($c?->missed       ?? 0),
+                'total_calls'     => (int)($c?->total_calls ?? 0),
+                'answered'        => (int)($c?->answered    ?? 0),
+                'missed'          => (int)($c?->missed      ?? 0),
                 'avg_wait_sec'    => $c?->avg_wait_sec,
                 'max_wait_sec'    => $c?->max_wait_sec,
+                'avg_operators'   => $opCount > 0 ? $opCount : null,
                 'max_queue_depth' => $q?->max_queue_depth,
                 'avg_queue_depth' => $q?->avg_queue_depth,
-                'avg_operators'   => $q?->avg_operators,
             ];
         }
 
-        DB::table('call_daily_stats')->where('stat_date', $date)->delete();
-        DB::table('call_daily_stats')->insert($rows);
+        // Всегда обновляем call-метрики и операторов.
+        // Queue-метрики обновляем только когда queue_stats доступны (не перезаписываем нулями).
+        $updateCols = ['total_calls', 'answered', 'missed', 'avg_wait_sec', 'max_wait_sec', 'avg_operators'];
+        if ($hasQueueData) {
+            $updateCols[] = 'max_queue_depth';
+            $updateCols[] = 'avg_queue_depth';
+        }
+
+        DB::table('call_daily_stats')->upsert($rows, ['stat_date', 'hour'], $updateCols);
     }
 
     private function backfill(): int

@@ -541,11 +541,17 @@ function buildCallcenter() {
 
   // График 2: очередь в виде свечей (floating bars) + операторы (ступенчатая линия)
   const avgQ = hours.map(h => h.avg_queue ?? null)
-  // Нижняя часть свечи: от 0 до среднего (нормальная нагрузка)
-  const candleBase  = hours.map(h => h.avg_queue  != null ? [0, h.avg_queue]               : null)
-  // Верхняя часть свечи: от среднего до максимума (пиковый выброс)
-  const candleSpike = hours.map(h => (h.avg_queue != null && h.max_queue != null && h.max_queue > h.avg_queue)
-    ? [h.avg_queue, h.max_queue] : null)
+  // Нижняя часть свечи: до среднего; если avg нет — до максимума (fallback)
+  const candleBase  = hours.map(h => {
+    if (h.avg_queue != null) return [0, h.avg_queue]
+    if (h.max_queue != null) return [0, h.max_queue]
+    return null
+  })
+  // Верхняя часть свечи: от среднего до максимума (пиковый выброс над нормой)
+  const candleSpike = hours.map(h =>
+    (h.avg_queue != null && h.max_queue != null && h.max_queue > h.avg_queue)
+      ? [h.avg_queue, h.max_queue] : null
+  )
 
   if (callcenterCanvas2.value && (maxQ.some(v => v != null) || avgOps.some(v => v != null))) {
     charts.callcenter2 = new Chart(callcenterCanvas2.value, {
