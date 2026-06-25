@@ -88,6 +88,10 @@ class TicketService
             default               => null,
         };
 
+        if (in_array($slug, ['closed', 'cancelled'])) {
+            $updates['closed_by'] = $user->id;
+        }
+
         if ($comment) {
             $updates['close_notes'] = $comment;
         }

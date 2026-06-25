@@ -12,7 +12,7 @@ protected $fillable = [
         'number', 'address_id', 'apartment', 'type_id', 'service_type_id', 'status_id', 'brigade_id',
         'created_by', 'assigned_to', 'description', 'phone', 'contract_no',
         'priority', 'scheduled_at', 'started_at', 'paused_at', 'closed_at',
-        'close_notes', 'act_number',
+        'close_notes', 'act_number', 'closed_by',
     ];
 
     protected $casts = [
@@ -30,6 +30,7 @@ protected $fillable = [
     public function brigade(): BelongsTo   { return $this->belongsTo(Brigade::class); }
     public function creator(): BelongsTo   { return $this->belongsTo(User::class, 'created_by'); }
     public function assignee(): BelongsTo  { return $this->belongsTo(User::class, 'assigned_to'); }
+    public function closedBy(): BelongsTo  { return $this->belongsTo(User::class, 'closed_by'); }
     public function comments(): HasMany    { return $this->hasMany(TicketComment::class)->latest(); }
     public function attachments(): HasMany { return $this->hasMany(TicketAttachment::class); }
         public function materials(): HasMany

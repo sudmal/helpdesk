@@ -174,6 +174,7 @@ class TicketController extends Controller
             'attachments.uploader',
             'materials',
             'history.user',
+            'closedBy',
         ]);
 
         // История заявок по этому адресу (кроме текущей)

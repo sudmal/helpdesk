@@ -95,9 +95,14 @@
             </p>
           </div>
 
-          <div v-if="ticket.close_notes" class="mt-3 bg-green-50 rounded-xl p-3">
-            <p class="text-xs text-green-600 mb-1 font-medium">{{ ticket.status?.slug === 'postponed' ? 'Причина переноса' : 'Итог закрытия' }}</p>
-            <p class="text-sm text-green-800">{{ ticket.close_notes }}</p>
+          <div v-if="ticket.close_notes || ticket.closed_at" class="mt-3 bg-green-50 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-xs text-green-600 font-medium">{{ ticket.status?.slug === 'postponed' ? 'Причина переноса' : 'Итог закрытия' }}</p>
+              <p class="text-xs text-green-500">
+                <span v-if="ticket.closed_by">{{ ticket.closed_by.name }}</span><span v-if="ticket.closed_by && ticket.closed_at"> &middot; </span><span v-if="ticket.closed_at">{{ formatDateTime(ticket.closed_at) }}</span>
+              </p>
+            </div>
+            <p v-if="ticket.close_notes" class="text-sm text-green-800">{{ ticket.close_notes }}</p>
           </div>
         </div>
 

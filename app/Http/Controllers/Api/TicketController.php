@@ -55,7 +55,7 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author', 'comments.attachments', 'attachments']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -178,7 +178,7 @@ class TicketController extends Controller
             }
         }
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author', 'attachments']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'attachments']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -195,7 +195,7 @@ class TicketController extends Controller
         $ticket->update(['scheduled_at' => $request->scheduled_at]);
         $this->ticketService->updateStatus($ticket, 'postponed', $request->user(), $request->comment);
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'comments.author', 'comments.attachments', 'attachments']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -207,6 +207,7 @@ class TicketController extends Controller
             'number'       => $t->number,
             'scheduled_at' => $t->scheduled_at?->toIso8601String(),
             'closed_at'    => $t->closed_at?->toIso8601String(),
+            'closed_by'    => $t->closedBy?->name,
             'description'  => $t->description,
             'phone'        => $t->phone,
             'apartment'    => $t->apartment,
