@@ -23,7 +23,8 @@ class UpdateTicketRequest extends FormRequest
             'phone'        => 'nullable|string|max:20',
             'contract_no'  => 'nullable|string|max:50',
             'priority'     => 'required|in:low,normal,high,urgent',
-            'scheduled_at' => 'nullable|date',
+            'scheduled_at'    => 'nullable|date',
+            'service_type_id' => 'nullable|exists:service_types,id',
         ];
     }
 }

@@ -85,6 +85,14 @@
               </select>
             </div>
 
+            <div>
+              <label class="field-label">Участок</label>
+              <select v-model="form.service_type_id" class="field-input">
+                <option value="">— Не указан —</option>
+                <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
+              </select>
+            </div>
+
           </div>
 
           <div>
@@ -116,7 +124,7 @@ import TimePicker from '@/Components/UI/TimePicker.vue'
 import dayjs from 'dayjs'
 
 const props = defineProps({
-  ticket: Object, types: Array, statuses: Array, brigades: Array,
+  ticket: Object, types: Array, statuses: Array, brigades: Array, serviceTypes: Array,
   settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
 })
 
@@ -133,7 +141,8 @@ const form = useForm({
   description:  props.ticket.description,
   phone:        props.ticket.phone ?? '',
   contract_no:  props.ticket.contract_no ?? '',
-  priority:     props.ticket.priority,
+  priority:        props.ticket.priority,
+  service_type_id: props.ticket.service_type_id ?? '',
   scheduled_at: props.ticket.scheduled_at
     ? dayjs(props.ticket.scheduled_at).format('YYYY-MM-DDTHH:mm') : '',
 })

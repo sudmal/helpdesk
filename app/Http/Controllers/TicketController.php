@@ -22,8 +22,8 @@ class TicketController extends Controller
 
         $user = auth()->user();
 
-        // Операторы, диспетчеры, руководство видят все заявки.
-        // Бригадиры и монтажники — только по территориям своей бригады.
+        // РћРїРµСЂР°С‚РѕСЂС‹, РґРёСЃРїРµС‚С‡РµСЂС‹, СЂСѓРєРѕРІРѕРґСЃС‚РІРѕ РІРёРґСЏС‚ РІСЃРµ Р·Р°СЏРІРєРё.
+        // Р‘СЂРёРіР°РґРёСЂС‹ Рё РјРѕРЅС‚Р°Р¶РЅРёРєРё вЂ” С‚РѕР»СЊРєРѕ РїРѕ С‚РµСЂСЂРёС‚РѕСЂРёСЏРј СЃРІРѕРµР№ Р±СЂРёРіР°РґС‹.
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
             if ($brigadeIds->isNotEmpty()) {
@@ -32,7 +32,7 @@ class TicketController extends Controller
                 $userTerritories = $user->territories()->pluck('territories.id');
             }
         } else {
-            $userTerritories = collect(); // нет фильтра — видят всё
+            $userTerritories = collect(); // РЅРµС‚ С„РёР»СЊС‚СЂР° вЂ” РІРёРґСЏС‚ РІСЃС‘
         }
 
         $nonFinalStatusIds = Cache::remember('ts_non_final_ids', 3600,
@@ -59,11 +59,11 @@ class TicketController extends Controller
 ->when($request->input('closed_today'), function ($q) use ($request) {
                 $q->where('status_id', $closedStatusId)->whereDate('closed_at', today());
                 if ($request->input('closed_today') === 'auto') {
-                    $q->where('close_notes', 'LIKE', '%просрочено%');
+                    $q->where('close_notes', 'LIKE', '%РїСЂРѕСЃСЂРѕС‡РµРЅРѕ%');
                 } elseif ($request->input('closed_today') === 'manual') {
                     $q->where(function ($sub) {
                         $sub->whereNull('close_notes')
-                            ->orWhere('close_notes', 'NOT LIKE', '%просрочено%');
+                            ->orWhere('close_notes', 'NOT LIKE', '%РїСЂРѕСЃСЂРѕС‡РµРЅРѕ%');
                     });
                 }
             })
@@ -109,7 +109,7 @@ class TicketController extends Controller
     {
         $this->authorize('create', Ticket::class);
 
-        // Если передан address_id — подгружаем адрес и историю заявок по нему
+        // Р•СЃР»Рё РїРµСЂРµРґР°РЅ address_id вЂ” РїРѕРґРіСЂСѓР¶Р°РµРј Р°РґСЂРµСЃ Рё РёСЃС‚РѕСЂРёСЋ Р·Р°СЏРІРѕРє РїРѕ РЅРµРјСѓ
         $address = null;
         $addressHistory = [];
         if ($request->address_id) {
@@ -145,7 +145,7 @@ class TicketController extends Controller
     {
         $validated = $request->validated();
 
-        // Проверка занятости временного слота
+        // РџСЂРѕРІРµСЂРєР° Р·Р°РЅСЏС‚РѕСЃС‚Рё РІСЂРµРјРµРЅРЅРѕРіРѕ СЃР»РѕС‚Р°
         $conflict = $this->ticketService->checkSlotConflict($validated);
         if ($conflict) {
             return back()->withErrors(['scheduled_at' => $conflict])->withInput();
@@ -153,14 +153,14 @@ class TicketController extends Controller
 
         $ticket = $this->ticketService->create($validated, auth()->user());
 
-        // Сохраняем вложения если есть
+        // РЎРѕС…СЂР°РЅСЏРµРј РІР»РѕР¶РµРЅРёСЏ РµСЃР»Рё РµСЃС‚СЊ
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
                 $this->ticketService->storeAttachment($ticket, $file, auth()->user(), 'attachment');
             }
         }
 
-        return redirect()->route('tickets.show', $ticket)->with('success', 'Заявка создана');
+        return redirect()->route('tickets.show', $ticket)->with('success', 'Р—Р°СЏРІРєР° СЃРѕР·РґР°РЅР°');
     }
 
     public function show(Ticket $ticket): Response
@@ -177,7 +177,7 @@ class TicketController extends Controller
             'closedBy',
         ]);
 
-        // История заявок по этому адресу (кроме текущей)
+        // РСЃС‚РѕСЂРёСЏ Р·Р°СЏРІРѕРє РїРѕ СЌС‚РѕРјСѓ Р°РґСЂРµСЃСѓ (РєСЂРѕРјРµ С‚РµРєСѓС‰РµР№)
         $addressHistory = $ticket->address_id
 
             ? Ticket::with(['type', 'status'])
@@ -222,10 +222,11 @@ class TicketController extends Controller
         $ticket->load(['address.territory', 'type', 'status', 'brigade', 'assignee']);
 
         return Inertia::render('Tickets/Edit', [
-            'ticket'   => $ticket,
-            'types'    => TicketType::active()->get(['id', 'name', 'color']),
-            'statuses' => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
-            'brigades' => Brigade::with('members')->orderBy('name')->get(),
+            'ticket'       => $ticket,
+            'types'        => TicketType::active()->get(['id', 'name', 'color']),
+            'statuses'     => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
+            'brigades'     => Brigade::with('members')->orderBy('name')->get(),
+            'serviceTypes' => ServiceType::active()->get(['id', 'name', 'color']),
             'settings' => [
                 'lanbillingEnabled'    => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),
                 'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
@@ -239,30 +240,30 @@ class TicketController extends Controller
     {
         $this->authorize('update', $ticket);
         $ticket->update($request->validated());
-        return back()->with('success', 'Заявка обновлена');
+        return back()->with('success', 'Р—Р°СЏРІРєР° РѕР±РЅРѕРІР»РµРЅР°');
     }
 
     public function destroy(Ticket $ticket): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('delete', $ticket);
         $ticket->delete();
-        return redirect()->route('tickets.index')->with('success', 'Заявка удалена');
+        return redirect()->route('tickets.index')->with('success', 'Р—Р°СЏРІРєР° СѓРґР°Р»РµРЅР°');
     }
 
-    // === Действия по заявке ===
+    // === Р”РµР№СЃС‚РІРёСЏ РїРѕ Р·Р°СЏРІРєРµ ===
 
     public function start(Ticket $ticket): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('start', $ticket);
         $this->ticketService->updateStatus($ticket, 'in_progress', auth()->user());
-        return back()->with('success', 'Заявка взята в работу');
+        return back()->with('success', 'Р—Р°СЏРІРєР° РІР·СЏС‚Р° РІ СЂР°Р±РѕС‚Сѓ');
     }
 
     public function pause(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('pause', $ticket);
         $this->ticketService->updateStatus($ticket, 'paused', auth()->user(), $request->comment);
-        return back()->with('success', 'Заявка приостановлена');
+        return back()->with('success', 'Р—Р°СЏРІРєР° РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅР°');
     }
 
     public function close(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
@@ -273,8 +274,8 @@ class TicketController extends Controller
             'act_number' => 'nullable|string|max:50',
         ]);
 
-        // Если акт не указан — ставим б/а
-        $actNumber = $request->filled('act_number') ? $request->act_number : 'б/а';
+        // Р•СЃР»Рё Р°РєС‚ РЅРµ СѓРєР°Р·Р°РЅ вЂ” СЃС‚Р°РІРёРј Р±/Р°
+        $actNumber = $request->filled('act_number') ? $request->act_number : 'Р±/Р°';
 
         $materialsData = $request->input('materials');
         if (is_string($materialsData)) {
@@ -282,7 +283,7 @@ class TicketController extends Controller
         }
 
         if (!empty($materialsData) && (empty($request->act_number) || mb_strlen(trim($request->act_number)) < 5)) {
-            return back()->withErrors(['act_number' => 'При использовании материалов обязателен номер акта (минимум 5 символов).'])->withInput();
+            return back()->withErrors(['act_number' => 'РџСЂРё РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРё РјР°С‚РµСЂРёР°Р»РѕРІ РѕР±СЏР·Р°С‚РµР»РµРЅ РЅРѕРјРµСЂ Р°РєС‚Р° (РјРёРЅРёРјСѓРј 5 СЃРёРјРІРѕР»РѕРІ).'])->withInput();
         }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $actNumber, $materialsData, $request) {
@@ -295,7 +296,7 @@ class TicketController extends Controller
                 }
             }
 
-            // Сохраняем расходные материалы
+            // РЎРѕС…СЂР°РЅСЏРµРј СЂР°СЃС…РѕРґРЅС‹Рµ РјР°С‚РµСЂРёР°Р»С‹
             if (!empty($materialsData) && is_array($materialsData)) {
                 $ticket->materials()->delete();
                 foreach ($materialsData as $item) {
@@ -316,7 +317,7 @@ class TicketController extends Controller
             }
         });
 
-        return back()->with('success', 'Заявка закрыта');
+        return back()->with('success', 'Р—Р°СЏРІРєР° Р·Р°РєСЂС‹С‚Р°');
     }
 
     public function freeSlot(Request $request): \Illuminate\Http\JsonResponse
@@ -362,7 +363,7 @@ class TicketController extends Controller
         $ticket->update(['scheduled_at' => $request->scheduled_at]);
         $this->ticketService->updateStatus($ticket, 'postponed', auth()->user(), $request->comment);
 
-        return back()->with('success', 'Заявка перенесена на ' . \Carbon\Carbon::parse($request->scheduled_at)->format('d.m.Y H:i'));
+        return back()->with('success', 'Р—Р°СЏРІРєР° РїРµСЂРµРЅРµСЃРµРЅР° РЅР° ' . \Carbon\Carbon::parse($request->scheduled_at)->format('d.m.Y H:i'));
     }
 
     public function bulkClose(Request $request): \Illuminate\Http\JsonResponse
@@ -374,7 +375,7 @@ class TicketController extends Controller
             'act_number' => 'nullable|string|max:50',
         ]);
 
-        $actNumber = filled($request->act_number) ? $request->act_number : 'б/а';
+        $actNumber = filled($request->act_number) ? $request->act_number : 'Р±/Р°';
         $tickets   = Ticket::findMany($request->ids);
         $user      = auth()->user();
 
@@ -414,7 +415,7 @@ class TicketController extends Controller
     {
         $this->authorize('update', $ticket);
         $this->ticketService->updateStatus($ticket, 'new', auth()->user());
-        return back()->with('success', 'Заявка переоткрыта');
+        return back()->with('success', 'Р—Р°СЏРІРєР° РїРµСЂРµРѕС‚РєСЂС‹С‚Р°');
     }
 
     public function assign(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
@@ -425,7 +426,7 @@ class TicketController extends Controller
             'user_id'    => 'nullable|exists:users,id',
         ]);
         $this->ticketService->assign($ticket, $request->brigade_id, $request->user_id, auth()->user());
-        return back()->with('success', 'Бригада назначена');
+        return back()->with('success', 'Р‘СЂРёРіР°РґР° РЅР°Р·РЅР°С‡РµРЅР°');
     }
 
     public function addComment(AddCommentRequest $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
@@ -444,6 +445,6 @@ class TicketController extends Controller
             }
         }
 
-        return back()->with('success', 'Комментарий добавлен');
+        return back()->with('success', 'РљРѕРјРјРµРЅС‚Р°СЂРёР№ РґРѕР±Р°РІР»РµРЅ');
     }
 }
