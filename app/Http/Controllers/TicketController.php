@@ -239,7 +239,29 @@ class TicketController extends Controller
     public function update(UpdateTicketRequest $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
     {
         $this->authorize('update', $ticket);
-        $ticket->update($request->validated());
+
+        $data = $request->validated();
+
+        // Обновляем префикс номера если изменился участок
+        $newServiceTypeId = $data['service_type_id'] ?? null;
+        if ($newServiceTypeId != $ticket->service_type_id) {
+            $serviceTypeName = $newServiceTypeId
+                ? ServiceType::find($newServiceTypeId)?->name
+                : null;
+            $lower = mb_strtolower((string) $serviceTypeName);
+            if (str_contains($lower, 'интернет') || str_contains($lower, 'inet')) {
+                $newPrefix = 'i';
+            } elseif (str_contains($lower, 'ктв') || str_contains($lower, 'ctv') || str_contains($lower, 'кабел')) {
+                $newPrefix = 'c';
+            } else {
+                $newPrefix = 'Т';
+            }
+            if (preg_match('/^[^-]+-(\d+)$/', $ticket->number, $m)) {
+                $data['number'] = $newPrefix . '-' . $m[1];
+            }
+        }
+
+        $ticket->update($data);
         return back()->with('success', 'Заявка обновлена');
     }
 
