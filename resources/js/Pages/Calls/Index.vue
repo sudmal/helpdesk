@@ -18,6 +18,13 @@
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
           Очередь АТС
         </button>
+        <button @click="activeTab = 'ivr'"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         activeTab === 'ivr'
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          IVR журнал
+        </button>
       </div>
     <div v-if="activeTab === 'calls'" class="p-4 space-y-4">
 
@@ -188,6 +195,20 @@
           <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', trunkDotClass(trunkStatus)]"></span>
           <span class="text-xs text-gray-500 font-medium">PHOENIX SIP</span>
         </div>
+        <div class="flex items-center gap-1.5 ml-2">
+          <button @click="sendCmd('pjsip_reload')" :disabled="cmdSending !== null"
+                  :class="['w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0',
+                           cmdSending === 'pjsip_reload' ? 'bg-orange-400 border-orange-400' : 'bg-white border-orange-400 hover:bg-orange-100']"
+                  title="Перезагрузить PJSIP"></button>
+          <button @click="sendCmd('queue_reload')" :disabled="cmdSending !== null"
+                  :class="['w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0',
+                           cmdSending === 'queue_reload' ? 'bg-green-500 border-green-500' : 'bg-white border-green-500 hover:bg-green-100']"
+                  title="Перезагрузить очередь"></button>
+          <button @click="sendCmd('qualify_all')" :disabled="cmdSending !== null"
+                  :class="['w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0',
+                           cmdSending === 'qualify_all' ? 'bg-blue-500 border-blue-500' : 'bg-white border-blue-500 hover:bg-blue-100']"
+                  title="Проверить регистрации (qualify all)"></button>
+        </div>
       </div>
 
       <!-- Очередь + Операторы -->
@@ -299,6 +320,87 @@
       </div>
     </div>
 
+
+    <div v-if="activeTab === 'ivr'" class="p-4 space-y-4">
+
+      <!-- +7... IVR -->
+      <div class="bg-white rounded-2xl border border-gray-200 p-4 flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-36">
+          <label class="block text-xs text-gray-500 mb-1">Телефон</label>
+          <input v-model="ivrF.phone" @keydown.enter="loadIvr" class="field-input" placeholder="+7..." />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Действие</label>
+          <select v-model="ivrF.action" class="field-input">
+            <option value="">Все</option>
+            <option v-for="(label, key) in ivrActionLabels" :key="key" :value="key">{{ label }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Дата с</label>
+          <input v-model="ivrF.date_from" type="date" class="field-input" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Дата по</label>
+          <input v-model="ivrF.date_to" type="date" class="field-input" />
+        </div>
+        <div class="flex gap-2">
+          <button @click="loadIvr" class="btn-primary text-sm">Найти</button>
+          <button @click="resetIvr" class="btn-outline text-sm">Сброс</button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span class="text-sm text-gray-500">Всего: {{ ivrTotal }}</span>
+          <button @click="loadIvr" class="btn-outline text-xs py-1">Обновить</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+              <tr>
+                <th class="px-4 py-3 text-left">Время</th>
+                <th class="px-4 py-3 text-left">Телефон</th>
+                <th class="px-4 py-3 text-left">Абонент</th>
+                <th class="px-4 py-3 text-left">Договор</th>
+                <th class="px-4 py-3 text-left">Адрес</th>
+                <th class="px-4 py-3 text-right">Баланс</th>
+                <th class="px-4 py-3 text-left">Действие</th>
+                <th class="px-4 py-3 text-left">Детали</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-xs">
+              <tr v-if="ivrLoading">
+                <td colspan="8" class="px-4 py-8 text-center text-gray-400">Загрузка...</td>
+              </tr>
+              <tr v-else-if="!ivrLogs.length">
+                <td colspan="8" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
+              </tr>
+              <tr v-for="row in ivrLogs" :key="row.id" class="hover:bg-gray-50">
+                <td class="px-3 py-0.5 whitespace-nowrap text-gray-500">{{ formatDate(row.created_at) }}</td>
+                <td class="px-3 py-0.5 font-mono">{{ row.phone }}</td>
+                <td class="px-3 py-0.5 text-gray-700">{{ row.subscriber_name ?? '—' }}</td>
+                <td class="px-3 py-0.5 font-mono text-gray-600">{{ row.agreement_num ?? '—' }}</td>
+                <td class="px-3 py-0.5 text-gray-600">{{ row.address ?? '—' }}</td>
+                <td class="px-3 py-0.5 text-right tabular-nums" :class="(row.balance ?? 0) < 0 ? 'text-red-600' : 'text-gray-700'">
+                  <span v-if="row.balance !== null">{{ row.balance }} ₽</span>
+                  <span v-else class="text-gray-300">—</span>
+                </td>
+                <td class="px-3 py-0.5">
+                  <span :class="ivrActionBadge(row.action)"
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                    {{ ivrActionLabels[row.action] ?? row.action }}
+                  </span>
+                </td>
+                <td class="px-3 py-0.5 text-gray-500">{{ row.details ?? '' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
     </div><!-- end main card -->
 
   </AppLayout>
@@ -357,6 +459,7 @@ function formatDate(val) {
   const d = new Date(val)
   return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
+const cmdSending  = ref(null)
 const qLatest     = ref(null)
 const qHistory    = ref([])
 const qDetail     = ref({ members: [], callers: [], phones: [], trunk: null })
@@ -397,6 +500,18 @@ async function loadQueue() {
     qMissedCalls.value = data.missed_calls ?? []
   } catch (e) {}
   qLoading.value = false
+}
+async function sendCmd(cmd) {
+  cmdSending.value = cmd
+  try {
+    const token = document.head.querySelector('meta[name="csrf-token"]')?.content ?? ''
+    await fetch(route('pbx.trigger-cmd'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+      body: JSON.stringify({ cmd }),
+    })
+  } catch (e) {}
+  setTimeout(() => { cmdSending.value = null }, 800)
 }
 
 const STATUS_ORDER = { in_call: 0, ringing: 1, idle: 2, unavailable: 3 }
@@ -534,7 +649,44 @@ function renderChart() {
     plugins: [missedPlugin],
   })
 }
-watch(activeTab, val => { if (val === 'queue') loadQueue() })
+
+// ?? IVR ?????? ???????????????????????????????????????????????????????????????
+const today = () => { const d = new Date(); return fmtD(d) }
+const ivrLogs         = ref([])
+const ivrTotal        = ref(0)
+const ivrActionLabels = ref({})
+const ivrLoading      = ref(false)
+const ivrF = ref({ phone: '', action: '', date_from: today(), date_to: today() })
+
+const IVR_ACTION_COLORS = {
+  balance_check:       'bg-blue-100 text-blue-700',
+  pp_offered:          'bg-yellow-100 text-yellow-700',
+  pp_activated:        'bg-green-100 text-green-700',
+  pp_declined:         'bg-gray-100 text-gray-500',
+  transfer_to_support: 'bg-purple-100 text-purple-700',
+  not_found:           'bg-orange-100 text-orange-600',
+  api_error:           'bg-red-100 text-red-600',
+}
+function ivrActionBadge(action) { return IVR_ACTION_COLORS[action] ?? 'bg-gray-100 text-gray-500' }
+
+async function loadIvr() {
+  ivrLoading.value = true
+  try {
+    const params = new URLSearchParams(Object.fromEntries(Object.entries(ivrF.value).filter(([,v]) => v)))
+    const res  = await fetch(route('ivr-log.data') + '?' + params.toString())
+    const data = await res.json()
+    ivrLogs.value         = data.logs ?? []
+    ivrTotal.value        = data.total ?? (data.logs ?? []).length
+    ivrActionLabels.value = data.actionLabels ?? {}
+  } catch (e) {}
+  ivrLoading.value = false
+}
+function resetIvr() {
+  ivrF.value = { phone: '', action: '', date_from: today(), date_to: today() }
+  loadIvr()
+}
+
+watch(activeTab, val => { if (val === 'queue') loadQueue(); if (val === 'ivr') loadIvr() })
 watch(qHistory, async () => { await nextTick(); renderChart() }, { deep: true })
 watch(() => props.stats, async () => { await nextTick(); renderPie() }, { deep: true })
 onMounted(() => {

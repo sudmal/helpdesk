@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Call, Address, Ticket, QueueStat};
+use App\Models\{Call, Address, Ticket, QueueStat, IvrLog};
 use Illuminate\Http\{Request, JsonResponse};
 
 class PbxController extends Controller
@@ -197,6 +197,22 @@ class PbxController extends Controller
             $this->trackCallEvents($data['queue'], $detail);
         }
 
+        $cmd = \Cache::get('queue:pending_cmd');
+        if ($cmd) {
+            \Cache::forget('queue:pending_cmd');
+        }
+
+        return response()->json(array_filter(['status' => 'ok', 'cmd' => $cmd]));
+    }
+
+    public function triggerCmd(Request $request): JsonResponse
+    {
+        $cmd     = $request->input('cmd');
+        $allowed = ['pjsip_reload', 'queue_reload', 'qualify_all'];
+        if (!in_array($cmd, $allowed, true)) {
+            return response()->json(['error' => 'Invalid cmd'], 422);
+        }
+        \Cache::put('queue:pending_cmd', $cmd, 120);
         return response()->json(['status' => 'ok']);
     }
 
@@ -461,4 +477,30 @@ class PbxController extends Controller
         return ['members' => $members, 'callers' => $callers];
     }
 
+    public function ivrLog(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->input('token');
+        if ($token !== config('services.pbx.token')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $action = $request->input('action', '');
+        if (!$action) {
+            return response()->json(['status' => 'skipped']);
+        }
+
+        IvrLog::create([
+            'call_id'         => $request->input('call_id', ''),
+            'phone'           => $request->input('phone', ''),
+            'subscriber_name' => $request->input('name', null),
+            'agreement_num'   => $request->input('agrmnum', null),
+            'address'         => $request->input('address', null),
+            'balance'         => is_numeric($request->input('balance')) ? (float) $request->input('balance') : null,
+            'blocked'         => (int) $request->input('blocked', 0),
+            'action'          => $action,
+            'details'         => $request->input('details', null),
+        ]);
+
+        return response()->json(['status' => 'ok']);
+    }
 }

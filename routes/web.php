@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Controllers\{
     DashboardController,
@@ -207,6 +207,10 @@ Route::post('/sync/legacy-ticket', [SyncController::class, 'storeLegacy'])->name
 // АТС — состояние очереди (без CSRF, защищено токеном)
 Route::post('/pbx/queue-status', [\App\Http\Controllers\PbxController::class, 'queueStatus'])->name('pbx.queue-status');
 Route::middleware(['auth', 'active'])->get('/pbx/queue-history', [\App\Http\Controllers\PbxController::class, 'queueHistory'])->name('pbx.queue-history');
+Route::middleware(['auth', 'active'])->post('/pbx/trigger-cmd', [\App\Http\Controllers\PbxController::class, 'triggerCmd'])->name('pbx.trigger-cmd');
+Route::post('/pbx/ivr-log', [\App\Http\Controllers\PbxController::class, 'ivrLog'])->name('pbx.ivr-log');
+Route::middleware(['auth', 'active'])->get('/ivr-log', [\App\Http\Controllers\IvrLogController::class, 'index'])->name('ivr-log.index');
+Route::middleware(['auth', 'active'])->get('/pbx/ivr-log-data', [\App\Http\Controllers\IvrLogController::class, 'data'])->name('ivr-log.data');
 
 // Telegram Bot
 Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class, 'webhook'])
@@ -214,6 +218,7 @@ Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class
 Route::get('/telegram/set-webhook', [App\Http\Controllers\TelegramController::class, 'setWebhook'])
     ->middleware('auth')
     ->name('telegram.set-webhook');
+
 
 
 
