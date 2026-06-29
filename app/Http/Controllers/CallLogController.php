@@ -89,12 +89,26 @@ class CallLogController extends Controller
                 ->get()
                 ->groupBy('phone');
 
-            $callsData->transform(function ($call) use ($ivrMap) {
+            $filterAction = $request->filled('ivr_action') ? $request->ivr_action : null;
+            $callsData->transform(function ($call) use ($ivrMap, $filterAction) {
                 $calledAt = Carbon::parse($call->called_at);
-                $ivr = ($ivrMap->get($call->phone) ?? collect())->first(function ($log) use ($calledAt) {
+                $logs = $ivrMap->get($call->phone) ?? collect();
+                // Если активен фильтр по action — берём первый совпадающий лог в окне
+                // Иначе — просто первый (самый свежий) в окне [-30..+2] мин
+                $ivr = $logs->first(function ($log) use ($calledAt, $filterAction) {
                     $t = Carbon::parse($log->created_at);
-                    return $t->between($calledAt->copy()->subMinutes(30), $calledAt->copy()->addMinutes(2));
+                    $inWindow = $t->between($calledAt->copy()->subMinutes(30), $calledAt->copy()->addMinutes(2));
+                    if (!$inWindow) return false;
+                    if ($filterAction !== null && $log->action !== $filterAction) return false;
+                    return true;
                 });
+                // Если фильтр есть, но с нужным action не нашли — берём любой в окне (fallback)
+                if ($ivr === null && $filterAction !== null) {
+                    $ivr = $logs->first(function ($log) use ($calledAt) {
+                        $t = Carbon::parse($log->created_at);
+                        return $t->between($calledAt->copy()->subMinutes(30), $calledAt->copy()->addMinutes(2));
+                    });
+                }
                 $call->ivr_subscriber_name = $ivr?->subscriber_name;
                 $call->ivr_agreement_num   = $ivr?->agreement_num;
                 $call->ivr_address         = $ivr?->address;

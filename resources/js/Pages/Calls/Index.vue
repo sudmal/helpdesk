@@ -113,62 +113,62 @@
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
               <tr>
-                <th class="px-4 py-3 text-left">Время</th>
-                <th class="px-4 py-3 text-left"></th>
-                <th class="px-4 py-3 text-left">Статус</th>
-                <th class="px-4 py-3 text-left">Телефон</th>
-                <th class="px-4 py-3 text-left">Абонент</th>
-                <th class="px-4 py-3 text-left">Договор</th>
-                <th class="px-4 py-3 text-left">IVR</th>
-                <th class="px-4 py-3 text-right">Баланс</th>
-                <th class="px-4 py-3 text-left">Ожидание</th>
-                <th class="px-4 py-3 text-left">Оператор</th>
-                <th class="px-4 py-3 text-left">Адрес</th>
-                <th class="px-4 py-3 text-left">Кв.</th>
-                <th class="px-4 py-3 text-left">Заявки</th>
+                <th class="px-2 py-2 text-left">Время</th>
+                <th class="px-2 py-2 text-left"></th>
+                <th class="px-2 py-2 text-left">Статус</th>
+                <th class="px-2 py-2 text-left">Телефон</th>
+                <th class="px-2 py-2 text-left">Абонент</th>
+                <th class="px-2 py-2 text-left">Договор</th>
+                <th class="px-2 py-2 text-left">IVR</th>
+                <th class="px-2 py-2 text-right">Баланс</th>
+                <th class="px-2 py-2 text-left">Ожидание</th>
+                <th class="px-2 py-2 text-left">Оператор</th>
+                <th class="px-2 py-2 text-left">Адрес</th>
+                <th class="px-2 py-2 text-left">Кв.</th>
+                <th class="px-2 py-2 text-left">Заявки</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 text-xs">
               <tr v-for="c in calls.data" :key="c.id" class="hover:bg-gray-50">
-                <td class="px-3 py-0.5 whitespace-nowrap text-gray-500">{{ formatDate(c.called_at) }}</td>
-                <td class="px-3 py-0.5">
+                <td class="px-2 py-0.5 whitespace-nowrap text-gray-500">{{ formatDate(c.called_at) }}</td>
+                <td class="px-2 py-0.5">
                   <a :href="createTicketUrl(c)" class="text-xs text-green-600 hover:underline whitespace-nowrap">+ заявка</a>
                 </td>
-                <td class="px-3 py-0.5">
-                  <span v-if="c.queue_status === 'answered'" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Принят</span>
-                  <span v-else-if="c.queue_status === 'missed'" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Упущен</span>
-                  <span v-else class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">Не в очереди</span>
+                <td class="px-2 py-0.5">
+                  <span v-if="c.queue_status === 'answered'" class="inline-flex items-center px-1.5 py-px rounded-full text-xs font-medium bg-green-100 text-green-700">Принят</span>
+                  <span v-else-if="c.queue_status === 'missed'" class="inline-flex items-center px-1.5 py-px rounded-full text-xs font-medium bg-red-100 text-red-600">Упущен</span>
+                  <span v-else class="inline-flex items-center px-1.5 py-px rounded-full text-xs font-medium bg-gray-100 text-gray-400">Не в очереди</span>
                 </td>
-                <td class="px-3 py-0.5 font-mono">{{ c.phone }}</td>
-                <td class="px-3 py-0.5 text-gray-700">{{ c.ivr_subscriber_name ?? '—' }}</td>
-                <td class="px-3 py-0.5 font-mono text-gray-500 text-xs">{{ c.ivr_agreement_num ?? '—' }}</td>
-                <td class="px-3 py-0.5">
+                <td class="px-2 py-0.5 font-mono text-xs">{{ c.phone }}</td>
+                <td class="px-2 py-0.5 text-gray-700">{{ c.ivr_subscriber_name ?? '—' }}</td>
+                <td class="px-2 py-0.5 font-mono text-gray-500 text-xs">{{ c.ivr_agreement_num ?? '—' }}</td>
+                <td class="px-2 py-0.5">
                   <span v-if="c.ivr_action" :class="ivrActionBadge(c.ivr_action)"
-                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                        class="inline-flex items-center px-1.5 py-px rounded-full text-xs font-medium whitespace-nowrap">
                     {{ actionLabels[c.ivr_action] ?? c.ivr_action }}
                   </span>
                   <span v-else class="text-gray-300">—</span>
                 </td>
-                <td class="px-3 py-0.5 text-right tabular-nums text-xs"
+                <td class="px-2 py-0.5 text-right tabular-nums text-xs"
                     :class="(c.ivr_balance ?? 0) < 0 ? 'text-red-600' : 'text-gray-600'">
                   <span v-if="c.ivr_balance !== null && c.ivr_balance !== undefined">{{ c.ivr_balance }} ₽</span>
                   <span v-else class="text-gray-300">—</span>
                 </td>
-                <td class="px-3 py-0.5 tabular-nums text-gray-500">
+                <td class="px-2 py-0.5 tabular-nums text-gray-500">
                   <span v-if="c.wait_seconds">{{ Math.floor(c.wait_seconds / 60) + ':' + String(c.wait_seconds % 60).padStart(2, '0') }}</span>
                   <span v-else class="text-gray-300">—</span>
                 </td>
-                <td class="px-3 py-0.5 text-gray-600 font-mono">{{ c.operator_ext ?? '—' }}</td>
-                <td class="px-3 py-0.5 text-gray-700">{{ c.ivr_address || c.address_string || c.address?.full_address || '—' }}</td>
-                <td class="px-3 py-0.5 text-gray-600">{{ c.apartment ?? '—' }}</td>
-                <td class="px-3 py-0.5">
+                <td class="px-2 py-0.5 text-gray-600 font-mono text-xs">{{ c.operator_ext ?? '—' }}</td>
+                <td class="px-2 py-0.5 text-gray-700">{{ c.ivr_address || c.address_string || c.address?.full_address || '—' }}</td>
+                <td class="px-2 py-0.5 text-gray-600">{{ c.apartment ?? '—' }}</td>
+                <td class="px-2 py-0.5">
                   <a v-if="c.address"
                      :href="route('tickets.index', { address_id: c.address.id, apartment: c.apartment })"
                      class="text-xs text-blue-500 hover:underline">заявки →</a>
                 </td>
               </tr>
               <tr v-if="!calls.data.length">
-                <td colspan="13" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
+                <td colspan="13" class="px-2 py-6 text-center text-gray-400">Нет записей</td>
               </tr>
             </tbody>
           </table>
@@ -367,11 +367,13 @@ const f = ref({
 })
 function ivrActionBadge(action) {
   const map = {
-    new_ticket:    'bg-blue-100 text-blue-800',
-    find_ticket:   'bg-purple-100 text-purple-800',
-    check_balance: 'bg-yellow-100 text-yellow-800',
-    operator:      'bg-green-100 text-green-800',
-    no_action:     'bg-gray-100 text-gray-500',
+    balance_check:       'bg-yellow-100 text-yellow-800',
+    pp_offered:          'bg-orange-100 text-orange-700',
+    pp_activated:        'bg-green-100 text-green-700',
+    pp_declined:         'bg-red-100 text-red-700',
+    transfer_to_support: 'bg-blue-100 text-blue-700',
+    not_found:           'bg-gray-100 text-gray-500',
+    api_error:           'bg-red-200 text-red-800',
   }
   return map[action] ?? 'bg-gray-100 text-gray-500'
 }
