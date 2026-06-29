@@ -40,6 +40,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::prefix('tickets')->name('tickets.')->group(function () {
         Route::get('/',              [TicketController::class, 'index'])->name('index');
         Route::get('/create',        [TicketController::class, 'create'])->name('create');
+        Route::get('/map',            [TicketController::class, 'map'])->name('map');
+        Route::get('/map-data',        [TicketController::class, 'mapData'])->name('map-data');
         Route::get('/free-slot',      [TicketController::class, 'freeSlot'])->name('free-slot');
         Route::post('/',             [TicketController::class, 'store'])->name('store');
         Route::post('/bulk/close',      [TicketController::class, 'bulkClose'])->name('bulk.close');
