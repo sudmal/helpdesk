@@ -409,6 +409,7 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { router, Head } from '@inertiajs/vue3'
+import axios from 'axios'
 import Chart from 'chart.js/auto'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
@@ -504,12 +505,7 @@ async function loadQueue() {
 async function sendCmd(cmd) {
   cmdSending.value = cmd
   try {
-    const token = document.head.querySelector('meta[name="csrf-token"]')?.content ?? ''
-    await fetch(route('pbx.trigger-cmd'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-      body: JSON.stringify({ cmd }),
-    })
+    await axios.post(route('pbx.trigger-cmd'), { cmd })
   } catch (e) {}
   setTimeout(() => { cmdSending.value = null }, 800)
 }
