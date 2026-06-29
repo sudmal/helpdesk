@@ -26,6 +26,10 @@
         <button v-if="canEdit && ticket.status.is_final"
                 @click="doAction('reopen')"
                 class="btn-outline text-sm" title="Переоткрыть">↩</button>
+
+        <button v-if="canDelete"
+                @click="confirmDelete"
+                class="btn-sm bg-red-600 hover:bg-red-700 text-white" title="Удалить заявку">🗑</button>
       </div>
     </template>
 
@@ -229,24 +233,7 @@
               </svg>
             </a>
           </div>
-          <div class="relative">
-            <iframe :src="mapWidgetUrl"
-                    class="w-full border-0 block"
-                    style="height:220px"
-                    frameborder="0"
-                    allowfullscreen
-                    loading="lazy" />
-            <!-- crosshair overlay, pointer-events-none so map stays interactive -->
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none"
-                 style="padding-bottom:20px">
-              <div class="relative w-8 h-8 drop-shadow">
-                <div class="absolute top-1/2 left-0 right-0 h-px bg-red-500 opacity-90"></div>
-                <div class="absolute left-1/2 top-0 bottom-0 w-px bg-red-500 opacity-90"></div>
-                <div class="absolute top-1/2 left-1/2 w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow
-                            -translate-x-1/2 -translate-y-1/2"></div>
-              </div>
-            </div>
-          </div>
+          <div ref="ymapEl" style="height:220px"></div>
         </div>
 
         <!-- История по адресу -->
@@ -365,7 +352,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
@@ -400,14 +387,73 @@ const mapUrl = computed(() =>
   mapAddress.value ? 'https://yandex.ru/maps/?text=' + encodeURIComponent(mapAddress.value) : null
 )
 
-const mapWidgetUrl = computed(() =>
-  mapAddress.value ? 'https://yandex.ru/map-widget/v1/?text=' + encodeURIComponent(mapAddress.value) + '&z=16&l=map' : null
-)
+const ymapEl = ref(null)
+let ymapInstance = null
+
+onMounted(() => {
+  if (mapAddress.value) initYandexMap()
+})
+
+onUnmounted(() => {
+  if (ymapInstance) { ymapInstance.destroy(); ymapInstance = null }
+})
+
+function loadYmapsScript() {
+  if (window.ymaps) return Promise.resolve(window.ymaps)
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script')
+    s.src = 'https://api-maps.yandex.ru/2.1/?apikey=1bda077f-7f7e-45a9-9a3c-75bf6a3ded73&lang=ru_RU'
+    s.onload = () => window.ymaps.ready(() => resolve(window.ymaps))
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+}
+
+async function initYandexMap() {
+  if (!ymapEl.value || !mapAddress.value) return
+  const ym = await loadYmapsScript()
+  if (!ymapEl.value) return
+  const addr = props.ticket?.address
+  let lat = addr?.lat ? parseFloat(addr.lat) : null
+  let lng = addr?.lng ? parseFloat(addr.lng) : null
+  if (!lat || !lng) {
+    const result = await ym.geocode(mapAddress.value, { results: 1 })
+    const first = result.geoObjects.get(0)
+    if (first) {
+      const coords = first.geometry.getCoordinates()
+      lat = coords[0]; lng = coords[1]
+      if (!ymapEl.value) return
+      if (addr?.id) saveGeocode(addr.id, lat, lng)
+    }
+  }
+  if (!lat || !lng) return
+  if (ymapInstance) { ymapInstance.destroy() }
+  ymapInstance = new ym.Map(ymapEl.value, {
+    center: [lat, lng],
+    zoom: 16,
+    controls: ['zoomControl'],
+  })
+  ymapInstance.geoObjects.add(new ym.Placemark([lat, lng], {}, { preset: 'islands#redDotIcon' }))
+}
+
+async function saveGeocode(addressId, lat, lng) {
+  try {
+    await fetch(`/addresses/${addressId}/geocode`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+      },
+      body: JSON.stringify({ lat, lng }),
+    })
+  } catch (e) { console.warn('geocode save:', e) }
+}
+
 
 const props = defineProps({
   ticket: Object, addressHistory: Array, statuses: Array, brigades: Array,
   materialsCatalog: { type: Array, default: () => [] },
-  canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canComment: Boolean,
+  canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canComment: Boolean, canDelete: Boolean,
   settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
 })
 
@@ -520,6 +566,12 @@ function submitPostpone() {
 
 // Inline helper component
 
+
+function confirmDelete() {
+  if (confirm(`Удалить заявку ${props.ticket.number}? Это действие необратимо.`)) {
+    router.delete(route('tickets.destroy', props.ticket.id))
+  }
+}
 </script>
 
 <style scoped>

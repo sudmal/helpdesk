@@ -206,6 +206,7 @@ class TicketController extends Controller
             'canAssign'      => auth()->user()->can('assign', $ticket),
             'canClose'       => auth()->user()->can('close', $ticket),
             'canComment'     => auth()->user()->can('comment', $ticket),
+            'canDelete'      => auth()->user()->can('delete', $ticket),
             'settings'       => [
                 'lanbillingEnabled'    => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),
                 'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
@@ -353,18 +354,23 @@ class TicketController extends Controller
         [$eh, $em] = array_map('intval', explode(':', $workEnd));
         $startMins = $sh * 60 + $sm;
         $endMins   = $eh * 60 + $em;
-
-        $day = today()->addDay();
+        $day = today();
+        $nowMins = now()->hour * 60 + now()->minute;
 
         for ($attempt = 0; $attempt < 60; $attempt++, $day->addDay()) {
+            // Для сегодня начинаем с ближайшего будущего слота, для остальных — с начала дня
+            $fromMins = ($attempt === 0) ? max($startMins, $nowMins + $step) : $startMins;
+
+            if ($fromMins > $endMins) continue;
+
             $occupied = Ticket::whereDate('scheduled_at', $day->toDateString())
                 ->when($brigadeId, fn($q) => $q->where('brigade_id', $brigadeId))
                 ->whereNotNull('scheduled_at')
                 ->pluck('scheduled_at')
                 ->mapWithKeys(fn($dt) => [\Carbon\Carbon::parse($dt)->format('H:i') => true]);
 
-            for ($m = $startMins; $m <= $endMins; $m += $step) {
-                $slot = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+            for ($m = $fromMins; $m <= $endMins; $m += $step) {
+                $slot = sprintf('%02d:%02d', intdiv($m, 60), $m % $step);
                 if (!$occupied->has($slot)) {
                     return response()->json(['datetime' => $day->format('Y-m-d') . 'T' . $slot]);
                 }
@@ -449,6 +455,60 @@ class TicketController extends Controller
         ]);
         $this->ticketService->assign($ticket, $request->brigade_id, $request->user_id, auth()->user());
         return back()->with('success', 'Бригада назначена');
+    }
+
+
+    public function map(): Response
+    {
+        $this->authorize('viewAny', Ticket::class);
+        return Inertia::render('Tickets/Map');
+    }
+
+    public function mapData(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->authorize('viewAny', Ticket::class);
+        $period = $request->get('period', 'week');
+        $from = match($period) {
+            'today' => now()->startOfDay(),
+            'week'  => now()->subWeek()->startOfDay(),
+            'month' => now()->subMonth()->startOfDay(),
+            default => now()->subWeek()->startOfDay(),
+        };
+
+        $points = Ticket::query()
+            ->join('addresses', 'tickets.address_id', '=', 'addresses.id')
+            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
+            ->join('ticket_types', 'tickets.type_id', '=', 'ticket_types.id')
+            ->whereNotNull('addresses.lat')
+            ->whereNotNull('addresses.lng')
+            ->where('tickets.created_at', '>=', $from)
+            ->select([
+                'tickets.id',
+                'tickets.number',
+                'tickets.created_at',
+                'ticket_statuses.name as status_name',
+                'ticket_types.name as type_name',
+                'addresses.lat',
+                'addresses.lng',
+                'addresses.city',
+                'addresses.street',
+                'addresses.building',
+                'addresses.apartment',
+            ])
+            ->orderBy('tickets.created_at', 'desc')
+            ->get()
+            ->map(fn($t) => [
+                'id'     => $t->id,
+                'num'    => $t->number,
+                'lat'    => (float) $t->lat,
+                'lng'    => (float) $t->lng,
+                'addr'   => implode(', ', array_filter([$t->city, $t->street, $t->building, $t->apartment ? 'кв.'.$t->apartment : null])),
+                'status' => $t->status_name,
+                'type'   => $t->type_name,
+                'date'   => \Carbon\Carbon::parse($t->created_at)->format('d.m.Y'),
+            ]);
+
+        return response()->json($points);
     }
 
     public function addComment(AddCommentRequest $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
