@@ -110,6 +110,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/',            [AddressController::class, 'store'])->name('store');
         Route::put('/{address}',    [AddressController::class, 'update'])->name('update');
         Route::delete('/{address}', [AddressController::class, 'destroy'])->name('destroy');
+        Route::patch('/{address}/geocode', [AddressController::class, 'storeGeocode'])->name('geocode');
         Route::post('/import',      [AddressController::class, 'import'])->name('import');
         Route::post('/bulk-set-type', [AddressController::class, 'bulkSetType'])->name('bulk-set-type');
         Route::get('/search',       [AddressController::class, 'search'])->name('search');
