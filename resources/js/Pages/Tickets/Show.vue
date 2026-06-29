@@ -357,6 +357,7 @@ import { Head, useForm, router } from '@inertiajs/vue3'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
 dayjs.locale('ru')
+import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Badge from '@/Components/UI/Badge.vue'
 import Modal from '@/Components/UI/Modal.vue'
@@ -438,14 +439,7 @@ async function initYandexMap() {
 
 async function saveGeocode(addressId, lat, lng) {
   try {
-    await fetch(`/addresses/${addressId}/geocode`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-      },
-      body: JSON.stringify({ lat, lng }),
-    })
+    await axios.patch(`/addresses/${addressId}/geocode`, { lat, lng })
   } catch (e) { console.warn('geocode save:', e) }
 }
 
