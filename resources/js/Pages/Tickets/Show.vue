@@ -418,7 +418,7 @@ async function initYandexMap() {
   let lat = addr?.lat ? parseFloat(addr.lat) : null
   let lng = addr?.lng ? parseFloat(addr.lng) : null
   if (!lat || !lng) {
-    const result = await ym.geocode(mapAddress.value, { results: 1 })
+    const result = await ym.geocode(mapAddress.value, { results: 1, boundedBy: [[47.0, 36.5], [49.0, 39.5]], strictBounds: true })
     const first = result.geoObjects.get(0)
     if (first) {
       const coords = first.geometry.getCoordinates()
