@@ -40,11 +40,11 @@ import { Head } from '@inertiajs/vue3'
 
 defineOptions({ layout: null })
 
-const mapEl     = ref(null)
-const points    = ref([])
+const mapEl      = ref(null)
+const points     = ref([])
 const groupCount = ref(0)
-const loading   = ref(false)
-const period    = ref('week')
+const loading    = ref(false)
+const period     = ref('today')
 
 const periods = [
   { value: 'today', label: 'Сегодня' },
@@ -100,6 +100,7 @@ function render() {
 
   const ym = window.ymaps
 
+  // Группируем по координатам
   const groups = new Map()
   for (const pt of points.value) {
     const key = `${pt.lat},${pt.lng}`
@@ -114,22 +115,23 @@ function render() {
 
     if (count === 1) {
       const pt = pts[0]
+      // Одна заявка: hover = подсказка, click = открыть заявку
       const pm = new ym.Placemark([lat, lng], {
-        balloonContentHeader: `<b>${pt.num}</b> <span style="color:#6b7280;font-size:11px">${pt.type}</span>`,
-        balloonContentBody:
-          `<div style="color:#374151">${pt.addr}</div>` +
-          `<div style="color:#6b7280;font-size:11px;margin-top:2px">${pt.date} &nbsp;·&nbsp; ${pt.status}</div>`,
-        balloonContentFooter:
-          `<a href="${route('tickets.show', pt.id)}" target="_blank" ` +
-          `style="color:#3b82f6;font-size:12px">↗ Открыть заявку</a>`,
+        hintContent:
+          `<b>${pt.num}</b>&nbsp;<span style="color:#9ca3af;font-size:11px">${pt.type}</span><br>` +
+          `<span style="color:#374151">${pt.addr}</span><br>` +
+          `<span style="color:#9ca3af;font-size:11px">${pt.date} &nbsp;·&nbsp; ${pt.status}</span>`,
       }, {
         preset: 'islands#violetDotIcon',
       })
+      pm.events.add('click', () => window.open(route('tickets.show', pt.id), '_blank'))
       ymapInstance.geoObjects.add(pm)
 
     } else {
+      // Несколько заявок: hover = кол-во, click = балун со списком
       const col = clusterColor(count)
       const sz  = clusterSize(count)
+
       const iconLayout = ym.templateLayoutFactory.createClass(
         `<div style="` +
           `width:${sz}px;height:${sz}px;line-height:${sz}px;` +
@@ -140,33 +142,28 @@ function render() {
         `">${count}</div>`
       )
 
-      const listHtml = pts.slice(0, 8).map(p =>
-        `<div style="padding:2px 0;border-bottom:1px solid #f3f4f6">` +
-        `<b style="font-size:12px">${p.num}</b> ` +
-        `<span style="color:#6b7280;font-size:11px">${p.type} · ${p.date}</span>` +
+      const listHtml = pts.map(p =>
+        `<div style="padding:4px 0;border-bottom:1px solid #f3f4f6">` +
+        `<a href="${route('tickets.show', p.id)}" target="_blank" ` +
+        `style="color:#3b82f6;font-weight:600;text-decoration:none">${p.num}</a>` +
+        `<span style="color:#6b7280;font-size:11px;margin-left:8px">${p.type}</span>` +
+        `<span style="color:#9ca3af;font-size:11px;margin-left:6px">${p.date}</span>` +
+        `<span style="color:#6b7280;font-size:11px;margin-left:6px">${p.status}</span>` +
         `</div>`
       ).join('')
-      const more = pts.length > 8
-        ? `<div style="color:#6b7280;font-size:11px;padding-top:3px">+${pts.length - 8} ещё</div>`
-        : ''
 
       const pm = new ym.Placemark([lat, lng], {
-        balloonContentHeader: `<b>${pts[0].addr}</b> <span style="color:#6b7280;font-size:11px">${count} заявок</span>`,
-        balloonContentBody: `<div style="min-width:220px">${listHtml}${more}</div>`,
-        balloonContentFooter: pts.length <= 5
-          ? pts.map(p =>
-              `<a href="${route('tickets.show', p.id)}" target="_blank" ` +
-              `style="color:#3b82f6;font-size:12px;display:block">↗ ${p.num}</a>`
-            ).join('')
-          : `<span style="color:#6b7280;font-size:11px">Кликните на маркер чтобы открыть заявки</span>`,
+        hintContent:
+          `<b>${pts[0].addr}</b><br>` +
+          `<span style="color:#9ca3af">Заявок: ${count}</span>`,
+        balloonContentHeader:
+          `<b>${pts[0].addr}</b>&nbsp;` +
+          `<span style="color:#9ca3af;font-size:12px">${count} заявки</span>`,
+        balloonContentBody:
+          `<div style="min-width:280px;max-height:320px;overflow-y:auto">${listHtml}</div>`,
       }, {
         iconLayout,
         iconShape: { type: 'Circle', coordinates: [0, 0], radius: sz / 2 },
-      })
-
-      pm.events.add('click', (e) => {
-        e.preventDefault()
-        pts.slice(0, 5).forEach(p => window.open(route('tickets.show', p.id), '_blank'))
       })
 
       ymapInstance.geoObjects.add(pm)
