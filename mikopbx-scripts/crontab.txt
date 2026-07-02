@@ -1,0 +1,19 @@
+*/5 * * * * /usr/sbin/ntpd -q > /dev/null 2> /dev/null
+*/5 * * * * /sbin/dump-conf-db > /dev/null 2> /dev/null
+*/30 * * * * /sbin/records-cleaner > /dev/null 2> /dev/null
+*/1 * * * * /sbin/check-out-ip > /dev/null 2> /dev/null
+*/6 * * * * /sbin/cleaner-download-links > /dev/null 2> /dev/null
+*/1 * * * * /usr/bin/php -f /offload/rootfs/usr/www/src/Core/Workers/Cron/WorkerSafeScriptsCore.php start > /dev/null 2> /dev/null
+*/5 * * * * /storage/usbdisk1/mikopbx/custom_modules/ModuleZabbixAgent5/bin/zabbix-safe-script.sh > /dev/null 2> /dev/null
+0 22 * * 6 /usr/bin/nohup /usr/bin/php -f /storage/usbdisk1/mikopbx/custom_modules/ModuleBackup/Lib/WorkerBackup.php  none backup 1 > /dev/null 2>&1 &
+
+
+0 22 * * * /storage/usbdisk1/mikopbx/cdr_report.sh >>/storage/usbdisk1/mikopbx/cdr_report.log 2>&1
+* * * * * /storage/usbdisk1/mikopbx/queue_monitor.sh >> /var/log/queue_monitor.log 2>&1
+* * * * * sleep 15 && /storage/usbdisk1/mikopbx/queue_monitor.sh >> /var/log/queue_monitor.log 2>&1
+* * * * * sleep 30 && /storage/usbdisk1/mikopbx/queue_monitor.sh >> /var/log/queue_monitor.log 2>&1
+* * * * * sleep 45 && /storage/usbdisk1/mikopbx/queue_monitor.sh >> /var/log/queue_monitor.log 2>&1
+* * * * * /usr/bin/python3 /storage/usbdisk1/mikopbx/agi-bin/dnd_486_watcher.py >> /var/log/dnd_486_watcher.log 2>&1
+* * * * * sleep 30 && /usr/bin/python3 /storage/usbdisk1/mikopbx/agi-bin/dnd_486_watcher.py >> /var/log/dnd_486_watcher.log 2>&1
+
+#

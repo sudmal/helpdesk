@@ -1,0 +1,16 @@
+<?php
+return [
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+    ],
+    'max' => [
+        'token' => env('MAX_BOT_TOKEN'),
+    ],
+    'sync' => [
+        'token'       => env('SYNC_TOKEN'),
+        'allowed_ips' => env('SYNC_ALLOWED_IPS', ''),
+    ],
+    'pbx' => [
+        'token' => env('PBX_TOKEN'),
+    ],
+];

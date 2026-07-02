@@ -1,0 +1,5 @@
+# Application: PLAY_VSE_ZANYATY
+# Extension: 2200101
+
+1,Background(/storage/usbdisk1/mikopbx/media/custom/Vse_operatory_zanyaty)
+n,Hangup()

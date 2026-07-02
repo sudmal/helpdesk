@@ -1,0 +1,5 @@
+route add -net 172.17.249.0 netmask 255.255.255.0 gw 172.17.48.241
+route add -net 172.17.255.0 netmask 255.255.255.0 gw 172.17.48.241
+route add -net 10.10.6.0 netmask 255.255.255.0 gw 192.168.186.31
+# NIKITICH
+route add -host 172.22.0.35 gw 192.168.186.210

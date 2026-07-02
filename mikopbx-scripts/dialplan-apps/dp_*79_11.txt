@@ -1,0 +1,8 @@
+# Application: DND_OFF
+# Extension: *79
+
+1,Answer()
+n,Set(DEVICE_STATE(Custom:${CALLERID(num)})=NOT_INUSE)
+n,AGI(/storage/usbdisk1/mikopbx/agi-bin/dnd_log.sh,off)
+n,Playback(beep&beep)
+n,Hangup()

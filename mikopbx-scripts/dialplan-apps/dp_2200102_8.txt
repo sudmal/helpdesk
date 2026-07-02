@@ -1,0 +1,7 @@
+# Application: TMP
+# Extension: 2200102
+
+1,NoOp(Incoming call from ${CALLERID(num)})
+n,Set(CALLER_NUMBER=${CALLERID(num)})
+n,Set(CALLER_INFO=${SHELL(/storage/usbdisk1/mikopbx/lanbill-phbook/lbphone.sh "${CALLER_NUMBER}")})
+n,Set(CALLERID(name)=${CALLER_INFO})

@@ -1,0 +1,80 @@
+<?php
+namespace App\Http\Controllers;
+
+use App\Models\{Material, TicketMaterial, Ticket};
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+
+class MaterialController extends Controller
+{
+    public function index()
+    {
+        return Inertia::render('Materials/Index', [
+            'materials'  => Material::orderBy('code')->get(),
+            'canManage'  => auth()->user()->hasPermission('materials.manage'),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
+        $data = $request->validate([
+            'code'       => 'nullable|string|max:50',
+            'name'       => 'required|string|max:255',
+            'unit'       => 'required|string|max:20',
+            'price'      => 'required|numeric|min:0',
+            'is_active'  => 'boolean',
+            'sort_order' => 'integer',
+        ]);
+        Material::create($data);
+        return back()->with('success', 'Материал добавлен');
+    }
+
+    public function update(Request $request, Material $material)
+    {
+        abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
+        $data = $request->validate([
+            'code'       => 'nullable|string|max:50',
+            'name'       => 'required|string|max:255',
+            'unit'       => 'required|string|max:20',
+            'price'      => 'required|numeric|min:0',
+            'is_active'  => 'boolean',
+            'sort_order' => 'integer',
+        ]);
+        $material->update($data);
+        return back()->with('success', 'Материал обновлён');
+    }
+
+    public function destroy(Material $material)
+    {
+        abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
+        $material->update(['is_active' => false]);
+        return back()->with('success', 'Материал деактивирован');
+    }
+
+    public function storeForTicket(Request $request, Ticket $ticket)
+    {
+        $request->validate([
+            'items'                  => 'required|array|min:1',
+            'items.*.material_id'    => 'required|exists:materials,id',
+            'items.*.quantity'       => 'required|numeric|min:0.001',
+        ]);
+
+        $ticket->materials()->delete();
+
+        foreach ($request->items as $item) {
+            $material = Material::findOrFail($item['material_id']);
+            $ticket->materials()->create([
+                'material_id'    => $material->id,
+                'material_name'  => $material->name,
+                'material_code'  => $material->code,
+                'material_unit'  => $material->unit,
+                'price_at_time'  => $material->price,
+                'quantity'       => $item['quantity'],
+                'created_by'     => auth()->id(),
+            ]);
+        }
+
+        return back()->with('success', 'Расходники сохранены');
+    }
+}

@@ -1,0 +1,18 @@
+# Application: DAYTIME_SELECTOR
+# Extension: 2200100
+
+1,NoOp(Incoming call from ${CALLERID(num)})
+n,Set(CALLER_NUMBER=${CALLERID(num)})
+
+n,Set(BLOCK_TYPE=${SHELL(/storage/usbdisk1/mikopbx/lanbill-phbook/lbblock.sh "${CALLER_NUMBER}")})
+n,GotoIf($["${BLOCK_TYPE}" = "4"]?play_block_sound:continue_normal_flow)
+n(play_block_sound),NoOp(BLOCK_TYPE is FINANCIAL. Playing finblock sound.)
+n,Playback(/storage/usbdisk1/mikopbx/media/custom/1d64864a4f55bdc05351376062e34c21-finblock)
+n(continue_normal_flow),NoOp(BLOCK_TYPE is not FINANCIAL. Continuing normal flow.)
+
+#n,Playback(/storage/usbdisk1/mikopbx/media/custom/cf265f0e0c8e1d582f4a7bd1ef00834d-)
+n,Set(CALLER_INFO=${SHELL(/storage/usbdisk1/mikopbx/lanbill-phbook/lbphone.sh "${CALLER_NUMBER}")})
+n,Set(CALLERID(name)=${CALLER_INFO})
+n,ExecIfTime(0:00-23:59,mon-sun,*,*?Dial(Local/2002@internal-incoming,300,${TRANSFER_OPTIONS}Kg))
+#n,ExecIfTime(17:00-23:59,mon-sun,*,*?Dial(Local/2002@internal-incoming,300,${TRANSFER_OPTIONS}Kg))
+#n,ExecIfTime(9:00-16:59,mon-sun,*,*?Dial(Local/2003@internal-incoming,300,${TRANSFER_OPTIONS}Kg))
