@@ -1,6 +1,0 @@
-# Application: 0000MILLI
-# Extension: 000064
-
-1,Answer()
-2,Milliwatt()
-3,Hangup()

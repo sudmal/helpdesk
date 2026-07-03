@@ -1,7 +1,0 @@
-# Application: Echo test
-# Extension: 10003246
-
-1,Answer()
-n,AGI(cdr_connector.php,${ISTRANSFER}dial_answer)
-n,Echo()
-n,Hangup()

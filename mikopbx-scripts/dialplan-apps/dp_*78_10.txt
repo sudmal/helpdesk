@@ -1,8 +1,0 @@
-# Application: DND_ON
-# Extension: *78
-
-1,Answer()
-n,Set(DEVICE_STATE(Custom:${CALLERID(num)})=BUSY)
-n,AGI(/storage/usbdisk1/mikopbx/agi-bin/dnd_log.sh,on)
-n,Playback(beep)
-n,Hangup()

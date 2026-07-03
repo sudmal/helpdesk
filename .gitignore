@@ -26,3 +26,6 @@ Thumbs.db
 .env.1
 /.claude/
 sync_requests.py
+
+# Бэкап скриптов MikoPBX -- храним локально/на прод-сервере, НЕ в git (репо публичный, несколько утечек токенов уже было)
+mikopbx-scripts/
