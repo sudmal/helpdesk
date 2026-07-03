@@ -614,7 +614,22 @@ class PbxController extends Controller
                 ->latest('called_at')
                 ->first();
             if ($call) {
-                $addressByPhone[$phone] = $call->address_string ?? $call->address?->full_address;
+                // Если есть привязанный Address -- город+улица+дом оттуда (в
+                // сыром address_string города никогда нет), квартиру берём
+                // СВОЮ у звонка (Address.apartment общий на дом, может
+                // относиться к другой заявке/типу услуги -- та же ловушка,
+                // что была в address.full мобильного API).
+                if ($call->address) {
+                    $parts = array_filter([
+                        $call->address->city,
+                        $call->address->street,
+                        $call->address->building,
+                        $call->apartment ? 'кв. ' . $call->apartment : null,
+                    ]);
+                    $addressByPhone[$phone] = implode(', ', $parts);
+                } else {
+                    $addressByPhone[$phone] = $call->address_string;
+                }
             }
         }
 
