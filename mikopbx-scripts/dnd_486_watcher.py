@@ -6,8 +6,13 @@
 # POST делается через curl (subprocess), НЕ через urllib.request -- urllib
 # на этой урезанной сборке Python/MikoPBX рвёт HTTPS-соединение с
 # RemoteDisconnected без единой ошибки в логе, из-за чего события молча
-# терялись (обнаружено 2026-07-03: 486 реально был в логе, но ничего не
-# долетело до HelpDesk).
+# терялись (обнаружено 2026-07-03).
+#
+# Call-ID у INVITE ищем СТРОГО в границах одного SIP-сообщения (до первой
+# пустой строки) -- лог многопоточный, строки от разных одновременных
+# сообщений перемежаются, "первый попавшийся Call-ID после INVITE" без
+# границы блока иногда привязывал 486 не к тому добавочному (обнаружено
+# 2026-07-03: ложное срабатывание на офлайн-номере 102).
 
 import re, subprocess, os, sys
 
@@ -16,8 +21,23 @@ STATE = '/storage/usbdisk1/mikopbx/dnd_486_watcher.state'
 LOCK = '/storage/usbdisk1/mikopbx/dnd_486_watcher.lock'
 QUEUE_NAME = 'QUEUE-F38325E796B3FFB8938BA383AA119148'
 HELPDESK_URL = 'https://vega8.ru/pbx/dnd-log'
-HELPDESK_TOKEN = 'bc2dc14e0631c15954525ada0eba28b4d02af690e5cd9d36d0d599cc7a95bd0b'
+HELPDESK_TOKEN = '<PBX_TOKEN из .env HelpDesk>'
 TAIL_BYTES = 500_000
+
+
+def find_callid_in_block(lines, start_idx):
+    """Ищет Call-ID в пределах одного SIP-сообщения, начиная с start_idx,
+    до первой пустой строки или начала нового лог-блока. Возвращает None,
+    если Call-ID не найден в границах блока (не привязываем к чужому)."""
+    for j in range(start_idx, min(start_idx + 20, len(lines))):
+        line = lines[j]
+        if line.strip() == '' or re.match(r'^\[[\d-]+ [\d:]+\]', line):
+            return None
+        m = re.match(r'^Call-ID:\s*(\S+)', line)
+        if m:
+            return m.group(1)
+    return None
+
 
 try:
     os.mkdir(LOCK)
@@ -45,19 +65,16 @@ try:
     raw = subprocess.run(['asterisk', '-rx', f'queue show {QUEUE_NAME}'],
                           capture_output=True, text=True, timeout=10).stdout
     raw = re.sub(r'\x1b\[[0-9;]*m', '', raw)
-    members = set(re.findall(r'^\s*(\d+)\s+\(', raw, re.M))
+    members = set(re.findall(r'^\s*(\d+)\s+\(Local/', raw, re.M))
 
     callid_ext = {}
-    pending_ext = None
-    for line in lines:
+    for i, line in enumerate(lines):
         m = re.match(r'^INVITE sip:(\d+)@', line)
-        if m:
-            pending_ext = m.group(1)
+        if not m:
             continue
-        m2 = re.match(r'^Call-ID:\s*(\S+)', line)
-        if m2 and pending_ext:
-            callid_ext[m2.group(1)] = pending_ext
-            pending_ext = None
+        callid = find_callid_in_block(lines, i)
+        if callid:
+            callid_ext[callid] = m.group(1)
 
     new_max_ts = last_ts
     events = []
@@ -68,15 +85,14 @@ try:
             cur_ts = m.group(1)
             continue
         if line.startswith('SIP/2.0 486') and cur_ts:
-            for j in range(i, min(i + 8, len(lines))):
-                mc = re.match(r'^Call-ID:\s*(\S+)', lines[j])
-                if mc:
-                    ext = callid_ext.get(mc.group(1))
-                    if ext and ext in members and cur_ts > last_ts:
-                        events.append((cur_ts, ext))
-                        if cur_ts > new_max_ts:
-                            new_max_ts = cur_ts
-                    break
+            callid = find_callid_in_block(lines, i)
+            if callid:
+                ext = callid_ext.get(callid)
+                if ext and ext in members and cur_ts > last_ts:
+                    events.append((cur_ts, ext))
+                    if cur_ts > new_max_ts:
+                        new_max_ts = cur_ts
+            cur_ts = None
 
     for ts, ext in events:
         payload = '{"extension":"%s","state":"missed_dnd"}' % ext
