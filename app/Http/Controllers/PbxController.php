@@ -343,17 +343,20 @@ class PbxController extends Controller
         $cacheKey  = 'queue:callers_state:' . $queueName;
         $prevState = \Cache::get($cacheKey, []);
 
+        // Приводим номер к единому формату (без "+", как в normalizePhone()) --
+        // иначе звонки, попавшие в calls через этот запасной путь, не
+        // подтягивают адрес/IVR из-за расхождения формата с основным вебхуком.
         $currentPhones = [];
         foreach ($detail['callers'] as $caller) {
             if ($caller['phone'] ?? null) {
-                $currentPhones[$caller['phone']] = $caller['wait'];
+                $currentPhones[$this->normalizePhone($caller['phone'])] = $caller['wait'];
             }
         }
 
         $inCallPhones = [];
         foreach ($detail['members'] as $member) {
             if (($member['status'] ?? '') === 'in_call' && ($member['caller_phone'] ?? null)) {
-                $inCallPhones[$member['caller_phone']] = $member['ext'];
+                $inCallPhones[$this->normalizePhone($member['caller_phone'])] = $member['ext'];
             }
         }
 
@@ -402,6 +405,7 @@ class PbxController extends Controller
         foreach ($detail['callers'] as $caller) {
             $phone = $caller['phone'] ?? null;
             if (!$phone) continue;
+            $phone = $this->normalizePhone($phone);
             $newState[$phone] = [
                 'phone'      => $phone,
                 'entered_at' => $prevState[$phone]['entered_at'] ?? now()->toIso8601String(),
