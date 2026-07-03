@@ -10,5 +10,6 @@ class VerifyCsrfToken extends Middleware
         'telegram/webhook',
         'pbx/queue-status',
         'pbx/ivr-log',
+        'pbx/alert',
     ];
 }

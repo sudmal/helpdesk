@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\{Call, Address, Ticket, QueueStat, IvrLog, DndLog};
+use App\Services\TelegramService;
+use App\Services\MaxService;
+use AppServicesMaxService;
 use Illuminate\Http\{Request, JsonResponse};
 
 class PbxController extends Controller
@@ -647,6 +650,28 @@ class PbxController extends Controller
         }, $members);
 
         return ['members' => $members, 'callers' => $callers];
+    }
+
+    public function alert(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->input('token');
+        if ($token !== config('services.pbx.token')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $text = trim((string) $request->input('text', ''));
+        if (!$text) {
+            return response()->json(['status' => 'skipped']);
+        }
+
+        // Watchdog очереди АТС не может достучаться напрямую до
+        // api.telegram.org (файрвол MikoPBX режет исходящий HTTPS кроме
+        // vega8.ru) -- поэтому шлёт сюда, а HelpDesk уже ретранслирует
+        // в Telegram (он и так умеет).
+        (new TelegramService())->send('674796905', $text);
+        (new MaxService())->send('161346780', $text);
+
+        return response()->json(['status' => 'ok']);
     }
 
     public function ivrLog(Request $request): JsonResponse
