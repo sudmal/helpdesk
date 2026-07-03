@@ -241,6 +241,23 @@ class PbxController extends Controller
         $detail = $detail ?? ['members' => [], 'callers' => []];
         $detail['members'] = $this->attachDndStatus($detail['members'] ?? []);
 
+        // Последняя точка графика "В DND" должна совпадать с live-статусом
+        // операторов (тем же, что видно в бейджах) -- иначе, например,
+        // оператор, который был в DND-стрике и потом ушёл в офлайн, ещё
+        // долго висит "в DND" на графике, хотя бейдж уже корректно погас.
+        if ($rows->isNotEmpty()) {
+            $liveDndExts = collect($detail['members'])
+                ->filter(fn($m) => ($m['dnd'] ?? false) || !empty($m['dnd_missed_since']))
+                ->pluck('ext')
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values();
+            $lastRow = $rows->last();
+            $lastRow->dnd_active     = $liveDndExts->count();
+            $lastRow->dnd_extensions = $liveDndExts->all();
+        }
+
         $missedCalls = \App\Models\Call::where('queue_status', 'missed')
             ->where('called_at', '>=', now()->subHours($hours))
             ->orderBy('called_at')
