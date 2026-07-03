@@ -284,10 +284,10 @@
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
                       DND{{ m.dnd_since ? ' · ' + dndDuration(m.dnd_since) : '' }}
                     </span>
-                    <span v-if="m.dnd_missed_at"
+                    <span v-if="m.dnd_missed_at && m.status !== 'in_call'"
                           :title="'Звонок отклонён как DND в ' + formatDate(m.dnd_missed_at) + ' (не через *78/*79)'"
-                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-red-100 text-red-700">
-                      ⚠ DND в MicroSIP · {{ formatDate(m.dnd_missed_at) }}
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
+                      ⚠ DND (по звонку) · {{ formatDate(m.dnd_missed_at) }}
                     </span>
                     <span v-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
                     <span v-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
@@ -340,10 +340,6 @@
             </div>
             <div class="flex items-center gap-1.5">
               <span class="inline-block w-5 h-0.5 rounded" style="background:#a855f7"></span>В DND
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="inline-block w-0 h-0" style="border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #a855f7"></span>
-              Отказ по DND в MicroSIP
             </div>
           </div>
           <canvas ref="queueCanvas" style="max-height:260px"></canvas>
@@ -440,7 +436,6 @@ const qDetail     = ref({ members: [], callers: [], phones: [], trunk: null })
 const qHours      = ref(3)
 const qLoading    = ref(false)
 const qMissedCalls = ref([])
-const qMissedDnd   = ref([])
 const fmtD = d => {
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
@@ -473,7 +468,6 @@ async function loadQueue() {
     qHistory.value = data.history
     qDetail.value    = data.detail ?? { members: [], callers: [] }
     qMissedCalls.value = data.missed_calls ?? []
-    qMissedDnd.value   = data.missed_dnd ?? []
   } catch (e) {}
   qLoading.value = false
 }
@@ -598,37 +592,6 @@ function renderChart() {
       ctx.restore()
     },
   }
-  const dndCounts = new Array(histMs.length).fill(0)
-  for (const ev of (qMissedDnd.value ?? [])) {
-    const ms = new Date(ev.created_at).getTime()
-    let idx = 0, best = Infinity
-    histMs.forEach((h, i) => { const d = Math.abs(h - ms); if (d < best) { best = d; idx = i } })
-    dndCounts[idx]++
-  }
-  const dndMissedPlugin = {
-    id: 'dndMissedMarkers',
-    afterDraw(chart) {
-      const meta = chart.getDatasetMeta(0)
-      if (!meta?.data?.length) return
-      const ctx = chart.ctx
-      const y0 = chart.chartArea?.top
-      if (y0 === undefined) return
-      ctx.save()
-      dndCounts.forEach((cnt, i) => {
-        if (!cnt) return
-        const pt = meta.data[i]
-        if (!pt) return
-        ctx.fillStyle = '#a855f7'
-        ctx.beginPath()
-        ctx.moveTo(pt.x,     y0)
-        ctx.lineTo(pt.x - 6, y0 + 11)
-        ctx.lineTo(pt.x + 6, y0 + 11)
-        ctx.closePath()
-        ctx.fill()
-      })
-      ctx.restore()
-    },
-  }
   qChart = new Chart(queueCanvas.value, {
     type: 'line',
     data: {
@@ -649,7 +612,7 @@ function renderChart() {
         y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },
       },
     },
-    plugins: [missedPlugin, dndMissedPlugin],
+    plugins: [missedPlugin],
   })
 }
 
