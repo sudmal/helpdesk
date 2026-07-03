@@ -323,6 +323,15 @@ class PbxController extends Controller
             $m['dnd_since'] = $m['dnd'] ? $log->created_at : null;
 
             $missed = $recentMissed->get($m['ext'] ?? null);
+            // Если после отказа по DND у оператора реально прошёл звонок
+            // (secs -- сколько секунд назад завершился последний разговор,
+            // из "queue show"), плашка устарела -- не показываем.
+            if ($missed && isset($m['secs'])) {
+                $lastActivityAt = now()->subSeconds($m['secs']);
+                if ($lastActivityAt->gt($missed->created_at)) {
+                    $missed = null;
+                }
+            }
             $m['dnd_missed_at'] = $missed?->created_at;
         }
 
@@ -508,7 +517,7 @@ class PbxController extends Controller
                 } else {
                     $status = 'idle';
                 }
-                $secs = 0;
+                $secs = null;
                 if (preg_match('/last was (\d+) secs/', $line, $m)) {
                     $secs = (int) $m[1];
                 }
