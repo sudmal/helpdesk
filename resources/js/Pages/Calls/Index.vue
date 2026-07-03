@@ -159,7 +159,7 @@
                   <span v-else class="text-gray-300">—</span>
                 </td>
                 <td class="px-2 py-0.5 text-gray-600 font-mono text-xs">{{ c.operator_ext ?? '—' }}</td>
-                <td class="px-2 py-0.5 text-gray-700">{{ c.ivr_address || c.address_string || c.address?.full_address || '—' }}</td>
+                <td class="px-2 py-0.5 text-gray-700">{{ callAddressLabel(c) }}</td>
                 <td class="px-2 py-0.5 text-gray-600">{{ c.apartment ?? '—' }}</td>
                 <td class="px-2 py-0.5">
                   <a v-if="c.address"
@@ -426,6 +426,18 @@ function formatDate(val) {
 function shortTime(val) {
   if (!val) return '—'
   return new Date(val).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+function callAddressLabel(c) {
+  // Если есть привязанный Address (значит есть и ссылка на заявки) --
+  // показываем город+улицу+дом из него (город в сырых текстах ivr_address/
+  // address_string никогда не встречается). Квартиру из Address НЕ берём --
+  // у звонка она своя, отдельным полем (Address.apartment общий на дом и
+  // может относиться к другой заявке/типу услуги).
+  if (c.address) {
+    const parts = [c.address.city, c.address.street, c.address.building].filter(Boolean)
+    if (parts.length) return parts.join(', ')
+  }
+  return c.ivr_address || c.address_string || '—'
 }
 function dndDuration(since) {
   const secs = Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 1000))
