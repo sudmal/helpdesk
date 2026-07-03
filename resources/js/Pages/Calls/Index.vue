@@ -284,10 +284,10 @@
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
                       DND{{ m.dnd_since ? ' · ' + dndDuration(m.dnd_since) : '' }}
                     </span>
-                    <span v-if="m.dnd_missed_at && m.status !== 'in_call'"
-                          :title="'Звонок отклонён как DND в ' + formatDate(m.dnd_missed_at) + ' (не через *78/*79)'"
+                    <span v-if="m.dnd_missed_since && m.status !== 'in_call'"
+                          :title="'DND по звонку -- начало ' + formatDate(m.dnd_missed_since) + ', обновлено ' + formatDate(m.dnd_missed_at) + ' (не через *78/*79)'"
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
-                      ⚠ DND (по звонку) · {{ formatDate(m.dnd_missed_at) }}
+                      ⚠ DND (по звонку) · начало {{ shortTime(m.dnd_missed_since) }} · обновлено {{ shortTime(m.dnd_missed_at) }} · {{ dndDuration(m.dnd_missed_since) }}
                     </span>
                     <span v-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
                     <span v-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
@@ -422,6 +422,10 @@ function formatDate(val) {
   if (!val) return '—'
   const d = new Date(val)
   return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+function shortTime(val) {
+  if (!val) return '—'
+  return new Date(val).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 function dndDuration(since) {
   const secs = Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 1000))
@@ -606,7 +610,18 @@ function renderChart() {
     options: {
       responsive: true, maintainAspectRatio: true, animation: false,
       interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterBody(items) {
+              if (!items.length) return []
+              const exts = qHistory.value[items[0].dataIndex]?.dnd_extensions
+              return (exts && exts.length) ? ['В DND: ' + exts.join(', ')] : []
+            },
+          },
+        },
+      },
       scales: {
         x: { ticks: { maxTicksLimit: 12, font: { size: 11 } } },
         y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },

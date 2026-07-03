@@ -266,30 +266,71 @@ class PbxController extends Controller
         if ($rows->isEmpty()) return;
         $since = now()->subHours($hours);
 
-        $dndState = [];
-        $initial = DndLog::select('extension', \DB::raw('MAX(id) as max_id'))
+        // Честный DND (*78/*79)
+        $honestState = [];
+        $initialHonest = DndLog::select('extension', \DB::raw('MAX(id) as max_id'))
             ->where('created_at', '<', $since)
             ->whereIn('state', ['on', 'off'])
             ->groupBy('extension')
             ->pluck('max_id');
-        foreach (DndLog::whereIn('id', $initial)->get() as $log) {
-            if ($log->state === 'on') $dndState[$log->extension] = true;
+        foreach (DndLog::whereIn('id', $initialHonest)->get() as $log) {
+            if ($log->state === 'on') $honestState[$log->extension] = true;
         }
 
-        $events = DndLog::where('created_at', '>=', $since)
-            ->whereIn('state', ['on', 'off'])
+        // DND по звонку: серия missed_dnd, ещё не прерванная ответившим звонком
+        // этого же добавочного -- считаем активной на начало окна, если
+        // последний missed_dnd до $since новее последнего ответа этого добавочного.
+        $streakState = [];
+        $lastMissedBefore = DndLog::where('created_at', '<', $since)
+            ->where('state', 'missed_dnd')
+            ->select('extension', \DB::raw('MAX(created_at) as last_at'))
+            ->groupBy('extension')
+            ->get()
+            ->keyBy('extension');
+        foreach ($lastMissedBefore as $ext => $row0) {
+            $answeredAfter = Call::where('operator_ext', $ext)
+                ->where('queue_status', 'answered')
+                ->where('called_at', '>', $row0->last_at)
+                ->where('called_at', '<', $since)
+                ->exists();
+            if (!$answeredAfter) $streakState[$ext] = true;
+        }
+
+        $dndEvents = DndLog::where('created_at', '>=', $since)
+            ->whereIn('state', ['on', 'off', 'missed_dnd'])
             ->orderBy('created_at')
             ->get(['extension', 'state', 'created_at']);
 
+        $answeredEvents = Call::where('called_at', '>=', $since)
+            ->where('queue_status', 'answered')
+            ->whereNotNull('operator_ext')
+            ->orderBy('called_at')
+            ->get(['operator_ext', 'called_at']);
+
+        $events = [];
+        foreach ($dndEvents as $e) {
+            $events[] = ['at' => $e->created_at, 'type' => $e->state, 'ext' => $e->extension];
+        }
+        foreach ($answeredEvents as $e) {
+            $events[] = ['at' => $e->called_at, 'type' => 'answered', 'ext' => $e->operator_ext];
+        }
+        usort($events, fn($a, $b) => $a['at'] <=> $b['at']);
+
         $i = 0;
+        $eventsCount = count($events);
         foreach ($rows as $row) {
-            while ($i < $events->count() && $events[$i]->created_at <= $row->recorded_at) {
-                $ev = $events[$i];
-                if ($ev->state === 'on') { $dndState[$ev->extension] = true; }
-                else { unset($dndState[$ev->extension]); }
+            while ($i < $eventsCount && $events[$i]['at'] <= $row->recorded_at) {
+                $e = $events[$i];
+                if ($e['type'] === 'on') { $honestState[$e['ext']] = true; }
+                elseif ($e['type'] === 'off') { unset($honestState[$e['ext']]); }
+                elseif ($e['type'] === 'missed_dnd') { $streakState[$e['ext']] = true; }
+                elseif ($e['type'] === 'answered') { unset($streakState[$e['ext']]); }
                 $i++;
             }
-            $row->dnd_active = count($dndState);
+            $extensions = array_values(array_unique(array_merge(array_keys($honestState), array_keys($streakState))));
+            sort($extensions);
+            $row->dnd_active     = count($extensions);
+            $row->dnd_extensions = $extensions;
         }
     }
 
@@ -309,30 +350,52 @@ class PbxController extends Controller
             ->pluck('max_id');
         $latestByExt = DndLog::whereIn('id', $latestIds)->get()->keyBy('extension');
 
-        $recentMissed = DndLog::whereIn('extension', $exts)
+        // DND по звонку: непрерывная серия missed_dnd для добавочного, начиная
+        // с первого события ПОСЛЕ его последнего реально отвеченного звонка --
+        // это и есть текущий "стрик", который тянется, пока номер не ответит.
+        $lastAnsweredByExt = Call::whereIn('operator_ext', $exts)
+            ->where('queue_status', 'answered')
+            ->select('operator_ext', \DB::raw('MAX(called_at) as last_answered_at'))
+            ->groupBy('operator_ext')
+            ->pluck('last_answered_at', 'operator_ext');
+
+        $allMissed = DndLog::whereIn('extension', $exts)
             ->where('state', 'missed_dnd')
-            ->where('created_at', '>=', now()->subMinutes(30))
-            ->orderByDesc('created_at')
-            ->get()
-            ->unique('extension')
-            ->keyBy('extension');
+            ->orderBy('created_at')
+            ->get(['extension', 'created_at']);
+
+        $streaks = [];
+        foreach ($allMissed->groupBy('extension') as $ext => $evList) {
+            $lastAnswered = $lastAnsweredByExt->get($ext);
+            $start = null;
+            $last  = null;
+            foreach ($evList as $ev) {
+                if ($lastAnswered && $ev->created_at <= $lastAnswered) continue;
+                if ($start === null) $start = $ev->created_at;
+                $last = $ev->created_at;
+            }
+            if ($start !== null) $streaks[$ext] = ['start' => $start, 'last' => $last];
+        }
 
         foreach ($members as &$m) {
             $log = $latestByExt->get($m['ext'] ?? null);
             $m['dnd']       = $log && $log->state === 'on';
             $m['dnd_since'] = $m['dnd'] ? $log->created_at : null;
 
-            $missed = $recentMissed->get($m['ext'] ?? null);
-            // Если после отказа по DND у оператора реально прошёл звонок
-            // (secs -- сколько секунд назад завершился последний разговор,
-            // из "queue show"), плашка устарела -- не показываем.
-            if ($missed && isset($m['secs'])) {
+            $streak = $streaks[$m['ext'] ?? null] ?? null;
+
+            // Подстраховка: если по свежему "queue show" (secs) видно, что
+            // реальный звонок уже прошёл позже последнего missed_dnd в серии,
+            // а запись в calls ещё не долетела -- гасим тоже.
+            if ($streak && isset($m['secs'])) {
                 $lastActivityAt = now()->subSeconds($m['secs']);
-                if ($lastActivityAt->gt($missed->created_at)) {
-                    $missed = null;
+                if ($lastActivityAt->gt($streak['last'])) {
+                    $streak = null;
                 }
             }
-            $m['dnd_missed_at'] = $missed?->created_at;
+
+            $m['dnd_missed_since'] = $streak['start'] ?? null;
+            $m['dnd_missed_at']    = $streak['last'] ?? null;
         }
 
         return $members;
