@@ -256,6 +256,35 @@ class PbxController extends Controller
             $lastRow = $rows->last();
             $lastRow->dnd_active     = $liveDndExts->count();
             $lastRow->dnd_extensions = $liveDndExts->all();
+
+            // А для операторов, которые сейчас офлайн, но были в DND-стрике
+            // (dnd_suppressed_since) -- убираем их из ВСЕХ точек графика с
+            // этого момента и до конца окна, а не только из последней. Иначе
+            // весь хвост графика продолжает честно (но вводяще в заблуждение)
+            // показывать "в DND" для того, кто уже давно просто отключился.
+            $suppressedSince = collect($detail['members'])
+                ->filter(fn($m) => !empty($m['dnd_suppressed_since']))
+                ->pluck('dnd_suppressed_since', 'ext');
+
+            if ($suppressedSince->isNotEmpty()) {
+                foreach ($rows as $row) {
+                    if (empty($row->dnd_extensions)) continue;
+                    $changed = false;
+                    $kept = [];
+                    foreach ($row->dnd_extensions as $ext) {
+                        $since = $suppressedSince->get($ext);
+                        if ($since && $row->recorded_at >= $since) {
+                            $changed = true;
+                            continue;
+                        }
+                        $kept[] = $ext;
+                    }
+                    if ($changed) {
+                        $row->dnd_extensions = $kept;
+                        $row->dnd_active     = count($kept);
+                    }
+                }
+            }
         }
 
         $missedCalls = \App\Models\Call::where('queue_status', 'missed')
@@ -418,7 +447,12 @@ class PbxController extends Controller
             // тут ни при чём, это уже не "человек сам выключил дозвон",
             // а потерянная регистрация. Показывать одновременно "Недоступен"
             // и "DND (по звонку)" вводит в заблуждение -- гасим бейдж.
+            // Запоминаем начало подавленного стрика отдельно -- пригодится,
+            // чтобы поправить график "В DND" за весь этот период, не
+            // только последнюю точку (см. queueHistory()).
+            $m['dnd_suppressed_since'] = null;
             if ($streak && ($m['status'] ?? null) === 'unavailable') {
+                $m['dnd_suppressed_since'] = $streak['start'];
                 $streak = null;
             }
 
