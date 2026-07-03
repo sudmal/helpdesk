@@ -574,7 +574,7 @@ function renderChart() {
   }
   const missedPlugin = {
     id: 'missedMarkers',
-    afterDraw(chart) {
+    afterDatasetsDraw(chart) {
       const meta = chart.getDatasetMeta(0)
       if (!meta?.data?.length) return
       const ctx = chart.ctx
