@@ -210,18 +210,12 @@
           <span class="text-xs text-gray-500 font-medium">PHOENIX SIP</span>
         </div>
         <div class="flex items-center gap-1.5 ml-2">
-          <button @click="sendCmd('pjsip_reload')" :disabled="cmdSending !== null"
-                  :class="['w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0',
-                           cmdSending === 'pjsip_reload' ? 'bg-orange-400 border-orange-400' : 'bg-white border-orange-400 hover:bg-orange-100']"
-                  title="Перезагрузить PJSIP"></button>
-          <button @click="sendCmd('queue_reload')" :disabled="cmdSending !== null"
-                  :class="['w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0',
-                           cmdSending === 'queue_reload' ? 'bg-green-500 border-green-500' : 'bg-white border-green-500 hover:bg-green-100']"
-                  title="Перезагрузить очередь"></button>
-          <button @click="sendCmd('qualify_all')" :disabled="cmdSending !== null"
-                  :class="['w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0',
-                           cmdSending === 'qualify_all' ? 'bg-blue-500 border-blue-500' : 'bg-white border-blue-500 hover:bg-blue-100']"
-                  title="Проверить регистрации (qualify all)"></button>
+          <button @click="sendCmd('fix_dialing')" :disabled="cmdSending !== null"
+                  :class="['flex items-center gap-1 px-2.5 h-6 rounded-full border-2 transition-colors flex-shrink-0 text-xs font-medium',
+                           cmdSending === 'fix_dialing' ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-orange-400 text-orange-600 hover:bg-orange-100']"
+                  title="pjsip reload + dialplan reload + queue reload + qualify all">
+            {{ cmdSending === 'fix_dialing' ? 'Чиню…' : 'Починить дозвон' }}
+          </button>
         </div>
       </div>
 

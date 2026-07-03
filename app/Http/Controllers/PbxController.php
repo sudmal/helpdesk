@@ -211,7 +211,7 @@ class PbxController extends Controller
     public function triggerCmd(Request $request): JsonResponse
     {
         $cmd     = $request->input('cmd');
-        $allowed = ['pjsip_reload', 'queue_reload', 'qualify_all'];
+        $allowed = ['pjsip_reload', 'queue_reload', 'qualify_all', 'fix_dialing'];
         if (!in_array($cmd, $allowed, true)) {
             return response()->json(['error' => 'Invalid cmd'], 422);
         }
