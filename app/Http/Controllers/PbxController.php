@@ -397,6 +397,14 @@ class PbxController extends Controller
                 }
             }
 
+            // Если оператор сейчас реально offline (Unavailable) -- DND
+            // тут ни при чём, это уже не "человек сам выключил дозвон",
+            // а потерянная регистрация. Показывать одновременно "Недоступен"
+            // и "DND (по звонку)" вводит в заблуждение -- гасим бейдж.
+            if ($streak && ($m['status'] ?? null) === 'unavailable') {
+                $streak = null;
+            }
+
             $m['dnd_missed_since'] = $streak['start'] ?? null;
             $m['dnd_missed_at']    = $streak['last'] ?? null;
         }
