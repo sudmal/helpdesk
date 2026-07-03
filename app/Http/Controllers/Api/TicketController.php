@@ -214,7 +214,12 @@ class TicketController extends Controller
             'close_notes'  => $t->close_notes,
             'act_number'   => $t->act_number,
             'address'      => $t->address ? [
-                'full'     => $t->address->full_address,
+                'full'     => collect([
+                    $t->address->city,
+                    $t->address->street,
+                    $t->address->building,
+                    $t->apartment ? 'кв. ' . $t->apartment : null,
+                ])->filter()->implode(', '),
                 'street'   => $t->address->street,
                 'building' => $t->address->building,
             ] : null,
