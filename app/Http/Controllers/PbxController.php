@@ -598,6 +598,19 @@ class PbxController extends Controller
             return response()->json(['status' => 'skipped']);
         }
 
+        // missed_dnd может прилетать пачкой (несколько ожидающих в очереди
+        // одновременно ловят DND у одного и того же добавочного) -- не пишем
+        // журнал плотнее одной записи на 2 минуты на добавочный.
+        if ($state === 'missed_dnd') {
+            $recent = \App\Models\DndLog::where('extension', $extension)
+                ->where('state', 'missed_dnd')
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->exists();
+            if ($recent) {
+                return response()->json(['status' => 'deduped']);
+            }
+        }
+
         \App\Models\DndLog::create([
             'extension'  => $extension,
             'state'      => $state,
