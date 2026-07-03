@@ -380,14 +380,24 @@ function defaultType() {
 }
 
 // Адрес
-const addressQuery    = ref(props.address ? ((props.address.full_address ?? props.address.street) + (props.initialApartment ? ', кв. ' + props.initialApartment : '')) : '')
+// full_address у Address может содержать чужую квартиру (общий адрес дома
+// на несколько заявок) — не полагаемся на неё, если известен initialApartment,
+// собираем базовую строку без квартиры и добавляем нужную один раз.
+function addressLabel(addr, apartment) {
+  if (!addr) return ''
+  if (!apartment) return addr.full_address ?? addr.street
+  const base = [addr.city, addr.street, addr.building].filter(Boolean).join(', ')
+  return (base || addr.street) + ', кв. ' + apartment
+}
+
+const addressQuery    = ref(props.address ? addressLabel(props.address, props.initialApartment) : '')
 const suggestions     = ref([])
 const showAddressError = ref(false)
 const selectedAddress = ref(
   props.address
     ? {
         id: props.address.id,
-        label: (props.address.full_address ?? props.address.street) + (props.initialApartment ? ', кв. ' + props.initialApartment : ''),
+        label: addressLabel(props.address, props.initialApartment),
         ...props.address,
         territory: typeof props.address.territory === 'object'
           ? (props.address.territory?.name ?? '')

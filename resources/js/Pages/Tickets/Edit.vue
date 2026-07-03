@@ -128,8 +128,18 @@ const props = defineProps({
   settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
 })
 
-const addressQuery   = ref(props.ticket.address?.full_address ?? '')
-const currentAddress = ref(props.ticket.address?.full_address ?? '')
+// Не берём address.full_address напрямую: Address может быть общим на несколько
+// заявок в доме, и его apartment — устаревшее значение от первой заявки/импорта,
+// не обязательно от этой. Собираем адрес без квартиры и добавляем apartment этой заявки.
+function ticketAddressLabel() {
+  const a = props.ticket.address
+  if (!a) return ''
+  const base = [a.city, a.street, a.building].filter(Boolean).join(', ')
+  return props.ticket.apartment ? base + ', кв. ' + props.ticket.apartment : base
+}
+
+const addressQuery   = ref(ticketAddressLabel())
+const currentAddress = ref(ticketAddressLabel())
 const suggestions    = ref([])
 
 const form = useForm({

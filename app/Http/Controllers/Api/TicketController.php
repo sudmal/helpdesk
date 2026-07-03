@@ -214,11 +214,13 @@ class TicketController extends Controller
             'close_notes'  => $t->close_notes,
             'act_number'   => $t->act_number,
             'address'      => $t->address ? [
+                // Без квартиры: apartment этой заявки уже есть отдельным полем выше,
+                // мобильное приложение само дописывает его к адресу. Квартира в
+                // Address — это общий адрес дома, может относиться к другой заявке.
                 'full'     => collect([
                     $t->address->city,
                     $t->address->street,
                     $t->address->building,
-                    $t->apartment ? 'кв. ' . $t->apartment : null,
                 ])->filter()->implode(', '),
                 'street'   => $t->address->street,
                 'building' => $t->address->building,
