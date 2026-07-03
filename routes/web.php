@@ -215,6 +215,7 @@ Route::middleware(['auth', 'active'])->get('/pbx/queue-history', [\App\Http\Cont
 Route::middleware(['auth', 'active'])->post('/pbx/trigger-cmd', [\App\Http\Controllers\PbxController::class, 'triggerCmd'])->name('pbx.trigger-cmd');
 Route::post('/pbx/ivr-log', [\App\Http\Controllers\PbxController::class, 'ivrLog'])->name('pbx.ivr-log');
 Route::post('/pbx/alert', [\App\Http\Controllers\PbxController::class, 'alert'])->name('pbx.alert');
+Route::get('/pbx/dnd-status', [\App\Http\Controllers\PbxController::class, 'dndStatus'])->name('pbx.dnd-status');
 Route::middleware(['auth', 'active'])->get('/ivr-log', [\App\Http\Controllers\IvrLogController::class, 'index'])->name('ivr-log.index');
 Route::middleware(['auth', 'active'])->get('/pbx/ivr-log-data', [\App\Http\Controllers\IvrLogController::class, 'data'])->name('ivr-log.data');
 Route::post('/pbx/dnd-log', [\App\Http\Controllers\PbxController::class, 'dndLog'])->name('pbx.dnd-log');

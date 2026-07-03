@@ -652,6 +652,31 @@ class PbxController extends Controller
         return ['members' => $members, 'callers' => $callers];
     }
 
+    public function dndStatus(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->input('token');
+        if ($token !== config('services.pbx.token')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $exts = array_filter(explode(',', (string) $request->input('extensions', '')));
+        if (empty($exts)) {
+            return response()->json(['status' => 'skipped']);
+        }
+
+        // Для watchdog очереди -- не путать реальный "затык" с честным
+        // DND, за которым решает сам оператор (не наша забота лечить).
+        // Простая эвристика: был ли missed_dnd за последние 3 минуты.
+        $recent = \App\Models\DndLog::whereIn('extension', $exts)
+            ->where('state', 'missed_dnd')
+            ->where('created_at', '>=', now()->subMinutes(3))
+            ->pluck('extension')
+            ->unique()
+            ->values();
+
+        return response()->json(['dnd_extensions' => $recent]);
+    }
+
     public function alert(Request $request): JsonResponse
     {
         $token = $request->bearerToken() ?? $request->input('token');
