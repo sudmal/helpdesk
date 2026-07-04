@@ -456,6 +456,17 @@ class PbxController extends Controller
                 $streak = null;
             }
 
+            // Сам факт нормального звонка (Ringing) -- уже доказательство,
+            // что СЕЙЧАС это не DND: честный DND отбивает мгновенным 486,
+            // до состояния "звонит" дело просто не доходит. Раз дозвон
+            // идёт нормально, гасим бейдж, не дожидаясь именно ответа --
+            // иначе бейдж виснет часами, если звонок дошёл, но не был
+            // принят по другой причине (не наша забота).
+            if ($streak && ($m['status'] ?? null) === 'ringing') {
+                $m['dnd_suppressed_since'] = $streak['start'];
+                $streak = null;
+            }
+
             $m['dnd_missed_since'] = $streak['start'] ?? null;
             $m['dnd_missed_at']    = $streak['last'] ?? null;
         }
