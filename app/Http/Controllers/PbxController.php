@@ -754,12 +754,18 @@ class PbxController extends Controller
             ->orderBy('created_at')
             ->get(['extension', 'created_at']);
 
+        // PHP приводит числовые строковые ключи массива к int (groupBy
+        // отдаёт $ext как int для "221" и т.п.) -- без явного (string)
+        // json_encode отдаёт [221] БЕЗ кавычек, а watchdog (bash grep по
+        // "[0-9]+") такое не парсит и молча получает пустой список.
+        // Нашли на практике 2026-07-04: с момента этого коммита watchdog
+        // ни разу не увидел честный DND, что дало ложный alert.
         $recent = collect();
         foreach ($allMissed->groupBy('extension') as $ext => $evList) {
             $lastAnswered = $lastAnsweredByExt->get($ext);
             $inStreak = $evList->contains(fn($ev) => !$lastAnswered || $ev->created_at > $lastAnswered);
             if ($inStreak) {
-                $recent->push($ext);
+                $recent->push((string) $ext);
             }
         }
         $recent = $recent->unique()->values();
