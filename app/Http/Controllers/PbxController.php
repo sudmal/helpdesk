@@ -736,13 +736,33 @@ class PbxController extends Controller
 
         // Для watchdog очереди -- не путать реальный "затык" с честным
         // DND, за которым решает сам оператор (не наша забота лечить).
-        // Простая эвристика: был ли missed_dnd за последние 3 минуты.
-        $recent = \App\Models\DndLog::whereIn('extension', $exts)
+        // ВАЖНО: раньше тут была узкая эвристика "missed_dnd за последние
+        // 3 минуты" -- она пропускала стрики, начавшиеся раньше 3 минут
+        // назад, но всё ещё не закрытые реальным ответом (как в бейдже).
+        // Нашли на практике 2026-07-04: у 221 DND-стрик был старше 3 минут,
+        // watchdog посчитал его "не в DND" и словил false positive. Теперь
+        // используем ТУ ЖЕ логику стрика, что и в attachDndStatus() для
+        // бейджа -- без ограничения по времени.
+        $lastAnsweredByExt = Call::whereIn('operator_ext', $exts)
+            ->where('queue_status', 'answered')
+            ->select('operator_ext', \DB::raw('MAX(called_at) as last_answered_at'))
+            ->groupBy('operator_ext')
+            ->pluck('last_answered_at', 'operator_ext');
+
+        $allMissed = DndLog::whereIn('extension', $exts)
             ->where('state', 'missed_dnd')
-            ->where('created_at', '>=', now()->subMinutes(3))
-            ->pluck('extension')
-            ->unique()
-            ->values();
+            ->orderBy('created_at')
+            ->get(['extension', 'created_at']);
+
+        $recent = collect();
+        foreach ($allMissed->groupBy('extension') as $ext => $evList) {
+            $lastAnswered = $lastAnsweredByExt->get($ext);
+            $inStreak = $evList->contains(fn($ev) => !$lastAnswered || $ev->created_at > $lastAnswered);
+            if ($inStreak) {
+                $recent->push($ext);
+            }
+        }
+        $recent = $recent->unique()->values();
 
         return response()->json(['dnd_extensions' => $recent]);
     }
