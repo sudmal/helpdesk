@@ -793,6 +793,16 @@ class PbxController extends Controller
             ->groupBy('operator_ext')
             ->pluck('last_answered_at', 'operator_ext');
 
+        // Тот же стрик закрывается не только ответом, но и фактом Ringing
+        // (дозвон реально пошёл) или уходом в Unavailable (потеря регистрации,
+        // не выбор оператора) -- см. attachDndCounts() для графика, та же
+        // логика теперь и тут, чтобы watchdog не расходился с бейджем/графиком.
+        $lastClosingByExt = DndLog::whereIn('extension', $exts)
+            ->whereIn('state', ['ringing', 'unavailable'])
+            ->select('extension', \DB::raw('MAX(created_at) as last_closed_at'))
+            ->groupBy('extension')
+            ->pluck('last_closed_at', 'extension');
+
         $allMissed = DndLog::whereIn('extension', $exts)
             ->where('state', 'missed_dnd')
             ->orderBy('created_at')
@@ -806,8 +816,15 @@ class PbxController extends Controller
         // ни разу не увидел честный DND, что дало ложный alert.
         $recent = collect();
         foreach ($allMissed->groupBy('extension') as $ext => $evList) {
+            // pluck() отдаёт сырые строки (не Carbon), а не значения через
+            // каст модели -- сравнивать строки datetime напрямую безопасно
+            // (формат "Y-m-d H:i:s" сравнивается лексикографически верно).
             $lastAnswered = $lastAnsweredByExt->get($ext);
-            $inStreak = $evList->contains(fn($ev) => !$lastAnswered || $ev->created_at > $lastAnswered);
+            $lastClosed   = $lastClosingByExt->get($ext);
+            $lastClose    = $lastAnswered && $lastClosed
+                ? max($lastAnswered, $lastClosed)
+                : ($lastAnswered ?: $lastClosed);
+            $inStreak = $evList->contains(fn($ev) => !$lastClose || (string) $ev->created_at > $lastClose);
             if ($inStreak) {
                 $recent->push((string) $ext);
             }
