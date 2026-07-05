@@ -24,6 +24,9 @@ class PbxController extends Controller
         // из журнала звонков и очереди АТС.
         $lanbillingUid = $request->input('lanbilling_uid');
         $lanbillingUid = ctype_digit((string) $lanbillingUid) ? (int) $lanbillingUid : null;
+        // Запасной источник имени абонента -- на случай, если lb_ivr.sh не
+        // залогировал ivr_subscriber_name для этого звонка (см. lbphone.sh).
+        $lanbillingName = trim((string) $request->input('subscriber_name', '')) ?: null;
 
         if (!$phone) {
             return response()->json(['status' => 'skipped']);
@@ -40,7 +43,8 @@ class PbxController extends Controller
             'address_string' => $addressString ?: null,
             'apartment'      => $apartment,
             'address_id'     => $addressId,
-            'lanbilling_uid' => $lanbillingUid,
+            'lanbilling_uid'  => $lanbillingUid,
+            'lanbilling_name' => $lanbillingName,
             'called_at'      => now(),
             'event'          => $request->input('event', 'incoming'),
             'payload'        => $request->except('token'),

@@ -141,10 +141,10 @@
                 </td>
                 <td class="px-2 py-0.5 font-mono text-xs">{{ c.phone }}</td>
                 <td class="px-2 py-0.5 text-gray-700">
-                  <a v-if="c.lanbilling_uid && c.ivr_subscriber_name"
+                  <a v-if="c.lanbilling_uid && (c.ivr_subscriber_name || c.lanbilling_name)"
                      :href="lanUserUrl(c.lanbilling_uid)" target="_blank" rel="noopener"
-                     class="text-blue-600 hover:underline">{{ c.ivr_subscriber_name }}</a>
-                  <span v-else>{{ c.ivr_subscriber_name ?? '—' }}</span>
+                     class="text-blue-600 hover:underline">{{ c.ivr_subscriber_name || c.lanbilling_name }}</a>
+                  <span v-else>{{ c.ivr_subscriber_name || c.lanbilling_name || '—' }}</span>
                 </td>
                 <td class="px-2 py-0.5 font-mono text-gray-500 text-xs">{{ c.ivr_agreement_num ?? '—' }}</td>
                 <td class="px-2 py-0.5">
