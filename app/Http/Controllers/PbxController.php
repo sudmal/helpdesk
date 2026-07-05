@@ -342,11 +342,16 @@ class PbxController extends Controller
                 ->where('called_at', '>', $row0->last_at)
                 ->where('called_at', '<', $since)
                 ->exists();
-            if (!$answeredAfter) $streakState[$ext] = true;
+            $ringingAfter = DndLog::where('extension', $ext)
+                ->where('state', 'ringing')
+                ->where('created_at', '>', $row0->last_at)
+                ->where('created_at', '<', $since)
+                ->exists();
+            if (!$answeredAfter && !$ringingAfter) $streakState[$ext] = true;
         }
 
         $dndEvents = DndLog::where('created_at', '>=', $since)
-            ->whereIn('state', ['on', 'off', 'missed_dnd'])
+            ->whereIn('state', ['on', 'off', 'missed_dnd', 'ringing'])
             ->orderBy('created_at')
             ->get(['extension', 'state', 'created_at']);
 
@@ -374,6 +379,7 @@ class PbxController extends Controller
                 elseif ($e['type'] === 'off') { unset($honestState[$e['ext']]); }
                 elseif ($e['type'] === 'missed_dnd') { $streakState[$e['ext']] = true; }
                 elseif ($e['type'] === 'answered') { unset($streakState[$e['ext']]); }
+                elseif ($e['type'] === 'ringing') { unset($streakState[$e['ext']]); }
                 $i++;
             }
             $extensions = array_values(array_unique(array_merge(array_keys($honestState), array_keys($streakState))));
@@ -580,6 +586,28 @@ class PbxController extends Controller
 
         \Cache::put($prevInCallKey, $inCallPhones, 600);
         \Cache::put($cacheKey, $newState, 600);
+
+        // Момент перехода добавочного в "Ringing" -- фиксируем как отдельное
+        // событие, чтобы график "В DND" мог закрывать missed_dnd-стрик уже
+        // здесь, а не ждать полного завершения разговора (queue_status=
+        // answered пишется только когда звонок УЖЕ закончился -- из-за этого
+        // график часами держал "в DND" тех, кто на самом деле уже разговаривал,
+        // просто разговор ещё не завершился). Та же логика, что уже работает
+        // в живом бейдже attachDndStatus() -- сам факт нормального дозвона
+        // доказывает, что это не честный DND (тот отбивает мгновенным 486).
+        $prevStatusKey  = 'queue:member_status:' . $queueName;
+        $prevStatuses   = \Cache::get($prevStatusKey, []);
+        $currentStatuses = [];
+        foreach ($detail['members'] as $member) {
+            $ext = $member['ext'] ?? null;
+            if (!$ext) continue;
+            $status = $member['status'] ?? null;
+            $currentStatuses[$ext] = $status;
+            if ($status === 'ringing' && ($prevStatuses[$ext] ?? null) !== 'ringing') {
+                DndLog::create(['extension' => $ext, 'state' => 'ringing']);
+            }
+        }
+        \Cache::put($prevStatusKey, $currentStatuses, 300);
     }
 
     private function parseQueueOutput(string $raw, string $channelsRaw = ''): array
