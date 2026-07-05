@@ -19,6 +19,11 @@ class PbxController extends Controller
 
         $phone         = $this->normalizePhone($request->input('phone', ''));
         $addressString = trim($request->input('address', ''));
+        // ID пользователя LanBilling (urn:api3 getAccounts/<uid>) -- нужен
+        // для прямой ссылки на карточку в lan.sputnik-tele.com/#users/<uid>
+        // из журнала звонков и очереди АТС.
+        $lanbillingUid = $request->input('lanbilling_uid');
+        $lanbillingUid = ctype_digit((string) $lanbillingUid) ? (int) $lanbillingUid : null;
 
         if (!$phone) {
             return response()->json(['status' => 'skipped']);
@@ -35,6 +40,7 @@ class PbxController extends Controller
             'address_string' => $addressString ?: null,
             'apartment'      => $apartment,
             'address_id'     => $addressId,
+            'lanbilling_uid' => $lanbillingUid,
             'called_at'      => now(),
             'event'          => $request->input('event', 'incoming'),
             'payload'        => $request->except('token'),
@@ -721,12 +727,13 @@ class PbxController extends Controller
         )));
 
         $addressByPhone = [];
+        $uidByPhone = [];
         foreach ($allPhones as $phone) {
             $digits = preg_replace('/\D/', '', $phone);
             if (strlen($digits) === 11 && $digits[0] === '8') $digits = '7' . substr($digits, 1);
             $suffix = substr($digits, -7);
             $call = Call::where('phone', 'like', "%{$suffix}")
-                ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id'))
+                ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id')->orWhereNotNull('lanbilling_uid'))
                 ->with('address')
                 ->latest('called_at')
                 ->first();
@@ -747,19 +754,22 @@ class PbxController extends Controller
                 } else {
                     $addressByPhone[$phone] = $call->address_string;
                 }
+                $uidByPhone[$phone] = $call->lanbilling_uid;
             }
         }
 
         $callers = array_map(fn($c) => array_merge($c, [
             'address' => $addressByPhone[$c['phone'] ?? ''] ?? null,
+            'lanbilling_uid' => $uidByPhone[$c['phone'] ?? ''] ?? null,
         ]), $callers);
 
-        $members = array_map(function ($m) use ($memberCallerPhone, $addressByPhone) {
+        $members = array_map(function ($m) use ($memberCallerPhone, $addressByPhone, $uidByPhone) {
             if ($m['status'] !== 'in_call') return $m;
             $phone = $memberCallerPhone[$m['ext']] ?? null;
             return array_merge($m, [
                 'caller_phone'   => $phone,
                 'caller_address' => $phone ? ($addressByPhone[$phone] ?? null) : null,
+                'caller_uid'     => $phone ? ($uidByPhone[$phone] ?? null) : null,
             ]);
         }, $members);
 

@@ -140,7 +140,12 @@
                   <span v-else class="inline-flex items-center px-1.5 py-px rounded-full text-xs font-medium bg-gray-100 text-gray-400">Не в очереди</span>
                 </td>
                 <td class="px-2 py-0.5 font-mono text-xs">{{ c.phone }}</td>
-                <td class="px-2 py-0.5 text-gray-700">{{ c.ivr_subscriber_name ?? '—' }}</td>
+                <td class="px-2 py-0.5 text-gray-700">
+                  <a v-if="c.lanbilling_uid && c.ivr_subscriber_name"
+                     :href="lanUserUrl(c.lanbilling_uid)" target="_blank" rel="noopener"
+                     class="text-blue-600 hover:underline">{{ c.ivr_subscriber_name }}</a>
+                  <span v-else>{{ c.ivr_subscriber_name ?? '—' }}</span>
+                </td>
                 <td class="px-2 py-0.5 font-mono text-gray-500 text-xs">{{ c.ivr_agreement_num ?? '—' }}</td>
                 <td class="px-2 py-0.5">
                   <span v-if="c.ivr_action" :class="ivrActionBadge(c.ivr_action)"
@@ -235,7 +240,9 @@
                  class="px-3 py-1.5">
               <div class="flex items-center gap-2">
                 <span class="text-xs text-gray-400 w-5 shrink-0">#{{ c.pos }}</span>
-                <span class="text-xs font-mono font-semibold text-gray-800 flex-1">{{ c.phone ?? '—' }}</span>
+                <a v-if="c.lanbilling_uid" :href="lanUserUrl(c.lanbilling_uid)" target="_blank" rel="noopener"
+                   class="text-xs font-mono font-semibold text-blue-600 hover:underline flex-1">{{ c.phone ?? '—' }}</a>
+                <span v-else class="text-xs font-mono font-semibold text-gray-800 flex-1">{{ c.phone ?? '—' }}</span>
                 <span class="text-xs font-bold font-mono text-amber-600 tabular-nums shrink-0">{{ c.wait }}</span>
               </div>
               <div v-if="c.address" class="ml-7 text-xs text-gray-500 leading-tight mt-0.5">{{ c.address }}</div>
@@ -279,11 +286,13 @@
                       DND{{ m.dnd_since ? ' · ' + dndDuration(m.dnd_since) : '' }}
                     </span>
                     <span v-if="m.dnd_missed_since && m.status !== 'in_call'"
-                          :title="'DND по звонку -- начало ' + formatDate(m.dnd_missed_since) + ', обновлено ' + formatDate(m.dnd_missed_at) + ' (не через *78/*79)'"
+                          :title="'DND по звонку -- начало ' + formatDate(m.dnd_missed_since) + ', обновлено ' + formatDate(m.dnd_missed_at)"
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
                       ⚠ DND (по звонку) · начало {{ shortTime(m.dnd_missed_since) }} · обновлено {{ shortTime(m.dnd_missed_at) }} · {{ dndDuration(m.dnd_missed_since) }}
                     </span>
-                    <span v-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
+                    <a v-if="m.caller_phone && m.caller_uid" :href="lanUserUrl(m.caller_uid)" target="_blank" rel="noopener"
+                       class="text-xs font-mono text-blue-600 hover:underline whitespace-nowrap">{{ m.caller_phone }}</a>
+                    <span v-else-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
                     <span v-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
                   </div>
                 </td>
@@ -420,6 +429,9 @@ function formatDate(val) {
 function shortTime(val) {
   if (!val) return '—'
   return new Date(val).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+function lanUserUrl(uid) {
+  return uid ? `https://lan.sputnik-tele.com/#users/${uid}` : null
 }
 function callAddressLabel(c) {
   // Если есть привязанный Address (значит есть и ссылка на заявки) --
