@@ -347,11 +347,16 @@ class PbxController extends Controller
                 ->where('created_at', '>', $row0->last_at)
                 ->where('created_at', '<', $since)
                 ->exists();
-            if (!$answeredAfter && !$ringingAfter) $streakState[$ext] = true;
+            $unavailableAfter = DndLog::where('extension', $ext)
+                ->where('state', 'unavailable')
+                ->where('created_at', '>', $row0->last_at)
+                ->where('created_at', '<', $since)
+                ->exists();
+            if (!$answeredAfter && !$ringingAfter && !$unavailableAfter) $streakState[$ext] = true;
         }
 
         $dndEvents = DndLog::where('created_at', '>=', $since)
-            ->whereIn('state', ['on', 'off', 'missed_dnd', 'ringing'])
+            ->whereIn('state', ['on', 'off', 'missed_dnd', 'ringing', 'unavailable'])
             ->orderBy('created_at')
             ->get(['extension', 'state', 'created_at']);
 
@@ -380,6 +385,7 @@ class PbxController extends Controller
                 elseif ($e['type'] === 'missed_dnd') { $streakState[$e['ext']] = true; }
                 elseif ($e['type'] === 'answered') { unset($streakState[$e['ext']]); }
                 elseif ($e['type'] === 'ringing') { unset($streakState[$e['ext']]); }
+                elseif ($e['type'] === 'unavailable') { unset($streakState[$e['ext']]); }
                 $i++;
             }
             $extensions = array_values(array_unique(array_merge(array_keys($honestState), array_keys($streakState))));
@@ -605,6 +611,16 @@ class PbxController extends Controller
             $currentStatuses[$ext] = $status;
             if ($status === 'ringing' && ($prevStatuses[$ext] ?? null) !== 'ringing') {
                 DndLog::create(['extension' => $ext, 'state' => 'ringing']);
+            }
+            // Аналогично ringing -- если добавочный ушёл в Unavailable (потерял
+            // регистрацию/офлайн), это уже не "выбор оператора", а потеря связи.
+            // Закрываем стрик и здесь же, как это уже делает живой бейдж
+            // attachDndStatus() -- иначе график держит "В DND" человека,
+            // который просто выключил телефон и никогда больше не звонил
+            // (реальный случай: 220 разлогинился 2026-07-04, стрик от
+            // старого missed_dnd висел бы в графике бесконечно).
+            if ($status === 'unavailable' && ($prevStatuses[$ext] ?? null) !== 'unavailable') {
+                DndLog::create(['extension' => $ext, 'state' => 'unavailable']);
             }
         }
         \Cache::put($prevStatusKey, $currentStatuses, 300);
