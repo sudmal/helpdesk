@@ -240,12 +240,12 @@
                  class="px-3 py-1.5">
               <div class="flex items-center gap-2">
                 <span class="text-xs text-gray-400 w-5 shrink-0">#{{ c.pos }}</span>
-                <a v-if="c.lanbilling_uid" :href="lanUserUrl(c.lanbilling_uid)" target="_blank" rel="noopener"
-                   class="text-xs font-mono font-semibold text-blue-600 hover:underline flex-1">{{ c.phone ?? '—' }}</a>
-                <span v-else class="text-xs font-mono font-semibold text-gray-800 flex-1">{{ c.phone ?? '—' }}</span>
+                <span class="text-xs font-mono font-semibold text-gray-800 flex-1">{{ c.phone ?? '—' }}</span>
                 <span class="text-xs font-bold font-mono text-amber-600 tabular-nums shrink-0">{{ c.wait }}</span>
               </div>
-              <div v-if="c.address" class="ml-7 text-xs text-gray-500 leading-tight mt-0.5">{{ c.address }}</div>
+              <a v-if="c.address && c.lanbilling_uid" :href="lanUserUrl(c.lanbilling_uid)" target="_blank" rel="noopener"
+                 class="block ml-7 text-xs text-blue-600 hover:underline leading-tight mt-0.5">{{ c.address }}</a>
+              <div v-else-if="c.address" class="ml-7 text-xs text-gray-500 leading-tight mt-0.5">{{ c.address }}</div>
             </div>
           </div>
         </div>
@@ -290,10 +290,10 @@
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
                       ⚠ DND (по звонку) · начало {{ shortTime(m.dnd_missed_since) }} · обновлено {{ shortTime(m.dnd_missed_at) }} · {{ dndDuration(m.dnd_missed_since) }}
                     </span>
-                    <a v-if="m.caller_phone && m.caller_uid" :href="lanUserUrl(m.caller_uid)" target="_blank" rel="noopener"
-                       class="text-xs font-mono text-blue-600 hover:underline whitespace-nowrap">{{ m.caller_phone }}</a>
-                    <span v-else-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
-                    <span v-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
+                    <span v-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
+                    <a v-if="m.caller_address && m.caller_uid" :href="lanUserUrl(m.caller_uid)" target="_blank" rel="noopener"
+                       class="text-xs text-blue-600 hover:underline truncate">{{ m.caller_address }}</a>
+                    <span v-else-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
                   </div>
                 </td>
                 <td class="px-3 py-1 text-right whitespace-nowrap">
