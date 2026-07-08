@@ -680,12 +680,20 @@ async function applyAddrModal() {
     const { data } = await axios.get(route('addresses.search'), { params: { q } })
     suggestions.value = data
     const exact = data.find(a => a.building === addrSel.building && (!addrSel.apartment || a.apartment === addrSel.apartment))
-    const pick  = exact ?? (data.length === 1 ? data[0] : null)
-    if (pick) { selectAddress(pick); showAddrModal.value = false }
-    else showAddrModal.value = false
+    // Раньше при отсутствии "точного" совпадения (a.building раньше вообще
+    // не приходило в ответе -- exact никогда не находился) и >1 результата
+    // модалка молча закрывалась, ничего не выбрав -- в тексте адрес уже
+    // стоял, а сама заявка оставалась без address_id. Теперь -- если явного
+    // совпадения нет, но хоть что-то нашлось, берём первый результат вместо
+    // молчаливого отказа; полностью пусто -- не закрываем модалку, оставляем
+    // оператору шанс поправить выбор.
+    const pick = exact ?? data[0] ?? null
+    if (pick) {
+      selectAddress(pick)
+      showAddrModal.value = false
+    }
   } catch {
     suggestions.value = []
-    showAddrModal.value = false
   } finally { addrModalLoading.value = false }
 }</script>
 

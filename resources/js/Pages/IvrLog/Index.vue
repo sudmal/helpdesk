@@ -31,8 +31,14 @@
       </div>
 
       <!-- Таблица -->
-      <div class="px-4 py-2 border-b border-gray-100">
-        <span class="text-sm text-gray-500">Всего: {{ logs.total }}</span>
+      <div class="px-4 py-2 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-sm text-gray-500 shrink-0">Всего: {{ logs.total }}</span>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div v-for="item in BLOCK_LEGEND" :key="item.label" class="flex items-center gap-1">
+            <span :class="item.dot" class="w-2.5 h-2.5 rounded-full border border-black/10 shrink-0"></span>
+            <span class="text-xs text-gray-500 whitespace-nowrap">{{ item.label }}</span>
+          </div>
+        </div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -52,7 +58,11 @@
               <td class="px-4 py-2 whitespace-nowrap text-gray-500">{{ formatDate(row.created_at) }}</td>
               <td class="px-4 py-2 font-mono">{{ row.phone }}</td>
               <td class="px-4 py-2 text-gray-700">{{ row.subscriber_name ?? '—' }}</td>
-              <td class="px-4 py-2 font-mono text-gray-600">{{ row.agreement_num ?? '—' }}</td>
+              <td class="px-4 py-2 font-mono text-gray-600">
+                <span :class="blockedDotClass(row.blocked)"
+                      :title="blockedDotTitle(row.blocked)"
+                      class="inline-block w-2 h-2 rounded-full align-middle shrink-0"></span>&nbsp;{{ row.agreement_num ?? '—' }}
+              </td>
               <td class="px-4 py-2 text-right tabular-nums" :class="row.balance < 0 ? 'text-red-600' : 'text-gray-700'">
                 <span v-if="row.balance !== null">{{ row.balance }} ₽</span>
                 <span v-else class="text-gray-300">—</span>
@@ -92,9 +102,10 @@ import { router, Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
-  logs:         Object,
-  actionLabels: Object,
-  filters:      Object,
+  logs:          Object,
+  actionLabels:  Object,
+  blockedLabels: { type: Object, default: () => ({}) },
+  filters:       Object,
 })
 
 const f = ref({
@@ -130,4 +141,35 @@ const ACTION_COLORS = {
 function actionBadge(action) {
   return ACTION_COLORS[action] ?? 'bg-gray-100 text-gray-500'
 }
+
+// Код блокировки ЛС -- маленький кружок перед номером договора (те же
+// цвета, что и в легенде), не бейдж и не раскраска строки. Null/undefined
+// (код не пришёл) -- пустой кружок с рамкой, чтобы отличать "нет данных"
+// от кода 0 (активна).
+const BLOCK_DOT = {
+  0:  'bg-green-400',
+  1:  'bg-red-400',
+  2:  'bg-amber-400',
+  3:  'bg-purple-400',
+  4:  'bg-red-400',
+  5:  'bg-orange-400',
+  10: 'bg-gray-400',
+}
+function blockedDotClass(code) {
+  if (code === null || code === undefined) return 'bg-white border border-gray-300'
+  return BLOCK_DOT[code] ?? 'bg-gray-400'
+}
+function blockedDotTitle(code) {
+  if (code === null || code === undefined) return 'Нет данных'
+  return props.blockedLabels[code] ?? `Код ${code}`
+}
+const BLOCK_LEGEND = [
+  { label: 'Нет данных',                       dot: 'bg-white border border-gray-300' },
+  { label: 'Активна',                          dot: 'bg-green-400' },
+  { label: 'Блок.: баланс',                     dot: 'bg-red-400' },
+  { label: 'Блок.: абонентом',                  dot: 'bg-amber-400' },
+  { label: 'Блок.: администратором',            dot: 'bg-purple-400' },
+  { label: 'Блок.: лимит трафика',               dot: 'bg-orange-400' },
+  { label: 'Отключена',                         dot: 'bg-gray-400' },
+]
 </script>

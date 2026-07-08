@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Call, Address, Ticket, QueueStat, IvrLog, DndLog};
+use App\Models\{Call, Address, Ticket, QueueStat, IvrLog, DndLog, OperatorStatusLog};
 use App\Services\TelegramService;
 use App\Services\MaxService;
 use AppServicesMaxService;
@@ -27,6 +27,13 @@ class PbxController extends Controller
         // Запасной источник имени абонента -- на случай, если lb_ivr.sh не
         // залогировал ivr_subscriber_name для этого звонка (см. lbphone.sh).
         $lanbillingName = trim((string) $request->input('subscriber_name', '')) ?: null;
+        // Код блокировки ЛС LanBilling (urn:api3 getVgroups/<blocked>):
+        // 0 -- активна, любой другой код -- та или иная блокировка (см.
+        // IvrLog::$blockedLabels для расшифровки). Приходит с каждым звонком
+        // через lbphone.sh, а не только с тех, что дошли до пункта IVR
+        // "проверка баланса" (там же для этого есть IvrLog.blocked).
+        $lanbillingBlocked = $request->input('lanbilling_blocked');
+        $lanbillingBlocked = ctype_digit((string) $lanbillingBlocked) ? (int) $lanbillingBlocked : null;
 
         if (!$phone) {
             return response()->json(['status' => 'skipped']);
@@ -45,6 +52,7 @@ class PbxController extends Controller
             'address_id'     => $addressId,
             'lanbilling_uid'  => $lanbillingUid,
             'lanbilling_name' => $lanbillingName,
+            'lanbilling_blocked' => $lanbillingBlocked,
             'called_at'      => now(),
             'event'          => $request->input('event', 'incoming'),
             'payload'        => $request->except('token'),
@@ -208,6 +216,7 @@ class PbxController extends Controller
             $detail['trunk']  = $data['trunk']  ?? null;
             \Cache::put('queue:detail:' . $data['queue'], $detail, 300);
             $this->trackCallEvents($data['queue'], $detail);
+            $this->trackOperatorStatusLog($data['queue'], $detail);
         }
 
         $cmd = \Cache::get('queue:pending_cmd');
@@ -307,13 +316,88 @@ class PbxController extends Controller
             ->orderBy('created_at')
             ->get(['extension', 'created_at']);
 
+        $since = now()->subHours($hours);
+        $now   = now();
+        $operatorTimeline = $this->buildOperatorTimeline($since, $now, $detail['members'] ?? []);
+
         return response()->json([
-            'latest'       => $latest,
-            'history'      => $rows,
-            'detail'       => $detail,
-            'missed_calls' => $missedCalls,
-            'missed_dnd'   => $missedDnd,
+            'latest'            => $latest,
+            'history'           => $rows,
+            'detail'            => $detail,
+            'missed_calls'      => $missedCalls,
+            'missed_dnd'        => $missedDnd,
+            'operator_timeline' => $operatorTimeline,
+            'window'            => ['from' => $since->toIso8601String(), 'to' => $now->toIso8601String()],
         ]);
+    }
+
+    /**
+     * Реконструирует непрерывные отрезки статуса (offline/idle/in_call/dnd)
+     * по каждому добавочному из сырых событий-переходов operator_status_logs
+     * за окно [$since, $now] -- для таймлайна операторов на "Очередь АТС".
+     * Список добавочных строится динамически (из логов в окне + из живого
+     * снэпшота) -- не хардкодим список, чтобы новые/удалённые добавочные
+     * появлялись/пропадали сами по себе.
+     */
+    private function buildOperatorTimeline(\Carbon\Carbon $since, \Carbon\Carbon $now, array $liveMembers): array
+    {
+        $initialIds = OperatorStatusLog::where('created_at', '<', $since)
+            ->select('extension', \DB::raw('MAX(id) as max_id'))
+            ->groupBy('extension')->pluck('max_id');
+        $initialByExt = OperatorStatusLog::whereIn('id', $initialIds)->get()->keyBy('extension');
+
+        $eventsInWindow = OperatorStatusLog::where('created_at', '>=', $since)
+            ->orderBy('created_at')->get(['extension', 'status', 'created_at']);
+        $eventsByExt = $eventsInWindow->groupBy('extension');
+
+        $liveByExt = collect($liveMembers)->filter(fn($m) => !empty($m['ext']))->keyBy('ext');
+
+        $extensions = collect($initialByExt->keys())
+            ->merge($eventsInWindow->pluck('extension'))
+            ->merge($liveByExt->keys())
+            ->filter()->unique()->sort(SORT_NATURAL)->values();
+
+        $segments = [];
+        foreach ($extensions as $ext) {
+            $segs = [];
+            $cursorStatus = $initialByExt->get($ext)?->status;
+            $cursorStart  = $since;
+
+            foreach ($eventsByExt->get($ext, []) as $ev) {
+                if ($cursorStatus !== null) {
+                    $segs[] = ['status' => $cursorStatus, 'start' => $cursorStart, 'end' => $ev->created_at];
+                }
+                $cursorStatus = $ev->status;
+                $cursorStart  = $ev->created_at;
+            }
+
+            if ($cursorStatus === null) {
+                // Нет ни одной записи в логе за всё окно -- статус не менялся
+                // дольше 24ч, и единственная старая запись уже удалена
+                // ротацией (см. trackOperatorStatusLog). Не оставляем добавочный
+                // без полосы -- рисуем его текущий live-статус на всё окно
+                // (по умолчанию offline, если и live-данных нет).
+                $cursorStatus = $liveByExt->has($ext) ? $this->memberColor($liveByExt->get($ext)) : 'offline';
+            }
+            $segs[] = ['status' => $cursorStatus, 'start' => $cursorStart, 'end' => $now];
+            $segments[$ext] = $segs;
+        }
+
+        return ['extensions' => $extensions->values()->all(), 'segments' => $segments];
+    }
+
+    /**
+     * Цвет полосы таймлайна/статус-лога для оператора по его текущему
+     * live-статусу -- общая логика для trackOperatorStatusLog() (запись в
+     * лог при смене) и buildOperatorTimeline() (fallback, когда лога нет).
+     */
+    private function memberColor(array $m): string
+    {
+        $status = $m['status'] ?? 'idle';
+        if ($status === 'unavailable') return 'offline';
+        if (($m['dnd'] ?? false) || !empty($m['dnd_missed_since'])) return 'dnd';
+        if ($status === 'in_call') return 'in_call';
+        return 'idle'; // idle или ringing -- ringing тут переходное состояние на пару секунд
     }
 
     /**
@@ -636,6 +720,39 @@ class PbxController extends Controller
         \Cache::put($prevStatusKey, $currentStatuses, 300);
     }
 
+    /**
+     * Лог статуса каждого оператора (offline/idle/in_call/dnd) для таймлайна
+     * "Очередь АТС" -- пишем только при смене статуса (тот же паттерн, что и
+     * ringing/unavailable выше), переиспользуем attachDndStatus() для DND
+     * (не дублируем её тонкие правила подавления). Хранится только 24ч --
+     * ротация тем же inline-паттерном, что и у QueueStat.
+     */
+    private function trackOperatorStatusLog(string $queueName, array $detail): void
+    {
+        if (empty($detail['members'])) return;
+
+        $membersWithDnd = $this->attachDndStatus($detail['members']);
+        $cacheKey       = 'queue:member_color:' . $queueName;
+        $prevColors     = \Cache::get($cacheKey, []);
+        $currentColors  = [];
+
+        foreach ($membersWithDnd as $m) {
+            $ext = $m['ext'] ?? null;
+            if (!$ext) continue;
+
+            $color = $this->memberColor($m);
+
+            $currentColors[$ext] = $color;
+            if (($prevColors[$ext] ?? null) !== $color) {
+                OperatorStatusLog::create(['extension' => $ext, 'status' => $color]);
+            }
+        }
+
+        \Cache::put($cacheKey, $currentColors, 300);
+
+        OperatorStatusLog::where('created_at', '<', now()->subHours(24))->delete();
+    }
+
     private function parseQueueOutput(string $raw, string $channelsRaw = ''): array
     {
         $members           = [];
@@ -732,12 +849,13 @@ class PbxController extends Controller
 
         $addressByPhone = [];
         $uidByPhone = [];
+        $blockedByPhone = [];
         foreach ($allPhones as $phone) {
             $digits = preg_replace('/\D/', '', $phone);
             if (strlen($digits) === 11 && $digits[0] === '8') $digits = '7' . substr($digits, 1);
             $suffix = substr($digits, -7);
             $call = Call::where('phone', 'like', "%{$suffix}")
-                ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id')->orWhereNotNull('lanbilling_uid'))
+                ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id')->orWhereNotNull('lanbilling_uid')->orWhereNotNull('lanbilling_blocked'))
                 ->with('address')
                 ->latest('called_at')
                 ->first();
@@ -759,21 +877,24 @@ class PbxController extends Controller
                     $addressByPhone[$phone] = $call->address_string;
                 }
                 $uidByPhone[$phone] = $call->lanbilling_uid;
+                $blockedByPhone[$phone] = $call->lanbilling_blocked;
             }
         }
 
         $callers = array_map(fn($c) => array_merge($c, [
             'address' => $addressByPhone[$c['phone'] ?? ''] ?? null,
             'lanbilling_uid' => $uidByPhone[$c['phone'] ?? ''] ?? null,
+            'lanbilling_blocked' => $blockedByPhone[$c['phone'] ?? ''] ?? null,
         ]), $callers);
 
-        $members = array_map(function ($m) use ($memberCallerPhone, $addressByPhone, $uidByPhone) {
+        $members = array_map(function ($m) use ($memberCallerPhone, $addressByPhone, $uidByPhone, $blockedByPhone) {
             if ($m['status'] !== 'in_call') return $m;
             $phone = $memberCallerPhone[$m['ext']] ?? null;
             return array_merge($m, [
                 'caller_phone'   => $phone,
                 'caller_address' => $phone ? ($addressByPhone[$phone] ?? null) : null,
                 'caller_uid'     => $phone ? ($uidByPhone[$phone] ?? null) : null,
+                'caller_blocked' => $phone ? ($blockedByPhone[$phone] ?? null) : null,
             ]);
         }, $members);
 
@@ -889,7 +1010,12 @@ class PbxController extends Controller
             'agreement_num'   => $request->input('agrmnum', null),
             'address'         => $request->input('address', null),
             'balance'         => is_numeric($request->input('balance')) ? (float) $request->input('balance') : null,
-            'blocked'         => (int) $request->input('blocked', 0),
+            // Код блокировки может отсутствовать (JSON null) -- это значит,
+            // что аккаунт в LanBilling ещё не был найден на момент этого
+            // действия (not_found/api_error/login-фейл до getVgroups), а НЕ
+            // что счёт активен (код 0). Нельзя коэрсить в (int) с дефолтом 0 --
+            // тогда "нет данных" неотличимо от настоящего "0 = активна".
+            'blocked'         => is_numeric($request->input('blocked')) ? (int) $request->input('blocked') : null,
             'action'          => $action,
             'details'         => $request->input('details', null),
         ]);

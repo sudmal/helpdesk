@@ -145,6 +145,26 @@ class TicketController extends Controller
     {
         $validated = $request->validated();
 
+        // Защита от случайного дубля (двойной клик по "Создать") -- тот же
+        // адрес+телефон, открытая (не финальная) заявка, созданная только
+        // что. Каждая заявка при этом остаётся полностью независимой сущностью
+        // (свои комментарии/акты/история/переносы строго по своему ID) --
+        // здесь только предотвращаем появление ВТОРОЙ такой заявки, никакого
+        // связывания/слияния данных между ними нет и не будет.
+        if (!empty($validated['address_id'])) {
+            $duplicate = Ticket::where('address_id', $validated['address_id'])
+                ->when(!empty($validated['phone']), fn($q) => $q->where('phone', $validated['phone']))
+                ->whereHas('status', fn($s) => $s->where('is_final', false))
+                ->where('created_at', '>=', now()->subMinutes(3))
+                ->latest()
+                ->first();
+            if ($duplicate) {
+                return back()->withErrors([
+                    'address_id' => "Похоже на дубль: заявка {$duplicate->number} по этому адресу и телефону уже создана только что.",
+                ])->withInput();
+            }
+        }
+
         // Проверка занятости временного слота
         $conflict = $this->ticketService->checkSlotConflict($validated);
         if ($conflict) {

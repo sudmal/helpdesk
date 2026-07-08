@@ -126,7 +126,8 @@ class CallLogController extends Controller
                 $request->only(['phone', 'address', 'matched', 'queue_status', 'ivr_action']),
                 ['date_from' => $dateFrom, 'date_to' => $dateTo]
             ),
-            'actionLabels' => IvrLog::$actionLabels,
+            'actionLabels'  => IvrLog::$actionLabels,
+            'blockedLabels' => IvrLog::$blockedLabels,
         ]);
     }
 }

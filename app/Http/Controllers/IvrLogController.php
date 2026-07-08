@@ -22,9 +22,10 @@ class IvrLogController extends Controller
         if ($dateFrom) { $q->whereDate('created_at', '>=', $dateFrom); }
         if ($dateTo)   { $q->whereDate('created_at', '<=', $dateTo); }
         return Inertia::render('IvrLog/Index', [
-            'logs'         => $q->paginate(50)->withQueryString(),
-            'actionLabels' => IvrLog::$actionLabels,
-            'filters'      => array_merge($request->only(['phone','action']),['date_from'=>$dateFrom,'date_to'=>$dateTo]),
+            'logs'          => $q->paginate(50)->withQueryString(),
+            'actionLabels'  => IvrLog::$actionLabels,
+            'blockedLabels' => IvrLog::$blockedLabels,
+            'filters'       => array_merge($request->only(['phone','action']),['date_from'=>$dateFrom,'date_to'=>$dateTo]),
         ]);
     }
 

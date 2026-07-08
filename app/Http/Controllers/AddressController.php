@@ -287,6 +287,18 @@ class AddressController extends Controller
 
     public function destroy(Address $address)
     {
+        // FK tickets.address_id -- nullOnDelete(): без этой проверки заявки
+        // на этот адрес молча остаются с address_id=NULL ("Адрес не указан"),
+        // теряя территорию и ссылку на адрес, оставаясь на вид никак не
+        // связанными с этим адресом при разборе, откуда они взялись.
+        $ticketsCount = \App\Models\Ticket::where('address_id', $address->id)->count();
+        if ($ticketsCount > 0) {
+            return back()->with('error',
+                "Нельзя удалить адрес: на него ссылается {$ticketsCount} " .
+                ($ticketsCount === 1 ? 'заявка' : 'заявок') . ". Сначала перенесите или закройте эти заявки."
+            );
+        }
+
         $address->delete();
         return back()->with('success', 'Адрес удалён');
     }
@@ -330,6 +342,32 @@ class AddressController extends Controller
         return response()->json($fromAddrs->merge($fromTickets)->unique()->values());
     }
 
+    // Кириллица/латиница-омоглифы в номере дома ("23А" кириллица vs "23A"
+    // латиница) визуально неотличимы, но это разные символы -- если оператор
+    // печатает вручную (обычно кириллицей, т.к. раскладка русская), а адрес
+    // в базе импортирован с латинской буквой (или наоборот), точное
+    // сравнение building никогда не совпадёт, и адрес нельзя выбрать из
+    // списка. Возвращаем обе версии буквы для поиска.
+    private const HOMOGLYPHS = [
+        'A' => 'А', 'А' => 'A', 'В' => 'B', 'B' => 'В', 'С' => 'C', 'C' => 'С',
+        'Е' => 'E', 'E' => 'Е', 'Н' => 'H', 'H' => 'Н', 'К' => 'K', 'K' => 'К',
+        'М' => 'M', 'M' => 'М', 'О' => 'O', 'O' => 'О', 'Р' => 'P', 'P' => 'Р',
+        'Т' => 'T', 'T' => 'Т', 'Х' => 'X', 'X' => 'Х', 'У' => 'Y', 'Y' => 'У',
+    ];
+
+    private function buildingVariants(string $building): array
+    {
+        $variants = [$building];
+        $lastChar = mb_substr($building, -1);
+        $upper    = mb_strtoupper($lastChar);
+        if (isset(self::HOMOGLYPHS[$upper])) {
+            $alt = self::HOMOGLYPHS[$upper];
+            if ($lastChar !== $upper) $alt = mb_strtolower($alt); // сохраняем регистр
+            $variants[] = mb_substr($building, 0, -1) . $alt;
+        }
+        return array_unique($variants);
+    }
+
     public function search(Request $request)
     {
         $q    = trim($request->get('q', ''));
@@ -345,20 +383,26 @@ class AddressController extends Controller
         }
 
         $words         = array_values(array_filter(explode(' ', $q)));
-        $textWords     = [];
+        $textWords     = $words;
         $buildingHint  = null;
         $apartmentHint = null;
 
-        foreach ($words as $word) {
-            if (preg_match('/^\d+[а-яёa-z]?$/iu', $word)) {
-                if ($buildingHint === null) {
-                    $buildingHint = $word;
-                } else {
-                    $apartmentHint = $word;
-                }
-            } else {
-                $textWords[] = $word;
-            }
+        // Дом/квартира -- это ХВОСТОВЫЕ числовые токены, а не любое число в
+        // строке. Улицы вида "20 партсъезда" начинают название с числа,
+        // которое не имеет отношения к номеру дома -- раньше первое же
+        // числовое слово (даже в начале, часть названия улицы) считалось
+        // buildingHint, из-за чего запросы вроде "20 парт" или "20 партсъезда
+        // 23A" не находили вообще ничего (дом "20" не существует, реальный
+        // дом "23A" утекал в apartmentHint или вообще терялся).
+        $tailNums = [];
+        while (!empty($textWords) && count($tailNums) < 2 && preg_match('/^\d+[а-яёa-z]?$/iu', end($textWords))) {
+            $tailNums[] = array_pop($textWords);
+        }
+        $tailNums = array_reverse($tailNums);
+        if (count($tailNums) === 2) {
+            [$buildingHint, $apartmentHint] = $tailNums;
+        } elseif (count($tailNums) === 1) {
+            $buildingHint = $tailNums[0];
         }
 
         $searchQuery = implode(' ', $textWords);
@@ -366,7 +410,7 @@ class AddressController extends Controller
         $addresses = Address::with('territory')
             ->when($userTerritories->isNotEmpty(), fn($q) => $q->whereIn('territory_id', $userTerritories))
             ->when($searchQuery, fn($q) => $q->search($searchQuery))
-            ->when($buildingHint, fn($q) => $q->where('building', $buildingHint))
+            ->when($buildingHint, fn($q) => $q->whereIn('building', $this->buildingVariants($buildingHint)))
             ->orderByRaw('CAST(building AS UNSIGNED)')
             ->limit(15)
             ->get(['id', 'city', 'street', 'building', 'apartment',
@@ -386,16 +430,29 @@ class AddressController extends Controller
                 $bKey = $a->city . '|' . $a->street . '|' . $a->building;
                 if (isset($seenBuildings[$bKey])) continue;
                 $seenBuildings[$bKey] = true;
+
+                // Раньше тут всегда брался $a -- ПЕРВЫЙ попавшийся адрес с
+                // этим домом (при большом кол-ве квартир-строк это, по сути,
+                // случайная запись, а НЕ реально запрошенная квартира), а
+                // номер квартиры просто дописывался в label. В итоге
+                // address_id указывал на чужую квартиру того же дома.
+                // Теперь ищем реальную запись по квартире, если она есть.
+                $exactApt = Address::where('city', $a->city)->where('street', $a->street)
+                    ->where('building', $a->building)->where('apartment', $apartmentHint)
+                    ->first(['id', 'subscriber_name', 'phone', 'contract_no']);
+                $match = $exactApt ?? $a;
+
                 $results[] = [
-                    'id'              => $a->id,
+                    'id'              => $match->id,
                     'label'           => $baseLabel . ', кв.' . $apartmentHint,
                     'apartment'       => $apartmentHint,
                     'has_apartments'  => true,
-                    'subscriber_name' => $a->subscriber_name,
-                    'phone'           => $a->phone,
-                    'contract_no'     => $a->contract_no,
+                    'subscriber_name' => $match->subscriber_name,
+                    'phone'           => $match->phone,
+                    'contract_no'     => $match->contract_no,
                     'territory'       => $a->territory?->name,
                     'territory_id'    => $a->territory_id,
+                    'building'        => $a->building,
                 ];
             } elseif ($buildingHint) {
                 $bKey = $a->city . '|' . $a->street . '|' . $a->building;
@@ -404,13 +461,21 @@ class AddressController extends Controller
 
                 $ticketApts = \App\Models\Ticket::where('address_id', $a->id)
                     ->whereNotNull('apartment')->where('apartment', '!=', '')
-                    ->distinct()->orderByRaw('CAST(apartment AS UNSIGNED), apartment')->pluck('apartment');
+                    ->distinct()->pluck('apartment');
 
-                $addrApts = Address::where('city', $a->city)->where('street', $a->street)
+                // Дом может быть смоделирован ОДНОЙ записью Address (без
+                // квартир) или ОТДЕЛЬНОЙ записью на каждую квартиру -- во
+                // втором случае у каждой квартиры СВОЙ address_id, и раньше
+                // весь список квартир подставлял id ПЕРВОЙ попавшейся записи
+                // ($a->id) на любую выбранную квартиру -- заявка привязывалась
+                // к чужой квартире того же дома. Тянем реальные записи разом.
+                $addrRows = Address::where('city', $a->city)->where('street', $a->street)
                     ->where('building', $a->building)->whereNotNull('apartment')->where('apartment', '!=', '')
-                    ->distinct()->orderByRaw('CAST(apartment AS UNSIGNED), apartment')->pluck('apartment');
+                    ->get(['id', 'apartment', 'subscriber_name', 'phone', 'contract_no'])
+                    ->keyBy('apartment');
 
-                $allApts = $ticketApts->merge($addrApts)->unique()->sort()->values();
+                $allApts = $ticketApts->merge($addrRows->keys())->unique()
+                    ->sortBy(fn($v) => (int) $v)->values();
                 $hasApts = $allApts->isNotEmpty();
 
                 if (!$hasApts) {
@@ -424,20 +489,23 @@ class AddressController extends Controller
                         'contract_no'     => $a->contract_no,
                         'territory'       => $a->territory?->name,
                         'territory_id'    => $a->territory_id,
+                    'building'        => $a->building,
                     ];
                 }
 
-                foreach ($allApts->take(12) as $apt) {
+                foreach ($allApts as $apt) {
+                    $row = $addrRows->get($apt);
                     $results[] = [
-                        'id'              => $a->id,
+                        'id'              => $row?->id ?? $a->id,
                         'label'           => $baseLabel . ', кв.' . $apt,
                         'apartment'       => $apt,
                         'has_apartments'  => true,
-                        'subscriber_name' => $a->subscriber_name,
-                        'phone'           => $a->phone,
-                        'contract_no'     => $a->contract_no,
+                        'subscriber_name' => $row?->subscriber_name ?? $a->subscriber_name,
+                        'phone'           => $row?->phone ?? $a->phone,
+                        'contract_no'     => $row?->contract_no ?? $a->contract_no,
                         'territory'       => $a->territory?->name,
                         'territory_id'    => $a->territory_id,
+                    'building'        => $a->building,
                     ];
                 }
             } else {
@@ -452,11 +520,16 @@ class AddressController extends Controller
                     'contract_no'     => $a->contract_no,
                     'territory'       => $a->territory?->name,
                     'territory_id'    => $a->territory_id,
+                    'building'        => $a->building,
                 ];
             }
         }
 
-        return response()->json(array_slice($results, 0, 15));
+        // Раньше жёстко резалось до 15 результатов ВСЕГО -- для дома на 200
+        // квартир это отрезало почти весь список (см. openAddrModal/take(12)
+        // фикс выше). Ограничение по количеству ДОМОВ уже есть в исходном
+        // запросе ($addresses->limit(15)), этого достаточно.
+        return response()->json(array_values($results));
     }
 
     public function import(Request $request, AddressImportService $importer)

@@ -106,8 +106,14 @@
       </div>
 
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div class="px-5 py-3 border-b border-gray-100">
-          <span class="text-sm text-gray-500">Всего: {{ calls.total }}</span>
+        <div class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-sm text-gray-500 shrink-0">Всего: {{ calls.total }}</span>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div v-for="item in BLOCK_LEGEND" :key="item.label" class="flex items-center gap-1">
+              <span :class="item.dot" class="w-2.5 h-2.5 rounded-full border border-black/10 shrink-0"></span>
+              <span class="text-xs text-gray-500 whitespace-nowrap">{{ item.label }}</span>
+            </div>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -146,7 +152,14 @@
                      class="text-blue-600 hover:underline">{{ c.ivr_subscriber_name || c.lanbilling_name }}</a>
                   <span v-else>{{ c.ivr_subscriber_name || c.lanbilling_name || '—' }}</span>
                 </td>
-                <td class="px-2 py-0.5 font-mono text-gray-500 text-xs">{{ c.ivr_agreement_num ?? '—' }}</td>
+                <td class="px-2 py-0.5 font-mono text-gray-500 text-xs">
+                  <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    <span :class="blockedDotClass(c.ivr_blocked ?? c.lanbilling_blocked)"
+                          :title="blockedDotTitle(c.ivr_blocked ?? c.lanbilling_blocked)"
+                          class="inline-block w-2 h-2 rounded-full shrink-0"></span>
+                    <span>{{ c.ivr_agreement_num ?? '—' }}</span>
+                  </span>
+                </td>
                 <td class="px-2 py-0.5">
                   <span v-if="c.ivr_action" :class="ivrActionBadge(c.ivr_action)"
                         class="inline-flex items-center px-1.5 py-px rounded-full text-xs font-medium whitespace-nowrap">
@@ -189,37 +202,45 @@
       </div>
     </div>
     <div v-if="activeTab === 'queue'" class="p-4">
-      <div class="bg-white rounded-2xl border border-gray-200 px-5 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm mb-4">
-        <div class="flex items-baseline gap-1.5">
-          <span class="text-lg font-bold" :class="qLatest?.waiting > 0 ? 'text-amber-500' : 'text-gray-300'">{{ qLatest?.waiting ?? '—' }}</span>
-          <span class="text-xs text-gray-400">ожидают</span>
+      <div class="bg-white rounded-2xl border border-gray-200 px-5 py-2.5 flex items-start gap-4 text-sm mb-4">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 min-w-0">
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-lg font-bold" :class="qLatest?.waiting > 0 ? 'text-amber-500' : 'text-gray-300'">{{ qLatest?.waiting ?? '—' }}</span>
+            <span class="text-xs text-gray-400">ожидают</span>
+          </div>
+          <div class="w-px h-4 bg-gray-200"></div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-lg font-bold text-blue-500">{{ qLatest?.talking ?? '—' }}</span>
+            <span class="text-xs text-gray-400">разговаривают</span>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-lg font-bold text-green-500">{{ qLatest?.active_members ?? '—' }}</span>
+            <span class="text-xs text-gray-400">активных операторов</span>
+          </div>
+          <div class="w-px h-4 bg-gray-200"></div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-lg font-bold text-gray-400">{{ qLatest?.total_members ?? '—' }}</span>
+            <span class="text-xs text-gray-400">всего</span>
+          </div>
+          <div class="w-px h-4 bg-gray-200"></div>
+          <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
+            <div v-for="item in BLOCK_LEGEND_SHORT" :key="item.label" class="flex items-center gap-0.5" :title="item.title">
+              <span :class="item.dot" class="w-2 h-2 rounded-full border border-black/10 shrink-0"></span>
+              <span class="text-xs text-gray-500 whitespace-nowrap">{{ item.label }}</span>
+            </div>
+          </div>
         </div>
-        <div class="w-px h-4 bg-gray-200"></div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="text-lg font-bold text-blue-500">{{ qLatest?.talking ?? '—' }}</span>
-          <span class="text-xs text-gray-400">разговаривают</span>
-        </div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="text-lg font-bold text-green-500">{{ qLatest?.active_members ?? '—' }}</span>
-          <span class="text-xs text-gray-400">активных операторов</span>
-        </div>
-        <div class="w-px h-4 bg-gray-200"></div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="text-lg font-bold text-gray-400">{{ qLatest?.total_members ?? '—' }}</span>
-          <span class="text-xs text-gray-400">всего</span>
-        </div>
-        <div class="w-px h-4 bg-gray-200 ml-auto"></div>
-        <div class="flex items-center gap-1.5"
-             :title="trunkTitle(trunkStatus, qDetail.trunk?.rtt_ms)">
-          <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', trunkDotClass(trunkStatus)]"></span>
-          <span class="text-xs text-gray-500 font-medium">PHOENIX SIP</span>
-        </div>
-        <div class="flex items-center gap-1.5 ml-2">
+        <div class="flex items-center gap-3 shrink-0 pt-0.5">
+          <div class="flex items-center gap-1.5"
+               :title="trunkTitle(trunkStatus, qDetail.trunk?.rtt_ms)">
+            <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', trunkDotClass(trunkStatus)]"></span>
+            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">PHOENIX SIP</span>
+          </div>
           <button @click="sendCmd('fix_dialing')" :disabled="cmdSending !== null"
-                  :class="['flex items-center gap-1 px-2.5 h-6 rounded-full border-2 transition-colors flex-shrink-0 text-xs font-medium',
+                  :class="['flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors flex-shrink-0 text-xs font-bold leading-none',
                            cmdSending === 'fix_dialing' ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-orange-400 text-orange-600 hover:bg-orange-100']"
-                  title="pjsip reload + dialplan reload + queue reload + qualify all">
-            {{ cmdSending === 'fix_dialing' ? 'Чиню…' : 'Починить дозвон' }}
+                  title="Починить дозвон: pjsip reload + dialplan reload + queue reload + qualify all">
+            {{ cmdSending === 'fix_dialing' ? '…' : '↻' }}
           </button>
         </div>
       </div>
@@ -240,7 +261,12 @@
                  class="px-3 py-1.5">
               <div class="flex items-center gap-2">
                 <span class="text-xs text-gray-400 w-5 shrink-0">#{{ c.pos }}</span>
-                <span class="text-xs font-mono font-semibold text-gray-800 flex-1">{{ c.phone ?? '—' }}</span>
+                <span class="inline-flex items-center gap-1.5 flex-1 min-w-0 whitespace-nowrap">
+                  <span :class="blockedDotClass(c.lanbilling_blocked)"
+                        :title="blockedDotTitle(c.lanbilling_blocked)"
+                        class="inline-block w-2 h-2 rounded-full shrink-0"></span>
+                  <span class="text-xs font-mono font-semibold text-gray-800">{{ c.phone ?? '—' }}</span>
+                </span>
                 <span class="text-xs font-bold font-mono text-amber-600 tabular-nums shrink-0">{{ c.wait }}</span>
               </div>
               <a v-if="c.address && c.lanbilling_uid" :href="lanUserUrl(c.lanbilling_uid)" target="_blank" rel="noopener"
@@ -290,7 +316,12 @@
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
                       ⚠ DND (по звонку) · начало {{ shortTime(m.dnd_missed_since) }} · обновлено {{ shortTime(m.dnd_missed_at) }} · {{ dndDuration(m.dnd_missed_since) }}
                     </span>
-                    <span v-if="m.caller_phone" class="text-xs font-mono text-gray-700 whitespace-nowrap">{{ m.caller_phone }}</span>
+                    <span v-if="m.caller_phone" class="inline-flex items-center gap-1.5 whitespace-nowrap">
+                      <span :class="blockedDotClass(m.caller_blocked)"
+                            :title="blockedDotTitle(m.caller_blocked)"
+                            class="inline-block w-2 h-2 rounded-full shrink-0"></span>
+                      <span class="text-xs font-mono text-gray-700">{{ m.caller_phone }}</span>
+                    </span>
                     <a v-if="m.caller_address && m.caller_uid" :href="lanUserUrl(m.caller_uid)" target="_blank" rel="noopener"
                        class="text-xs text-blue-600 hover:underline truncate">{{ m.caller_address }}</a>
                     <span v-else-if="m.caller_address" class="text-xs text-gray-400 truncate">{{ m.caller_address }}</span>
@@ -331,21 +362,21 @@
           {{ qLoading ? 'Загрузка...' : 'Нет данных за выбранный период' }}
         </div>
         <template v-else>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-2 text-xs text-gray-500">
+            <div v-for="item in TIMELINE_LEGEND" :key="item.label" class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full" :style="{background: item.color}"></span>{{ item.label }}
+            </div>
+          </div>
+          <div :style="{height: Math.max(120, 28 * qTimeline.extensions.length + 10) + 'px'}">
+            <canvas ref="timelineCanvas"></canvas>
+          </div>
+          <div class="border-t border-gray-100 my-3"></div>
           <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-3 text-xs text-gray-500">
             <div class="flex items-center gap-1.5">
               <span class="inline-block w-5 h-0.5 rounded" style="background:#f59e0b"></span>Ожидают в очереди
             </div>
-            <div class="flex items-center gap-1.5">
-              <span class="inline-block w-5 h-0.5 rounded" style="background:#3b82f6"></span>Разговаривают
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="inline-block w-5 h-0.5 rounded" style="background:#22c55e"></span>Активных операторов
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="inline-block w-5 h-0.5 rounded" style="background:#a855f7"></span>В DND
-            </div>
           </div>
-          <canvas ref="queueCanvas" style="max-height:260px"></canvas>
+          <canvas ref="queueCanvas" style="max-height:220px"></canvas>
         </template>
       </div>
     </div>
@@ -365,10 +396,11 @@ import Chart from 'chart.js/auto'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
-  calls:        Object,
-  filters:      Object,
-  stats:        Object,
-  actionLabels: { type: Object, default: () => ({}) },
+  calls:         Object,
+  filters:       Object,
+  stats:         Object,
+  actionLabels:  { type: Object, default: () => ({}) },
+  blockedLabels: { type: Object, default: () => ({}) },
 })
 
 const activeTab = ref('calls')
@@ -433,6 +465,47 @@ function shortTime(val) {
 function lanUserUrl(uid) {
   return uid ? `https://lan.sputnik-tele.com/#users/${uid}` : null
 }
+// Код блокировки ЛС LanBilling -- маленький кружок (те же цвета, что и в
+// легенде), а не бейдж/раскраска строки. Null/undefined (код не пришёл) --
+// пустой кружок с рамкой, чтобы отличать "нет данных" от кода 0 (активна).
+const BLOCK_DOT = {
+  0:  'bg-green-400',
+  1:  'bg-red-400',
+  2:  'bg-amber-400',
+  3:  'bg-purple-400',
+  4:  'bg-red-400',
+  5:  'bg-orange-400',
+  10: 'bg-gray-400',
+}
+function blockedDotClass(code) {
+  if (code === null || code === undefined) return 'bg-white border border-gray-300'
+  return BLOCK_DOT[code] ?? 'bg-gray-400'
+}
+function blockedDotTitle(code) {
+  if (code === null || code === undefined) return 'Нет данных'
+  return props.blockedLabels[code] ?? `Код ${code}`
+}
+const BLOCK_LEGEND = [
+  { label: 'Нет данных',                 dot: 'bg-white border border-gray-300' },
+  { label: 'Активна',                    dot: 'bg-green-400' },
+  { label: 'Блок.: баланс',              dot: 'bg-red-400' },
+  { label: 'Блок.: абонентом',           dot: 'bg-amber-400' },
+  { label: 'Блок.: администратором',     dot: 'bg-purple-400' },
+  { label: 'Блок.: лимит трафика',       dot: 'bg-orange-400' },
+  { label: 'Отключена',                  dot: 'bg-gray-400' },
+]
+// Компактная версия для узкой строки статистики очереди -- те же цвета,
+// короткие подписи (полный текст -- в title при наведении), чтобы влезло
+// в одну строку рядом со статистикой, не переносясь под неё.
+const BLOCK_LEGEND_SHORT = [
+  { label: 'Нет данных',       title: 'Нет данных',                        dot: 'bg-white border border-gray-300' },
+  { label: 'Активна',          title: 'Активна',                           dot: 'bg-green-400' },
+  { label: 'Баланс',           title: 'Блок.: отрицательный баланс',       dot: 'bg-red-400' },
+  { label: 'Абонентом',        title: 'Блок. абонентом',                   dot: 'bg-amber-400' },
+  { label: 'Администратором',  title: 'Блок. администратором',             dot: 'bg-purple-400' },
+  { label: 'Лимит трафика',    title: 'Блок.: превышен лимит трафика',     dot: 'bg-orange-400' },
+  { label: 'Отключена',        title: 'Отключена',                         dot: 'bg-gray-400' },
+]
 function callAddressLabel(c) {
   // Если есть привязанный Address (значит есть и ссылка на заявки) --
   // показываем город+улицу+дом из него (город в сырых текстах ivr_address/
@@ -474,12 +547,20 @@ function initPeriod() {
   return null
 }
 const activePeriod = ref(initPeriod())
-const queueCanvas  = ref(null)
+const queueCanvas    = ref(null)
+const timelineCanvas = ref(null)
 const pieCanvas    = ref(null)
 let qChart = null
+let qTimelineChart = null
 let pieChart = null
 let qRefreshTimer = null
 let callsRefreshTimer = null
+const qTimeline = ref({ extensions: [], segments: {} })
+const qWindow   = ref({ from: null, to: null })
+const TIMELINE_COLORS = { offline: '#9ca3af', idle: '#22c55e', in_call: '#3b82f6', dnd: '#a855f7' }
+const TIMELINE_LABELS = { offline: 'Офлайн', idle: 'На линии', in_call: 'В разговоре', dnd: 'DND' }
+const TIMELINE_LEGEND = Object.keys(TIMELINE_COLORS).map(status => ({ label: TIMELINE_LABELS[status], color: TIMELINE_COLORS[status] }))
+const TIMELINE_Y_AXIS_WIDTH = 60 // должна совпадать в renderChart() и renderTimeline(), иначе графики разъедутся по горизонтали
 
 async function loadQueue() {
   qLoading.value = true
@@ -490,6 +571,8 @@ async function loadQueue() {
     qHistory.value = data.history
     qDetail.value    = data.detail ?? { members: [], callers: [] }
     qMissedCalls.value = data.missed_calls ?? []
+    qTimeline.value = data.operator_timeline ?? { extensions: [], segments: {} }
+    qWindow.value   = data.window ?? { from: null, to: null }
   } catch (e) {}
   qLoading.value = false
 }
@@ -501,7 +584,6 @@ async function sendCmd(cmd) {
   setTimeout(() => { cmdSending.value = null }, 800)
 }
 
-const STATUS_ORDER = { in_call: 0, ringing: 1, idle: 2, unavailable: 3 }
 const sipByExt = computed(() => {
   const map = {}
   for (const p of (qDetail.value.phones ?? [])) map[p.extension] = p
@@ -537,7 +619,7 @@ function trunkTitle(s, rtt) {
   return 'PHOENIX SIP: нет данных'
 }
 const sortedMembers = computed(() =>
-  [...qDetail.value.members].sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9))
+  [...qDetail.value.members].sort((a, b) => a.ext.localeCompare(b.ext, undefined, { numeric: true }))
 )
 function statusLabel(s) {
   return { in_call: "В разговоре", ringing: "Звонит", idle: "Свободен", unavailable: "Недоступен" }[s] ?? s
@@ -574,83 +656,214 @@ function renderPie() {
     },
   })
 }
+// Ожидание в очереди -- единственная линия (шумные "Разговаривают"/
+// "Активных операторов"/"В DND" переехали в отдельный таймлайн операторов
+// renderTimeline() ниже, там же где они и понятнее видны). Ось X -- реальное
+// время (линейная шкала в мс), чтобы пиксель-в-пиксель совпадать с таймлайном.
 function renderChart() {
   if (!queueCanvas.value || qHistory.value.length === 0) return
   if (qChart) { qChart.destroy(); qChart = null }
-  const labels = qHistory.value.map(r => {
-    const d = new Date(r.recorded_at)
-    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  })
   const few = qHistory.value.length <= 60
-  const histMs = qHistory.value.map(r => new Date(r.recorded_at).getTime())
-  const missedCounts = new Array(histMs.length).fill(0)
-  for (const mt of (qMissedCalls.value ?? [])) {
-    const ms = new Date(mt).getTime()
-    let idx = 0, best = Infinity
-    histMs.forEach((h, i) => { const d = Math.abs(h - ms); if (d < best) { best = d; idx = i } })
-    missedCounts[idx]++
-  }
+  const minMs = qWindow.value.from ? new Date(qWindow.value.from).getTime() : undefined
+  const maxMs = qWindow.value.to   ? new Date(qWindow.value.to).getTime()   : undefined
+  const points = qHistory.value.map(r => ({ x: new Date(r.recorded_at).getTime(), y: r.waiting, row: r }))
+
   const missedPlugin = {
     id: 'missedMarkers',
     afterDatasetsDraw(chart) {
-      const meta = chart.getDatasetMeta(0)
-      if (!meta?.data?.length) return
+      const xScale = chart.scales.x
+      const area   = chart.chartArea
+      if (!xScale || !area) return
       const ctx = chart.ctx
-      const y0 = chart.chartArea?.bottom
-      if (!y0) return
+      const y0  = area.bottom
       ctx.save()
-      missedCounts.forEach((cnt, i) => {
-        if (!cnt) return
-        const pt = meta.data[i]
-        if (!pt) return
+      for (const mt of (qMissedCalls.value ?? [])) {
+        const ms = new Date(mt).getTime()
+        if (ms < xScale.min || ms > xScale.max) continue
+        const x = xScale.getPixelForValue(ms)
         ctx.fillStyle = '#ef4444'
         ctx.beginPath()
-        ctx.moveTo(pt.x,     y0)
-        ctx.lineTo(pt.x - 6, y0 - 11)
-        ctx.lineTo(pt.x + 6, y0 - 11)
+        ctx.moveTo(x,     y0)
+        ctx.lineTo(x - 6, y0 - 11)
+        ctx.lineTo(x + 6, y0 - 11)
         ctx.closePath()
         ctx.fill()
-      })
+      }
       ctx.restore()
     },
   }
+
   qChart = new Chart(queueCanvas.value, {
     type: 'line',
     data: {
-      labels,
       datasets: [
-        { label: 'Ожидают в очереди',  data: qHistory.value.map(r => r.waiting),        borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
-        { label: 'Разговаривают',       data: qHistory.value.map(r => r.talking),        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
-        { label: 'Активных операторов', data: qHistory.value.map(r => r.active_members), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)',  tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
-        { label: 'В DND',               data: qHistory.value.map(r => r.dnd_active ?? 0), borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
+        { label: 'Ожидают в очереди', data: points, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', tension: 0.3, fill: true, pointRadius: few ? 3 : 0 },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: true, animation: false,
-      interaction: { mode: 'index', intersect: false },
+      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
       plugins: {
         legend: { display: false },
         tooltip: {
+          // Сохраняем ту же информативность, что была при 4 линиях -- просто
+          // достаём остальные метрики из той же строки qHistory вручную,
+          // раз они больше не отдельные датасеты на графике.
           callbacks: {
+            title(items) {
+              if (!items.length) return ''
+              return new Date(items[0].parsed.x).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            },
+            label(item) {
+              const row = item.raw.row
+              return [
+                `Ожидают в очереди: ${row.waiting}`,
+                `Разговаривают: ${row.talking}`,
+                `Активных операторов: ${row.active_members}`,
+                `В DND: ${row.dnd_active ?? 0}`,
+              ]
+            },
             afterBody(items) {
               if (!items.length) return []
-              const exts = qHistory.value[items[0].dataIndex]?.dnd_extensions
-              return (exts && exts.length) ? ['В DND: ' + exts.join(', ')] : []
+              const exts = items[0].raw.row?.dnd_extensions
+              return (exts && exts.length) ? ['Добавочные в DND: ' + exts.join(', ')] : []
             },
           },
         },
       },
       scales: {
-        x: { ticks: { maxTicksLimit: 12, font: { size: 11 } } },
-        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },
+        x: {
+          type: 'linear', min: minMs, max: maxMs,
+          ticks: {
+            maxTicksLimit: 12, font: { size: 11 },
+            callback: v => new Date(v).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+          },
+        },
+        y: {
+          beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } },
+          afterFit: scale => { scale.width = TIMELINE_Y_AXIS_WIDTH },
+        },
       },
     },
     plugins: [missedPlugin],
   })
 }
 
+// Горизонтальный таймлайн операторов -- по строке на добавочный, floating
+// bar на каждый отрезок статуса. Список добавочных динамический (растёт/
+// сужается сам, см. buildOperatorTimeline() на бэкенде) -- новые/пропавшие
+// добавочные появляются/исчезают между обновлениями без доп. кода тут.
+//
+// ВАЖНО: один датасет на ВСЕ отрезки (а не по датасету на статус) -- раньше
+// было 4 датасета (offline/idle/in_call/dnd), и Chart.js либо раскладывал их
+// параллельными суб-полосками на категорию (дефолт для сгруппированных
+// баров), либо при stacked/stack-группировке ломал позиционирование
+// floating-баров ([start,end]) для всех, кроме первого датасета -- реально
+// рисовался только "offline". Один датасет с цветом на каждую ТОЧКУ данных
+// (через backgroundColor-колбэк) полностью убирает эту путаницу: Chart.js
+// просто кладёт каждый сегмент в свою строку по `y`, без группировки.
+function renderTimeline() {
+  if (!timelineCanvas.value || !qTimeline.value.extensions.length) return
+  if (qTimelineChart) { qTimelineChart.destroy(); qTimelineChart = null }
+
+  const exts  = qTimeline.value.extensions
+  const minMs = qWindow.value.from ? new Date(qWindow.value.from).getTime() : undefined
+  const maxMs = qWindow.value.to   ? new Date(qWindow.value.to).getTime()   : undefined
+
+  const data = exts.flatMap(ext =>
+    (qTimeline.value.segments[ext] ?? []).map(s => ({
+      x: [new Date(s.start).getTime(), new Date(s.end).getTime()],
+      y: ext,
+      status: s.status,
+      start: s.start,
+      end: s.end,
+    }))
+  )
+
+  // Фон таймлайна красится по длине очереди (qHistory.waiting) в тот же
+  // момент времени -- рисуем ДО баров (beforeDatasetsDraw), поэтому цвет
+  // проступает только в белых промежутках между/вокруг полос статусов, сами
+  // бары остаются полностью непрозрачными поверх. 0 -- прозрачно, 14+ --
+  // максимально красный.
+  const MAX_QUEUE_FOR_HEAT = 14
+  const queueHeatPlugin = {
+    id: 'queueHeat',
+    beforeDatasetsDraw(chart) {
+      const xScale = chart.scales.x
+      const area   = chart.chartArea
+      const rows   = qHistory.value
+      if (!xScale || !area || !rows.length) return
+      const ctx = chart.ctx
+      ctx.save()
+      for (let i = 0; i < rows.length; i++) {
+        const waiting = rows[i].waiting ?? 0
+        if (waiting <= 0) continue
+        const startMs = new Date(rows[i].recorded_at).getTime()
+        const endMs   = i + 1 < rows.length ? new Date(rows[i + 1].recorded_at).getTime() : xScale.max
+        const x0 = Math.max(area.left,  xScale.getPixelForValue(startMs))
+        const x1 = Math.min(area.right, xScale.getPixelForValue(endMs))
+        if (x1 <= x0) continue
+        // Минимум 0.35 непрозрачности для любой непустой очереди (иначе
+        // небольшие значения почти не видны на глаз), дальше растёт до 1.0 к 14.
+        const alpha = Math.min(1, 0.35 + (waiting / MAX_QUEUE_FOR_HEAT) * 0.65)
+        ctx.fillStyle = `rgba(220, 38, 38, ${alpha})`
+        ctx.fillRect(x0, area.top, x1 - x0, area.bottom - area.top)
+      }
+      ctx.restore()
+    },
+  }
+
+  qTimelineChart = new Chart(timelineCanvas.value, {
+    type: 'bar',
+    data: {
+      labels: exts,
+      datasets: [{
+        data,
+        backgroundColor: ctx => TIMELINE_COLORS[ctx.raw?.status] ?? '#d1d5db',
+        borderSkipped: false,
+        barPercentage: 1,
+        categoryPercentage: 0.85,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: {
+        x: {
+          type: 'linear', min: minMs, max: maxMs,
+          ticks: {
+            maxTicksLimit: 12, font: { size: 11 },
+            callback: v => new Date(v).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+          },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 11 } },
+          afterFit: scale => { scale.width = TIMELINE_Y_AXIS_WIDTH },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: () => '',
+            label(ctx) {
+              const r    = ctx.raw
+              const from = new Date(r.start).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+              const to   = new Date(r.end).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+              return `${ctx.label}: ${TIMELINE_LABELS[r.status] ?? r.status} (${from} – ${to})`
+            },
+          },
+        },
+      },
+    },
+    plugins: [queueHeatPlugin],
+  })
+}
+
 watch(activeTab, val => { if (val === 'queue') loadQueue() })
 watch(qHistory, async () => { await nextTick(); renderChart() }, { deep: true })
+watch(qTimeline, async () => { await nextTick(); renderTimeline() }, { deep: true })
 watch(() => props.stats, async () => { await nextTick(); renderPie() }, { deep: true })
 onMounted(() => {
   nextTick().then(renderPie)
@@ -665,6 +878,7 @@ onUnmounted(() => {
   clearInterval(callsRefreshTimer)
   clearInterval(qRefreshTimer)
   if (qChart) qChart.destroy()
+  if (qTimelineChart) qTimelineChart.destroy()
   if (pieChart) pieChart.destroy()
 })
 </script>
