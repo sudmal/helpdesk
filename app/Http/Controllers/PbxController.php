@@ -534,7 +534,12 @@ class PbxController extends Controller
 
         foreach ($members as &$m) {
             $log = $latestByExt->get($m['ext'] ?? null);
-            $m['dnd']       = $log && $log->state === 'on';
+            $dndFromLog = $log && $log->state === 'on';
+            // Честный DND из presence-PUBLISH (MicroSIP) не должен маскировать
+            // реальный разговор -- если оператор прямо сейчас говорит или ему
+            // дозваниваются, гасим бейдж независимо от presence (тот же принцип
+            // подавления, что и у DND-по-звонку ниже).
+            $m['dnd']       = $dndFromLog && !in_array($m['status'] ?? null, ['in_call', 'ringing', 'unavailable'], true);
             $m['dnd_since'] = $m['dnd'] ? $log->created_at : null;
 
             $streak = $streaks[$m['ext'] ?? null] ?? null;
