@@ -362,22 +362,30 @@ class PbxController extends Controller
             $segs = [];
             $cursorStatus = $initialByExt->get($ext)?->status;
             $cursorStart  = $since;
-
-            foreach ($eventsByExt->get($ext, []) as $ev) {
-                if ($cursorStatus !== null) {
-                    $segs[] = ['status' => $cursorStatus, 'start' => $cursorStart, 'end' => $ev->created_at];
-                }
-                $cursorStatus = $ev->status;
-                $cursorStart  = $ev->created_at;
-            }
+            $eventsForExt = $eventsByExt->get($ext, []);
 
             if ($cursorStatus === null) {
-                // Нет ни одной записи в логе за всё окно -- статус не менялся
-                // дольше 24ч, и единственная старая запись уже удалена
-                // ротацией (см. trackOperatorStatusLog). Не оставляем добавочный
-                // без полосы -- рисуем его текущий live-статус на всё окно
-                // (по умолчанию offline, если и live-данных нет).
-                $cursorStatus = $liveByExt->has($ext) ? $this->memberColor($liveByExt->get($ext)) : 'offline';
+                // Нет состояния на начало окна -- либо лога вообще никогда не
+                // было (свежепоявившийся добавочный или старые записи стёрлись
+                // ротацией), либо это первое событие в его истории случилось
+                // прямо посреди текущего окна. Раньше во втором случае участок
+                // ДО первого события молча оставался пустым (не дорисовывался
+                // даже фолбэком) -- полоса пропадала ровно в момент появления
+                // первой же записи. Теперь: если события в окне всё-таки есть,
+                // участок до первого из них считаем offline (сам факт, что
+                // ротация не успела стереть НИ ОДНОЙ смены статуса, говорит,
+                // что раньше добавочный скорее всего простаивал офлайн);
+                // если событий нет вообще -- как и раньше, берём текущий
+                // live-статус на всё окно.
+                $cursorStatus = count($eventsForExt) > 0
+                    ? 'offline'
+                    : ($liveByExt->has($ext) ? $this->memberColor($liveByExt->get($ext)) : 'offline');
+            }
+
+            foreach ($eventsForExt as $ev) {
+                $segs[] = ['status' => $cursorStatus, 'start' => $cursorStart, 'end' => $ev->created_at];
+                $cursorStatus = $ev->status;
+                $cursorStart  = $ev->created_at;
             }
             $segs[] = ['status' => $cursorStatus, 'start' => $cursorStart, 'end' => $now];
             $segments[$ext] = $segs;
@@ -755,7 +763,11 @@ class PbxController extends Controller
 
         \Cache::put($cacheKey, $currentColors, 300);
 
-        OperatorStatusLog::where('created_at', '<', now()->subHours(24))->delete();
+        // Ротация продлена с 24ч до 5 суток (2026-07-08) -- нужна как минимум
+        // на глубину догона отчётов по сменам (ShiftReportService::CATCH_UP_DAYS),
+        // иначе досчёт пропущенной смены за прошлые дни даст нули по
+        // DND/разговору/офлайну -- сырых сегментов уже не будет.
+        OperatorStatusLog::where('created_at', '<', now()->subDays(5))->delete();
     }
 
     private function parseQueueOutput(string $raw, string $channelsRaw = ''): array

@@ -18,6 +18,13 @@
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
           Очередь АТС
         </button>
+        <button @click="activeTab = 'shifts'"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         activeTab === 'shifts'
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          Смены
+        </button>
 
       </div>
     <div v-if="activeTab === 'calls'" class="p-4 space-y-4">
@@ -381,6 +388,188 @@
       </div>
     </div>
 
+    <div v-if="activeTab === 'shifts'" class="p-4 space-y-4">
+      <div class="bg-white rounded-2xl border border-gray-200 p-4 flex flex-wrap gap-3 items-end justify-between">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Дата с</label>
+            <input v-model="shiftFilter.date_from" type="date" class="field-input" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Дата по</label>
+            <input v-model="shiftFilter.date_to" type="date" class="field-input" />
+          </div>
+          <button @click="loadShiftReports" class="btn-primary text-sm">Найти</button>
+        </div>
+        <button @click="toggleShiftSettings" class="btn-outline text-sm">⚙ Настроить смены</button>
+      </div>
+
+      <div v-if="currentShift" class="bg-white rounded-2xl border-2 border-blue-400 overflow-hidden">
+        <div class="px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase tracking-wide">
+            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>Текущая
+          </span>
+          <span class="font-semibold text-gray-800">{{ currentShift.shift_name }}</span>
+          <span class="text-xs text-gray-400">
+            {{ shortTime(currentShift.shift_start_at) }} – {{ shortTime(currentShift.shift_end_at) }}
+            (данные по {{ shortTime(currentShift.as_of) }})
+          </span>
+          <button @click="loadCurrentShift" class="ml-auto btn-outline text-xs py-1">Обновить</button>
+        </div>
+        <div class="px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-gray-100">
+          <span class="text-sm"><b>{{ currentShift.total_calls }}</b> <span class="text-gray-400 text-xs">всего</span></span>
+          <span class="text-sm text-green-600"><b>{{ currentShift.answered_calls }}</b> <span class="text-gray-400 text-xs">принято</span></span>
+          <span class="text-sm text-red-500"><b>{{ currentShift.missed_calls }}</b> <span class="text-gray-400 text-xs">потеряно ({{ currentShift.missed_percent ?? 0 }}%)</span></span>
+          <span class="text-sm"><b>{{ currentShift.sla_percent ?? '—' }}%</b> <span class="text-gray-400 text-xs">SLA ≤{{ currentShift.sla_threshold_sec }}с</span></span>
+          <span class="text-sm"><b>{{ formatDur(currentShift.avg_wait_sec) }}</b> <span class="text-gray-400 text-xs">ср. ожидание</span></span>
+          <span class="text-sm"><b>{{ formatDur(currentShift.max_wait_sec) }}</b> <span class="text-gray-400 text-xs">макс. ожидание</span></span>
+        </div>
+        <div class="px-4 py-3 overflow-x-auto">
+          <table class="w-full text-xs min-w-[720px]">
+            <thead class="text-gray-400 uppercase border-b border-gray-100">
+              <tr>
+                <th class="text-left py-1.5 pr-2">Доб.</th>
+                <th class="text-right py-1.5 px-2">DND</th>
+                <th class="text-right py-1.5 px-2">Офлайн</th>
+                <th class="text-right py-1.5 px-2">Ожидание</th>
+                <th class="text-right py-1.5 px-2">Разговор</th>
+                <th class="text-right py-1.5 px-2">Звонков</th>
+                <th class="text-right py-1.5 px-2">Мин</th>
+                <th class="text-right py-1.5 px-2">Сред</th>
+                <th class="text-right py-1.5 px-2">Макс</th>
+                <th class="text-right py-1.5 pl-2">Уник. номеров</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="e in currentShift.extensions" :key="e.extension">
+                <td class="py-1.5 pr-2 font-mono font-semibold text-gray-800">{{ e.extension }}</td>
+                <td class="text-right px-2 tabular-nums text-purple-600">{{ formatDur(e.seconds_dnd) }}</td>
+                <td class="text-right px-2 tabular-nums text-gray-400">{{ formatDur(e.seconds_offline) }}</td>
+                <td class="text-right px-2 tabular-nums text-green-600">{{ formatDur(e.seconds_idle) }}</td>
+                <td class="text-right px-2 tabular-nums text-blue-600">{{ formatDur(e.seconds_in_call) }}</td>
+                <td class="text-right px-2 tabular-nums font-semibold">{{ e.calls_answered }}</td>
+                <td class="text-right px-2 tabular-nums">{{ e.call_duration_min_sec !== null ? formatDur(e.call_duration_min_sec) : '—' }}</td>
+                <td class="text-right px-2 tabular-nums">{{ e.call_duration_avg_sec !== null ? formatDur(Math.round(e.call_duration_avg_sec)) : '—' }}</td>
+                <td class="text-right px-2 tabular-nums">{{ e.call_duration_max_sec !== null ? formatDur(e.call_duration_max_sec) : '—' }}</td>
+                <td class="text-right pl-2 tabular-nums">{{ e.unique_numbers }}</td>
+              </tr>
+              <tr v-if="!currentShift.extensions.length">
+                <td colspan="10" class="text-center text-gray-400 py-3">Нет данных по операторам</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <div v-if="showShiftSettings" class="bg-white rounded-2xl border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-sm font-semibold text-gray-700">Смены</span>
+          <button @click="showShiftSettings = false" class="text-gray-400 hover:text-gray-600 text-sm">Закрыть</button>
+        </div>
+        <table class="w-full text-sm mb-3">
+          <thead class="text-xs text-gray-400 uppercase">
+            <tr>
+              <th class="text-left py-1">Название</th>
+              <th class="text-left py-1">Начало</th>
+              <th class="text-left py-1">Конец</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="d in shiftDefs" :key="d.id" class="border-t border-gray-100">
+              <td class="py-1.5 pr-2"><input v-model="d.name" class="field-input text-xs py-1" /></td>
+              <td class="py-1.5 pr-2"><input v-model="d.start_time" type="time" class="field-input text-xs py-1" /></td>
+              <td class="py-1.5 pr-2"><input v-model="d.end_time" type="time" class="field-input text-xs py-1" /></td>
+              <td class="py-1.5 text-right whitespace-nowrap">
+                <button @click="saveShiftDef(d)" class="text-xs text-blue-600 hover:underline mr-3">Сохранить</button>
+                <button @click="deleteShiftDef(d)" class="text-xs text-red-500 hover:underline">Удалить</button>
+              </td>
+            </tr>
+            <tr v-if="!shiftDefs.length">
+              <td colspan="4" class="text-center text-gray-400 py-3">Смены не настроены</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="flex gap-2 items-end border-t border-gray-100 pt-3 flex-wrap">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Название</label>
+            <input v-model="newShiftDef.name" class="field-input text-xs" placeholder="4 смена" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Начало</label>
+            <input v-model="newShiftDef.start_time" type="time" class="field-input text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Конец</label>
+            <input v-model="newShiftDef.end_time" type="time" class="field-input text-xs" />
+          </div>
+          <button @click="addShiftDef" class="btn-primary text-xs">Добавить смену</button>
+        </div>
+      </div>
+
+      <div v-if="shiftLoading" class="text-center text-gray-400 py-10 text-sm">Загрузка...</div>
+      <div v-else-if="!shiftDates.length" class="text-center text-gray-400 py-10 text-sm">Нет отчётов за выбранный период</div>
+      <div v-else class="space-y-4">
+        <div v-for="date in shiftDates" :key="date" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div class="px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-sm font-semibold text-gray-700 capitalize">
+            {{ formatShiftDate(date) }}
+          </div>
+          <div class="divide-y divide-gray-100">
+            <div v-for="r in shiftReportsGrouped[date]" :key="r.id">
+              <div class="px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 cursor-pointer hover:bg-gray-50"
+                   @click="toggleShiftReport(r)">
+                <span class="font-semibold text-gray-800 w-24 shrink-0">{{ r.shift_name }}</span>
+                <span class="text-xs text-gray-400 w-28 shrink-0">{{ shortTime(r.shift_start_at) }} – {{ shortTime(r.shift_end_at) }}</span>
+                <span class="text-sm"><b>{{ r.total_calls }}</b> <span class="text-gray-400 text-xs">всего</span></span>
+                <span class="text-sm text-green-600"><b>{{ r.answered_calls }}</b> <span class="text-gray-400 text-xs">принято</span></span>
+                <span class="text-sm text-red-500"><b>{{ r.missed_calls }}</b> <span class="text-gray-400 text-xs">потеряно ({{ r.missed_percent ?? 0 }}%)</span></span>
+                <span class="text-sm"><b>{{ r.sla_percent ?? '—' }}%</b> <span class="text-gray-400 text-xs">SLA ≤{{ r.sla_threshold_sec }}с</span></span>
+                <span class="text-sm"><b>{{ formatDur(r.avg_wait_sec) }}</b> <span class="text-gray-400 text-xs">ср. ожидание</span></span>
+                <span class="text-sm"><b>{{ formatDur(r.max_wait_sec) }}</b> <span class="text-gray-400 text-xs">макс. ожидание</span></span>
+                <span class="ml-auto text-gray-400 text-xs">{{ expandedShiftId === r.id ? '▲' : '▼' }}</span>
+              </div>
+              <div v-if="expandedShiftId === r.id" class="px-4 pb-4 overflow-x-auto">
+                <div v-if="shiftDetailLoading" class="text-center text-gray-400 py-4 text-sm">Загрузка...</div>
+                <table v-else-if="shiftDetail" class="w-full text-xs min-w-[720px]">
+                  <thead class="text-gray-400 uppercase border-b border-gray-100">
+                    <tr>
+                      <th class="text-left py-1.5 pr-2">Доб.</th>
+                      <th class="text-right py-1.5 px-2">DND</th>
+                      <th class="text-right py-1.5 px-2">Офлайн</th>
+                      <th class="text-right py-1.5 px-2">Ожидание</th>
+                      <th class="text-right py-1.5 px-2">Разговор</th>
+                      <th class="text-right py-1.5 px-2">Звонков</th>
+                      <th class="text-right py-1.5 px-2">Мин</th>
+                      <th class="text-right py-1.5 px-2">Сред</th>
+                      <th class="text-right py-1.5 px-2">Макс</th>
+                      <th class="text-right py-1.5 pl-2">Уник. номеров</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-50">
+                    <tr v-for="e in shiftDetail.extensions" :key="e.id">
+                      <td class="py-1.5 pr-2 font-mono font-semibold text-gray-800">{{ e.extension }}</td>
+                      <td class="text-right px-2 tabular-nums text-purple-600">{{ formatDur(e.seconds_dnd) }}</td>
+                      <td class="text-right px-2 tabular-nums text-gray-400">{{ formatDur(e.seconds_offline) }}</td>
+                      <td class="text-right px-2 tabular-nums text-green-600">{{ formatDur(e.seconds_idle) }}</td>
+                      <td class="text-right px-2 tabular-nums text-blue-600">{{ formatDur(e.seconds_in_call) }}</td>
+                      <td class="text-right px-2 tabular-nums font-semibold">{{ e.calls_answered }}</td>
+                      <td class="text-right px-2 tabular-nums">{{ e.call_duration_min_sec !== null ? formatDur(e.call_duration_min_sec) : '—' }}</td>
+                      <td class="text-right px-2 tabular-nums">{{ e.call_duration_avg_sec !== null ? formatDur(Math.round(e.call_duration_avg_sec)) : '—' }}</td>
+                      <td class="text-right px-2 tabular-nums">{{ e.call_duration_max_sec !== null ? formatDur(e.call_duration_max_sec) : '—' }}</td>
+                      <td class="text-right pl-2 tabular-nums">{{ e.unique_numbers }}</td>
+                    </tr>
+                    <tr v-if="!shiftDetail.extensions.length">
+                      <td colspan="10" class="text-center text-gray-400 py-3">Нет данных по операторам</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
 
     </div><!-- end main card -->
@@ -567,6 +756,7 @@ let qChart = null
 let qTimelineChart = null
 let pieChart = null
 let qRefreshTimer = null
+let shiftRefreshTimer = null
 let callsRefreshTimer = null
 const qTimeline = ref({ extensions: [], segments: {} })
 const qWindow   = ref({ from: null, to: null })
@@ -876,6 +1066,107 @@ function renderTimeline() {
   })
 }
 
+// ── Отчёты по сменам ────────────────────────────────────────────────
+const shiftFilter = ref({ date_from: fmtD(new Date(Date.now() - 6 * 86400000)), date_to: fmtD(new Date()) })
+const shiftReportsGrouped = ref({})
+const shiftLoading = ref(false)
+const shiftDates = computed(() => Object.keys(shiftReportsGrouped.value).sort().reverse())
+const expandedShiftId = ref(null)
+const shiftDetail = ref(null)
+const shiftDetailLoading = ref(false)
+const showShiftSettings = ref(false)
+const shiftDefs = ref([])
+const newShiftDef = ref({ name: '', start_time: '', end_time: '' })
+const currentShift = ref(null)
+let shiftsLoadedOnce = false
+
+async function loadShiftReports() {
+  shiftLoading.value = true
+  try {
+    const res  = await axios.get(route('pbx.shift-reports.index'), { params: shiftFilter.value })
+    shiftReportsGrouped.value = res.data.grouped ?? {}
+  } catch (e) {}
+  shiftLoading.value = false
+}
+async function loadCurrentShift() {
+  try {
+    const res = await axios.get(route('pbx.shift-reports.current'))
+    currentShift.value = res.data
+  } catch (e) {}
+}
+async function toggleShiftReport(r) {
+  if (expandedShiftId.value === r.id) {
+    expandedShiftId.value = null
+    shiftDetail.value = null
+    return
+  }
+  expandedShiftId.value = r.id
+  shiftDetail.value = null
+  shiftDetailLoading.value = true
+  try {
+    const res = await axios.get(route('pbx.shift-reports.show', r.id))
+    shiftDetail.value = res.data
+  } catch (e) {}
+  shiftDetailLoading.value = false
+}
+function formatShiftDate(date) {
+  return new Date(date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' })
+}
+function formatDur(secs) {
+  if (secs === null || secs === undefined) return '—'
+  secs = Math.round(secs)
+  if (secs < 60) return secs + 'с'
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  return h > 0 ? `${h}ч ${m}м` : `${m}м`
+}
+
+async function loadShiftDefs() {
+  try {
+    const res = await axios.get(route('pbx.shift-definitions.index'))
+    shiftDefs.value = res.data.filter(d => d.is_active)
+  } catch (e) {}
+}
+function toggleShiftSettings() {
+  showShiftSettings.value = !showShiftSettings.value
+  if (showShiftSettings.value && !shiftDefs.value.length) loadShiftDefs()
+}
+async function saveShiftDef(d) {
+  try {
+    await axios.put(route('pbx.shift-definitions.update', d.id), {
+      name: d.name, start_time: d.start_time, end_time: d.end_time, sort_order: d.sort_order,
+    })
+  } catch (e) {
+    alert('Не удалось сохранить смену' + (e.response?.status === 403 ? ' -- нет прав' : ''))
+  }
+}
+async function deleteShiftDef(d) {
+  if (!confirm(`Удалить смену «${d.name}»?`)) return
+  try {
+    await axios.delete(route('pbx.shift-definitions.destroy', d.id))
+    shiftDefs.value = shiftDefs.value.filter(x => x.id !== d.id)
+  } catch (e) {
+    alert('Не удалось удалить смену' + (e.response?.status === 403 ? ' -- нет прав' : ''))
+  }
+}
+async function addShiftDef() {
+  if (!newShiftDef.value.name || !newShiftDef.value.start_time || !newShiftDef.value.end_time) return
+  try {
+    const res = await axios.post(route('pbx.shift-definitions.store'), newShiftDef.value)
+    shiftDefs.value.push(res.data)
+    newShiftDef.value = { name: '', start_time: '', end_time: '' }
+  } catch (e) {
+    alert('Не удалось добавить смену' + (e.response?.status === 403 ? ' -- нет прав' : ''))
+  }
+}
+
+watch(activeTab, val => {
+  if (val === 'shifts' && !shiftsLoadedOnce) {
+    shiftsLoadedOnce = true
+    loadShiftReports()
+    loadCurrentShift()
+  }
+})
 watch(activeTab, val => { if (val === 'queue') loadQueue() })
 watch(qHistory, async () => { await nextTick(); renderChart() }, { deep: true })
 watch(qTimeline, async () => { await nextTick(); renderTimeline() }, { deep: true })
@@ -888,10 +1179,14 @@ onMounted(() => {
   qRefreshTimer = setInterval(() => {
     if (activeTab.value === 'queue') loadQueue()
   }, 15000)
+  shiftRefreshTimer = setInterval(() => {
+    if (activeTab.value === 'shifts') loadCurrentShift()
+  }, 20000)
 })
 onUnmounted(() => {
   clearInterval(callsRefreshTimer)
   clearInterval(qRefreshTimer)
+  clearInterval(shiftRefreshTimer)
   if (qChart) qChart.destroy()
   if (qTimelineChart) qTimelineChart.destroy()
   if (pieChart) pieChart.destroy()

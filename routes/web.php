@@ -220,6 +220,21 @@ Route::middleware(['auth', 'active'])->get('/ivr-log', [\App\Http\Controllers\Iv
 Route::middleware(['auth', 'active'])->get('/pbx/ivr-log-data', [\App\Http\Controllers\IvrLogController::class, 'data'])->name('ivr-log.data');
 Route::post('/pbx/dnd-log', [\App\Http\Controllers\PbxController::class, 'dndLog'])->name('pbx.dnd-log');
 
+// Отчёты по сменам
+Route::middleware(['auth', 'active'])->prefix('pbx/shift-reports')->name('pbx.shift-reports.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ShiftReportController::class, 'index'])->name('index');
+    // ВАЖНО: до {shiftReport} -- иначе "current" пытается забиндиться как ID
+    Route::get('/current', [\App\Http\Controllers\ShiftReportController::class, 'current'])->name('current');
+    Route::get('/{shiftReport}', [\App\Http\Controllers\ShiftReportController::class, 'show'])->name('show');
+    Route::middleware('can:manage-settings')->post('/regenerate', [\App\Http\Controllers\ShiftReportController::class, 'regenerate'])->name('regenerate');
+});
+Route::middleware(['auth', 'active'])->prefix('pbx/shift-definitions')->name('pbx.shift-definitions.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ShiftReportController::class, 'definitions'])->name('index');
+    Route::middleware('can:manage-settings')->post('/', [\App\Http\Controllers\ShiftReportController::class, 'storeDefinition'])->name('store');
+    Route::middleware('can:manage-settings')->put('/{definition}', [\App\Http\Controllers\ShiftReportController::class, 'updateDefinition'])->name('update');
+    Route::middleware('can:manage-settings')->delete('/{definition}', [\App\Http\Controllers\ShiftReportController::class, 'destroyDefinition'])->name('destroy');
+});
+
 // Telegram Bot
 Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class, 'webhook'])
     ->name('telegram.webhook');

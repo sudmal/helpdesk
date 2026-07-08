@@ -31,3 +31,10 @@ Schedule::command('helpdesk:aggregate-call-stats today')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Отчёты по сменам -- генерирует итог для каждой завершившейся смены
+// (раз в 5 минут, идемпотентно: пропускает уже посчитанные)
+Schedule::command('helpdesk:generate-shift-reports')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
