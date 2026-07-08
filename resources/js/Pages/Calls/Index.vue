@@ -531,6 +531,19 @@ const qDetail     = ref({ members: [], callers: [], phones: [], trunk: null })
 const qHours      = ref(3)
 const qLoading    = ref(false)
 const qMissedCalls = ref([])
+// Chart.js сам подбирает "круглый" шаг для линейной оси по значению в мс,
+// не по смыслу времени -- получаются деления вида 08:13, 09:13 вместо
+// ровных часов. Подменяем тики на ровные часовые границы вручную.
+function hourAlignedTicks(scale) {
+  const { min, max } = scale
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return
+  const start = new Date(min)
+  start.setMinutes(0, 0, 0)
+  if (start.getTime() < min) start.setHours(start.getHours() + 1)
+  const ticks = []
+  for (let t = start.getTime(); t <= max; t += 3600000) ticks.push({ value: t })
+  if (ticks.length) scale.ticks = ticks
+}
 const fmtD = d => {
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
@@ -734,6 +747,7 @@ function renderChart() {
       scales: {
         x: {
           type: 'linear', min: minMs, max: maxMs,
+          afterBuildTicks: hourAlignedTicks,
           ticks: {
             maxTicksLimit: 12, font: { size: 11 },
             callback: v => new Date(v).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
@@ -831,6 +845,7 @@ function renderTimeline() {
       scales: {
         x: {
           type: 'linear', min: minMs, max: maxMs,
+          afterBuildTicks: hourAlignedTicks,
           ticks: {
             maxTicksLimit: 12, font: { size: 11 },
             callback: v => new Date(v).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
