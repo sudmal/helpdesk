@@ -27,6 +27,13 @@ use Illuminate\Support\Facades\DB;
  * current() считает то же самое "на лету" для ещё идущей смены (окно
  * [начало, сейчас]) и ничего не сохраняет -- вызывается прямо из запроса
  * фронта, каждый раз заново.
+ *
+ * ВАЖНО (2026-07-08): цифры по DND теперь влияют на штрафы операторам --
+ * значит любой ложный DND-сегмент от гонки статусов (см. коммент у
+ * SHORT_DND_NOISE_SECONDS) это не "косметика графика", а прямой риск
+ * несправедливого штрафа. Короткие DND-миганья сглаживаются перед подсчётом
+ * (см. smoothShortDndBlips()), а auditSegments() отдаёт СЫРЫЕ (несглаженные)
+ * сегменты с пометкой, что реально засчиталось -- для разбора спорных случаев.
  */
 class ShiftReportService
 {
@@ -97,6 +104,26 @@ class ShiftReportService
         return null;
     }
 
+    /**
+     * Сырые (НЕсглаженные) сегменты статуса добавочного за окно -- для
+     * разбора спорных случаев: показывает, что реально произошло по логу,
+     * и какие DND-сегменты не были засчитаны в отчёт как шум (counted=false).
+     */
+    public function auditSegments(string $ext, Carbon $start, Carbon $end): array
+    {
+        $minDnd = $this->minDndSeconds();
+        return array_map(function ($seg) use ($minDnd) {
+            $secs = (int) round($seg['start']->diffInSeconds($seg['end']));
+            return [
+                'status'  => $seg['status'],
+                'start'   => $seg['start']->toIso8601String(),
+                'end'     => $seg['end']->toIso8601String(),
+                'seconds' => $secs,
+                'counted' => !($seg['status'] === 'dnd' && $secs < $minDnd),
+            ];
+        }, $this->statusSegments($ext, $start, $end));
+    }
+
     private function generate(ShiftDefinition $def, string $date, Carbon $start, Carbon $end): ShiftReport
     {
         $totals = $this->computeTotals($start, $end);
@@ -153,7 +180,7 @@ class ShiftReportService
     {
         $rows = [];
         foreach ($this->extensionsInWindow($start, $end) as $ext) {
-            $segments = $this->statusSegments($ext, $start, $end);
+            $segments = $this->smoothShortDndBlips($this->statusSegments($ext, $start, $end));
 
             $seconds = ['offline' => 0, 'idle' => 0, 'in_call' => 0, 'dnd' => 0];
             $callDurations = [];
@@ -183,6 +210,34 @@ class ShiftReportService
             ];
         }
         return $rows;
+    }
+
+    /**
+     * DND-сегменты короче порога -- почти наверняка гонка опроса очереди
+     * (шаг ~15с), а не реальный осознанный DND, и раз по этим цифрам теперь
+     * штрафуют операторов -- их не засчитываем как отдельный статус, а
+     * приклеиваем к предыдущему сегменту (тому, что реально шёл до мигания).
+     * Первый сегмент окна короткий DND не трогаем -- приклеивать некуда,
+     * да и это редкий крайний случай (обычно там offline-заглушка).
+     */
+    private function smoothShortDndBlips(array $segments): array
+    {
+        $minDnd = $this->minDndSeconds();
+        $result = [];
+        foreach ($segments as $seg) {
+            $secs = $seg['start']->diffInSeconds($seg['end']);
+            if ($seg['status'] === 'dnd' && $secs < $minDnd && !empty($result)) {
+                $result[count($result) - 1]['end'] = $seg['end'];
+                continue;
+            }
+            $result[] = $seg;
+        }
+        return $result;
+    }
+
+    private function minDndSeconds(): int
+    {
+        return (int) SystemSetting::get('shift_report_min_dnd_seconds', 15);
     }
 
     /** Все добавочные, реально присутствовавшие в очереди за окно */

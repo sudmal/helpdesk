@@ -313,15 +313,10 @@
                       <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
                       {{ statusLabel(m.status) }}
                     </span>
-                    <span v-if="m.dnd"
-                          :title="m.dnd_since ? 'В DND с ' + formatDate(m.dnd_since) : 'В DND'"
+                    <span v-if="m.dnd || (m.dnd_missed_since && m.status !== 'in_call')"
+                          :title="dndBadgeTitle(m)"
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
-                      DND{{ m.dnd_since ? ' · ' + dndDuration(m.dnd_since) : '' }}
-                    </span>
-                    <span v-if="m.dnd_missed_since && m.status !== 'in_call'"
-                          :title="'DND по звонку -- начало ' + formatDate(m.dnd_missed_since) + ', обновлено ' + formatDate(m.dnd_missed_at)"
-                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
-                      ⚠ DND (по звонку) · начало {{ shortTime(m.dnd_missed_since) }} · обновлено {{ shortTime(m.dnd_missed_at) }} · {{ dndDuration(m.dnd_missed_since) }}
+                      DND · {{ dndSourceLabel(m) }}{{ dndEffectiveSince(m) ? ' · ' + dndDuration(dndEffectiveSince(m)) : '' }}
                     </span>
                     <span v-if="m.caller_phone" class="inline-flex items-center gap-1.5 whitespace-nowrap">
                       <span :class="blockedDotClass(m.caller_blocked)"
@@ -441,18 +436,50 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
-              <tr v-for="e in currentShift.extensions" :key="e.extension">
-                <td class="py-1.5 pr-2 font-mono font-semibold text-gray-800">{{ e.extension }}</td>
-                <td class="text-right px-2 tabular-nums text-purple-600">{{ formatDur(e.seconds_dnd) }}</td>
-                <td class="text-right px-2 tabular-nums text-gray-400">{{ formatDur(e.seconds_offline) }}</td>
-                <td class="text-right px-2 tabular-nums text-green-600">{{ formatDur(e.seconds_idle) }}</td>
-                <td class="text-right px-2 tabular-nums text-blue-600">{{ formatDur(e.seconds_in_call) }}</td>
-                <td class="text-right px-2 tabular-nums font-semibold">{{ e.calls_answered }}</td>
-                <td class="text-right px-2 tabular-nums">{{ e.call_duration_min_sec !== null ? formatDur(e.call_duration_min_sec) : '—' }}</td>
-                <td class="text-right px-2 tabular-nums">{{ e.call_duration_avg_sec !== null ? formatDur(Math.round(e.call_duration_avg_sec)) : '—' }}</td>
-                <td class="text-right px-2 tabular-nums">{{ e.call_duration_max_sec !== null ? formatDur(e.call_duration_max_sec) : '—' }}</td>
-                <td class="text-right pl-2 tabular-nums">{{ e.unique_numbers }}</td>
-              </tr>
+              <template v-for="e in currentShift.extensions" :key="e.extension">
+                <tr>
+                  <td class="py-1.5 pr-2 font-mono font-semibold text-gray-800">
+                    <button @click="toggleAudit('current:' + e.extension, { extension: e.extension, current: 1 })"
+                            class="hover:underline decoration-dotted" title="Разбор по секундам">{{ e.extension }}</button>
+                  </td>
+                  <td class="text-right px-2 tabular-nums text-purple-600">{{ formatDur(e.seconds_dnd) }}</td>
+                  <td class="text-right px-2 tabular-nums text-gray-400">{{ formatDur(e.seconds_offline) }}</td>
+                  <td class="text-right px-2 tabular-nums text-green-600">{{ formatDur(e.seconds_idle) }}</td>
+                  <td class="text-right px-2 tabular-nums text-blue-600">{{ formatDur(e.seconds_in_call) }}</td>
+                  <td class="text-right px-2 tabular-nums font-semibold">{{ e.calls_answered }}</td>
+                  <td class="text-right px-2 tabular-nums">{{ e.call_duration_min_sec !== null ? formatDur(e.call_duration_min_sec) : '—' }}</td>
+                  <td class="text-right px-2 tabular-nums">{{ e.call_duration_avg_sec !== null ? formatDur(Math.round(e.call_duration_avg_sec)) : '—' }}</td>
+                  <td class="text-right px-2 tabular-nums">{{ e.call_duration_max_sec !== null ? formatDur(e.call_duration_max_sec) : '—' }}</td>
+                  <td class="text-right pl-2 tabular-nums">{{ e.unique_numbers }}</td>
+                </tr>
+                <tr v-if="auditKey === 'current:' + e.extension">
+                  <td colspan="10" class="bg-gray-50 px-3 py-2">
+                    <div v-if="auditLoading" class="text-gray-400 text-center py-2">Загрузка...</div>
+                    <div v-else-if="!auditSegments.length" class="text-gray-400 text-center py-2">Нет данных</div>
+                    <template v-else>
+                      <div class="relative h-6 rounded overflow-hidden bg-gray-200">
+                        <div v-for="(s, i) in auditSegments" :key="i"
+                             class="absolute top-0 h-full"
+                             :class="s.counted ? '' : 'ring-2 ring-inset ring-red-500'"
+                             :style="segmentStyle(s)"
+                             :title="segmentTitle(s)"></div>
+                      </div>
+                      <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                        <span>{{ formatAuditTime(auditWindow.from) }}</span>
+                        <span>{{ formatAuditTime(auditWindow.to) }}</span>
+                      </div>
+                      <div class="flex flex-wrap gap-x-3 gap-y-1 justify-center mt-1.5 text-[11px] text-gray-500">
+                        <div v-for="item in TIMELINE_LEGEND" :key="item.label" class="flex items-center gap-1">
+                          <span class="inline-block w-2 h-2 rounded-full" :style="{background: item.color}"></span>{{ item.label }}
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <span class="inline-block w-2 h-2 rounded-full border-2 border-red-500"></span>не засчитано (шум)
+                        </div>
+                      </div>
+                    </template>
+                  </td>
+                </tr>
+              </template>
               <tr v-if="!currentShift.extensions.length">
                 <td colspan="10" class="text-center text-gray-400 py-3">Нет данных по операторам</td>
               </tr>
@@ -547,18 +574,50 @@
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-50">
-                    <tr v-for="e in shiftDetail.extensions" :key="e.id">
-                      <td class="py-1.5 pr-2 font-mono font-semibold text-gray-800">{{ e.extension }}</td>
-                      <td class="text-right px-2 tabular-nums text-purple-600">{{ formatDur(e.seconds_dnd) }}</td>
-                      <td class="text-right px-2 tabular-nums text-gray-400">{{ formatDur(e.seconds_offline) }}</td>
-                      <td class="text-right px-2 tabular-nums text-green-600">{{ formatDur(e.seconds_idle) }}</td>
-                      <td class="text-right px-2 tabular-nums text-blue-600">{{ formatDur(e.seconds_in_call) }}</td>
-                      <td class="text-right px-2 tabular-nums font-semibold">{{ e.calls_answered }}</td>
-                      <td class="text-right px-2 tabular-nums">{{ e.call_duration_min_sec !== null ? formatDur(e.call_duration_min_sec) : '—' }}</td>
-                      <td class="text-right px-2 tabular-nums">{{ e.call_duration_avg_sec !== null ? formatDur(Math.round(e.call_duration_avg_sec)) : '—' }}</td>
-                      <td class="text-right px-2 tabular-nums">{{ e.call_duration_max_sec !== null ? formatDur(e.call_duration_max_sec) : '—' }}</td>
-                      <td class="text-right pl-2 tabular-nums">{{ e.unique_numbers }}</td>
-                    </tr>
+                    <template v-for="e in shiftDetail.extensions" :key="e.id">
+                      <tr>
+                        <td class="py-1.5 pr-2 font-mono font-semibold text-gray-800">
+                          <button @click="toggleAudit('report:' + shiftDetail.id + ':' + e.extension, { extension: e.extension, shift_report_id: shiftDetail.id })"
+                                  class="hover:underline decoration-dotted" title="Разбор по секундам">{{ e.extension }}</button>
+                        </td>
+                        <td class="text-right px-2 tabular-nums text-purple-600">{{ formatDur(e.seconds_dnd) }}</td>
+                        <td class="text-right px-2 tabular-nums text-gray-400">{{ formatDur(e.seconds_offline) }}</td>
+                        <td class="text-right px-2 tabular-nums text-green-600">{{ formatDur(e.seconds_idle) }}</td>
+                        <td class="text-right px-2 tabular-nums text-blue-600">{{ formatDur(e.seconds_in_call) }}</td>
+                        <td class="text-right px-2 tabular-nums font-semibold">{{ e.calls_answered }}</td>
+                        <td class="text-right px-2 tabular-nums">{{ e.call_duration_min_sec !== null ? formatDur(e.call_duration_min_sec) : '—' }}</td>
+                        <td class="text-right px-2 tabular-nums">{{ e.call_duration_avg_sec !== null ? formatDur(Math.round(e.call_duration_avg_sec)) : '—' }}</td>
+                        <td class="text-right px-2 tabular-nums">{{ e.call_duration_max_sec !== null ? formatDur(e.call_duration_max_sec) : '—' }}</td>
+                        <td class="text-right pl-2 tabular-nums">{{ e.unique_numbers }}</td>
+                      </tr>
+                      <tr v-if="auditKey === 'report:' + shiftDetail.id + ':' + e.extension">
+                        <td colspan="10" class="bg-gray-50 px-3 py-2">
+                          <div v-if="auditLoading" class="text-gray-400 text-center py-2">Загрузка...</div>
+                          <div v-else-if="!auditSegments.length" class="text-gray-400 text-center py-2">Нет данных</div>
+                          <template v-else>
+                            <div class="relative h-6 rounded overflow-hidden bg-gray-200">
+                              <div v-for="(s, i) in auditSegments" :key="i"
+                                   class="absolute top-0 h-full"
+                                   :class="s.counted ? '' : 'ring-2 ring-inset ring-red-500'"
+                                   :style="segmentStyle(s)"
+                                   :title="segmentTitle(s)"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                              <span>{{ formatAuditTime(auditWindow.from) }}</span>
+                              <span>{{ formatAuditTime(auditWindow.to) }}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-x-3 gap-y-1 justify-center mt-1.5 text-[11px] text-gray-500">
+                              <div v-for="item in TIMELINE_LEGEND" :key="item.label" class="flex items-center gap-1">
+                                <span class="inline-block w-2 h-2 rounded-full" :style="{background: item.color}"></span>{{ item.label }}
+                              </div>
+                              <div class="flex items-center gap-1">
+                                <span class="inline-block w-2 h-2 rounded-full border-2 border-red-500"></span>не засчитано (шум)
+                              </div>
+                            </div>
+                          </template>
+                        </td>
+                      </tr>
+                    </template>
                     <tr v-if="!shiftDetail.extensions.length">
                       <td colspan="10" class="text-center text-gray-400 py-3">Нет данных по операторам</td>
                     </tr>
@@ -713,6 +772,31 @@ function dndDuration(since) {
   const m = Math.floor((secs % 3600) / 60)
   return h > 0 ? `${h}ч ${m}м` : `${m}м`
 }
+// Один общий DND-бейдж вместо двух раздельных (честный presence и "по
+// звонку") -- внутри короткий признак источника, чтобы не терять
+// информацию о том, откуда взялся сигнал.
+function dndSourceLabel(m) {
+  const byCall = !!(m.dnd_missed_since && m.status !== 'in_call')
+  const byPresence = !!m.dnd
+  if (byCall && byPresence) return 'call+presence'
+  if (byCall) return 'call'
+  return 'presence'
+}
+function dndEffectiveSince(m) {
+  const byCall = !!(m.dnd_missed_since && m.status !== 'in_call')
+  if (m.dnd && byCall) {
+    return new Date(m.dnd_since).getTime() < new Date(m.dnd_missed_since).getTime() ? m.dnd_since : m.dnd_missed_since
+  }
+  return m.dnd ? m.dnd_since : (byCall ? m.dnd_missed_since : null)
+}
+function dndBadgeTitle(m) {
+  const parts = []
+  if (m.dnd) parts.push('presence: с ' + formatDate(m.dnd_since))
+  if (m.dnd_missed_since && m.status !== 'in_call') {
+    parts.push('по звонку: начало ' + formatDate(m.dnd_missed_since) + ', обновлено ' + formatDate(m.dnd_missed_at))
+  }
+  return parts.join(' | ')
+}
 const cmdSending  = ref(null)
 const qLatest     = ref(null)
 const qHistory    = ref([])
@@ -730,7 +814,12 @@ function hourAlignedTicks(scale) {
   start.setMinutes(0, 0, 0)
   if (start.getTime() < min) start.setHours(start.getHours() + 1)
   const ticks = []
-  for (let t = start.getTime(); t <= max; t += 3600000) ticks.push({ value: t })
+  // Жёсткий потолок -- если ось вдруг получит аномально широкий диапазон
+  // (битая дата в данных, неверные min/max и т.п.), не даём циклу породить
+  // сотни тысяч меток и повесить вкладку (поймано 2026-07-08 на графике
+  // разбора DND-сегментов).
+  const MAX_TICKS = 500
+  for (let t = start.getTime(); t <= max && ticks.length < MAX_TICKS; t += 3600000) ticks.push({ value: t })
   if (ticks.length) scale.ticks = ticks
 }
 const fmtD = d => {
@@ -1093,6 +1182,58 @@ async function loadCurrentShift() {
     const res = await axios.get(route('pbx.shift-reports.current'))
     currentShift.value = res.data
   } catch (e) {}
+}
+
+// Разбор сырых сегментов по добавочному -- проверка спорных случаев (штраф
+// по DND). auditKey -- строка вида "current:110" / "report:123:110",
+// повторный клик по тому же добавочному сворачивает разбор обратно.
+//
+// Рисуется простыми позиционированными div, БЕЗ Chart.js -- изначально
+// пробовал через floating-bar (как renderTimeline()), но тот способ
+// расчитан на один сегмент на строку/категорию; когда десятки сегментов
+// попадают в ОДНУ строку (один добавочный), внутренняя раскладка баров у
+// Chart.js уходит в тяжёлые вычисления и вешает вкладку браузера (поймано
+// 2026-07-08 живьём на добавочном со 114 сегментами за смену). Простые div
+// с процентным позиционированием по времени не имеют этой проблемы вообще.
+const auditKey = ref(null)
+const auditSegments = ref([])
+const auditWindow = ref({ from: null, to: null })
+const auditLoading = ref(false)
+
+async function toggleAudit(key, params) {
+  if (auditKey.value === key) { auditKey.value = null; return }
+  auditKey.value = key
+  auditSegments.value = []
+  auditLoading.value = true
+  try {
+    const res = await axios.get(route('pbx.shift-reports.audit'), { params })
+    auditSegments.value = res.data.segments ?? []
+    auditWindow.value = res.data.window ?? { from: null, to: null }
+  } catch (e) {}
+  auditLoading.value = false
+}
+function formatAuditTime(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+function segmentStyle(s) {
+  const from = new Date(auditWindow.value.from).getTime()
+  const to   = new Date(auditWindow.value.to).getTime()
+  const total = to - from
+  if (!(total > 0)) return { display: 'none' }
+  const left  = (new Date(s.start).getTime() - from) / total * 100
+  const width = (new Date(s.end).getTime() - new Date(s.start).getTime()) / total * 100
+  return {
+    left: Math.max(0, Math.min(100, left)) + '%',
+    width: Math.max(0.2, Math.min(100, width)) + '%',
+    background: TIMELINE_COLORS[s.status] ?? '#d1d5db',
+  }
+}
+function segmentTitle(s) {
+  const from = new Date(s.start).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const to   = new Date(s.end).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const base = `${TIMELINE_LABELS[s.status] ?? s.status}: ${from} \u2013 ${to} (${s.seconds}с)`
+  return s.counted ? base : base + ' \u2014 не засчитано (шум)'
 }
 async function toggleShiftReport(r) {
   if (expandedShiftId.value === r.id) {

@@ -259,6 +259,7 @@ class PbxController extends Controller
         $detail = $queueName ? \Cache::get('queue:detail:' . $queueName) : null;
         $detail = $detail ?? ['members' => [], 'callers' => []];
         $detail['members'] = $this->attachDndStatus($detail['members'] ?? []);
+        $detail['members'] = $this->attachReliableDuration($detail['members']);
 
         // Последняя точка графика "В DND" должна совпадать с live-статусом
         // операторов (тем же, что видно в бейджах) -- иначе, например,
@@ -501,6 +502,45 @@ class PbxController extends Controller
      * Добавляет каждому оператору в списке текущий статус DND
      * (dnd: bool, dnd_since: время последнего включения, если сейчас в DND).
      */
+    /**
+     * Asterisk в "queue show" для in_call-участника в поле "last was N secs
+     * ago" иногда считает не длительность ТЕКУЩЕГО разговора, а что-то
+     * другое, завязанное на его собственную внутреннюю историю участника --
+     * найдено 2026-07-08: у добавочного, простоявшего offline весь день,
+     * первый реальный звонок показывал длительность в десятки часов.
+     * Пересчитываем сами по operator_status_logs (когда реально произошёл
+     * последний переход в in_call) -- этот источник уже надёжно трекается
+     * для таймлайна и отчётов по сменам, доверяем ему больше, чем полю
+     * Asterisk.
+     */
+    /**
+     * Asterisk в "queue show" для "last was N secs ago" ненадёжен -- найдено
+     * 2026-07-08 дважды: сперва для in_call (тащило длительность из давнего
+     * простоя добавочного), потом для unavailable (показывало время с
+     * последнего РЕАЛЬНОГО звонка, а не с момента ухода в offline -- у троих
+     * операторов, ушедших в offline минуту назад, "Недоступен" висело
+     * 20+ минут). Пересчитываем длительность ТЕКУЩЕГО статуса сами по
+     * operator_status_logs для ЛЮБОГО статуса -- этот источник уже надёжно
+     * трекается для таймлайна/отчётов по сменам, доверяем ему больше поля
+     * Asterisk. Вызывать ПОСЛЕ attachDndStatus() -- memberColor() читает
+     * $m['dnd']/$m['dnd_missed_since'], которые она проставляет.
+     */
+    private function attachReliableDuration(array $members): array
+    {
+        foreach ($members as &$m) {
+            if (empty($m['ext'])) continue;
+
+            $expectedColor = $this->memberColor($m);
+            $lastLog = OperatorStatusLog::where('extension', $m['ext'])
+                ->orderByDesc('id')->first();
+
+            if ($lastLog && $lastLog->status === $expectedColor) {
+                $m['secs'] = (int) round($lastLog->created_at->diffInSeconds(now()));
+            }
+        }
+        return $members;
+    }
+
     private function attachDndStatus(array $members): array
     {
         if (empty($members)) return $members;
@@ -512,6 +552,14 @@ class PbxController extends Controller
             ->groupBy('extension')
             ->pluck('max_id');
         $latestByExt = DndLog::whereIn('id', $latestIds)->get()->keyBy('extension');
+
+        // Последний раз, когда добавочный терял регистрацию (уходил в offline) --
+        // нужно понять, не устарело ли последнее честное DND-событие (см. ниже).
+        $lastOfflineByExt = OperatorStatusLog::whereIn('extension', $exts)
+            ->where('status', 'offline')
+            ->select('extension', \DB::raw('MAX(created_at) as last_offline_at'))
+            ->groupBy('extension')
+            ->pluck('last_offline_at', 'extension');
 
         // DND по звонку: непрерывная серия missed_dnd для добавочного, начиная
         // с первого события ПОСЛЕ его последнего реально отвеченного звонка --
@@ -543,6 +591,22 @@ class PbxController extends Controller
         foreach ($members as &$m) {
             $log = $latestByExt->get($m['ext'] ?? null);
             $dndFromLog = $log && $log->state === 'on';
+
+            // Если добавочный успел уйти в offline ПОСЛЕ последнего честного
+            // DND-события -- presence с тех пор не переопубликовывался (простое
+            // возвращение регистрации это не триггерит), значит старый "on"
+            // устарел и не отражает реальное состояние сейчас. Не тащим его
+            // через весь период простоя (найдено 2026-07-08: ночная смена
+            // только началась, ночник подключился после целого дня offline,
+            // бейдж показывал часы DND, хотя реально включал его давно и
+            // ненадолго, до ухода в offline).
+            if ($dndFromLog && $log) {
+                $lastOfflineAt = $lastOfflineByExt->get($m['ext'] ?? null);
+                if ($lastOfflineAt && \Carbon\Carbon::parse($lastOfflineAt)->gt($log->created_at)) {
+                    $dndFromLog = false;
+                }
+            }
+
             // Честный DND из presence-PUBLISH (MicroSIP) не должен маскировать
             // реальный разговор -- если оператор прямо сейчас говорит или ему
             // дозваниваются, гасим бейдж независимо от presence (тот же принцип
@@ -580,8 +644,25 @@ class PbxController extends Controller
             // до состояния "звонит" дело просто не доходит. Раз дозвон
             // идёт нормально, гасим бейдж, не дожидаясь именно ответа --
             // иначе бейдж виснет часами, если звонок дошёл, но не был
-            // принят по другой причине (не наша забота).
-            if ($streak && ($m['status'] ?? null) === 'ringing') {
+            // принят по другой причине (не наша забота). in_call -- ещё более
+            // сильное доказательство (уже реально разговаривает), но раньше
+            // не гасило стрик -- при пересечении двух звонков почти
+            // одновременно (один поймал 486, второй в этот же момент
+            // отвечен) график красил "в разговоре" как DND до следующего
+            // изменения статуса (найдено 2026-07-08).
+            if ($streak && in_array($m['status'] ?? null, ['ringing', 'in_call'], true)) {
+                $m['dnd_suppressed_since'] = $streak['start'];
+                $streak = null;
+            }
+
+            // Честный presence-"off" ПОСЛЕ последнего missed_dnd в стрике --
+            // прямое подтверждение, что оператор осознанно снял DND в
+            // MicroSIP, а не просто дозвон пока не доказал обратное. Гасим
+            // стрик сразу этим же сигналом, не дожидаясь ringing/in_call/
+            // unavailable (найдено 2026-07-08: "DND по звонку" висел ещё
+            // несколько минут ПОСЛЕ честного выключения DND, пока не
+            // случился новый звонок).
+            if ($streak && $log && $log->state === 'off' && $log->created_at->gt($streak['last'])) {
                 $m['dnd_suppressed_since'] = $streak['start'];
                 $streak = null;
             }

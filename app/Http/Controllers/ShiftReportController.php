@@ -15,6 +15,39 @@ class ShiftReportController extends Controller
         return response()->json($service->current());
     }
 
+    /**
+     * Разбор сырых сегментов статуса конкретного добавочного за смену --
+     * для проверки спорных случаев (штраф по DND). Либо `shift_report_id`
+     * (готовый отчёт, берём его сохранённые границы), либо `current=1`
+     * (ещё идущая смена, окно до "сейчас").
+     */
+    public function audit(Request $request, ShiftReportService $service): JsonResponse
+    {
+        $data = $request->validate([
+            'extension'       => 'required|string',
+            'shift_report_id' => 'nullable|exists:shift_reports,id',
+            'current'         => 'nullable|boolean',
+        ]);
+
+        if (!empty($data['current'])) {
+            $current = $service->current();
+            if (!$current) return response()->json(['segments' => []]);
+            $start = \Carbon\Carbon::parse($current['shift_start_at']);
+            $end   = now();
+        } elseif (!empty($data['shift_report_id'])) {
+            $report = ShiftReport::findOrFail($data['shift_report_id']);
+            $start  = $report->shift_start_at;
+            $end    = $report->shift_end_at;
+        } else {
+            return response()->json(['error' => 'shift_report_id or current required'], 422);
+        }
+
+        return response()->json([
+            'segments' => $service->auditSegments($data['extension'], $start, $end),
+            'window'   => ['from' => $start->toIso8601String(), 'to' => $end->toIso8601String()],
+        ]);
+    }
+
     // ── Настройка смен ──────────────────────────────────────────────
 
     public function definitions(): JsonResponse

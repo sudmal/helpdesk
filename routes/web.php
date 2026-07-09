@@ -225,6 +225,7 @@ Route::middleware(['auth', 'active'])->prefix('pbx/shift-reports')->name('pbx.sh
     Route::get('/', [\App\Http\Controllers\ShiftReportController::class, 'index'])->name('index');
     // ВАЖНО: до {shiftReport} -- иначе "current" пытается забиндиться как ID
     Route::get('/current', [\App\Http\Controllers\ShiftReportController::class, 'current'])->name('current');
+    Route::get('/audit', [\App\Http\Controllers\ShiftReportController::class, 'audit'])->name('audit');
     Route::get('/{shiftReport}', [\App\Http\Controllers\ShiftReportController::class, 'show'])->name('show');
     Route::middleware('can:manage-settings')->post('/regenerate', [\App\Http\Controllers\ShiftReportController::class, 'regenerate'])->name('regenerate');
 });
