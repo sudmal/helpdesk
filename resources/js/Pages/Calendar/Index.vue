@@ -61,7 +61,7 @@
       </div>
 
             <template v-if="view === 'overview'">
-        <div class="overflow-y-auto" style="max-height: 680px">
+        <div>
           <!-- Sticky header -->
           <div class="flex sticky top-0 bg-white z-10 border-b border-gray-200">
             <div class="flex-shrink-0 border-r border-gray-100" style="width: 60px"></div>
