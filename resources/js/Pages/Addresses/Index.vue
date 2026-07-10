@@ -387,6 +387,10 @@
           <p class="text-xs text-gray-400">≈{{ (genTo-genFrom+1) * (genAptTo-genAptFrom+1) }} записей</p>
         </template>
 
+        <div v-if="addrForm.errors && Object.keys(addrForm.errors).length"
+             class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
+          <p v-for="(err, field) in addrForm.errors" :key="field">{{ err }}</p>
+        </div>
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" @click="closeAddModal" class="btn-outline text-sm">Отмена</button>
           <button class="btn-primary text-sm">{{ editingAddr ? 'Сохранить' : 'Создать' }}</button>
@@ -672,6 +676,10 @@ function editAddress(a) {
 function closeAddModal() { showAddModal.value = false; editingAddr.value = null }
 
 function submitAddress() {
+  if (!addrForm.territory_id) {
+    addrForm.errors.territory_id = 'Выберите территорию'
+    return
+  }
   const street = addrForm.street_type + ' ' + addrForm.street_name
   const base   = { ...addrForm.data(), street }
 

@@ -216,7 +216,7 @@ class AddressController extends Controller
     {
         $data = $request->validate([
             'city'            => 'required|string|max:100',
-            'territory_id'    => 'nullable|exists:territories,id',
+            'territory_id'    => 'required|exists:territories,id',
             'street'          => 'required|string|max:200',
             'building'        => 'nullable|string|max:20',
             'apartment'       => 'nullable|string|max:20',
@@ -272,7 +272,7 @@ class AddressController extends Controller
     {
         $data = $request->validate([
             'city'            => 'required|string|max:100',
-            'territory_id'    => 'nullable|exists:territories,id',
+            'territory_id'    => 'required|exists:territories,id',
             'street'          => 'required|string|max:200',
             'building'        => 'nullable|string|max:20',
             'apartment'       => 'nullable|string|max:20',
