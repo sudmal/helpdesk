@@ -16,6 +16,7 @@
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-medium">
@@ -55,6 +56,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <!-- Модалка -->

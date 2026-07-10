@@ -142,6 +142,7 @@
               Итого: {{ totalMaterials }} ₽
             </span>
           </div>
+          <div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-gray-50 border-b border-gray-100 text-gray-500">
@@ -169,6 +170,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
 
         <!-- Комментарии -->

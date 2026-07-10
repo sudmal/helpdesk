@@ -58,6 +58,7 @@
         <canvas v-else ref="brigadeCanvas" style="max-height:320px" />
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
@@ -79,6 +80,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -90,6 +92,7 @@
         <canvas v-else ref="territoryCanvas" style="max-height:320px" />
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
@@ -111,6 +114,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -130,6 +134,7 @@
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Топ-10 материалов по сумме</div>
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
@@ -153,6 +158,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -183,6 +189,7 @@
         <canvas v-else ref="deadlineCanvas" style="max-height:320px" />
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
@@ -210,6 +217,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -238,6 +246,7 @@
       <!-- Легенда / итоговая таблица -->
       <div v-if="hasDistData" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Итого за период</div>
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
@@ -260,6 +269,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -286,6 +296,7 @@
         </template>
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium"><th class="text-left px-3 py-2.5">Час</th><th class="text-right px-3 py-2.5">Всего</th><th class="text-right px-3 py-2.5">Отвечено</th><th class="text-right px-3 py-2.5">Пропущено</th><th class="text-right px-3 py-2.5">Пропуск %</th><th class="text-right px-3 py-2.5 hidden md:table-cell">Ср. ожидание</th><th class="text-right px-3 py-2.5 hidden lg:table-cell">Макс. очередь</th><th class="text-right px-3 py-2.5 hidden lg:table-cell">Ср. операторов</th></tr></thead>
           <tbody class="divide-y divide-gray-100">
@@ -302,6 +313,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 

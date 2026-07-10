@@ -26,6 +26,7 @@ class SendDailySummary extends Command
             $tickets = Ticket::with(['address', 'type', 'status', 'assignee'])
                 ->whereDate('scheduled_at', $date)
                 ->where('brigade_id', $brigade->id)
+                ->whereHas('status', fn($q) => $q->where('is_final', false))
                 ->get();
 
             $offUserIds = BrigadeSchedule::where('brigade_id', $brigade->id)
