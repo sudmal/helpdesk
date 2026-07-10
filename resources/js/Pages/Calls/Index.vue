@@ -313,10 +313,10 @@
                       <span :class="statusDot(m.status)" class="w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
                       {{ statusLabel(m.status) }}
                     </span>
-                    <span v-if="m.dnd || (m.dnd_missed_since && m.status !== 'in_call')"
+                    <span v-if="m.dnd"
                           :title="dndBadgeTitle(m)"
                           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 bg-purple-100 text-purple-700">
-                      DND · {{ dndSourceLabel(m) }}{{ dndEffectiveSince(m) ? ' · ' + dndDuration(dndEffectiveSince(m)) : '' }}
+                      DND · {{ dndSourceLabel(m) }} · {{ dndDuration(m.dnd_since) }}
                     </span>
                     <span v-if="m.caller_phone" class="inline-flex items-center gap-1.5 whitespace-nowrap">
                       <span :class="blockedDotClass(m.caller_blocked)"
@@ -772,28 +772,18 @@ function dndDuration(since) {
   const m = Math.floor((secs % 3600) / 60)
   return h > 0 ? `${h}ч ${m}м` : `${m}м`
 }
-// Один общий DND-бейдж вместо двух раздельных (честный presence и "по
-// звонку") -- внутри короткий признак источника, чтобы не терять
-// информацию о том, откуда взялся сигнал.
+// Бейдж показывается ТОЛЬКО при честном presence -- по решению
+// пользователя (2026-07-09) missed_dnd больше НЕ активирует DND самостоятельно
+// (все MicroSIP принудительно шлют presence, оно всегда доступно и надёжнее) -- только
+// дополняет уже показанный бейдж пометкой "+call", если ещё и свежий недозвон.
 function dndSourceLabel(m) {
   const byCall = !!(m.dnd_missed_since && m.status !== 'in_call')
-  const byPresence = !!m.dnd
-  if (byCall && byPresence) return 'call+presence'
-  if (byCall) return 'call'
-  return 'presence'
-}
-function dndEffectiveSince(m) {
-  const byCall = !!(m.dnd_missed_since && m.status !== 'in_call')
-  if (m.dnd && byCall) {
-    return new Date(m.dnd_since).getTime() < new Date(m.dnd_missed_since).getTime() ? m.dnd_since : m.dnd_missed_since
-  }
-  return m.dnd ? m.dnd_since : (byCall ? m.dnd_missed_since : null)
+  return byCall ? 'presence+call' : 'presence'
 }
 function dndBadgeTitle(m) {
-  const parts = []
-  if (m.dnd) parts.push('presence: с ' + formatDate(m.dnd_since))
+  const parts = ['presence: с ' + formatDate(m.dnd_since)]
   if (m.dnd_missed_since && m.status !== 'in_call') {
-    parts.push('по звонку: начало ' + formatDate(m.dnd_missed_since) + ', обновлено ' + formatDate(m.dnd_missed_at))
+    parts.push('подтверждено недозвоном: начало ' + formatDate(m.dnd_missed_since) + ', обновлено ' + formatDate(m.dnd_missed_at))
   }
   return parts.join(' | ')
 }

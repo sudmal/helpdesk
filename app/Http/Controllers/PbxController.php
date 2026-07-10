@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Call, Address, Ticket, QueueStat, IvrLog, DndLog, OperatorStatusLog};
+use App\Models\{Call, Address, Ticket, QueueStat, IvrLog, DndLog, OperatorStatusLog, SystemSetting};
 use App\Services\TelegramService;
 use App\Services\MaxService;
 use AppServicesMaxService;
@@ -400,11 +400,22 @@ class PbxController extends Controller
      * live-статусу -- общая логика для trackOperatorStatusLog() (запись в
      * лог при смене) и buildOperatorTimeline() (fallback, когда лога нет).
      */
+    /**
+     * DND по звонку (missed_dnd) больше НЕ красит статус самостоятельно
+     * (2026-07-09, по решению пользователя) -- все MicroSIP принудительно
+     * шлют presence, значит честный флаг $m['dnd'] всегда доступен и
+     * достаточен как единственный источник цвета "dnd". missed_dnd остаётся
+     * только вспомогательной информацией в бейдже (см. dndSourceLabel во
+     * фронте), не триггерит график/цвет сам по себе -- один пропущенный
+     * звонок растягивал DND на весь тихий промежуток до следующего звонка,
+     * даже когда честный presence всё это время молчал (реальный спор
+     * оператора, 112, 2026-07-09).
+     */
     private function memberColor(array $m): string
     {
         $status = $m['status'] ?? 'idle';
         if ($status === 'unavailable') return 'offline';
-        if (($m['dnd'] ?? false) || !empty($m['dnd_missed_since'])) return 'dnd';
+        if ($m['dnd'] ?? false) return 'dnd';
         if ($status === 'in_call') return 'in_call';
         return 'idle'; // idle или ringing -- ringing тут переходное состояние на пару секунд
     }
@@ -575,6 +586,17 @@ class PbxController extends Controller
             ->orderBy('created_at')
             ->get(['extension', 'created_at']);
 
+        // Стрик "по звонку" держится, пока не появится опровергающее событие
+        // (ringing/ответ) -- но если после последнего missed_dnd долго вообще
+        // НИЧЕГО не происходило (queue просто не звонила этому добавочному),
+        // старый единственный промах растягивается на весь этот тихий
+        // промежуток, как будто DND длился всё это время. Найдено на реальном
+        // споре (2026-07-09): 112 отрицал DND, presence за это время молчал
+        // (ни одного честного on/off) -- единственная улика была один
+        // missed_dnd 12 минут назад. Таймаут не даёт стрику жить дольше
+        // разумного без НОВОГО подтверждения.
+        $callStreakTimeoutMin = (int) SystemSetting::get('dnd_call_streak_timeout_min', 5);
+
         $streaks = [];
         foreach ($allMissed->groupBy('extension') as $ext => $evList) {
             $lastAnswered = $lastAnsweredByExt->get($ext);
@@ -585,7 +607,9 @@ class PbxController extends Controller
                 if ($start === null) $start = $ev->created_at;
                 $last = $ev->created_at;
             }
-            if ($start !== null) $streaks[$ext] = ['start' => $start, 'last' => $last];
+            if ($start !== null && $last->diffInMinutes(now()) <= $callStreakTimeoutMin) {
+                $streaks[$ext] = ['start' => $start, 'last' => $last];
+            }
         }
 
         foreach ($members as &$m) {
