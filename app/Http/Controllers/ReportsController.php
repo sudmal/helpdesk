@@ -9,26 +9,53 @@ use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
 {
-    public function index(Request $request)
+    public function index()
+    {
+        return Inertia::render('Reports/Index');
+    }
+
+    private function parseRange(Request $request): array
     {
         $from = $request->get('from', now()->toDateString());
-        $to   = $request->get('to',   now()->toDateString()); // day by default
+        $to   = $request->get('to',   now()->toDateString());
 
-        $fromDate = Carbon::parse($from)->startOfDay();
-        $toDate   = Carbon::parse($to)->endOfDay();
+        return [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()];
+    }
 
-        $callStats = $this->callStats($fromDate, $toDate);
+    public function brigadeLoadData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        return response()->json($this->brigadeLoad($from, $to));
+    }
 
-        return Inertia::render('Reports/Index', [
-            'from'               => $from,
-            'to'                 => $to,
-            'brigadeLoad'        => $this->brigadeLoad($fromDate, $toDate),
-            'territoryFrequency' => $this->territoryFrequency($fromDate, $toDate),
-            'materialDynamics'   => $this->materialDynamics($fromDate, $toDate),
-            'deadlineCompliance' => $this->deadlineCompliance($fromDate, $toDate),
-            'distribution'       => $this->distribution($fromDate, $toDate),
-            'callStats'          => $callStats,
-        ]);
+    public function territoryFrequencyData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        return response()->json($this->territoryFrequency($from, $to));
+    }
+
+    public function materialDynamicsData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        return response()->json($this->materialDynamics($from, $to));
+    }
+
+    public function deadlineComplianceData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        return response()->json($this->deadlineCompliance($from, $to));
+    }
+
+    public function distributionData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        return response()->json($this->distribution($from, $to));
+    }
+
+    public function callStatsData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        return response()->json($this->callStats($from, $to));
     }
 
     private function brigadeLoad(Carbon $from, Carbon $to): array

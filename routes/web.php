@@ -173,6 +173,12 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     Route::middleware('can:manage-settings')->get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
+    Route::middleware('can:manage-settings')->get('/reports/brigade-load', [App\Http\Controllers\ReportsController::class, 'brigadeLoadData'])->name('reports.brigade-load');
+    Route::middleware('can:manage-settings')->get('/reports/territory-frequency', [App\Http\Controllers\ReportsController::class, 'territoryFrequencyData'])->name('reports.territory-frequency');
+    Route::middleware('can:manage-settings')->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
+    Route::middleware('can:manage-settings')->get('/reports/deadline-compliance', [App\Http\Controllers\ReportsController::class, 'deadlineComplianceData'])->name('reports.deadline-compliance');
+    Route::middleware('can:manage-settings')->get('/reports/distribution', [App\Http\Controllers\ReportsController::class, 'distributionData'])->name('reports.distribution');
+    Route::middleware('can:manage-settings')->get('/reports/call-stats', [App\Http\Controllers\ReportsController::class, 'callStatsData'])->name('reports.call-stats');
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
 
 });
@@ -181,6 +187,13 @@ Route::middleware(['auth', 'active'])->group(function () {
 Route::resource('materials', App\Http\Controllers\MaterialController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware('auth');
+
+Route::middleware('can:manage-settings')->prefix('materials/report')->name('materials.report.')->group(function () {
+    Route::get('/consumption', [App\Http\Controllers\MaterialReportController::class, 'consumption'])->name('consumption');
+    Route::get('/monthly-matrix', [App\Http\Controllers\MaterialReportController::class, 'monthlyMatrix'])->name('monthly-matrix');
+    Route::get('/forecast', [App\Http\Controllers\MaterialReportController::class, 'forecast'])->name('forecast');
+    Route::get('/export', [App\Http\Controllers\MaterialReportController::class, 'exportCsv'])->name('export');
+});
 
 // Р Р°СЃС…РѕРґРЅРёРєРё РїРѕ Р·Р°СЏРІРєРµ
 Route::post('tickets/{ticket}/materials', [App\Http\Controllers\MaterialController::class, 'storeForTicket'])
