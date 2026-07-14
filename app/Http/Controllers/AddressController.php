@@ -303,16 +303,31 @@ class AddressController extends Controller
         return back()->with('success', 'Адрес удалён');
     }
 
+    // territory_ids для фильтра по бригаде (опционально, через ?brigade_id=)
+    // null = без ограничения (бригада не передана/не найдена/не покрывает территорий)
+    private function brigadeTerritoryIds(Request $request): ?array
+    {
+        $brigadeId = $request->get('brigade_id');
+        if (!$brigadeId) return null;
+        $brigade = \App\Models\Brigade::find($brigadeId);
+        if (!$brigade) return null;
+        $ids = $brigade->territories()->pluck('territories.id')->all();
+        return empty($ids) ? null : $ids;
+    }
+
     public function hierarchy(Request $request): \Illuminate\Http\JsonResponse
     {
         $city     = $request->get('city');
         $street   = $request->get('street');
         $building = $request->get('building');
+        $withId   = $request->boolean('with_id');
+        $territoryIds = $this->brigadeTerritoryIds($request);
 
         if (!$city) {
             return response()->json(
                 Address::selectRaw('DISTINCT city')
                     ->whereNotNull('city')->where('city', '!=', '')
+                    ->when($territoryIds, fn($q) => $q->whereIn('territory_id', $territoryIds))
                     ->orderBy('city')->pluck('city')
             );
         }
@@ -320,6 +335,7 @@ class AddressController extends Controller
             return response()->json(
                 Address::selectRaw('DISTINCT street')
                     ->where('city', $city)->whereNotNull('street')
+                    ->when($territoryIds, fn($q) => $q->whereIn('territory_id', $territoryIds))
                     ->orderBy('street')->pluck('street')
             );
         }
@@ -328,9 +344,24 @@ class AddressController extends Controller
                 Address::selectRaw('DISTINCT building')
                     ->where('city', $city)->where('street', $street)
                     ->whereNotNull('building')
+                    ->when($territoryIds, fn($q) => $q->whereIn('territory_id', $territoryIds))
                     ->orderByRaw('CAST(building AS UNSIGNED), building')->pluck('building')
             );
         }
+
+        // Для редактирования адреса заявки нужна привязка к конкретной записи Address
+        // (id), а не просто номер квартиры — берём строго из справочника, без
+        // подмешивания ticket.apartment (в отличие от ветки ниже для Create.vue).
+        if ($withId) {
+            return response()->json(
+                Address::where('city', $city)->where('street', $street)->where('building', $building)
+                    ->whereNotNull('apartment')->where('apartment', '!=', '')
+                    ->when($territoryIds, fn($q) => $q->whereIn('territory_id', $territoryIds))
+                    ->orderByRaw('CAST(apartment AS UNSIGNED), apartment')
+                    ->get(['id', 'apartment', 'subscriber_name'])
+            );
+        }
+
         $fromAddrs = Address::where('city', $city)->where('street', $street)->where('building', $building)
             ->whereNotNull('apartment')->where('apartment', '!=', '')
             ->distinct()->orderByRaw('CAST(apartment AS UNSIGNED), apartment')->pluck('apartment');

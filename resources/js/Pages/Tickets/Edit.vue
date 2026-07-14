@@ -8,26 +8,41 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <h3 class="font-medium text-sm text-gray-700">Адрес абонента</h3>
 
-          <div class="relative">
-            <Icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input v-model="addressQuery" @input="searchAddresses"
-                   placeholder="Поиск адреса..."
-                   class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm
-                          focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
-            <div v-if="suggestions.length"
-                 class="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200
-                        rounded-xl shadow-lg max-h-52 overflow-y-auto">
-              <button v-for="a in suggestions" :key="a.id" type="button"
-                      @click="selectAddress(a)"
-                      class="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm border-b border-gray-100 last:border-0">
-                <p class="font-medium">{{ a.label }}</p>
-                <p class="text-xs text-gray-400">{{ a.subscriber_name }} · {{ a.phone }}</p>
-              </button>
-            </div>
-          </div>
-
           <div v-if="currentAddress" class="bg-blue-50 rounded-xl p-2.5 text-sm text-blue-800">
             📍 {{ currentAddress }}
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Город</label>
+              <select v-model="addrSel.city" @change="onAddrCity" class="field-input">
+                <option value="">— Выбрать город —</option>
+                <option v-for="c in addrCities" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+            <div v-if="addrSel.city">
+              <label class="field-label">Улица</label>
+              <select v-model="addrSel.street" @change="onAddrStreet" class="field-input">
+                <option value="">— Выбрать улицу —</option>
+                <option v-for="s in addrStreets" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </div>
+            <div v-if="addrSel.street">
+              <label class="field-label">Дом</label>
+              <select v-model="addrSel.building" @change="onAddrBuilding" class="field-input">
+                <option value="">— Выбрать дом —</option>
+                <option v-for="b in addrBuildings" :key="b" :value="b">{{ b }}</option>
+              </select>
+            </div>
+            <div v-if="addrSel.building">
+              <label class="field-label">Квартира</label>
+              <select v-model="selectedApartmentId" @change="onAddrApartment" class="field-input" :disabled="!addrApartments.length">
+                <option value="">{{ addrApartments.length ? '— Выбрать квартиру —' : 'нет квартир в справочнике для этого дома' }}</option>
+                <option v-for="apt in addrApartments" :key="apt.id" :value="apt.id">
+                  кв. {{ apt.apartment }}{{ apt.subscriber_name ? ' — ' + apt.subscriber_name : '' }}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -115,11 +130,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
-import Icon from '@/Components/UI/Icon.vue'
 import TimePicker from '@/Components/UI/TimePicker.vue'
 import dayjs from 'dayjs'
 
@@ -138,12 +152,11 @@ function ticketAddressLabel() {
   return props.ticket.apartment ? base + ', кв. ' + props.ticket.apartment : base
 }
 
-const addressQuery   = ref(ticketAddressLabel())
 const currentAddress = ref(ticketAddressLabel())
-const suggestions    = ref([])
 
 const form = useForm({
   address_id:   props.ticket.address_id ?? '',
+  apartment:    props.ticket.apartment ?? '',
   type_id:      props.ticket.type_id,
   status_id:    props.ticket.status_id,
   brigade_id:   props.ticket.brigade_id ?? '',
@@ -157,23 +170,70 @@ const form = useForm({
     ? dayjs(props.ticket.scheduled_at).format('YYYY-MM-DDTHH:mm') : '',
 })
 
+// ── Каскадный выбор адреса: Город → Улица → Дом → Квартира ──
+// Варианты ограничены территориями назначенной бригады (brigade_id), если она есть.
+const addrCities        = ref([])
+const addrStreets       = ref([])
+const addrBuildings     = ref([])
+const addrApartments    = ref([]) // [{id, apartment, subscriber_name}] — строго из справочника
+const selectedApartmentId = ref('')
+const addrSel = reactive({ city: '', street: '', building: '' })
 
-let timer = null
-function searchAddresses() {
-  clearTimeout(timer)
-  if (addressQuery.value.length < 2) { suggestions.value = []; return }
-  timer = setTimeout(async () => {
-    const { data } = await axios.get(route('addresses.search'), { params: { q: addressQuery.value } })
-    suggestions.value = data
-  }, 300)
+function hierarchyParams(extra) {
+  return { ...extra, brigade_id: form.brigade_id || undefined }
 }
 
-function selectAddress(a) {
-  form.address_id  = a.id
-  currentAddress.value = a.label
-  addressQuery.value   = a.label
-  suggestions.value    = []
+async function fetchCities()                    { return (await axios.get(route('addresses.hierarchy'), { params: hierarchyParams({}) })).data }
+async function fetchStreets(city)                { return (await axios.get(route('addresses.hierarchy'), { params: hierarchyParams({ city }) })).data }
+async function fetchBuildings(city, street)      { return (await axios.get(route('addresses.hierarchy'), { params: hierarchyParams({ city, street }) })).data }
+async function fetchApartments(city, street, building) {
+  return (await axios.get(route('addresses.hierarchy'), { params: hierarchyParams({ city, street, building, with_id: 1 }) })).data
 }
+
+async function onAddrCity() {
+  addrSel.street = ''; addrSel.building = ''
+  addrBuildings.value = []; addrApartments.value = []; selectedApartmentId.value = ''
+  addrStreets.value = addrSel.city ? await fetchStreets(addrSel.city) : []
+}
+
+async function onAddrStreet() {
+  addrSel.building = ''
+  addrApartments.value = []; selectedApartmentId.value = ''
+  addrBuildings.value = addrSel.street ? await fetchBuildings(addrSel.city, addrSel.street) : []
+}
+
+async function onAddrBuilding() {
+  selectedApartmentId.value = ''
+  addrApartments.value = addrSel.building ? await fetchApartments(addrSel.city, addrSel.street, addrSel.building) : []
+}
+
+function onAddrApartment() {
+  const picked = addrApartments.value.find(a => String(a.id) === String(selectedApartmentId.value))
+  if (!picked) return
+  // Старый адрес просто открепляется — address_id меняется на новый, сама
+  // запись Address (общая на несколько заявок в доме) не трогается.
+  form.address_id = picked.id
+  form.apartment   = picked.apartment ?? ''
+  currentAddress.value = [addrSel.city, addrSel.street, addrSel.building].filter(Boolean).join(', ')
+    + (picked.apartment ? ', кв. ' + picked.apartment : '')
+}
+
+onMounted(async () => {
+  addrCities.value = await fetchCities()
+
+  const addr = props.ticket.address
+  if (!addr?.city) return
+  addrSel.city = addr.city
+  addrStreets.value = await fetchStreets(addr.city)
+  if (!addr.street) return
+  addrSel.street = addr.street
+  addrBuildings.value = await fetchBuildings(addr.city, addr.street)
+  if (!addr.building) return
+  addrSel.building = addr.building
+  addrApartments.value = await fetchApartments(addr.city, addr.street, addr.building)
+  const match = addrApartments.value.find(a => a.apartment === props.ticket.apartment)
+  if (match) selectedApartmentId.value = match.id
+})
 
 function submit() {
   form.put(route('tickets.update', props.ticket.id))

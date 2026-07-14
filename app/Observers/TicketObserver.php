@@ -11,7 +11,7 @@ class TicketObserver
         $user = auth()->user();
         if (!$user) return;
 
-        $watched = ['status_id', 'brigade_id', 'assigned_to', 'type_id', 'scheduled_at', 'priority'];
+        $watched = ['status_id', 'brigade_id', 'assigned_to', 'type_id', 'scheduled_at', 'priority', 'address_id'];
         $changed = array_intersect(array_keys($ticket->getChanges()), $watched);
         if (empty($changed)) return;
 
@@ -27,14 +27,23 @@ class TicketObserver
             'type_id'      => 'Тип',
             'priority'     => 'Приоритет',
             'scheduled_at' => 'Время выезда',
+            'address_id'   => 'Адрес',
         ];
 
         foreach ($watchedFields as $field => $label) {
             if (!$ticket->wasChanged($field)) continue;
-            $old      = $ticket->getOriginal($field);
-            $new      = $ticket->getAttribute($field);
-            $oldLabel = $this->resolveLabel($ticket, $field, $old);
-            $newLabel = $this->resolveLabel($ticket, $field, $new);
+            $old = $ticket->getOriginal($field);
+            $new = $ticket->getAttribute($field);
+
+            if ($field === 'address_id') {
+                // Старый адрес просто открепляется (address_id меняется на новый) —
+                // ничего в самой записи Address не трогаем, она общая на несколько заявок.
+                $oldLabel = $this->addressLabel($old, $ticket->getOriginal('apartment'));
+                $newLabel = $this->addressLabel($new, $ticket->apartment);
+            } else {
+                $oldLabel = $this->resolveLabel($ticket, $field, $old);
+                $newLabel = $this->resolveLabel($ticket, $field, $new);
+            }
 
             $ticket->history()->create([
                 'user_id'   => $user->id,
@@ -90,6 +99,16 @@ class TicketObserver
             'user_id' => $user->id,
             'action'  => 'deleted',
         ]);
+    }
+
+    private function addressLabel(mixed $addressId, ?string $apartment): ?string
+    {
+        if (!$addressId) return null;
+        $addr = \App\Models\Address::find($addressId);
+        if (!$addr) return (string) $addressId;
+        $label = implode(', ', array_filter([$addr->city, $addr->street, $addr->building]));
+        if ($apartment) $label .= ', кв. ' . $apartment;
+        return $label;
     }
 
     private function resolveLabel(Ticket $ticket, string $field, mixed $value): ?string

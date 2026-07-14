@@ -15,6 +15,7 @@ class UpdateTicketRequest extends FormRequest
     {
         return [
             'address_id'   => 'nullable|exists:addresses,id',
+            'apartment'    => 'nullable|string|max:20',
             'type_id'      => 'required|exists:ticket_types,id',
             'status_id'    => 'required|exists:ticket_statuses,id',
             'brigade_id'   => 'nullable|exists:brigades,id',
