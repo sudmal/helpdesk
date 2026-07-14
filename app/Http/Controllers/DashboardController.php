@@ -44,7 +44,8 @@ class DashboardController extends Controller
             ->whereDate('scheduled_at', $date)
             ->when($onlyOpen, fn($q) => $q->whereIn('status_id', $openIds))
             ->orderBy($sort, $sortDir)
-            ->get();
+            ->get()
+            ->each->append('days_overdue');
 
         $overdue = (clone $scoped)
             ->with(['address', 'type', 'serviceType', 'status'])
@@ -52,7 +53,8 @@ class DashboardController extends Controller
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<', $overdueThreshold)
             ->orderBy('scheduled_at')
-            ->get();
+            ->get()
+            ->each->append('days_overdue');
 
         // Счётчики для вкладок территорий
         $territoryStats = \DB::table('tickets')

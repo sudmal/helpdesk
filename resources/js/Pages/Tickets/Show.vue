@@ -61,6 +61,7 @@
               <Badge v-if="ticket.service_type" :color="ticket.service_type.color" :label="ticket.service_type.name" />
               <Badge v-if="ticket.status"       :color="ticket.status.color"       :label="ticket.status.name" />
               <Badge :color="priorityColor" :label="priorityLabel" />
+              <Badge v-if="ticket.days_overdue" color="#dc2626" :label="`Просрочена на ${ticket.days_overdue} дн.`" />
               </div>
             </div>
             <!-- Правая часть: время выезда -->

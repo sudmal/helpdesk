@@ -196,6 +196,7 @@ class TicketController extends Controller
             'history.user',
             'closedBy',
         ]);
+        $ticket->append('days_overdue');
 
         // История заявок по этому адресу (кроме текущей)
         $addressHistory = $ticket->address_id

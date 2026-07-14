@@ -195,6 +195,7 @@
         <p class="font-mono text-xs text-gray-400 mb-1">{{ tooltip.number }}</p>
         <p class="font-semibold text-sm mb-1">{{ tooltip.address }}</p>
         <p class="text-xs text-gray-300 mb-1">🕐 {{ tooltip.scheduled }} · {{ tooltip.type }}</p>
+        <p v-if="tooltip.daysOverdue" class="text-xs text-red-400 font-medium mb-1">⚠ Просрочена на {{ tooltip.daysOverdue }} дн.</p>
         <p v-if="tooltip.phone" class="text-xs text-gray-300 mb-1">📞 {{ tooltip.phone }}</p>
         <p v-if="tooltip.description" class="text-xs text-gray-400 border-t border-gray-700 pt-1 mt-1">
           {{ tooltip.description.slice(0, 100) }}{{ tooltip.description.length > 100 ? '…' : '' }}
@@ -282,7 +283,7 @@ const overviewEvents      = ref({ overdue: [], today: [], tomorrow: [] })
 
 const tooltip = reactive({
   show: false, x: 0, y: 0,
-  number: '', address: '', scheduled: '', type: '', phone: '', description: '',
+  number: '', address: '', scheduled: '', type: '', phone: '', description: '', daysOverdue: null,
 })
 
 const popup = reactive({
@@ -455,6 +456,7 @@ function onEventEnter(el, p) {
     type:        p.type,
     phone:       p.phone,
     description: p.description,
+    daysOverdue: p.daysOverdue,
   })
 }
 
@@ -562,8 +564,11 @@ const calOptions = computed(() => ({
       ? `<span style="font-size:10px;font-weight:400;color:#9ca3af;text-transform:lowercase;white-space:nowrap;flex-shrink:0;margin-left:4px">${type}</span>`
       : ''
     const isFinal = p.isFinal
+    const overdueHtml = p.daysOverdue
+      ? `<span style="background:#dc2626;color:#fff;font-size:9px;font-weight:600;padding:0 4px;border-radius:6px;white-space:nowrap;flex-shrink:0;margin-left:3px">+${p.daysOverdue}д</span>`
+      : ''
     return {
-      html: `<div style="display:flex;align-items:center;padding:1px 4px;font-size:0.75rem;cursor:pointer;min-width:0;opacity:${isFinal ? '0.5' : '1'}"><b style="flex-shrink:0;margin-right:2px">${time}</b><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;text-decoration:${isFinal ? 'line-through' : 'none'}">${left}</span>${typeHtml}</div>`,
+      html: `<div style="display:flex;align-items:center;padding:1px 4px;font-size:0.75rem;cursor:pointer;min-width:0;opacity:${isFinal ? '0.5' : '1'}"><b style="flex-shrink:0;margin-right:2px">${time}</b><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;text-decoration:${isFinal ? 'line-through' : 'none'}">${left}</span>${overdueHtml}${typeHtml}</div>`,
     }
   },
 }))

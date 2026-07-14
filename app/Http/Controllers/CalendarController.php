@@ -89,6 +89,7 @@ class CalendarController extends Controller
                     'phone'        => $ticket->phone,
                     'url'          => route('tickets.show', $ticket->id),
                     'isFinal'      => (bool) $ticket->status->is_final,
+                    'daysOverdue'  => $ticket->days_overdue,
                 ],
             ];
         });

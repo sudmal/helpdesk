@@ -152,4 +152,21 @@ protected $fillable = [
     {
         return (bool) $this->closed_at;
     }
+
+    /**
+     * Сколько дней просрочена заявка: желаемое время выезда (scheduled_at) в
+     * прошлом (по дате, не по времени суток) и статус ещё не финальный.
+     * Требует загруженной связи 'status' (иначе лишний запрос на каждую заявку).
+     */
+    public function getDaysOverdueAttribute(): ?int
+    {
+        if (!$this->scheduled_at) return null;
+        if ($this->status && $this->status->is_final) return null;
+
+        $scheduledDate = $this->scheduled_at->copy()->startOfDay();
+        $today = now()->startOfDay();
+        if (!$scheduledDate->lt($today)) return null;
+
+        return (int) $scheduledDate->diffInDays($today);
+    }
 }

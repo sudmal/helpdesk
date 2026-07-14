@@ -178,6 +178,9 @@
               <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap">{{ t.phone ?? '—' }}</td>
               <td class="px-2 py-0.5">
                 <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
+                <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap align-middle">
+                  +{{ t.days_overdue }} дн.
+                </span>
               </td>
               <td class="px-2 py-0.5 w-14">
                 <span v-if="t.status?.is_final"
@@ -267,6 +270,9 @@
             <td class="px-3 py-px hidden md:table-cell text-gray-500">{{ t.phone ?? '—' }}</td>
             <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4">
               {{ formatDateTime(t.scheduled_at) }}
+              <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full align-middle">
+                {{ t.days_overdue }} дн.
+              </span>
             </td>
           </tr>
         </tbody>
