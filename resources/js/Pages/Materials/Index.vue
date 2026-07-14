@@ -2,61 +2,81 @@
   <Head title="Расходные материалы" />
   <AppLayout title="Расходные материалы">
     <template #actions>
-      <button v-if="canManage" @click="openCreate"
+      <button v-if="canManage && activeTab === 'catalog'" @click="openCreate"
               class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700
                      text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
         + Добавить
       </button>
     </template>
 
-    <div class="mb-2">
-      <input v-model="search" type="search" placeholder="Поиск по коду или наименованию..."
-             class="w-full max-w-sm border border-gray-200 rounded-xl px-3 py-1.5 text-sm
-                    focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
+    <div v-if="canViewReport" class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-4 w-fit">
+      <button v-for="t in tabs" :key="t.id" @click="activeTab = t.id"
+              :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                       activeTab === t.id ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+        {{ t.label }}
+      </button>
     </div>
 
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-medium">
-            <th class="text-center px-3 py-2 w-20">Код</th>
-            <th class="text-left px-4 py-2">Наименование</th>
-            <th class="text-center px-3 py-2 w-20">Ед. изм.</th>
-            <th class="text-right px-4 py-2 w-28">Цена, ₽</th>
-            <th class="text-center px-3 py-2 w-16">Акт.</th>
-            <th class="px-3 py-2 w-28"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr v-if="!materials.length">
-            <td colspan="6" class="text-center py-8 text-gray-400 text-xs">Справочник пуст</td>
-          </tr>
-          <tr v-for="m in filtered" :key="m.id"
-              :class="['transition-colors', m.is_active ? 'hover:bg-gray-50' : 'opacity-40 hover:bg-gray-50']">
-            <td v-if="canManage" class="px-3 py-0.5 text-center font-mono text-xs text-blue-400 cursor-pointer hover:text-blue-600 hover:underline" @click="openEdit(m)">{{ m.code || '—' }}</td>
-            <td v-else class="px-3 py-0.5 text-center font-mono text-xs text-gray-400">{{ m.code || '—' }}</td>
-            <td class="px-4 py-0.5 text-gray-800 text-sm">{{ m.name }}</td>
-            <td class="px-3 py-0.5 text-gray-500 text-xs text-center">{{ m.unit }}</td>
-            <td class="px-4 py-0.5 text-right font-mono tabular-nums text-sm">{{ formatPrice(m.price) }}</td>
-            <td class="px-3 py-0.5 text-center">
-              <span :class="['inline-block w-2 h-2 rounded-full',
-                             m.is_active ? 'bg-green-500' : 'bg-gray-300']" />
-            </td>
-            <td class="px-3 py-0.5 text-right whitespace-nowrap">
-              <button v-if="canManage" @click="openEdit(m)"
-                      class="text-xs text-blue-600 hover:text-blue-800 mr-3 transition-colors">
-                Изменить
-              </button>
-              <button v-if="canManage" @click="deactivate(m)"
-                      class="text-xs text-gray-300 hover:text-red-500 transition-colors">
-                {{ m.is_active ? 'Откл' : 'Вкл' }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-show="activeTab === 'catalog'">
+      <div class="mb-2">
+        <input v-model="search" type="search" placeholder="Поиск по коду или наименованию..."
+               class="w-full max-w-sm border border-gray-200 rounded-xl px-3 py-1.5 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
       </div>
+
+      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-medium">
+              <th class="text-center px-3 py-2 w-20">Код</th>
+              <th class="text-left px-4 py-2">Наименование</th>
+              <th class="text-right px-4 py-2 w-32">Последний расход</th>
+              <th class="text-right px-4 py-2 w-32">Расход за месяц</th>
+              <th class="text-center px-3 py-2 w-20">Ед. изм.</th>
+              <th class="text-right px-4 py-2 w-28">Цена, ₽</th>
+              <th class="text-center px-3 py-2 w-16">Акт.</th>
+              <th class="px-3 py-2 w-28"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr v-if="!materials.length">
+              <td colspan="8" class="text-center py-8 text-gray-400 text-xs">Справочник пуст</td>
+            </tr>
+            <tr v-for="m in filtered" :key="m.id"
+                :class="['transition-colors', m.is_active ? 'hover:bg-gray-50' : 'opacity-40 hover:bg-gray-50']">
+              <td v-if="canManage" class="px-3 py-0.5 text-center font-mono text-xs text-blue-400 cursor-pointer hover:text-blue-600 hover:underline" @click="openEdit(m)">{{ m.code || '—' }}</td>
+              <td v-else class="px-3 py-0.5 text-center font-mono text-xs text-gray-400">{{ m.code || '—' }}</td>
+              <td class="px-4 py-0.5 text-gray-800 text-sm">{{ m.name }}</td>
+              <td class="px-4 py-0.5 text-right text-gray-500 text-xs">{{ m.last_used ? m.last_used.slice(0, 10) : 'никогда' }}</td>
+              <td class="px-4 py-0.5 text-right font-mono tabular-nums text-xs text-gray-600">
+                {{ m.month_qty > 0 ? `${m.month_qty} ${m.unit}` : '—' }}
+              </td>
+              <td class="px-3 py-0.5 text-gray-500 text-xs text-center">{{ m.unit }}</td>
+              <td class="px-4 py-0.5 text-right font-mono tabular-nums text-sm">{{ formatPrice(m.price) }}</td>
+              <td class="px-3 py-0.5 text-center">
+                <span :class="['inline-block w-2 h-2 rounded-full',
+                               m.is_active ? 'bg-green-500' : 'bg-gray-300']" />
+              </td>
+              <td class="px-3 py-0.5 text-right whitespace-nowrap">
+                <button v-if="canManage" @click="openEdit(m)"
+                        class="text-xs text-blue-600 hover:text-blue-800 mr-3 transition-colors">
+                  Изменить
+                </button>
+                <button v-if="canManage" @click="deactivate(m)"
+                        class="text-xs text-gray-300 hover:text-red-500 transition-colors">
+                  {{ m.is_active ? 'Откл' : 'Вкл' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'report'">
+      <MaterialsReport v-if="activeTab === 'report'" />
     </div>
 
     <!-- Модалка -->
@@ -143,8 +163,16 @@ import { ref, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
+import MaterialsReport from '@/Components/Materials/MaterialsReport.vue'
 
-const props = defineProps({ materials: Array, canManage: Boolean })
+const props = defineProps({ materials: Array, canManage: Boolean, canViewReport: Boolean })
+
+const tabs = [
+  { id: 'catalog', label: 'Справочник' },
+  { id: 'report',  label: 'Отчёт' },
+]
+const wantsReportTab = new URLSearchParams(window.location.search).get('tab') === 'report'
+const activeTab = ref(props.canViewReport && wantsReportTab ? 'report' : 'catalog')
 
 const search = ref('')
 const filtered = computed(() => {

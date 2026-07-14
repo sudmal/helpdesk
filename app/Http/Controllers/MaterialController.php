@@ -3,16 +3,81 @@ namespace App\Http\Controllers;
 
 use App\Models\{Material, TicketMaterial, Ticket};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class MaterialController extends Controller
 {
     public function index()
     {
+        $materials = Material::orderBy('code')->get();
+
+        $lastUsed  = $this->lastUsedByMaterial();
+        $monthStats = $this->usageSince(now()->subDays(30));
+
+        $materials = $materials->map(function ($m) use ($lastUsed, $monthStats) {
+            $m->last_used    = $lastUsed[$m->id] ?? null;
+            $m->month_qty    = $monthStats[$m->id]->qty ?? 0;
+            $m->month_amount = $monthStats[$m->id]->amount ?? 0;
+            return $m;
+        });
+
         return Inertia::render('Materials/Index', [
-            'materials'  => Material::orderBy('code')->get(),
-            'canManage'  => auth()->user()->hasPermission('materials.manage'),
+            'materials'     => $materials,
+            'canManage'     => auth()->user()->hasPermission('materials.manage'),
+            'canViewReport' => auth()->user()->can('manage-settings'),
         ]);
+    }
+
+    // Общий union расхода материалов (тикеты + заявки на подключение), без ограничения по дате
+    private function usageUnion()
+    {
+        $ticketSide = DB::table('ticket_materials as tm')
+            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+            ->whereNull('t.deleted_at')
+            ->selectRaw('tm.material_id, tm.quantity, tm.price_at_time, tm.created_at');
+
+        $crSide = DB::table('connection_request_materials as crm')
+            ->selectRaw('crm.material_id, crm.quantity, crm.price_at_time, crm.created_at');
+
+        return $ticketSide->unionAll($crSide);
+    }
+
+    private function lastUsedByMaterial()
+    {
+        $union = $this->usageUnion();
+
+        return DB::table(DB::raw("({$union->toSql()}) as x"))
+            ->mergeBindings($union)
+            ->whereNotNull('material_id')
+            ->selectRaw('material_id, MAX(created_at) as last_used')
+            ->groupBy('material_id')
+            ->pluck('last_used', 'material_id');
+    }
+
+    private function usageSince(\Carbon\Carbon $since)
+    {
+        // фильтр по дате внутри каждой ветки union'а (см. MaterialReportController — ->where() поверх
+        // готового union'а ломает порядок биндингов при mergeBindings)
+        $ticketSide = DB::table('ticket_materials as tm')
+            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+            ->whereNull('t.deleted_at')
+            ->where('tm.created_at', '>=', $since)
+            ->selectRaw('tm.material_id, tm.quantity, tm.price_at_time');
+
+        $crSide = DB::table('connection_request_materials as crm')
+            ->where('crm.created_at', '>=', $since)
+            ->selectRaw('crm.material_id, crm.quantity, crm.price_at_time');
+
+        $union = $ticketSide->unionAll($crSide);
+
+        return DB::table(DB::raw("({$union->toSql()}) as x"))
+            ->mergeBindings($union)
+            ->whereNotNull('material_id')
+            ->selectRaw('material_id, SUM(quantity) as qty, SUM(quantity * price_at_time) as amount')
+            ->groupBy('material_id')
+            ->get()
+            ->keyBy('material_id');
     }
 
     public function store(Request $request)
