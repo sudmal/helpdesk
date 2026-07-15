@@ -89,6 +89,9 @@ class User extends Authenticatable
     public function isOperator(): bool    { return $this->role?->slug === 'operator'; }
     public function isForeman(): bool     { return $this->role?->slug === 'foreman'; }
     public function isTechnician(): bool  { return $this->role?->slug === 'technician'; }
+    public function isPeo(): bool            { return $this->role?->slug === 'peo'; }
+    public function isLogistics(): bool       { return $this->role?->slug === 'logistics'; }
+    public function isSubscriberDept(): bool  { return $this->role?->slug === 'subscriber_dept'; }
     public function canManageSettings(): bool
     {
         return $this->isAdmin() || $this->isHeadSupport();
