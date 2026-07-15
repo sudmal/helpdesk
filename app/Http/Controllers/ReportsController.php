@@ -34,8 +34,18 @@ class ReportsController extends Controller
         return response()->json($this->territoryFrequency($from, $to));
     }
 
+    /**
+     * Перенесено во вкладку "Отчёты" раздела Акты (2026-07-15) — доступ шире,
+     * чем у общих Отчётов (manage-settings): ПЭО/Логистика/Абонотдел видят по
+     * своему reports.view, без него сюда не попадают. Роут остался прежним
+     * (reports.material-dynamics), middleware can:manage-settings снят с него
+     * в пользу этой явной проверки.
+     */
     public function materialDynamicsData(Request $request)
     {
+        $user = $request->user();
+        abort_unless($user->isAdmin() || $user->isHeadSupport() || $user->hasPermission('reports.view'), 403);
+
         [$from, $to] = $this->parseRange($request);
         return response()->json($this->materialDynamics($from, $to));
     }

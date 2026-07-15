@@ -84,58 +84,6 @@
       </div>
     </div>
 
-    <!-- Расход материалов -->
-    <div v-show="activeTab === 'materials'" class="p-4 space-y-4">
-      <div class="flex items-center justify-between">
-        <RangePicker :range="materials" />
-        <a :href="route('materials.index') + '?tab=report'" class="text-sm text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
-          Подробный отчёт →
-        </a>
-      </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 class="text-sm font-semibold text-gray-600 mb-4">Динамика расхода (ед.) по неделям</h2>
-          <div v-if="materials.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
-          <div v-else-if="!materials.state.data.weekly.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
-          <canvas v-else ref="materialQtyCanvas" style="max-height:280px" />
-        </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 class="text-sm font-semibold text-gray-600 mb-4">Динамика суммы (₽) по неделям</h2>
-          <div v-if="materials.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
-          <div v-else-if="!materials.state.data.weekly.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
-          <canvas v-else ref="materialAmtCanvas" style="max-height:280px" />
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Топ-10 материалов по сумме</div>
-        <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
-              <th class="text-center px-4 py-2.5 w-20">Код</th>
-              <th class="text-left px-4 py-2.5">Наименование</th>
-              <th class="text-center px-4 py-2.5 w-20">Ед.</th>
-              <th class="text-right px-4 py-2.5 w-28">Кол-во</th>
-              <th class="text-right px-4 py-2.5 w-36">Сумма, ₽</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr v-if="!materials.state.data.top.length">
-              <td colspan="5" class="text-center py-6 text-gray-400 text-xs">—</td>
-            </tr>
-            <tr v-for="(m, i) in materials.state.data.top" :key="i" class="hover:bg-gray-50">
-              <td class="px-4 py-1.5 text-center text-gray-400 font-mono text-xs">{{ m.code || '—' }}</td>
-              <td class="px-4 py-1.5 text-gray-800">{{ m.name }}</td>
-              <td class="px-4 py-1.5 text-center text-gray-500 text-xs">{{ m.unit }}</td>
-              <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ m.qty }}</td>
-              <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ formatMoney(m.amount) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-      </div>
-    </div>
-
     <!-- Соблюдение сроков -->
     <div v-show="activeTab === 'deadlines'" class="p-4 space-y-4">
       <RangePicker :range="deadlines" />
@@ -312,7 +260,6 @@ import { useReportRange } from '@/Composables/useReportRange'
 const tabs = [
   { id: 'brigade',      label: 'Нагрузка бригад' },
   { id: 'territory',    label: 'Территории' },
-  { id: 'materials',    label: 'Расход материалов' },
   { id: 'deadlines',    label: 'Соблюдение сроков' },
   { id: 'distribution', label: 'Распределение по дням' },
   { id: 'callcenter',   label: 'Обработка звонков' },
@@ -321,9 +268,10 @@ const tabs = [
 const activeTab = ref('brigade')
 
 // ── Каждая вкладка — независимый диапазон дат + свой запрос данных ──
+// "Расход материалов" перенесён во вкладку "Отчёты" раздела Акты (2026-07-15,
+// см. память project-acts-feature) — здесь больше не запрашивается.
 const brigade    = useReportRange('reports.brigade-load',        { labels: [], total: [], closed: [] })
 const territory  = useReportRange('reports.territory-frequency', { labels: [], values: [] })
-const materials  = useReportRange('reports.material-dynamics',   { weekly: { labels: [], qty: [], amount: [] }, top: [] })
 const deadlines  = useReportRange('reports.deadline-compliance', { labels: [], on_time: [], overdue: [], summary: { total: 0, on_time: 0, pct: 0 } })
 const callcenter = useReportRange('reports.call-stats',           { hours: [], summary: {} })
 
@@ -348,8 +296,6 @@ async function ensureDistributionLoaded() {
 
 const brigadeCanvas      = ref(null)
 const territoryCanvas    = ref(null)
-const materialQtyCanvas  = ref(null)
-const materialAmtCanvas  = ref(null)
 const deadlineCanvas     = ref(null)
 const distributionCanvas = ref(null)
 const callcenterCanvas   = ref(null)
@@ -380,10 +326,6 @@ const distTotals = computed(() =>
 const distGrandTotal = computed(() =>
   distTotals.value.reduce((a, b) => a + b.total, 0)
 )
-
-function formatMoney(val) {
-  return Number(val).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
 
 function rowPct(onTime, overdue) {
   const total = onTime + overdue
@@ -441,36 +383,6 @@ function buildTerritory() {
       scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
     },
   })
-}
-
-function buildMaterials() {
-  destroy('materialQty')
-  destroy('materialAmt')
-  const data = materials.state.data
-  const labels = data.weekly.labels
-  if (!labels.length) return
-  if (materialQtyCanvas.value) {
-    charts.materialQty = new Chart(materialQtyCanvas.value, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{ label: 'Кол-во', data: data.weekly.qty,
-          borderColor: C.blue, backgroundColor: C.blueAlpha, fill: true, tension: 0.35 }],
-      },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
-    })
-  }
-  if (materialAmtCanvas.value) {
-    charts.materialAmt = new Chart(materialAmtCanvas.value, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{ label: 'Сумма', data: data.weekly.amount,
-          borderColor: C.green, backgroundColor: C.greenAlpha, fill: true, tension: 0.35 }],
-      },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
-    })
-  }
 }
 
 function buildDeadline() {
@@ -635,7 +547,6 @@ function buildForTab(tab) {
   nextTick(() => {
     if (tab === 'brigade')      buildBrigade()
     if (tab === 'territory')    buildTerritory()
-    if (tab === 'materials')    buildMaterials()
     if (tab === 'deadlines')    buildDeadline()
     if (tab === 'distribution') buildDistribution()
     if (tab === 'callcenter')   buildCallcenter()
@@ -645,7 +556,6 @@ function buildForTab(tab) {
 function ensureLoadedForTab(tab) {
   if (tab === 'brigade')      brigade.ensureLoaded()
   if (tab === 'territory')    territory.ensureLoaded()
-  if (tab === 'materials')    materials.ensureLoaded()
   if (tab === 'deadlines')    deadlines.ensureLoaded()
   if (tab === 'callcenter')   callcenter.ensureLoaded()
   if (tab === 'distribution') ensureDistributionLoaded()
@@ -660,7 +570,6 @@ function switchTab(id) {
 // Перестраивать график вкладки при каждом новом ответе сервера (смена диапазона)
 watch(() => brigade.state.data,    () => nextTick(buildBrigade))
 watch(() => territory.state.data,  () => nextTick(buildTerritory))
-watch(() => materials.state.data,  () => nextTick(buildMaterials))
 watch(() => deadlines.state.data,  () => nextTick(buildDeadline))
 watch(() => callcenter.state.data, () => nextTick(buildCallcenter))
 watch(() => distributionState.data, () => nextTick(buildDistribution))

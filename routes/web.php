@@ -175,7 +175,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('can:manage-settings')->get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::middleware('can:manage-settings')->get('/reports/brigade-load', [App\Http\Controllers\ReportsController::class, 'brigadeLoadData'])->name('reports.brigade-load');
     Route::middleware('can:manage-settings')->get('/reports/territory-frequency', [App\Http\Controllers\ReportsController::class, 'territoryFrequencyData'])->name('reports.territory-frequency');
-    Route::middleware('can:manage-settings')->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
+    // Не manage-settings — доступ теперь у reports.view (ПЭО/Логистика/Абонотдел) тоже, см. ReportsController::materialDynamicsData
+    Route::middleware(['auth', 'active'])->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
     Route::middleware('can:manage-settings')->get('/reports/deadline-compliance', [App\Http\Controllers\ReportsController::class, 'deadlineComplianceData'])->name('reports.deadline-compliance');
     Route::middleware('can:manage-settings')->get('/reports/distribution', [App\Http\Controllers\ReportsController::class, 'distributionData'])->name('reports.distribution');
     Route::middleware('can:manage-settings')->get('/reports/call-stats', [App\Http\Controllers\ReportsController::class, 'callStatsData'])->name('reports.call-stats');

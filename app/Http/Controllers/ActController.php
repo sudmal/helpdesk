@@ -16,13 +16,18 @@ class ActController extends Controller
         $user = auth()->user();
         $tab  = in_array($request->tab, ['active', 'archive', 'reports']) ? $request->tab : 'active';
 
-        // Отчёты пока пустая заглушка — отдельного запроса под неё нет.
+        // Отчёты — сама вкладка видна всем, кто видит Акты, но содержимое (пока
+        // это перенесённый сюда "Расход материалов" из общих Отчётов) доступно
+        // только тем, у кого reports.view/admin/head_support — ПЭО/Логистика/
+        // Абонотдел получили reports.view ещё в миграции ролей 2026-07-15,
+        // бригадир/монтажник — нет (см. память project-acts-feature).
         if ($tab === 'reports') {
             return Inertia::render('Acts/Index', [
-                'tab'        => $tab,
-                'acts'       => null,
-                'filters'    => [],
-                'authUserId' => $user->id,
+                'tab'             => $tab,
+                'acts'            => null,
+                'filters'         => [],
+                'authUserId'      => $user->id,
+                'canViewReports'  => $user->isAdmin() || $user->isHeadSupport() || $user->hasPermission('reports.view'),
             ]);
         }
 
