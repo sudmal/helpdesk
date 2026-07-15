@@ -179,6 +179,16 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('can:manage-settings')->get('/reports/deadline-compliance', [App\Http\Controllers\ReportsController::class, 'deadlineComplianceData'])->name('reports.deadline-compliance');
     Route::middleware('can:manage-settings')->get('/reports/distribution', [App\Http\Controllers\ReportsController::class, 'distributionData'])->name('reports.distribution');
     Route::middleware('can:manage-settings')->get('/reports/call-stats', [App\Http\Controllers\ReportsController::class, 'callStatsData'])->name('reports.call-stats');
+    Route::middleware(['auth', 'active'])->prefix('acts')->name('acts.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ActController::class, 'index'])->name('index');
+        Route::get('/{act}', [App\Http\Controllers\ActController::class, 'show'])->name('show');
+        Route::post('/{act}/approve', [App\Http\Controllers\ActController::class, 'approve'])->name('approve');
+        Route::post('/{act}/return', [App\Http\Controllers\ActController::class, 'returnAct'])->name('return');
+        Route::post('/{act}/process-peo', [App\Http\Controllers\ActController::class, 'processPeo'])->name('process-peo');
+        Route::post('/{act}/process-logistics', [App\Http\Controllers\ActController::class, 'processLogistics'])->name('process-logistics');
+        Route::post('/{act}/complete', [App\Http\Controllers\ActController::class, 'complete'])->name('complete');
+    });
+
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
 
 });
