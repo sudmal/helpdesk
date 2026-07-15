@@ -376,32 +376,39 @@ class TicketController extends Controller
 
     public function freeSlot(Request $request): \Illuminate\Http\JsonResponse
     {
-        $workStart = SystemSetting::get('work_hours_start', '09:00');
-        $workEnd   = SystemSetting::get('work_hours_end',   '17:00');
-        $step      = (int) SystemSetting::get('schedule_step_minutes', 30);
-        $brigadeId = $request->integer('brigade_id') ?: null;
+        $workStart     = SystemSetting::get('work_hours_start', '09:00');
+        $workEnd       = SystemSetting::get('work_hours_end',   '17:00');
+        $step          = (int) SystemSetting::get('schedule_step_minutes', 30);
+        $brigadeId     = $request->integer('brigade_id') ?: null;
+        $serviceTypeId = $request->integer('service_type_id') ?: null;
 
         [$sh, $sm] = array_map('intval', explode(':', $workStart));
         [$eh, $em] = array_map('intval', explode(':', $workEnd));
         $startMins = $sh * 60 + $sm;
         $endMins   = $eh * 60 + $em;
-        $day = today();
+        // Поиск стартует с переданной даты (например, когда пользователь уже выбрал день
+        // вручную и слот оказался занят) — по умолчанию, как и раньше, с сегодня.
+        $day = $request->filled('date') ? \Carbon\Carbon::parse($request->date)->startOfDay() : today();
         $nowMins = now()->hour * 60 + now()->minute;
 
         for ($attempt = 0; $attempt < 60; $attempt++, $day->addDay()) {
-            // Для сегодня начинаем с ближайшего будущего слота, для остальных — с начала дня
-            $fromMins = ($attempt === 0) ? max($startMins, $nowMins + $step) : $startMins;
+            // Для сегодняшнего дня начинаем с ближайшего будущего слота, для остальных — с начала дня
+            $fromMins = $day->isToday() ? max($startMins, $nowMins + $step) : $startMins;
 
             if ($fromMins > $endMins) continue;
 
+            // Те же условия, что и в TicketService::checkSlotConflict — иначе "свободный"
+            // слот может тут же оказаться занятым при реальной проверке на сохранении.
             $occupied = Ticket::whereDate('scheduled_at', $day->toDateString())
                 ->when($brigadeId, fn($q) => $q->where('brigade_id', $brigadeId))
                 ->whereNotNull('scheduled_at')
+                ->whereHas('status', fn($q) => $q->where('is_final', false))
+                ->when($serviceTypeId, fn($q) => $q->where('service_type_id', $serviceTypeId))
                 ->pluck('scheduled_at')
                 ->mapWithKeys(fn($dt) => [\Carbon\Carbon::parse($dt)->format('H:i') => true]);
 
             for ($m = $fromMins; $m <= $endMins; $m += $step) {
-                $slot = sprintf('%02d:%02d', intdiv($m, 60), $m % $step);
+                $slot = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
                 if (!$occupied->has($slot)) {
                     return response()->json(['datetime' => $day->format('Y-m-d') . 'T' . $slot]);
                 }

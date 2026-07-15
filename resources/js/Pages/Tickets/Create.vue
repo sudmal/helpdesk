@@ -460,18 +460,40 @@ function applyLookupAddress(address, apartment) {
   phoneLookup.value = null
 }
 
-async function fetchFreeSlot(brigadeId = null) {
+async function fetchFreeSlot(brigadeId = null, date = null) {
   try {
     const params = {}
     if (brigadeId) params.brigade_id = brigadeId
+    if (date) params.date = date
+    if (form.service_type_id) params.service_type_id = form.service_type_id
     const { data } = await axios.get(route('tickets.free-slot'), { params })
     if (data.datetime) form.scheduled_at = data.datetime
   } catch { /* keep default */ }
 }
 
-onMounted(() => fetchFreeSlot(form.brigade_id || null))
+onMounted(() => fetchFreeSlot(form.brigade_id || null, todayDate()))
 
-watch(() => form.brigade_id, (id) => { if (id) fetchFreeSlot(id) })
+watch(() => form.brigade_id, (id) => { if (id) fetchFreeSlot(id, scheduledDatePart()) })
+
+// Пользователь вручную поменял дату выезда (бригада уже выбрана) — сразу предлагаем
+// первый свободный слот на этот день и подставляем его время, вместо того чтобы
+// узнавать о занятости только после попытки сохранить заявку.
+let lastFreeSlotDate = todayDate()
+watch(() => form.scheduled_at, (val) => {
+  const datePart = val ? val.split('T')[0] : null
+  if (datePart && datePart !== lastFreeSlotDate) {
+    lastFreeSlotDate = datePart
+    if (form.brigade_id) fetchFreeSlot(form.brigade_id, datePart)
+  }
+})
+
+function todayDate() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function scheduledDatePart() {
+  return form.scheduled_at ? form.scheduled_at.split('T')[0] : todayDate()
+}
 
 // Бригады по территории адреса (пустой адрес = все бригады)
 const availableBrigades = computed(() => {
@@ -617,7 +639,11 @@ function submitTicket() {
       submitted.value = false
     },
     onError: (errors) => {
-      console.log('Server errors:', errors)
+      // Слот заняли, пока пользователь заполнял форму (гонка) — сразу подставляем
+      // следующий свободный на ту же дату, а не просто показываем ошибку.
+      if (errors.scheduled_at && form.brigade_id) {
+        fetchFreeSlot(form.brigade_id, scheduledDatePart())
+      }
     }
   })
 }
