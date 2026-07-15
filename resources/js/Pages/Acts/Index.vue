@@ -112,10 +112,22 @@
                   <td class="px-2 py-1 whitespace-nowrap">
                     <span :class="statusClass(row.act.status)" class="px-1.5 py-0.5 rounded font-medium">{{ statusLabels[row.act.status] || row.act.status }}</span>
                   </td>
-                  <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.foreman_reviewed_at) }}</td>
-                  <td class="px-2 py-1 whitespace-nowrap">{{ row.act.type === 'regular' ? stageMark(row.act.peo_processed_at) : '—' }}</td>
-                  <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.logistics_processed_at) }}</td>
-                  <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.subscriber_dept_completed_at) }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap">
+                    <span v-if="row.act.foreman_reviewed_at" class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">✓</span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="px-2 py-1 whitespace-nowrap">
+                    <span v-if="row.act.type === 'regular' && row.act.peo_processed_at" class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">✓</span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="px-2 py-1 whitespace-nowrap">
+                    <span v-if="row.act.logistics_processed_at" class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">✓</span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="px-2 py-1 whitespace-nowrap">
+                    <span v-if="row.act.subscriber_dept_completed_at" class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">✓</span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
                 </tr>
               </template>
               <tr v-if="!acts.data.length">
@@ -256,10 +268,6 @@ function statusClass(status) {
     pending_subscriber_dept: 'bg-indigo-100 text-indigo-700',
     completed:               'bg-green-100 text-green-700',
   }[status] || 'bg-gray-100 text-gray-600'
-}
-
-function stageMark(at) {
-  return at ? '✓' : '—'
 }
 
 function fmtDate(d) {
