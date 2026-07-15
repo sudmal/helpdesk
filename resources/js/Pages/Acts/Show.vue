@@ -4,7 +4,7 @@
 
     <div class="max-w-3xl mx-auto space-y-4">
 
-      <!-- Шапка -->
+      <!-- Шапка: badges + действия -->
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -14,9 +14,20 @@
               Заявка #{{ act.ticket.number }}
             </button>
           </div>
-          <div class="flex gap-2">
+          <div class="flex items-center gap-2 flex-wrap justify-end">
             <span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-medium">{{ typeLabel(act.type) }}</span>
             <span :class="statusClass(act.status)" class="px-2 py-1 rounded-lg text-xs font-medium">{{ statusLabels[act.status] || act.status }}</span>
+
+            <button v-if="can.acknowledge" @click="acknowledge" class="btn-primary text-sm">Принято</button>
+            <template v-if="can.foremanReview">
+              <button @click="approve" :disabled="!canApprove"
+                      :title="!canApprove ? 'Подтвердите все позиции материалов ниже' : ''"
+                      class="btn-primary text-sm disabled:opacity-40 disabled:cursor-not-allowed">Утвердить</button>
+              <button @click="showReturnModal = true" class="btn-outline text-sm">Вернуть на доработку</button>
+            </template>
+            <button v-if="can.processPeo" @click="post('acts.process-peo')" class="btn-primary text-sm">Отметить проведённым (ПЭО)</button>
+            <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-primary text-sm">Отметить проведённым (Логистика)</button>
+            <button v-if="can.complete" @click="post('acts.complete')" class="btn-primary text-sm">Завершить акт</button>
           </div>
         </div>
 
@@ -36,6 +47,11 @@
             <p class="text-sm font-medium text-gray-700">{{ act.creator?.name || '—' }}</p>
           </div>
         </div>
+      </div>
+
+      <div v-if="act.materials_changed_at" class="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+        <span>⚠ Бригадир изменил состав акта — изменения отмечены красным ниже.</span>
+        <button v-if="can.acknowledge" @click="acknowledge" class="btn-primary text-sm shrink-0">Принято</button>
       </div>
 
       <!-- Прогресс по этапам -->
@@ -76,22 +92,9 @@
         </div>
       </div>
 
-      <!-- Действия -->
-      <div v-if="hasAnyAction" class="bg-white rounded-2xl border border-gray-200 p-5">
-        <h3 class="font-medium text-sm text-gray-700 mb-3">Действия</h3>
-        <div class="flex flex-wrap gap-2">
-          <template v-if="can.foremanReview">
-            <button @click="approve" class="btn-primary text-sm">Утвердить</button>
-            <button @click="showReturnModal = true" class="btn-outline text-sm">Вернуть на доработку</button>
-          </template>
-          <button v-if="can.processPeo" @click="post('acts.process-peo')" class="btn-primary text-sm">Отметить проведённым (ПЭО)</button>
-          <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-primary text-sm">Отметить проведённым (Логистика)</button>
-          <button v-if="can.complete" @click="post('acts.complete')" class="btn-primary text-sm">Завершить акт</button>
-        </div>
-      </div>
-
       <!-- Материалы -->
-      <div v-if="act.materials?.length" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div v-if="act.materials?.length || removedPending.length || can.editMaterials"
+           class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <h3 class="font-medium text-sm text-gray-700">📦 Расходные материалы</h3>
           <span class="text-sm font-semibold text-blue-600">Итого: {{ totalMaterials }} ₽</span>
@@ -99,36 +102,87 @@
         <table class="w-full text-xs">
           <thead class="bg-gray-50 text-[11px] text-gray-400 uppercase tracking-wide">
             <tr>
+              <th v-if="can.foremanReview && act.materials?.length" class="px-2 py-2 text-center">
+                <input type="checkbox" :checked="allChecked" @change="toggleAll" />
+              </th>
               <th class="px-3 py-2 text-left">Код</th>
               <th class="px-4 py-2 text-left">Материал</th>
               <th class="px-3 py-2 text-right">Кол-во</th>
               <th class="px-3 py-2 text-right">Цена</th>
               <th class="px-3 py-2 text-right">Сумма</th>
+              <th v-if="can.editMaterials" class="px-3 py-2 text-right">Действия</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="m in act.materials" :key="m.id">
+            <tr v-for="m in act.materials" :key="m.id" :class="isMaterialHighlighted(m.id) ? 'bg-red-50' : ''">
+              <td v-if="can.foremanReview && act.materials?.length" class="px-2 py-2 text-center">
+                <input type="checkbox" v-model="checkedMaterials[m.id]" />
+              </td>
               <td class="px-3 py-2 text-center text-gray-400 font-mono text-xs">{{ m.material_code || '—' }}</td>
-              <td class="px-4 py-2 text-gray-800">{{ m.material_name }}</td>
-              <td class="px-3 py-2 text-right">{{ m.quantity }} {{ m.material_unit }}</td>
+              <td class="px-4 py-2 text-gray-800">
+                {{ m.material_name }}
+                <span v-if="isMaterialHighlighted(m.id)" class="text-red-500 text-[10px] ml-1">изменено бригадиром</span>
+              </td>
+              <td class="px-3 py-2 text-right">
+                <template v-if="can.editMaterials && editingId === m.id">
+                  <input v-model.number="editQty" type="number" step="0.001" min="0.001"
+                         class="w-20 border border-gray-200 rounded px-1 py-0.5 text-right" />
+                </template>
+                <template v-else>{{ m.quantity }} {{ m.material_unit }}</template>
+              </td>
               <td class="px-3 py-2 text-right">{{ m.price_at_time }} ₽</td>
               <td class="px-3 py-2 text-right font-medium">{{ (m.price_at_time * m.quantity).toFixed(2) }} ₽</td>
+              <td v-if="can.editMaterials" class="px-3 py-2 text-right whitespace-nowrap">
+                <template v-if="editingId === m.id">
+                  <button @click="saveEdit(m)" class="text-green-600 hover:text-green-800 mr-2">Сохранить</button>
+                  <button @click="editingId = null" class="text-gray-400 hover:text-gray-600">Отмена</button>
+                </template>
+                <template v-else>
+                  <button @click="startEdit(m)" class="text-blue-600 hover:text-blue-800 mr-2">Изменить</button>
+                  <button @click="removeMaterialRow(m)" class="text-red-500 hover:text-red-700">Удалить</button>
+                </template>
+              </td>
+            </tr>
+            <tr v-for="h in removedPending" :key="'removed-' + h.id" class="bg-red-50 text-red-500">
+              <td v-if="can.foremanReview && act.materials?.length"></td>
+              <td class="px-3 py-2 text-center text-xs">—</td>
+              <td class="px-4 py-2 line-through" colspan="3">Удалено бригадиром: {{ h.old_value }}</td>
+              <td class="px-3 py-2 text-right text-xs">—</td>
+              <td v-if="can.editMaterials"></td>
             </tr>
           </tbody>
         </table>
+
+        <!-- Добавить материал (только бригадир, пока акт не утверждён) -->
+        <div v-if="can.editMaterials" class="flex flex-wrap gap-2 items-center px-4 py-3 border-t border-gray-100 bg-gray-50">
+          <select v-model="newMaterialId" class="field-input text-sm flex-1 min-w-40">
+            <option value="">— выбрать материал —</option>
+            <option v-for="mc in materialsCatalog" :key="mc.id" :value="mc.id">
+              {{ mc.code ? '[' + mc.code + '] ' : '' }}{{ mc.name }} — {{ mc.price }} ₽/{{ mc.unit }}
+            </option>
+          </select>
+          <input v-model.number="newMaterialQty" type="number" step="0.001" min="0.001"
+                 placeholder="Кол-во" class="field-input text-sm w-24" />
+          <button @click="addMaterialRow" :disabled="!newMaterialId || !newMaterialQty"
+                  class="btn-primary text-sm disabled:opacity-40">+ Добавить</button>
+        </div>
       </div>
 
       <!-- История -->
       <div v-if="act.history?.length" class="bg-white rounded-2xl border border-gray-200 p-5">
         <h3 class="font-medium text-sm text-gray-700 mb-3">История</h3>
         <div class="space-y-2.5">
-          <div v-for="h in act.history" :key="h.id" class="text-xs">
+          <div v-for="h in act.history" :key="h.id" class="text-xs"
+               :class="isUnackedEntry(h) ? 'bg-red-50 rounded-lg px-2 py-1.5 -mx-2' : ''">
             <div class="flex flex-wrap items-baseline gap-x-2">
               <span class="text-gray-400 whitespace-nowrap font-mono">{{ fmtDateTime(h.created_at) }}</span>
-              <span class="text-gray-800 font-medium">{{ h.user?.name || 'Система' }}</span>
-              <span class="text-gray-500">— {{ actionLabel(h.action) }}</span>
+              <span :class="isUnackedEntry(h) ? 'text-red-700 font-semibold' : 'text-gray-800 font-medium'">{{ h.user?.name || 'Система' }}</span>
+              <span :class="isUnackedEntry(h) ? 'text-red-600' : 'text-gray-500'">— {{ actionLabel(h.action) }}</span>
             </div>
-            <p v-if="h.new_value" class="text-gray-400 mt-0.5 pl-1">↳ {{ h.new_value }}</p>
+            <p v-if="h.new_value || (h.action === 'material_removed' && h.old_value)"
+               class="mt-0.5 pl-1" :class="isUnackedEntry(h) ? 'text-red-500' : 'text-gray-400'">
+              ↳ {{ h.action === 'material_removed' ? h.old_value : h.new_value }}
+            </p>
           </div>
         </div>
       </div>
@@ -152,13 +206,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
   act: Object,
   can: Object,
+  materialsCatalog: { type: Array, default: () => [] },
 })
 
 const statusLabels = {
@@ -172,10 +227,6 @@ const statusLabels = {
 
 const totalMaterials = computed(() =>
   (props.act.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
-)
-
-const hasAnyAction = computed(() =>
-  props.can.foremanReview || props.can.processPeo || props.can.processLogistics || props.can.complete
 )
 
 function typeLabel(type) {
@@ -201,6 +252,10 @@ function actionLabel(action) {
     peo_processed:        'Проведён ПЭО',
     logistics_processed:  'Проведён Логистикой',
     completed:            'Завершён Абонотделом',
+    material_added:       'Бригадир добавил материал',
+    material_changed:     'Бригадир изменил количество',
+    material_removed:     'Бригадир удалил материал',
+    acknowledged:         'Изменения подтверждены монтажником',
   }[action] || action
 }
 
@@ -216,6 +271,10 @@ function approve() {
   post('acts.approve')
 }
 
+function acknowledge() {
+  post('acts.acknowledge')
+}
+
 const showReturnModal = ref(false)
 const returnComment = ref('')
 
@@ -223,6 +282,79 @@ function submitReturn() {
   router.post(route('acts.return', props.act.id), { comment: returnComment.value }, {
     preserveScroll: true,
     onSuccess: () => { showReturnModal.value = false; returnComment.value = '' },
+  })
+}
+
+// ── Чеклист подтверждения позиций бригадиром (гейт для "Утвердить") ──
+const checkedMaterials = reactive({})
+watch(() => props.act.materials, (mats) => {
+  Object.keys(checkedMaterials).forEach(k => delete checkedMaterials[k])
+  ;(mats ?? []).forEach(m => { checkedMaterials[m.id] = false })
+}, { immediate: true })
+
+const allChecked = computed(() => {
+  const mats = props.act.materials ?? []
+  return mats.length === 0 || mats.every(m => checkedMaterials[m.id])
+})
+
+const canApprove = computed(() => allChecked.value)
+
+function toggleAll(e) {
+  const val = e.target.checked
+  ;(props.act.materials ?? []).forEach(m => { checkedMaterials[m.id] = val })
+}
+
+// ── Подсветка правок бригадира, ждущих "Принято" от монтажника ──
+const unacknowledgedHistory = computed(() =>
+  (props.act.history ?? []).filter(h =>
+    !h.acknowledged_at && ['material_added', 'material_changed', 'material_removed'].includes(h.action)
+  )
+)
+
+const removedPending = computed(() =>
+  unacknowledgedHistory.value.filter(h => h.action === 'material_removed')
+)
+
+function isMaterialHighlighted(materialId) {
+  return unacknowledgedHistory.value.some(h => h.related_material_id === materialId)
+}
+
+function isUnackedEntry(h) {
+  return !h.acknowledged_at && ['material_added', 'material_changed', 'material_removed'].includes(h.action)
+}
+
+// ── Редактирование состава акта (только бригадир, пока pending_foreman) ──
+const editingId = ref(null)
+const editQty = ref(0)
+
+function startEdit(m) {
+  editingId.value = m.id
+  editQty.value = m.quantity
+}
+
+function saveEdit(m) {
+  router.put(route('acts.materials.update', [props.act.id, m.id]), { quantity: editQty.value }, {
+    preserveScroll: true,
+    onSuccess: () => { editingId.value = null },
+  })
+}
+
+function removeMaterialRow(m) {
+  if (!confirm(`Удалить материал "${m.material_name}" из акта?`)) return
+  router.delete(route('acts.materials.destroy', [props.act.id, m.id]), { preserveScroll: true })
+}
+
+const newMaterialId = ref('')
+const newMaterialQty = ref(1)
+
+function addMaterialRow() {
+  if (!newMaterialId.value || !newMaterialQty.value) return
+  router.post(route('acts.materials.store', props.act.id), {
+    material_id: newMaterialId.value,
+    quantity: newMaterialQty.value,
+  }, {
+    preserveScroll: true,
+    onSuccess: () => { newMaterialId.value = ''; newMaterialQty.value = 1 },
   })
 }
 </script>

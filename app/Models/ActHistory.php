@@ -8,7 +8,12 @@ class ActHistory extends Model
 {
     protected $table = 'act_history';
 
-    protected $fillable = ['act_id', 'user_id', 'action', 'field', 'old_value', 'new_value'];
+    protected $fillable = [
+        'act_id', 'user_id', 'action', 'field', 'old_value', 'new_value',
+        'acknowledged_at', 'related_material_id',
+    ];
+
+    protected $casts = ['acknowledged_at' => 'datetime'];
 
     public function act(): BelongsTo  { return $this->belongsTo(Act::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }

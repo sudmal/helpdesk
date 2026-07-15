@@ -39,6 +39,7 @@ class Act extends Model
         'peo_processed_by', 'peo_processed_at',
         'logistics_processed_by', 'logistics_processed_at',
         'subscriber_dept_completed_by', 'subscriber_dept_completed_at',
+        'materials_changed_at',
     ];
 
     protected $casts = [
@@ -46,6 +47,7 @@ class Act extends Model
         'peo_processed_at'             => 'datetime',
         'logistics_processed_at'       => 'datetime',
         'subscriber_dept_completed_at' => 'datetime',
+        'materials_changed_at'         => 'datetime',
     ];
 
     public function ticket(): BelongsTo   { return $this->belongsTo(Ticket::class); }

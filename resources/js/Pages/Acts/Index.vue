@@ -68,6 +68,7 @@
           <table class="w-full text-xs">
             <thead class="bg-gray-50 text-[11px] text-gray-400 uppercase tracking-wide">
               <tr v-if="tab === 'active'">
+                <th class="px-2 py-1 text-left whitespace-nowrap">Создан</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Номер</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Заявка</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Тип</th>
@@ -76,7 +77,6 @@
                 <th class="px-2 py-1 text-left whitespace-nowrap">ПЭО</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Логистика</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Абонотдел</th>
-                <th class="px-2 py-1 text-left whitespace-nowrap">Создан</th>
               </tr>
               <tr v-else>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Номер</th>
@@ -92,13 +92,19 @@
             <!-- Активные: группировка по территории/бригаде -->
             <tbody v-if="tab === 'active'" class="divide-y divide-gray-100">
               <template v-for="row in groupedRows" :key="row.key">
-                <tr v-if="row.isGroup" class="bg-gray-50/80">
-                  <td colspan="9" class="px-2 py-1 text-[11px] font-semibold text-gray-600 whitespace-nowrap">
-                    {{ row.territoryName }}<span class="text-gray-400 font-normal"> · {{ row.brigadeName }}</span>
+                <tr v-if="row.isGroup" class="bg-gray-100">
+                  <td colspan="9" class="px-2 py-1.5 text-center text-xs font-bold text-gray-700">
+                    {{ row.territoryName }} <span class="text-gray-500 font-semibold">· {{ row.brigadeName }}</span>
                   </td>
                 </tr>
-                <tr v-else class="hover:bg-gray-50 cursor-pointer" @click="router.get(route('acts.show', row.act.id))">
-                  <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">{{ row.act.number }}</td>
+                <tr v-else class="hover:bg-gray-50 cursor-pointer" :class="needsAck(row.act) ? 'bg-red-50/70' : ''"
+                    @click="router.get(route('acts.show', row.act.id))">
+                  <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(row.act.created_at) }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">
+                    {{ row.act.number }}
+                    <span v-if="needsAck(row.act)" class="ml-1 text-red-600 font-bold"
+                          title="Бригадир изменил состав акта — есть неподтверждённые изменения">(!)</span>
+                  </td>
                   <td class="px-2 py-1 whitespace-nowrap text-blue-600">#{{ row.act.ticket?.number }}</td>
                   <td class="px-2 py-1 whitespace-nowrap">
                     <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(row.act.type) }}</span>
@@ -110,7 +116,6 @@
                   <td class="px-2 py-1 whitespace-nowrap">{{ row.act.type === 'regular' ? stageMark(row.act.peo_processed_at) : '—' }}</td>
                   <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.logistics_processed_at) }}</td>
                   <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.subscriber_dept_completed_at) }}</td>
-                  <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(row.act.created_at) }}</td>
                 </tr>
               </template>
               <tr v-if="!acts.data.length">
@@ -162,10 +167,17 @@ import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
-  tab:     { type: String, default: 'active' },
-  acts:    { type: Object, default: null },
-  filters: { type: Object, default: () => ({}) },
+  tab:        { type: String, default: 'active' },
+  acts:       { type: Object, default: null },
+  filters:    { type: Object, default: () => ({}) },
+  authUserId: { type: Number, default: null },
 })
+
+// "(!)" виден только тому, кто создал акт (обычно монтажник) — это к нему
+// относятся неподтверждённые правки бригадира в составе акта.
+function needsAck(act) {
+  return !!act.materials_changed_at && act.created_by === props.authUserId
+}
 
 const tabs = [
   { id: 'active',  label: 'Активные' },

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Act, Brigade, Territory};
+use App\Models\{Act, ActMaterial, Brigade, Material, Territory};
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -19,9 +19,10 @@ class ActController extends Controller
         // Отчёты пока пустая заглушка — отдельного запроса под неё нет.
         if ($tab === 'reports') {
             return Inertia::render('Acts/Index', [
-                'tab'     => $tab,
-                'acts'    => null,
-                'filters' => [],
+                'tab'        => $tab,
+                'acts'       => null,
+                'filters'    => [],
+                'authUserId' => $user->id,
             ]);
         }
 
@@ -98,9 +99,10 @@ class ActController extends Controller
         $acts = $query->paginate(30)->withQueryString();
 
         return Inertia::render('Acts/Index', [
-            'tab'     => $tab,
-            'acts'    => $acts,
-            'filters' => $request->only(['status', 'type', 'search', 'sort', 'sort_dir']),
+            'tab'        => $tab,
+            'acts'       => $acts,
+            'filters'    => $request->only(['status', 'type', 'search', 'sort', 'sort_dir']),
+            'authUserId' => $user->id,
         ]);
     }
 
@@ -124,7 +126,10 @@ class ActController extends Controller
                 'processPeo'       => $user->can('processPeo', $act),
                 'processLogistics' => $user->can('processLogistics', $act),
                 'complete'         => $user->can('complete', $act),
+                'editMaterials'    => $user->can('editMaterials', $act),
+                'acknowledge'      => $user->can('acknowledge', $act),
             ],
+            'materialsCatalog' => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
         ]);
     }
 
@@ -205,6 +210,84 @@ class ActController extends Controller
         return back()->with('success', 'Акт завершён и отправлен в архив');
     }
 
+    /** Бригадир добавляет новую позицию материала — только в pending_foreman (см. ActPolicy::editMaterials) */
+    public function addMaterial(Request $request, Act $act): RedirectResponse
+    {
+        $this->authorize('editMaterials', $act);
+        $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'quantity'    => 'required|numeric|min:0.001',
+        ]);
+        $user = auth()->user();
+        $material = Material::findOrFail($request->material_id);
+
+        $actMaterial = $act->materials()->create([
+            'material_id'   => $material->id,
+            'material_name' => $material->name,
+            'material_code' => $material->code,
+            'material_unit' => $material->unit,
+            'price_at_time' => $material->price,
+            'quantity'      => $request->quantity,
+            'created_by'    => $user->id,
+        ]);
+
+        $this->flagMaterialsChanged($act, $user->id);
+        $this->logHistory(
+            $act, $user->id, 'material_added', null, null,
+            "{$actMaterial->material_name} — {$actMaterial->quantity} {$actMaterial->material_unit}",
+            $actMaterial->id
+        );
+
+        return back()->with('success', 'Материал добавлен в акт');
+    }
+
+    /** Бригадир меняет количество существующей позиции */
+    public function updateMaterial(Request $request, Act $act, ActMaterial $material): RedirectResponse
+    {
+        $this->authorize('editMaterials', $act);
+        abort_unless($material->act_id === $act->id, 404);
+        $request->validate(['quantity' => 'required|numeric|min:0.001']);
+        $user = auth()->user();
+
+        $old = "{$material->material_name} — {$material->quantity} {$material->material_unit}";
+        $material->update(['quantity' => $request->quantity]);
+        $new = "{$material->material_name} — {$material->quantity} {$material->material_unit}";
+
+        $this->flagMaterialsChanged($act, $user->id);
+        $this->logHistory($act, $user->id, 'material_changed', 'quantity', $old, $new, $material->id);
+
+        return back()->with('success', 'Материал изменён');
+    }
+
+    /** Бригадир удаляет позицию — сама запись стирается, но остаётся в истории (для подсветки монтажнику) */
+    public function removeMaterial(Act $act, ActMaterial $material): RedirectResponse
+    {
+        $this->authorize('editMaterials', $act);
+        abort_unless($material->act_id === $act->id, 404);
+        $user = auth()->user();
+
+        $old = "{$material->material_name} — {$material->quantity} {$material->material_unit}";
+        $material->delete();
+
+        $this->flagMaterialsChanged($act, $user->id);
+        $this->logHistory($act, $user->id, 'material_removed', null, $old, null);
+
+        return back()->with('success', 'Материал удалён из акта');
+    }
+
+    /** Монтажник подтверждает, что увидел правки бригадира в составе акта */
+    public function acknowledge(Act $act): RedirectResponse
+    {
+        $this->authorize('acknowledge', $act);
+        $user = auth()->user();
+
+        $act->history()->whereNull('acknowledged_at')->update(['acknowledged_at' => now()]);
+        $act->update(['materials_changed_at' => null]);
+        $this->logHistory($act, $user->id, 'acknowledged');
+
+        return back()->with('success', 'Изменения подтверждены');
+    }
+
     /**
      * Требуемые для гейта Абонотдела стороны зависят от типа акта:
      * regular — ПЭО + Логистика, repair — только Логистика (см. память project-acts-feature).
@@ -223,14 +306,30 @@ class ActController extends Controller
         $act->status = $done ? 'pending_subscriber_dept' : 'processing';
     }
 
-    private function logHistory(Act $act, int $userId, string $action, ?string $field = null, ?string $old = null, ?string $new = null): void
+    /**
+     * Флаг "монтажнику есть что подтвердить" — не поднимаем его, если бригадир
+     * правит акт, который сам же и создал (нет смысла уведомлять самого себя).
+     */
+    private function flagMaterialsChanged(Act $act, int $editorId): void
     {
+        if ($act->created_by !== $editorId) {
+            $act->materials_changed_at = now();
+            $act->save();
+        }
+    }
+
+    private function logHistory(
+        Act $act, int $userId, string $action,
+        ?string $field = null, ?string $old = null, ?string $new = null,
+        ?int $relatedMaterialId = null
+    ): void {
         $act->history()->create([
-            'user_id'   => $userId,
-            'action'    => $action,
-            'field'     => $field,
-            'old_value' => $old,
-            'new_value' => $new,
+            'user_id'             => $userId,
+            'action'              => $action,
+            'field'               => $field,
+            'old_value'           => $old,
+            'new_value'           => $new,
+            'related_material_id' => $relatedMaterialId,
         ]);
     }
 }

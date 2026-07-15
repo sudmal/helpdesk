@@ -187,6 +187,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/{act}/process-peo', [App\Http\Controllers\ActController::class, 'processPeo'])->name('process-peo');
         Route::post('/{act}/process-logistics', [App\Http\Controllers\ActController::class, 'processLogistics'])->name('process-logistics');
         Route::post('/{act}/complete', [App\Http\Controllers\ActController::class, 'complete'])->name('complete');
+        Route::post('/{act}/materials', [App\Http\Controllers\ActController::class, 'addMaterial'])->name('materials.store');
+        Route::put('/{act}/materials/{material}', [App\Http\Controllers\ActController::class, 'updateMaterial'])->name('materials.update');
+        Route::delete('/{act}/materials/{material}', [App\Http\Controllers\ActController::class, 'removeMaterial'])->name('materials.destroy');
+        Route::post('/{act}/acknowledge', [App\Http\Controllers\ActController::class, 'acknowledge'])->name('acknowledge');
     });
 
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');

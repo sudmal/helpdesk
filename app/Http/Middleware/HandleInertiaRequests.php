@@ -72,38 +72,46 @@ class HandleInertiaRequests extends Middleware
 
                 $isActor    = $user->isForeman() || $user->isPeo() || $user->isLogistics() || $user->isSubscriberDept();
                 $isOverseer = $user->isAdmin() || $user->isHeadSupport();
-                if (!$isActor && !$isOverseer) return ['pending' => 0];
 
-                $base = Act::query();
+                $pending = 0;
 
-                if (!$isOverseer) {
-                    $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-                    $territoryIds = collect();
-                    if ($brigadeIds->isNotEmpty()) {
-                        $territoryIds = $territoryIds->merge(
-                            Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-                        );
+                if ($isActor || $isOverseer) {
+                    $base = Act::query();
+
+                    if (!$isOverseer) {
+                        $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+                        $territoryIds = collect();
+                        if ($brigadeIds->isNotEmpty()) {
+                            $territoryIds = $territoryIds->merge(
+                                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+                            );
+                        }
+                        $territoryIds = $territoryIds->merge($user->territories()->pluck('territories.id'))->unique();
+                        if ($territoryIds->isNotEmpty()) {
+                            $base->whereHas('ticket.address', fn($q) => $q->whereIn('territory_id', $territoryIds));
+                        }
                     }
-                    $territoryIds = $territoryIds->merge($user->territories()->pluck('territories.id'))->unique();
-                    if ($territoryIds->isNotEmpty()) {
-                        $base->whereHas('ticket.address', fn($q) => $q->whereIn('territory_id', $territoryIds));
-                    }
+
+                    // Для бригадира/ПЭО/Логистики/Абонотдела — только их этап (см. память project-acts-feature).
+                    // Для admin/head_support — оверсайт-счётчик по всей цепочке, без territory-скоупа.
+                    $pending += match (true) {
+                        $user->isForeman()       => (clone $base)->where('status', 'pending_foreman')->count(),
+                        $user->isPeo()           => (clone $base)->whereIn('status', ['approved', 'processing'])->where('type', 'regular')->whereNull('peo_processed_at')->count(),
+                        $user->isLogistics()     => (clone $base)->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at')->count(),
+                        $user->isSubscriberDept() => (clone $base)->where('status', 'pending_subscriber_dept')->count(),
+                        default => (clone $base)->where(function ($q) {
+                            $q->where('status', 'pending_foreman')
+                              ->orWhere('status', 'pending_subscriber_dept')
+                              ->orWhere(function ($q2) { $q2->where('type', 'regular')->whereIn('status', ['approved', 'processing'])->whereNull('peo_processed_at'); })
+                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at'); });
+                        })->count(),
+                    };
                 }
 
-                // Для бригадира/ПЭО/Логистики/Абонотдела — только их этап (см. память project-acts-feature).
-                // Для admin/head_support — оверсайт-счётчик по всей цепочке, без territory-скоупа.
-                $pending = match (true) {
-                    $user->isForeman()       => (clone $base)->where('status', 'pending_foreman')->count(),
-                    $user->isPeo()           => (clone $base)->whereIn('status', ['approved', 'processing'])->where('type', 'regular')->whereNull('peo_processed_at')->count(),
-                    $user->isLogistics()     => (clone $base)->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at')->count(),
-                    $user->isSubscriberDept() => (clone $base)->where('status', 'pending_subscriber_dept')->count(),
-                    default => (clone $base)->where(function ($q) {
-                        $q->where('status', 'pending_foreman')
-                          ->orWhere('status', 'pending_subscriber_dept')
-                          ->orWhere(function ($q2) { $q2->where('type', 'regular')->whereIn('status', ['approved', 'processing'])->whereNull('peo_processed_at'); })
-                          ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at'); });
-                    })->count(),
-                };
+                // Правки бригадира в составе акта, которые ждут подтверждения создателя
+                // ("Принято") — считаем для ЛЮБОГО пользователя (обычно это монтажник),
+                // не только для ролей выше. См. память project-acts-feature.
+                $pending += Act::where('created_by', $user->id)->whereNotNull('materials_changed_at')->count();
 
                 return ['pending' => $pending];
             },

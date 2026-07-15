@@ -62,6 +62,27 @@ class ActPolicy
     }
 
     /**
+     * Редактирование состава акта (добавить/удалить/изменить материал) —
+     * ТОЛЬКО бригадир (буквально роль foreman, без обхода для admin/head_support —
+     * так решил пользователь), и только пока акт ещё не утверждён им же.
+     */
+    public function editMaterials(User $user, Act $act): bool
+    {
+        if ($act->status !== 'pending_foreman') return false;
+        if (!$user->isForeman()) return false;
+
+        return $this->inScope($user, $act);
+    }
+
+    /** Монтажник подтверждает, что увидел правки бригадира в составе акта */
+    public function acknowledge(User $user, Act $act): bool
+    {
+        if ($act->materials_changed_at === null) return false;
+
+        return $act->created_by === $user->id;
+    }
+
+    /**
      * Территориальный скоуп: бригадир/монтажник — по территориям своей
      * бригады (как в TicketPolicy), ПЭО/Логистика/Абонотдел — по territories()
      * пользователя напрямую (у них нет бригад). Остальные роли — без ограничений.
