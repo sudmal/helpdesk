@@ -192,7 +192,7 @@ class TicketController extends Controller
             'type', 'serviceType', 'status', 'brigade.members', 'creator', 'assignee',
             'comments.author', 'comments.attachments',
             'attachments.uploader',
-            'materials',
+            'act.materials', 'act.history.user',
             'history.user',
             'closedBy',
         ]);
@@ -201,7 +201,7 @@ class TicketController extends Controller
         // История заявок по этому адресу (кроме текущей)
         $addressHistory = $ticket->address_id
 
-            ? Ticket::with(['type', 'status'])
+            ? Ticket::with(['type', 'status', 'act'])
                 ->where('address_id', $ticket->address_id)
                 ->where('id', '!=', $ticket->id)
                 ->when($ticket->apartment, fn($q) =>
@@ -214,7 +214,7 @@ class TicketController extends Controller
                 ->latest()
                 ->take(20)
                 ->get(['id', 'number', 'type_id', 'status_id', 'address_id',
-                       'apartment', 'description', 'close_notes', 'act_number', 'created_at'])
+                       'apartment', 'description', 'close_notes', 'created_at'])
             : [];
 
         return Inertia::render('Tickets/Show', [
@@ -314,24 +314,20 @@ class TicketController extends Controller
     {
         $this->authorize('close', $ticket);
         $request->validate([
-            'comment'    => 'nullable|string|max:2000',
-            'act_number' => 'nullable|string|max:50',
+            'comment'  => 'nullable|string|max:2000',
+            'act_type' => 'nullable|in:regular,repair',
         ]);
-
-        // Если акт не указан — ставим б/а
-        $actNumber = $request->filled('act_number') ? $request->act_number : 'б/а';
 
         $materialsData = $request->input('materials');
         if (is_string($materialsData)) {
             $materialsData = json_decode($materialsData, true) ?? [];
         }
 
-        if (!empty($materialsData) && (empty($request->act_number) || mb_strlen(trim($request->act_number)) < 5)) {
-            return back()->withErrors(['act_number' => 'При использовании материалов обязателен номер акта (минимум 5 символов).'])->withInput();
+        if (!empty($materialsData) && empty($request->act_type)) {
+            return back()->withErrors(['act_type' => 'При использовании материалов обязателен тип акта.'])->withInput();
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $actNumber, $materialsData, $request) {
-            $ticket->update(['act_number' => $actNumber]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $materialsData, $request) {
             $this->ticketService->updateStatus($ticket, 'closed', auth()->user(), $request->comment);
 
             if ($request->hasFile('attachments')) {
@@ -340,14 +336,23 @@ class TicketController extends Controller
                 }
             }
 
-            // Сохраняем расходные материалы
+            // Материалы теперь формируют Акт (Act + ActMaterial), а не пишутся на тикет напрямую —
+            // см. фичу "Акты" (согласование Бригадир -> ПЭО/Логистика -> Абонотдел).
             if (!empty($materialsData) && is_array($materialsData)) {
-                $ticket->materials()->delete();
+                $number = \App\Models\Act::generateNumber($ticket, $request->act_type);
+                $act = \App\Models\Act::create([
+                    'ticket_id'  => $ticket->id,
+                    'number'     => $number,
+                    'type'       => $request->act_type,
+                    'status'     => 'pending_foreman',
+                    'created_by' => auth()->id(),
+                ]);
+
                 foreach ($materialsData as $item) {
                     if (empty($item['material_id']) || empty($item['quantity'])) continue;
                     $material = \App\Models\Material::find($item['material_id']);
                     if ($material) {
-                        $ticket->materials()->create([
+                        $act->materials()->create([
                             'material_id'   => $material->id,
                             'material_name' => $material->name,
                             'material_code' => $material->code,
@@ -358,6 +363,11 @@ class TicketController extends Controller
                         ]);
                     }
                 }
+
+                $act->history()->create([
+                    'user_id' => auth()->id(),
+                    'action'  => 'created',
+                ]);
             }
         });
 

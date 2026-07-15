@@ -90,7 +90,7 @@
             <div><p class="text-xs text-gray-400 mb-0.5">Создана</p><p class="text-sm font-medium text-gray-700 break-words">{{ formatDate(ticket.created_at) ?? '—' }}</p></div>
 <div><p class="text-xs text-gray-400 mb-0.5">Запланирован</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.scheduled_at ? formatDateTime(ticket.scheduled_at) : '—' ?? '—' }}</p></div>
             <div v-if="ticket.closed_at"><p class="text-xs text-gray-400 mb-0.5">Закрыта</p><p class="text-sm font-medium text-gray-700 break-words">{{ formatDate(ticket.closed_at) ?? '—' }}</p></div>
-            <div v-if="ticket.act_number"><p class="text-xs text-gray-400 mb-0.5">Акт</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.act_number ?? '—' }}</p></div>
+            <div v-if="ticket.act?.number"><p class="text-xs text-gray-400 mb-0.5">Акт</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.act.number }}</p></div>
           </div>
 
           <div class="mt-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
@@ -133,11 +133,12 @@
         </div>
 
         <!-- Расходные материалы (просмотр) -->
-        <div v-if="ticket.materials?.length"
+        <div v-if="ticket.act?.materials?.length"
              class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
           <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 class="font-medium text-sm text-gray-700 flex items-center gap-2">
               📦 Расходные материалы
+              <span class="text-xs font-mono text-gray-400">{{ ticket.act.number }}</span>
             </h3>
             <span class="text-sm font-semibold text-blue-600">
               Итого: {{ totalMaterials }} ₽
@@ -155,7 +156,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-for="m in ticket.materials" :key="m.id"
+              <tr v-for="m in ticket.act.materials" :key="m.id"
                   class="hover:bg-gray-50">
                 <td class="px-3 py-2 text-center text-gray-400 font-mono text-xs">{{ m.material_code || '—' }}</td>
                 <td class="px-4 py-2 text-gray-800">{{ m.material_name }}</td>
@@ -258,9 +259,9 @@
               <p v-if="h.description" class="text-xs text-gray-500 mt-0.5" :title="h.description">
                 {{ h.description.slice(0, 70) }}{{ h.description.length > 70 ? '…' : '' }}
               </p>
-              <div v-if="h.close_notes || h.act_number"
+              <div v-if="h.close_notes || h.act?.number"
                    class="mt-1 bg-green-50 rounded px-2 py-1">
-                <p v-if="h.act_number" class="text-xs text-green-600 font-medium">Акт: {{ h.act_number }}</p>
+                <p v-if="h.act?.number" class="text-xs text-green-600 font-medium">Акт: {{ h.act.number }}</p>
                 <p v-if="h.close_notes" class="text-xs text-green-700">
                   {{ h.close_notes.slice(0, 60) }}{{ h.close_notes.length > 60 ? '…' : '' }}
                 </p>
@@ -289,13 +290,6 @@
     <!-- Модалка закрытия -->
     <Modal v-if="showCloseModal" title="Закрыть заявку" size="lg" @close="showCloseModal = false">
       <form @submit.prevent="submitClose" class="space-y-3">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Номер акта</label>
-          <input v-model="closeActNumber" type="text"
-                 placeholder="Оставьте пустым для «б/а»"
-                 class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
-          <p class="text-xs text-gray-400 mt-1">Если не заполнено — будет «б/а» (без акта)</p>
-        </div>
         <div v-if="$page.props.closeReasons?.length">
           <label class="block text-xs text-gray-500 mb-1">Причина <span class="text-gray-400">(шаблон)</span></label>
           <select @change="e => { closeComment = e.target.value; e.target.selectedIndex = 0 }"
@@ -318,9 +312,17 @@
                    class="rounded w-4 h-4 text-blue-600" />
             <span class="text-sm text-gray-700">📦 Использовались расходные материалы</span>
           </label>
-          <MaterialsForm v-if="useMaterials"
-                         :materials="materialsCatalog"
-                         v-model="materialItems" />
+          <div v-if="useMaterials" class="mt-2">
+            <label class="block text-xs text-gray-500 mb-1">Тип акта *</label>
+            <select v-model="closeActType" required
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white
+                           focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+              <option value="">— выбрать тип —</option>
+              <option value="regular">Обычный</option>
+              <option value="repair">Ремонт/Восстановление</option>
+            </select>
+            <MaterialsForm :materials="materialsCatalog" v-model="materialItems" />
+          </div>
         </div>
 
         <div class="flex justify-end gap-2 pt-1">
@@ -378,7 +380,7 @@ const createdBy = computed(() => {
 })
 
 const totalMaterials = computed(() =>
-  (props.ticket.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
+  (props.ticket.act?.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
 )
 
 const mapAddress = computed(() => {
@@ -457,7 +459,7 @@ const props = defineProps({
 // State
 const showCloseModal    = ref(false)
 const showPostponeModal = ref(false)
-const closeActNumber    = ref('')
+const closeActType      = ref('')
 const closeComment      = ref('')
 const closeFiles        = ref([])
 const useMaterials      = ref(false)
@@ -527,10 +529,10 @@ function submitComment() {
 function submitClose() {
   const data = new FormData()
   data.append('comment', closeComment.value)
-  data.append('act_number', closeActNumber.value)
   closeFiles.value.forEach(f => data.append('attachments[]', f))
   // Добавляем расходники
   if (useMaterials.value) {
+    data.append('act_type', closeActType.value)
     const validItems = materialItems.value.filter(i => i.material_id && i.quantity > 0)
     if (validItems.length) {
       data.append('materials', JSON.stringify(validItems))
@@ -541,7 +543,7 @@ function submitClose() {
       showCloseModal.value = false
       closeFiles.value = []
       closeComment.value = ''
-      closeActNumber.value = ''
+      closeActType.value = ''
       useMaterials.value = false
       materialItems.value = [{ material_id: '', quantity: 1 }]
     }

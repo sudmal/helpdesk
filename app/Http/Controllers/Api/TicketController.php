@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Act;
 use App\Models\Material;
 use App\Models\Ticket;
 use App\Services\TicketService;
@@ -26,7 +27,7 @@ class TicketController extends Controller
 
         $base = fn(): Builder => Ticket::with([
                 'address', 'type', 'serviceType', 'status', 'brigade', 'assignee',
-                'comments.author', 'comments.attachments', 'attachments',
+                'comments.author', 'comments.attachments', 'attachments', 'act',
             ])
             ->when($brigadeId && !$user->hasPermission('*'), fn($q) => $q->where('brigade_id', $brigadeId));
 
@@ -55,7 +56,7 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments', 'act']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -133,11 +134,11 @@ class TicketController extends Controller
 
         $request->validate([
             'close_notes'   => 'nullable|string|max:2000',
-            'act_number'    => [
-                'nullable', 'string', 'max:50',
+            'act_type'      => [
+                'nullable', 'in:regular,repair',
                 function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($request->input('materials')) && (empty($value) || mb_strlen(trim($value)) < 5)) {
-                        $fail('При использовании материалов обязателен номер акта (минимум 5 символов).');
+                    if (!empty($request->input('materials')) && empty($value)) {
+                        $fail('При использовании материалов обязателен тип акта.');
                     }
                 },
             ],
@@ -148,18 +149,24 @@ class TicketController extends Controller
             'attachments.*' => 'file|mimes:jpeg,jpg,png,gif,pdf|max:20480',
         ]);
 
-        $actNumber = filled($request->act_number) ? $request->act_number : 'б/а';
-
-        DB::transaction(function () use ($ticket, $actNumber, $request) {
-            $ticket->update(['act_number' => $actNumber]);
+        DB::transaction(function () use ($ticket, $request) {
             $this->ticketService->updateStatus($ticket, 'closed', $request->user(), $request->close_notes);
 
+            // Материалы формируют Акт (Act + ActMaterial) — см. фичу "Акты".
             if (!empty($request->materials)) {
-                $ticket->materials()->delete();
+                $number = Act::generateNumber($ticket, $request->act_type);
+                $act = Act::create([
+                    'ticket_id'  => $ticket->id,
+                    'number'     => $number,
+                    'type'       => $request->act_type,
+                    'status'     => 'pending_foreman',
+                    'created_by' => $request->user()->id,
+                ]);
+
                 foreach ($request->materials as $item) {
                     $material = Material::find($item['material_id']);
                     if (!$material) continue;
-                    $ticket->materials()->create([
+                    $act->materials()->create([
                         'material_id'   => $material->id,
                         'material_name' => $material->name,
                         'material_code' => $material->code,
@@ -169,6 +176,11 @@ class TicketController extends Controller
                         'created_by'    => $request->user()->id,
                     ]);
                 }
+
+                $act->history()->create([
+                    'user_id' => $request->user()->id,
+                    'action'  => 'created',
+                ]);
             }
         });
 
@@ -178,7 +190,7 @@ class TicketController extends Controller
             }
         }
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'attachments']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'attachments', 'act']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -195,7 +207,7 @@ class TicketController extends Controller
         $ticket->update(['scheduled_at' => $request->scheduled_at]);
         $this->ticketService->updateStatus($ticket, 'postponed', $request->user(), $request->comment);
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments']);
+        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments', 'act']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -212,7 +224,7 @@ class TicketController extends Controller
             'phone'        => $t->phone,
             'apartment'    => $t->apartment,
             'close_notes'  => $t->close_notes,
-            'act_number'   => $t->act_number,
+            'act_number'   => $t->act?->number,
             'address'      => $t->address ? [
                 // Без квартиры: apartment этой заявки уже есть отдельным полем выше,
                 // мобильное приложение само дописывает его к адресу. Квартира в

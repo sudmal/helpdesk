@@ -2,7 +2,7 @@
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany, HasOne};
 use Illuminate\Database\Eloquent\Builder;
 
 class Ticket extends Model
@@ -39,6 +39,7 @@ protected $fillable = [
     }
 
     public function history(): HasMany     { return $this->hasMany(TicketHistory::class)->latest(); }
+    public function act(): HasOne          { return $this->hasOne(Act::class); }
 
     // === Scopes ===
     public function scopeSearch(Builder $query, string $term): Builder

@@ -185,7 +185,7 @@
               <td class="px-2 py-0.5 w-14">
                 <span v-if="t.status?.is_final"
                       class="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  {{ t.act_number || 'б/а' }}
+                  {{ t.act?.number || 'б/а' }}
                 </span>
               </td>
               <td class="px-2 pr-1 py-0.5 min-w-[120px] max-w-[200px]">
@@ -284,14 +284,6 @@
     <Modal v-if="closingTicket" :title="`Закрыть заявку #${closingTicket.number}`" size="lg"
            @close="closingTicket = null">
       <form @submit.prevent="submitClose" class="space-y-3">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Номер акта</label>
-          <input v-model="closeActNumber" type="text"
-                 placeholder="Оставьте пустым для «б/а»"
-                 class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
-          <p class="text-xs text-gray-400 mt-1">Если не заполнено — будет «б/а» (без акта)</p>
-        </div>
         <div v-if="$page.props.closeReasons?.length">
           <label class="block text-xs text-gray-500 mb-1">Причина <span class="text-gray-400">(шаблон)</span></label>
           <select @change="e => { closeComment = e.target.value; e.target.selectedIndex = 0 }"
@@ -311,7 +303,17 @@
             <input type="checkbox" v-model="useMaterials" class="rounded w-4 h-4 text-blue-600" />
             <span class="text-sm text-gray-700">📦 Использовались расходные материалы</span>
           </label>
-          <MaterialsForm v-if="useMaterials" :materials="materialsCatalog" v-model="materialItems" />
+          <div v-if="useMaterials" class="mt-2">
+            <label class="block text-xs text-gray-500 mb-1">Тип акта *</label>
+            <select v-model="closeActType" required
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white
+                           focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+              <option value="">— выбрать тип —</option>
+              <option value="regular">Обычный</option>
+              <option value="repair">Ремонт/Восстановление</option>
+            </select>
+            <MaterialsForm :materials="materialsCatalog" v-model="materialItems" />
+          </div>
         </div>
         <div class="flex justify-end gap-2 pt-1">
           <button type="button" @click="closingTicket = null" class="btn-outline text-sm">Отмена</button>
@@ -389,17 +391,17 @@
         </p>
         <template v-if="tooltip.ticket.status?.is_final">
           <div class="border-t border-gray-700 pt-1.5 mt-1 flex flex-col gap-1">
-            <div v-if="tooltip.ticket.act_number" class="flex gap-1.5">
+            <div v-if="tooltip.ticket.act?.number" class="flex gap-1.5">
               <span class="text-gray-500">Акт:</span>
-              <span class="text-green-400 font-medium">{{ tooltip.ticket.act_number }}</span>
+              <span class="text-green-400 font-medium">{{ tooltip.ticket.act.number }}</span>
             </div>
             <div v-if="tooltip.ticket.close_notes" class="flex gap-1.5">
               <span class="text-gray-500 shrink-0">Итог:</span>
               <span class="text-gray-300">{{ tooltip.ticket.close_notes }}</span>
             </div>
-            <div v-if="tooltip.ticket.materials?.length" class="flex gap-1.5">
+            <div v-if="tooltip.ticket.act?.materials?.length" class="flex gap-1.5">
               <span class="text-gray-500 shrink-0">Матер.:</span>
-              <span class="text-gray-300">{{ tooltip.ticket.materials.map(m => m.name + (m.qty > 1 ? ' ×' + m.qty : '')).join(', ') }}</span>
+              <span class="text-gray-300">{{ tooltip.ticket.act.materials.map(m => m.material_name + (m.quantity > 1 ? ' ×' + m.quantity : '')).join(', ') }}</span>
             </div>
           </div>
         </template>
@@ -474,7 +476,7 @@ onUnmounted(() => clearInterval(pollTimer))
 
 // ── Модалка закрытия ──
 const closingTicket  = ref(null)
-const closeActNumber = ref('')
+const closeActType   = ref('')
 const closeComment   = ref('')
 const closeFiles     = ref([])
 const useMaterials   = ref(false)
@@ -482,7 +484,7 @@ const materialItems  = ref([{ material_id: '', quantity: 1 }])
 
 function openCloseModal(t) {
   closingTicket.value  = t
-  closeActNumber.value = ''
+  closeActType.value   = ''
   closeComment.value   = ''
   closeFiles.value     = []
   useMaterials.value   = false
@@ -491,21 +493,21 @@ function openCloseModal(t) {
 
 function submitClose() {
   const data = new FormData()
-  data.append('comment',    closeComment.value)
-  data.append('act_number', closeActNumber.value)
+  data.append('comment', closeComment.value)
   closeFiles.value.forEach(f => data.append('attachments[]', f))
   if (useMaterials.value) {
+    data.append('act_type', closeActType.value)
     const valid = materialItems.value.filter(i => i.material_id && i.quantity > 0)
     if (valid.length) data.append('materials', JSON.stringify(valid))
   }
   router.post(route('tickets.close', closingTicket.value.id), data, {
     onSuccess: () => {
-      closingTicket.value  = null
-      closeFiles.value     = []
-      closeComment.value   = ''
-      closeActNumber.value = ''
-      useMaterials.value   = false
-      materialItems.value  = [{ material_id: '', quantity: 1 }]
+      closingTicket.value = null
+      closeFiles.value    = []
+      closeComment.value  = ''
+      closeActType.value  = ''
+      useMaterials.value  = false
+      materialItems.value = [{ material_id: '', quantity: 1 }]
     },
   })
 }

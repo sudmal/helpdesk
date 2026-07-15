@@ -33,8 +33,11 @@ class MaterialReportController extends Controller
     // (where/union/...), из-за чего плейсхолдеры съезжают. Фильтрация до union — безопасный способ.
     private function unionQuery(Carbon $from, Carbon $to, ?string $filterDim = null, $filterId = null)
     {
-        $ticketSide = DB::table('ticket_materials as tm')
-            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+        // Материалы заявок теперь висят на Акте (act_materials -> acts -> tickets),
+        // а не напрямую на тикете — см. фичу "Акты".
+        $ticketSide = DB::table('act_materials as tm')
+            ->join('acts as a', 'tm.act_id', '=', 'a.id')
+            ->join('tickets as t', 'a.ticket_id', '=', 't.id')
             ->leftJoin('addresses as addr', 't.address_id', '=', 'addr.id')
             ->whereNull('t.deleted_at')
             ->whereBetween('tm.created_at', [$from, $to]);
@@ -60,7 +63,7 @@ class MaterialReportController extends Controller
             }
         }
 
-        $ticketSide->selectRaw("tm.material_id, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time, tm.created_at, t.brigade_id as brigade_id, addr.territory_id as territory_id, tm.ticket_id as source_id, 'ticket' as source");
+        $ticketSide->selectRaw("tm.material_id, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time, tm.created_at, t.brigade_id as brigade_id, addr.territory_id as territory_id, a.ticket_id as source_id, 'ticket' as source");
         $crSide->selectRaw("crm.material_id, crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time, crm.created_at, NULL as brigade_id, cr.territory_id as territory_id, crm.connection_request_id as source_id, 'connection_request' as source");
 
         return $ticketSide->unionAll($crSide);
@@ -68,8 +71,9 @@ class MaterialReportController extends Controller
 
     private function unionQueryAllTime()
     {
-        $ticketSide = DB::table('ticket_materials as tm')
-            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+        $ticketSide = DB::table('act_materials as tm')
+            ->join('acts as a', 'tm.act_id', '=', 'a.id')
+            ->join('tickets as t', 'a.ticket_id', '=', 't.id')
             ->whereNull('t.deleted_at')
             ->selectRaw("tm.material_id, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time, tm.created_at");
 

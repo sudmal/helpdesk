@@ -97,8 +97,9 @@ class ReportsController extends Controller
 
     private function materialDynamics(Carbon $from, Carbon $to): array
     {
-        $union = DB::table('ticket_materials as tm')
-            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+        $union = DB::table('act_materials as tm')
+            ->join('acts as a', 'tm.act_id', '=', 'a.id')
+            ->join('tickets as t', 'a.ticket_id', '=', 't.id')
             ->whereBetween('tm.created_at', [$from, $to])
             ->whereNull('t.deleted_at')
             ->selectRaw('tm.created_at, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time')
@@ -121,8 +122,9 @@ class ReportsController extends Controller
             ->orderBy('week_key')
             ->get();
 
-        $union2 = DB::table('ticket_materials as tm')
-            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+        $union2 = DB::table('act_materials as tm')
+            ->join('acts as a', 'tm.act_id', '=', 'a.id')
+            ->join('tickets as t', 'a.ticket_id', '=', 't.id')
             ->whereBetween('tm.created_at', [$from, $to])
             ->whereNull('t.deleted_at')
             ->selectRaw('tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time')

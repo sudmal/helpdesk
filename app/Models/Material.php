@@ -13,5 +13,10 @@ class Material extends Model
         return $this->hasMany(TicketMaterial::class);
     }
 
+    public function actMaterials(): HasMany
+    {
+        return $this->hasMany(ActMaterial::class);
+    }
+
     public function scopeActive($q) { return $q->where('is_active', true); }
 }

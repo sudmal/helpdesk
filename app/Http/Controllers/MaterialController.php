@@ -29,11 +29,12 @@ class MaterialController extends Controller
         ]);
     }
 
-    // Общий union расхода материалов (тикеты + заявки на подключение), без ограничения по дате
+    // Общий union расхода материалов (акты по заявкам + заявки на подключение), без ограничения по дате
     private function usageUnion()
     {
-        $ticketSide = DB::table('ticket_materials as tm')
-            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+        $ticketSide = DB::table('act_materials as tm')
+            ->join('acts as a', 'tm.act_id', '=', 'a.id')
+            ->join('tickets as t', 'a.ticket_id', '=', 't.id')
             ->whereNull('t.deleted_at')
             ->selectRaw('tm.material_id, tm.quantity, tm.price_at_time, tm.created_at');
 
@@ -59,8 +60,9 @@ class MaterialController extends Controller
     {
         // фильтр по дате внутри каждой ветки union'а (см. MaterialReportController — ->where() поверх
         // готового union'а ломает порядок биндингов при mergeBindings)
-        $ticketSide = DB::table('ticket_materials as tm')
-            ->join('tickets as t', 'tm.ticket_id', '=', 't.id')
+        $ticketSide = DB::table('act_materials as tm')
+            ->join('acts as a', 'tm.act_id', '=', 'a.id')
+            ->join('tickets as t', 'a.ticket_id', '=', 't.id')
             ->whereNull('t.deleted_at')
             ->where('tm.created_at', '>=', $since)
             ->selectRaw('tm.material_id, tm.quantity, tm.price_at_time');
