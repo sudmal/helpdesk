@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ConnectionRequest extends Model
 {
     protected $fillable = [
         'name', 'phone', 'address_string', 'description',
         'status', 'scheduled_at', 'notes', 'act_number',
-        'assigned_to', 'created_by', 'territory_id', 'needs_callback',
+        'assigned_to', 'created_by', 'territory_id', 'brigade_id', 'needs_callback',
     ];
 
     protected $casts = [
@@ -32,6 +33,16 @@ class ConnectionRequest extends Model
     public function territory(): BelongsTo
     {
         return $this->belongsTo(Territory::class);
+    }
+
+    public function brigade(): BelongsTo
+    {
+        return $this->belongsTo(Brigade::class);
+    }
+
+    public function act(): HasOne
+    {
+        return $this->hasOne(Act::class);
     }
 
     public function materials(): HasMany

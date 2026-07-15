@@ -109,22 +109,25 @@ class ActPolicy
     /**
      * Территориальный скоуп участников цепочки (без admin/head_support/operator —
      * они проверяются отдельно в каждом методе выше, у кого есть оверсайт/обход).
-     * Бригадир/монтажник — строго по бригаде заявки (ticket.brigade_id).
+     * Бригадир/монтажник — строго по бригаде (ticket.brigade_id ИЛИ
+     * connection_request.brigade_id — акт теперь может относиться к любому из
+     * двух, см. память project-acts-feature, "Заявки на подключение").
      * ПЭО/Логистика/Абонотдел — по territories() пользователя напрямую.
      */
     private function scopeMatch(User $user, Act $act): bool
     {
+        $brigadeId   = $act->ticket?->brigade_id ?? $act->connectionRequest?->brigade_id;
+        $territoryId = $act->ticket?->address?->territory_id ?? $act->connectionRequest?->territory_id;
+
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = $user->brigades->pluck('id');
             if ($brigadeIds->isNotEmpty()) {
-                return $brigadeIds->contains($act->ticket?->brigade_id);
+                return $brigadeIds->contains($brigadeId);
             }
-            $territoryId = $act->ticket?->address?->territory_id;
             return $territoryId && $user->territories->pluck('id')->contains($territoryId);
         }
 
         if ($user->isPeo() || $user->isLogistics() || $user->isSubscriberDept()) {
-            $territoryId = $act->ticket?->address?->territory_id;
             return $territoryId && $user->territories->pluck('id')->contains($territoryId);
         }
 

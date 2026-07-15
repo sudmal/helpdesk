@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\{Act, ActMaterial, Brigade, Material, Territory};
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -47,17 +48,28 @@ class ActController extends Controller
 
         // Джойны нужны для сортировки/группировки по территории и бригаде —
         // задел под будущие отчёты по актам (см. память project-acts-feature).
+        // Акт теперь бывает от заявки (tickets) ИЛИ от заявки на подключение
+        // (connection_requests) — территория/бригада берутся COALESCE'ом
+        // источника, который реально заполнен для этого акта.
         $query = Act::query()
             ->select('acts.*')
             ->leftJoin('tickets', 'tickets.id', '=', 'acts.ticket_id')
             ->leftJoin('addresses', 'addresses.id', '=', 'tickets.address_id')
-            ->leftJoin('territories', 'territories.id', '=', 'addresses.territory_id')
-            ->leftJoin('brigades', 'brigades.id', '=', 'tickets.brigade_id')
+            ->leftJoin('connection_requests', 'connection_requests.id', '=', 'acts.connection_request_id')
+            ->leftJoin('territories', function ($join) {
+                $join->on('territories.id', '=', DB::raw('COALESCE(addresses.territory_id, connection_requests.territory_id)'));
+            })
+            ->leftJoin('brigades', function ($join) {
+                $join->on('brigades.id', '=', DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'));
+            })
             ->with([
                 'ticket:id,number,address_id,brigade_id,type_id,service_type_id',
                 'ticket.address:id,city,street,building,apartment,territory_id',
                 'ticket.address.territory:id,name',
                 'ticket.brigade:id,name',
+                'connectionRequest:id,name,phone,address_string,territory_id,brigade_id',
+                'connectionRequest.territory:id,name',
+                'connectionRequest.brigade:id,name',
                 'materials',
                 'creator:id,name',
                 'foremanReviewer:id,name',
@@ -66,10 +78,10 @@ class ActController extends Controller
                 'subscriberDeptCompleter:id,name',
             ])
             ->when($brigadeScopeIds->isNotEmpty(), fn($q) =>
-                $q->whereIn('tickets.brigade_id', $brigadeScopeIds)
+                $q->whereIn(DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'), $brigadeScopeIds)
             )
             ->when($userTerritories->isNotEmpty(), fn($q) =>
-                $q->whereIn('addresses.territory_id', $userTerritories)
+                $q->whereIn(DB::raw('COALESCE(addresses.territory_id, connection_requests.territory_id)'), $userTerritories)
             )
             ->when($request->type, fn($q) => $q->where('acts.type', $request->type));
 
@@ -95,7 +107,11 @@ class ActController extends Controller
                        ->orWhereHas('ticket.address', fn($a) => $a
                            ->where('street', 'like', $s)
                            ->orWhere('city', 'like', $s)
-                           ->orWhere('building', 'like', $s));
+                           ->orWhere('building', 'like', $s))
+                       ->orWhereHas('connectionRequest', fn($c) => $c
+                           ->where('address_string', 'like', $s)
+                           ->orWhere('name', 'like', $s)
+                           ->orWhere('phone', 'like', $s));
                 });
             });
 
@@ -132,6 +148,7 @@ class ActController extends Controller
 
         $act->load([
             'ticket.address.territory', 'ticket.type', 'ticket.serviceType',
+            'connectionRequest.territory', 'connectionRequest.brigade',
             'materials.material',
             'history.user',
             'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor', 'subscriberDeptCompleter',

@@ -34,7 +34,7 @@ class Act extends Model
     }
 
     protected $fillable = [
-        'ticket_id', 'number', 'type', 'status', 'created_by',
+        'ticket_id', 'connection_request_id', 'number', 'type', 'status', 'created_by',
         'foreman_reviewed_by', 'foreman_reviewed_at', 'foreman_return_comment',
         'peo_processed_by', 'peo_processed_at',
         'logistics_processed_by', 'logistics_processed_at',
@@ -50,7 +50,8 @@ class Act extends Model
         'materials_changed_at'         => 'datetime',
     ];
 
-    public function ticket(): BelongsTo   { return $this->belongsTo(Ticket::class); }
+    public function ticket(): BelongsTo             { return $this->belongsTo(Ticket::class); }
+    public function connectionRequest(): BelongsTo  { return $this->belongsTo(ConnectionRequest::class); }
     public function materials(): HasMany  { return $this->hasMany(ActMaterial::class); }
     public function history(): HasMany    { return $this->hasMany(ActHistory::class)->latest(); }
     public function creator(): BelongsTo  { return $this->belongsTo(User::class, 'created_by'); }
@@ -78,7 +79,27 @@ class Act extends Model
         }
 
         $typeLetter = $type === 'repair' ? 'v' : 'r';
-        $prefix = $baseLetter . $typeLetter;
+
+        return static::nextNumberForPrefix($baseLetter . $typeLetter);
+    }
+
+    /**
+     * Номер акта для заявки на подключение: <in|cn>-NNNNNN — своя, отдельная от
+     * заявок сквозная нумерация (заявки на подключение не имеют поля типа услуги,
+     * выбор Интернет/КТВ делается прямо при закрытии заявки). Тип самого акта
+     * (Act.type) при этом всегда 'regular' — см. память project-acts-feature,
+     * "Заявки на подключение" — регулярный/ремонтный акт как ось не относится
+     * к новым подключениям, только к типу услуги в номере.
+     */
+    public static function generateNumberForConnectionRequest(string $service): string
+    {
+        $prefix = $service === 'ctv' ? 'cn' : 'in';
+
+        return static::nextNumberForPrefix($prefix);
+    }
+
+    private static function nextNumberForPrefix(string $prefix): string
+    {
         $prefixLen = mb_strlen($prefix);
 
         $lastNumber = static::where('number', 'LIKE', $prefix . '-%')
