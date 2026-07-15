@@ -109,6 +109,11 @@
         <div v-if="tab === 'archive'">
           <button @click="apply" class="btn-primary text-sm">Найти</button>
         </div>
+        <label v-if="tab === 'archive'" class="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none pb-1.5"
+               title="Легаси-акты — старый бэкфилл из ticket_materials до появления workflow (номера вида legacy-*, старые заявки, без указания типа). Скрыты по умолчанию, не удалены.">
+          <input type="checkbox" :checked="f.legacy === 'show'" @change="toggleLegacy" class="rounded w-4 h-4 text-blue-600" />
+          Показывать легаси-акты (без типа)
+        </label>
       </div>
 
       <!-- Таблица -->
@@ -275,6 +280,7 @@ const f = reactive({
   search:   props.filters?.search   || '',
   sort:     props.filters?.sort     || 'completed_at',
   sort_dir: props.filters?.sort_dir || 'desc',
+  legacy:   props.filters?.legacy   || '',
 })
 
 function apply() {
@@ -287,6 +293,11 @@ function switchTab(id) {
 
 function toggleSortDir() {
   f.sort_dir = f.sort_dir === 'asc' ? 'desc' : 'asc'
+  apply()
+}
+
+function toggleLegacy(e) {
+  f.legacy = e.target.checked ? 'show' : ''
   apply()
 }
 
