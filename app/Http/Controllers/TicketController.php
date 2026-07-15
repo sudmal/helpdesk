@@ -392,8 +392,17 @@ class TicketController extends Controller
         $nowMins = now()->hour * 60 + now()->minute;
 
         for ($attempt = 0; $attempt < 60; $attempt++, $day->addDay()) {
-            // Для сегодняшнего дня начинаем с ближайшего будущего слота, для остальных — с начала дня
-            $fromMins = $day->isToday() ? max($startMins, $nowMins + $step) : $startMins;
+            // Для сегодняшнего дня начинаем с ближайшего будущего слота, для остальных — с начала дня.
+            // Слот обязательно выравниваем по сетке шага от $startMins — иначе "ближайшее будущее
+            // время" (текущие часы:минуты + шаг) не совпадёт ни с одним <option> в TimePicker
+            // (тот строит список только от рабочего начала дня кратно шагу), и выбор в интерфейсе
+            // будет выглядеть пустым, хотя значение технически подставлено.
+            if ($day->isToday()) {
+                $raw = max($startMins, $nowMins + $step);
+                $fromMins = $startMins + (int) ceil(($raw - $startMins) / $step) * $step;
+            } else {
+                $fromMins = $startMins;
+            }
 
             if ($fromMins > $endMins) continue;
 
