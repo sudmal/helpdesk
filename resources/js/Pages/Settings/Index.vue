@@ -1100,6 +1100,12 @@ const permissionGroups = [
     ]
   },
   {
+    key: 'calls', icon: '📞', label: 'Звонки', badgeClass: 'bg-cyan-50 border-cyan-100 text-cyan-700',
+    permissions: [
+      { key: 'calls.view', label: 'Просмотр звонков', desc: 'Видеть раздел Звонки — журнал входящих звонков и данные IVR' },
+    ]
+  },
+  {
     key: 'settings', icon: '⚙️', label: 'Настройки', badgeClass: 'bg-gray-50 border-gray-200 text-gray-700',
     permissions: [
       { key: 'settings.view',          label: 'Просмотр настроек',      desc: 'Видеть раздел настроек' },

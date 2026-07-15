@@ -12,6 +12,8 @@ class CallLogController extends Controller
 {
     public function index(Request $request)
     {
+        abort_unless($request->user()->hasPermission('calls.view'), 403);
+
         $q = Call::with('address')->latest('called_at');
 
         if ($request->filled('phone')) {
