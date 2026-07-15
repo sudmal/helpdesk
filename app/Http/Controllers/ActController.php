@@ -26,16 +26,19 @@ class ActController extends Controller
             ]);
         }
 
+        // Бригадир/монтажник — строго по бригаде заявки (ticket.brigade_id), а не по
+        // пересечению территорий бригад (сузили 2026-07-15, см. память project-acts-feature).
+        $brigadeScopeIds = collect();
+        $userTerritories = collect();
         if ($user->isTechnician() || $user->isForeman()) {
-            $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            $userTerritories = $brigadeIds->isNotEmpty()
-                ? Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-                : $user->territories()->pluck('territories.id');
+            $brigadeScopeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
+            if ($brigadeScopeIds->isEmpty()) {
+                $userTerritories = $user->territories()->pluck('territories.id');
+            }
         } elseif ($user->isPeo() || $user->isLogistics() || $user->isSubscriberDept()) {
             $userTerritories = $user->territories()->pluck('territories.id');
-        } else {
-            $userTerritories = collect(); // admin/head_support/operator — без ограничений
         }
+        // admin/head_support/operator — без ограничений (обе коллекции остаются пустыми).
 
         // Джойны нужны для сортировки/группировки по территории и бригаде —
         // задел под будущие отчёты по актам (см. память project-acts-feature).
@@ -57,6 +60,9 @@ class ActController extends Controller
                 'logisticsProcessor:id,name',
                 'subscriberDeptCompleter:id,name',
             ])
+            ->when($brigadeScopeIds->isNotEmpty(), fn($q) =>
+                $q->whereIn('tickets.brigade_id', $brigadeScopeIds)
+            )
             ->when($userTerritories->isNotEmpty(), fn($q) =>
                 $q->whereIn('addresses.territory_id', $userTerritories)
             )
@@ -146,23 +152,6 @@ class ActController extends Controller
         $this->logHistory($act, $user->id, 'approved');
 
         return back()->with('success', 'Акт утверждён');
-    }
-
-    public function returnAct(Request $request, Act $act): RedirectResponse
-    {
-        $this->authorize('foremanReview', $act);
-        $request->validate(['comment' => 'required|string|max:2000']);
-        $user = auth()->user();
-
-        $act->update([
-            'status'                 => 'returned',
-            'foreman_reviewed_by'    => $user->id,
-            'foreman_reviewed_at'    => now(),
-            'foreman_return_comment' => $request->comment,
-        ]);
-        $this->logHistory($act, $user->id, 'returned', 'foreman_return_comment', null, $request->comment);
-
-        return back()->with('success', 'Акт возвращён на доработку');
     }
 
     public function processPeo(Act $act): RedirectResponse

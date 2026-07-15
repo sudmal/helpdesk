@@ -183,7 +183,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [App\Http\Controllers\ActController::class, 'index'])->name('index');
         Route::get('/{act}', [App\Http\Controllers\ActController::class, 'show'])->name('show');
         Route::post('/{act}/approve', [App\Http\Controllers\ActController::class, 'approve'])->name('approve');
-        Route::post('/{act}/return', [App\Http\Controllers\ActController::class, 'returnAct'])->name('return');
         Route::post('/{act}/process-peo', [App\Http\Controllers\ActController::class, 'processPeo'])->name('process-peo');
         Route::post('/{act}/process-logistics', [App\Http\Controllers\ActController::class, 'processLogistics'])->name('process-logistics');
         Route::post('/{act}/complete', [App\Http\Controllers\ActController::class, 'complete'])->name('complete');

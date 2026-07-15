@@ -187,7 +187,6 @@ const tabs = [
 
 const statusLabels = {
   pending_foreman:          'Ждёт бригадира',
-  returned:                 'Возвращён',
   approved:                 'Утверждён',
   processing:               'В обработке',
   pending_subscriber_dept:  'Ждёт Абонотдел',
@@ -252,7 +251,6 @@ function typeLabel(type) {
 function statusClass(status) {
   return {
     pending_foreman:         'bg-amber-100 text-amber-700',
-    returned:                'bg-red-100 text-red-700',
     approved:                'bg-indigo-100 text-indigo-700',
     processing:              'bg-indigo-100 text-indigo-700',
     pending_subscriber_dept: 'bg-indigo-100 text-indigo-700',

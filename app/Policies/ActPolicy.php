@@ -22,7 +22,7 @@ class ActPolicy
         return $this->inScope($user, $act);
     }
 
-    /** Бригадир: approve/return из pending_foreman */
+    /** Бригадир: approve из pending_foreman */
     public function foremanReview(User $user, Act $act): bool
     {
         if ($act->status !== 'pending_foreman') return false;
@@ -83,28 +83,29 @@ class ActPolicy
     }
 
     /**
-     * Территориальный скоуп: бригадир/монтажник — по территориям своей
-     * бригады (как в TicketPolicy), ПЭО/Логистика/Абонотдел — по territories()
-     * пользователя напрямую (у них нет бригад). Остальные роли — без ограничений.
+     * Территориальный скоуп: бригадир/монтажник — строго по бригаде заявки
+     * (ticket.brigade_id), к которой привязан акт (2026-07-15: раньше было по
+     * пересечению территорий бригад, сузили по прямому требованию пользователя
+     * — "бригадир видит акты только своей бригады"). ПЭО/Логистика/Абонотдел —
+     * по territories() пользователя напрямую (у них нет бригад). Остальные
+     * роли — без ограничений.
      */
     private function inScope(User $user, Act $act): bool
     {
         if ($user->isAdmin() || $user->isHeadSupport() || $user->isOperator()) return true;
 
-        $territoryId = $act->ticket?->address?->territory_id;
-        if (!$territoryId) return false;
-
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = $user->brigades->pluck('id');
             if ($brigadeIds->isNotEmpty()) {
-                return \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))
-                    ->pluck('id')->contains($territoryId);
+                return $brigadeIds->contains($act->ticket?->brigade_id);
             }
-            return $user->territories->pluck('id')->contains($territoryId);
+            $territoryId = $act->ticket?->address?->territory_id;
+            return $territoryId && $user->territories->pluck('id')->contains($territoryId);
         }
 
         if ($user->isPeo() || $user->isLogistics() || $user->isSubscriberDept()) {
-            return $user->territories->pluck('id')->contains($territoryId);
+            $territoryId = $act->ticket?->address?->territory_id;
+            return $territoryId && $user->territories->pluck('id')->contains($territoryId);
         }
 
         return false;

@@ -6,3 +6,15 @@
   html { font-family: 'Inter', system-ui, sans-serif; }
   * { box-sizing: border-box; }
 }
+
+@layer components {
+  /* Кнопки действий карточки акта (Pages/Acts/Show.vue) — .btn-primary/.btn-outline,
+     используемые по всему сайту, нигде не определены (рендерятся как голый текст),
+     поэтому для акта заведены отдельные стили, не трогая остальной сайт. */
+  .btn-act-primary {
+    @apply px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors;
+  }
+  .btn-act-outline {
+    @apply px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors;
+  }
+}

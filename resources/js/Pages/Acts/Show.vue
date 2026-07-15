@@ -4,7 +4,7 @@
 
     <div class="max-w-3xl mx-auto space-y-4">
 
-      <!-- Шапка: badges + действия -->
+      <!-- Шапка: badges + все действия с актом -->
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -18,16 +18,18 @@
             <span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-medium">{{ typeLabel(act.type) }}</span>
             <span :class="statusClass(act.status)" class="px-2 py-1 rounded-lg text-xs font-medium">{{ statusLabels[act.status] || act.status }}</span>
 
-            <button v-if="can.acknowledge" @click="acknowledge" class="btn-primary text-sm">Принято</button>
-            <template v-if="can.foremanReview">
-              <button @click="approve" :disabled="!canApprove"
-                      :title="!canApprove ? 'Подтвердите все позиции материалов ниже' : ''"
-                      class="btn-primary text-sm disabled:opacity-40 disabled:cursor-not-allowed">Утвердить</button>
-              <button @click="showReturnModal = true" class="btn-outline text-sm">Вернуть на доработку</button>
+            <button v-if="can.acknowledge" @click="acknowledge" class="btn-act-primary">Принято</button>
+
+            <template v-if="can.foremanReview && !editMode">
+              <button @click="approve" :disabled="!canApprove" :title="approveDisabledReason"
+                      class="btn-act-primary disabled:opacity-40 disabled:cursor-not-allowed">{{ approveLabel }}</button>
             </template>
-            <button v-if="can.processPeo" @click="post('acts.process-peo')" class="btn-primary text-sm">Отметить проведённым (ПЭО)</button>
-            <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-primary text-sm">Отметить проведённым (Логистика)</button>
-            <button v-if="can.complete" @click="post('acts.complete')" class="btn-primary text-sm">Завершить акт</button>
+            <button v-if="can.editMaterials && !editMode" @click="editMode = true" class="btn-act-outline">Редактировать состав</button>
+            <button v-if="can.editMaterials && editMode" @click="finishEditing" class="btn-act-primary">Сохранить</button>
+
+            <button v-if="can.processPeo" @click="post('acts.process-peo')" class="btn-act-primary">Отметить проведённым (ПЭО)</button>
+            <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-act-primary">Отметить проведённым (Логистика)</button>
+            <button v-if="can.complete" @click="post('acts.complete')" class="btn-act-primary">Завершить акт</button>
           </div>
         </div>
 
@@ -50,8 +52,8 @@
       </div>
 
       <div v-if="act.materials_changed_at" class="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
-        <span>⚠ Бригадир изменил состав акта — изменения отмечены красным ниже.</span>
-        <button v-if="can.acknowledge" @click="acknowledge" class="btn-primary text-sm shrink-0">Принято</button>
+        <span>⚠ Бригадир изменил состав акта — изменения отмечены красным ниже. Перепишите бумажный акт по факту изменений и переподпишите его у абонента, затем подтвердите.</span>
+        <button v-if="can.acknowledge" @click="acknowledge" class="btn-act-primary shrink-0">Принято</button>
       </div>
 
       <!-- Прогресс по этапам -->
@@ -61,7 +63,7 @@
           <div class="rounded-xl border border-gray-100 p-3">
             <p class="text-xs text-gray-400 mb-1">Бригадир</p>
             <p class="text-sm font-medium" :class="act.foreman_reviewed_at ? 'text-green-600' : 'text-gray-400'">
-              {{ act.foreman_reviewed_at ? (act.status === 'returned' ? 'Возвращён' : 'Утверждён') : 'Ожидает' }}
+              {{ act.foreman_reviewed_at ? 'Утверждён' : 'Ожидает' }}
             </p>
             <p v-if="act.foreman_reviewer" class="text-[11px] text-gray-400 mt-0.5">{{ act.foreman_reviewer.name }}</p>
           </div>
@@ -87,9 +89,6 @@
             <p v-if="act.subscriber_dept_completer" class="text-[11px] text-gray-400 mt-0.5">{{ act.subscriber_dept_completer.name }}</p>
           </div>
         </div>
-        <div v-if="act.foreman_return_comment" class="mt-3 bg-red-50 rounded-lg px-3 py-2 text-xs text-red-700">
-          Комментарий бригадира: {{ act.foreman_return_comment }}
-        </div>
       </div>
 
       <!-- Материалы -->
@@ -110,7 +109,7 @@
               <th class="px-3 py-2 text-right">Кол-во</th>
               <th class="px-3 py-2 text-right">Цена</th>
               <th class="px-3 py-2 text-right">Сумма</th>
-              <th v-if="can.editMaterials" class="px-3 py-2 text-right">Действия</th>
+              <th v-if="can.editMaterials && editMode" class="px-3 py-2 text-right">Действия</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -124,7 +123,7 @@
                 <span v-if="isMaterialHighlighted(m.id)" class="text-red-500 text-[10px] ml-1">изменено бригадиром</span>
               </td>
               <td class="px-3 py-2 text-right">
-                <template v-if="can.editMaterials && editingId === m.id">
+                <template v-if="can.editMaterials && editMode && editingId === m.id">
                   <input v-model.number="editQty" type="number" step="0.001" min="0.001"
                          class="w-20 border border-gray-200 rounded px-1 py-0.5 text-right" />
                 </template>
@@ -132,7 +131,7 @@
               </td>
               <td class="px-3 py-2 text-right">{{ m.price_at_time }} ₽</td>
               <td class="px-3 py-2 text-right font-medium">{{ (m.price_at_time * m.quantity).toFixed(2) }} ₽</td>
-              <td v-if="can.editMaterials" class="px-3 py-2 text-right whitespace-nowrap">
+              <td v-if="can.editMaterials && editMode" class="px-3 py-2 text-right whitespace-nowrap">
                 <template v-if="editingId === m.id">
                   <button @click="saveEdit(m)" class="text-green-600 hover:text-green-800 mr-2">Сохранить</button>
                   <button @click="editingId = null" class="text-gray-400 hover:text-gray-600">Отмена</button>
@@ -148,13 +147,13 @@
               <td class="px-3 py-2 text-center text-xs">—</td>
               <td class="px-4 py-2 line-through" colspan="3">Удалено бригадиром: {{ h.old_value }}</td>
               <td class="px-3 py-2 text-right text-xs">—</td>
-              <td v-if="can.editMaterials"></td>
+              <td v-if="can.editMaterials && editMode"></td>
             </tr>
           </tbody>
         </table>
 
-        <!-- Добавить материал (только бригадир, пока акт не утверждён) -->
-        <div v-if="can.editMaterials" class="flex flex-wrap gap-2 items-center px-4 py-3 border-t border-gray-100 bg-gray-50">
+        <!-- Добавить материал (только бригадир, в режиме редактирования) -->
+        <div v-if="can.editMaterials && editMode" class="flex flex-wrap gap-2 items-center px-4 py-3 border-t border-gray-100 bg-gray-50">
           <select v-model="newMaterialId" class="field-input text-sm flex-1 min-w-40">
             <option value="">— выбрать материал —</option>
             <option v-for="mc in materialsCatalog" :key="mc.id" :value="mc.id">
@@ -164,7 +163,7 @@
           <input v-model.number="newMaterialQty" type="number" step="0.001" min="0.001"
                  placeholder="Кол-во" class="field-input text-sm w-24" />
           <button @click="addMaterialRow" :disabled="!newMaterialId || !newMaterialQty"
-                  class="btn-primary text-sm disabled:opacity-40">+ Добавить</button>
+                  class="btn-act-primary disabled:opacity-40">+ Добавить</button>
         </div>
       </div>
 
@@ -187,21 +186,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Модалка возврата -->
-    <div v-if="showReturnModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Вернуть акт на доработку</h3>
-        <label class="block text-xs text-gray-500 mb-1">Комментарий <span class="text-red-400">*</span></label>
-        <textarea v-model="returnComment" rows="3" class="field-input w-full"
-                  placeholder="Что нужно исправить"></textarea>
-        <div class="flex justify-end gap-2 mt-4">
-          <button @click="showReturnModal = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitReturn" :disabled="!returnComment.trim()"
-                  class="btn-primary text-sm disabled:opacity-40">Вернуть</button>
-        </div>
-      </div>
-    </div>
   </AppLayout>
 </template>
 
@@ -218,7 +202,6 @@ const props = defineProps({
 
 const statusLabels = {
   pending_foreman:          'Ждёт бригадира',
-  returned:                 'Возвращён',
   approved:                 'Утверждён',
   processing:               'В обработке',
   pending_subscriber_dept:  'Ждёт Абонотдел',
@@ -236,7 +219,6 @@ function typeLabel(type) {
 function statusClass(status) {
   return {
     pending_foreman:         'bg-amber-100 text-amber-700',
-    returned:                'bg-red-100 text-red-700',
     approved:                'bg-indigo-100 text-indigo-700',
     processing:              'bg-indigo-100 text-indigo-700',
     pending_subscriber_dept: 'bg-indigo-100 text-indigo-700',
@@ -248,7 +230,6 @@ function actionLabel(action) {
   return {
     created:              'Акт создан',
     approved:             'Утверждён бригадиром',
-    returned:             'Возвращён на доработку',
     peo_processed:        'Проведён ПЭО',
     logistics_processed:  'Проведён Логистикой',
     completed:            'Завершён Абонотделом',
@@ -275,14 +256,12 @@ function acknowledge() {
   post('acts.acknowledge')
 }
 
-const showReturnModal = ref(false)
-const returnComment = ref('')
+// ── Режим редактирования состава (только бригадир, пока pending_foreman) ──
+const editMode = ref(false)
 
-function submitReturn() {
-  router.post(route('acts.return', props.act.id), { comment: returnComment.value }, {
-    preserveScroll: true,
-    onSuccess: () => { showReturnModal.value = false; returnComment.value = '' },
-  })
+function finishEditing() {
+  editingId.value = null
+  editMode.value = false
 }
 
 // ── Чеклист подтверждения позиций бригадиром (гейт для "Утвердить") ──
@@ -297,7 +276,23 @@ const allChecked = computed(() => {
   return mats.length === 0 || mats.every(m => checkedMaterials[m.id])
 })
 
-const canApprove = computed(() => allChecked.value)
+// Блокируем "Утвердить", пока не отмечены все позиции ИЛИ пока монтажник не
+// подтвердил последние правки бригадира (materials_changed_at всё ещё висит).
+const canApprove = computed(() => allChecked.value && !props.act.materials_changed_at)
+
+const approveDisabledReason = computed(() => {
+  if (props.act.materials_changed_at) return 'Дождитесь, пока монтажник подтвердит изменения состава'
+  if (!allChecked.value) return 'Подтвердите все позиции материалов ниже'
+  return ''
+})
+
+// После цикла "правка → Ознакомлен" кнопка меняет подпись, чтобы отличать
+// первичное утверждение от возврата в активное состояние после правок.
+const approveLabel = computed(() =>
+  (props.act.history ?? []).some(h => h.action === 'acknowledged')
+    ? 'Утвердить в активное состояние'
+    : 'Утвердить'
+)
 
 function toggleAll(e) {
   const val = e.target.checked
@@ -323,7 +318,7 @@ function isUnackedEntry(h) {
   return !h.acknowledged_at && ['material_added', 'material_changed', 'material_removed'].includes(h.action)
 }
 
-// ── Редактирование состава акта (только бригадир, пока pending_foreman) ──
+// ── Правки состава внутри режима редактирования ──
 const editingId = ref(null)
 const editQty = ref(0)
 
