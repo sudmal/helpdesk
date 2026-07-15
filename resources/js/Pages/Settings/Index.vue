@@ -306,6 +306,7 @@
             <template v-for="group in permissionGroups" :key="group.key">
               <template v-for="perm in group.permissions" :key="perm.key">
                 <div v-if="(role.permissions ?? []).includes(perm.key)"
+                     :title="perm.desc"
                      class="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm"
                      :class="group.badgeClass ?? 'bg-blue-50 border-blue-100 text-blue-700'">
                   <span>{{ group.icon }}</span>
@@ -1055,54 +1056,71 @@ const permissionGroups = [
   {
     key: 'tickets', icon: '📋', label: 'Заявки', badgeClass: 'bg-blue-50 border-blue-100 text-blue-700',
     permissions: [
-      { key: 'tickets.view',    label: 'Просмотр',    desc: 'Видеть список и карточки заявок' },
-      { key: 'tickets.create',  label: 'Создание',    desc: 'Создавать новые заявки' },
-      { key: 'tickets.update',  label: 'Редактирование', desc: 'Изменять данные заявки' },
-      { key: 'tickets.delete',  label: 'Удаление',    desc: 'Удалять заявки' },
-      { key: 'tickets.assign',  label: 'Назначение',  desc: 'Назначать бригаду на заявку' },
-      { key: 'tickets.start',   label: 'В работу',    desc: 'Переводить заявку в статус "В работу"' },
-      { key: 'tickets.close',   label: 'Закрытие',    desc: 'Закрывать и отменять заявки' },
-      { key: 'tickets.comment', label: 'Комментарии', desc: 'Добавлять комментарии к заявкам' },
+      { key: 'tickets.view',    label: 'Просмотр заявок',       desc: 'Видеть список и карточки заявок' },
+      { key: 'tickets.create',  label: 'Создание заявок',       desc: 'Создавать новые заявки' },
+      { key: 'tickets.update',  label: 'Редактирование заявок', desc: 'Изменять данные заявки' },
+      { key: 'tickets.delete',  label: 'Удаление заявок',       desc: 'Удалять заявки' },
+      { key: 'tickets.assign',  label: 'Назначение бригады',    desc: 'Назначать бригаду на заявку' },
+      { key: 'tickets.start',   label: 'Взятие в работу',       desc: 'Переводить заявку в статус "В работу"' },
+      { key: 'tickets.pause',   label: 'Приостановка заявок',   desc: 'Приостанавливать выполнение заявки' },
+      { key: 'tickets.close',   label: 'Закрытие заявок',       desc: 'Закрывать и отменять заявки' },
+      { key: 'tickets.comment', label: 'Комментарии к заявкам', desc: 'Добавлять комментарии к заявкам' },
     ]
   },
   {
     key: 'addresses', icon: '📍', label: 'Адреса', badgeClass: 'bg-green-50 border-green-100 text-green-700',
     permissions: [
-      { key: 'addresses.view',   label: 'Просмотр',  desc: 'Просматривать базу адресов' },
-      { key: 'addresses.create', label: 'Создание',  desc: 'Добавлять новые адреса' },
-      { key: 'addresses.update', label: 'Изменение', desc: 'Редактировать адреса' },
-      { key: 'addresses.delete', label: 'Удаление',  desc: 'Удалять адреса' },
-      { key: 'addresses.import', label: 'Импорт',    desc: 'Импортировать адреса из файла' },
+      { key: 'addresses.view',   label: 'Просмотр адресов',       desc: 'Просматривать базу адресов' },
+      { key: 'addresses.create', label: 'Добавление адресов',     desc: 'Добавлять новые адреса' },
+      { key: 'addresses.update', label: 'Редактирование адресов', desc: 'Редактировать адреса' },
+      { key: 'addresses.delete', label: 'Удаление адресов',       desc: 'Удалять адреса' },
+      { key: 'addresses.import', label: 'Импорт адресов',         desc: 'Импортировать адреса из файла' },
     ]
   },
   {
     key: 'calendar', icon: '📅', label: 'Календарь', badgeClass: 'bg-purple-50 border-purple-100 text-purple-700',
     permissions: [
-      { key: 'calendar.view', label: 'Просмотр', desc: 'Видеть календарь заявок' },
+      { key: 'calendar.view', label: 'Просмотр календаря', desc: 'Видеть календарь заявок' },
+    ]
+  },
+  {
+    key: 'acts', icon: '📝', label: 'Акты', badgeClass: 'bg-indigo-50 border-indigo-100 text-indigo-700',
+    permissions: [
+      { key: 'acts.view',               label: 'Просмотр актов',            desc: 'Видеть список и карточки актов' },
+      { key: 'acts.foreman_review',     label: 'Утверждение актов',         desc: 'Утверждать состав акта как бригадир, редактировать материалы до утверждения' },
+      { key: 'acts.process_peo',        label: 'Обработка актов (ПЭО)',     desc: 'Отмечать акт проведённым со стороны ПЭО' },
+      { key: 'acts.process_logistics',  label: 'Обработка актов (Логистика)', desc: 'Отмечать акт проведённым со стороны Логистики' },
+      { key: 'acts.complete',           label: 'Завершение актов',          desc: 'Завершать акт со стороны Абонотдела, переводить в архив' },
+    ]
+  },
+  {
+    key: 'reports', icon: '📊', label: 'Отчёты', badgeClass: 'bg-pink-50 border-pink-100 text-pink-700',
+    permissions: [
+      { key: 'reports.view', label: 'Просмотр отчётов', desc: 'Видеть раздел Отчёты, включая отчёт по расходу материалов во вкладке Акты' },
     ]
   },
   {
     key: 'settings', icon: '⚙️', label: 'Настройки', badgeClass: 'bg-gray-50 border-gray-200 text-gray-700',
     permissions: [
-      { key: 'settings.view',          label: 'Просмотр',          desc: 'Видеть раздел настроек' },
-      { key: 'settings.edit',          label: 'Редактирование',     desc: 'Изменять настройки системы' },
-      { key: 'users.operators.create', label: 'Создание операторов', desc: 'Добавлять операторов и диспетчеров' },
-      { key: 'users.operators.delete', label: 'Удаление операторов', desc: 'Удалять операторов и диспетчеров' },
+      { key: 'settings.view',          label: 'Просмотр настроек',      desc: 'Видеть раздел настроек' },
+      { key: 'settings.edit',          label: 'Редактирование настроек', desc: 'Изменять настройки системы' },
+      { key: 'users.operators.create', label: 'Создание операторов',    desc: 'Добавлять операторов и диспетчеров' },
+      { key: 'users.operators.delete', label: 'Удаление операторов',    desc: 'Удалять операторов и диспетчеров' },
     ]
   },
   {
     key: 'materials', icon: '📦', label: 'Расходные материалы', badgeClass: 'bg-teal-50 border-teal-100 text-teal-700',
     permissions: [
-      { key: 'materials.view',   label: 'Просмотр',     desc: 'Видеть справочник материалов' },
-      { key: 'materials.manage', label: 'Управление',   desc: 'Добавлять и редактировать материалы' },
+      { key: 'materials.view',   label: 'Просмотр материалов',   desc: 'Видеть справочник материалов' },
+      { key: 'materials.manage', label: 'Управление материалами', desc: 'Добавлять и редактировать материалы' },
     ]
   },
   {
     key: 'brigades', icon: '👷', label: 'Бригады и территории', badgeClass: 'bg-amber-50 border-amber-100 text-amber-700',
     permissions: [
-      { key: 'brigades.view',      label: 'Просмотр бригад',    desc: 'Видеть список бригад' },
+      { key: 'brigades.view',      label: 'Просмотр бригад',      desc: 'Видеть список бригад' },
       { key: 'brigades.manage',    label: 'Управление бригадами', desc: 'Создавать и редактировать бригады' },
-      { key: 'territories.view',   label: 'Просмотр участков',  desc: 'Видеть список участков' },
+      { key: 'territories.view',   label: 'Просмотр участков',    desc: 'Видеть список участков' },
       { key: 'territories.manage', label: 'Управление участками', desc: 'Создавать и редактировать участки' },
     ]
   },
