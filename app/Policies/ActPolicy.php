@@ -65,11 +65,15 @@ class ActPolicy
      * Редактирование состава акта (добавить/удалить/изменить материал) —
      * ТОЛЬКО бригадир (буквально роль foreman, без обхода для admin/head_support —
      * так решил пользователь), и только пока акт ещё не утверждён им же.
+     * Для акта, который бригадир создал сам (сам закрыл заявку), редактирование
+     * недоступно вовсе — "для своих заявок бригадир ничего не должен, только
+     * утвердить" (2026-07-15, см. память project-acts-feature).
      */
     public function editMaterials(User $user, Act $act): bool
     {
         if ($act->status !== 'pending_foreman') return false;
         if (!$user->isForeman()) return false;
+        if ($act->created_by === $user->id) return false;
 
         return $this->inScope($user, $act);
     }

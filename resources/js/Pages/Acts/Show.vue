@@ -2,9 +2,27 @@
   <Head :title="`Акт ${act.number}`" />
   <AppLayout :title="`Акт ${act.number}`">
 
+    <!-- Все действия с актом — в самой верхней панели, рядом с заголовком и колокольчиком -->
+    <template #actions>
+      <div class="flex items-center gap-2 flex-wrap justify-end">
+        <button v-if="can.acknowledge" @click="acknowledge" class="btn-act-primary">Принято</button>
+
+        <template v-if="can.foremanReview && !editMode">
+          <button @click="approve" :disabled="!canApprove" :title="approveDisabledReason"
+                  class="btn-act-primary disabled:opacity-40 disabled:cursor-not-allowed">{{ approveLabel }}</button>
+        </template>
+        <button v-if="can.editMaterials && !editMode" @click="editMode = true" class="btn-act-outline">Редактировать состав</button>
+        <button v-if="can.editMaterials && editMode" @click="finishEditing" class="btn-act-primary">Сохранить</button>
+
+        <button v-if="can.processPeo" @click="post('acts.process-peo')" class="btn-act-primary">Отметить проведённым (ПЭО)</button>
+        <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-act-primary">Отметить проведённым (Логистика)</button>
+        <button v-if="can.complete" @click="post('acts.complete')" class="btn-act-primary">Завершить акт</button>
+      </div>
+    </template>
+
     <div class="max-w-3xl mx-auto space-y-4">
 
-      <!-- Шапка: badges + все действия с актом -->
+      <!-- Шапка: номер + бейджи типа/статуса -->
       <div class="bg-white rounded-2xl border border-gray-200 p-5">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -17,19 +35,6 @@
           <div class="flex items-center gap-2 flex-wrap justify-end">
             <span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-medium">{{ typeLabel(act.type) }}</span>
             <span :class="statusClass(act.status)" class="px-2 py-1 rounded-lg text-xs font-medium">{{ statusLabels[act.status] || act.status }}</span>
-
-            <button v-if="can.acknowledge" @click="acknowledge" class="btn-act-primary">Принято</button>
-
-            <template v-if="can.foremanReview && !editMode">
-              <button @click="approve" :disabled="!canApprove" :title="approveDisabledReason"
-                      class="btn-act-primary disabled:opacity-40 disabled:cursor-not-allowed">{{ approveLabel }}</button>
-            </template>
-            <button v-if="can.editMaterials && !editMode" @click="editMode = true" class="btn-act-outline">Редактировать состав</button>
-            <button v-if="can.editMaterials && editMode" @click="finishEditing" class="btn-act-primary">Сохранить</button>
-
-            <button v-if="can.processPeo" @click="post('acts.process-peo')" class="btn-act-primary">Отметить проведённым (ПЭО)</button>
-            <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-act-primary">Отметить проведённым (Логистика)</button>
-            <button v-if="can.complete" @click="post('acts.complete')" class="btn-act-primary">Завершить акт</button>
           </div>
         </div>
 
