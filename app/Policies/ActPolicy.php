@@ -6,59 +6,79 @@ use App\Models\{Act, User};
 
 class ActPolicy
 {
-    /** Список актов */
+    /** Список актов — видит любой участник цепочки + admin/head_support/operator (оверсайт) */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermission('acts.view')
+        return $user->isAdmin() || $user->isHeadSupport() || $user->isOperator()
+            || $user->hasPermission('acts.view')
             || $user->isForeman() || $user->isTechnician()
             || $user->isPeo() || $user->isLogistics() || $user->isSubscriberDept();
     }
 
-    /** Просмотр одного акта — с учётом территории заявки, к которой привязан акт */
+    /**
+     * Просмотр одного акта — admin/head_support/operator видят всё без
+     * territory/brigade-скоупа (оверсайт), остальные — по своему участку цепочки.
+     */
     public function view(User $user, Act $act): bool
     {
+        if ($user->isAdmin() || $user->isHeadSupport() || $user->isOperator()) return true;
         if (!$this->viewAny($user)) return false;
 
-        return $this->inScope($user, $act);
+        return $this->scopeMatch($user, $act);
     }
 
-    /** Бригадир: approve из pending_foreman */
+    /**
+     * Бригадир: approve из pending_foreman — ТОЛЬКО бригадир своей бригады
+     * (несёт материальную ответственность) или главный админ (подстраховка на
+     * случай отсутствия бригадира — отпуск/болезнь). head_support/operator
+     * права на утверждение НЕ имеют (2026-07-15, уточнение пользователя —
+     * раньше был общий admin/head_support/operator-байпас на все действия).
+     */
     public function foremanReview(User $user, Act $act): bool
     {
         if ($act->status !== 'pending_foreman') return false;
+        if ($user->isAdmin()) return true;
+        if (!$user->isForeman()) return false;
         if (!$user->hasPermission('acts.foreman_review')) return false;
 
-        return $this->inScope($user, $act);
+        return $this->scopeMatch($user, $act);
     }
 
-    /** ПЭО: только акты type=regular, ждущие ПЭО */
+    /**
+     * ПЭО: только сотрудники ПЭО (роль peo), без исключений для admin/
+     * head_support — так же строго, как и остальные звенья цепочки после
+     * бригадира (2026-07-15, уточнение пользователя).
+     */
     public function processPeo(User $user, Act $act): bool
     {
         if ($act->type !== 'regular') return false;
         if (!in_array($act->status, ['approved', 'processing'])) return false;
         if ($act->peo_processed_at !== null) return false;
+        if (!$user->isPeo()) return false;
         if (!$user->hasPermission('acts.process_peo')) return false;
 
-        return $this->inScope($user, $act);
+        return $this->scopeMatch($user, $act);
     }
 
-    /** Логистика: любой тип, независимо от ПЭО */
+    /** Логистика: только сотрудники Логистики (роль logistics), любой тип акта */
     public function processLogistics(User $user, Act $act): bool
     {
         if (!in_array($act->status, ['approved', 'processing'])) return false;
         if ($act->logistics_processed_at !== null) return false;
+        if (!$user->isLogistics()) return false;
         if (!$user->hasPermission('acts.process_logistics')) return false;
 
-        return $this->inScope($user, $act);
+        return $this->scopeMatch($user, $act);
     }
 
-    /** Абонотдел: только когда все требуемые для типа стороны провели */
+    /** Абонотдел: только работники Абонотдела (роль subscriber_dept) */
     public function complete(User $user, Act $act): bool
     {
         if ($act->status !== 'pending_subscriber_dept') return false;
+        if (!$user->isSubscriberDept()) return false;
         if (!$user->hasPermission('acts.complete')) return false;
 
-        return $this->inScope($user, $act);
+        return $this->scopeMatch($user, $act);
     }
 
     /**
@@ -75,7 +95,7 @@ class ActPolicy
         if (!$user->isForeman()) return false;
         if ($act->created_by === $user->id) return false;
 
-        return $this->inScope($user, $act);
+        return $this->scopeMatch($user, $act);
     }
 
     /** Монтажник подтверждает, что увидел правки бригадира в составе акта */
@@ -87,17 +107,13 @@ class ActPolicy
     }
 
     /**
-     * Территориальный скоуп: бригадир/монтажник — строго по бригаде заявки
-     * (ticket.brigade_id), к которой привязан акт (2026-07-15: раньше было по
-     * пересечению территорий бригад, сузили по прямому требованию пользователя
-     * — "бригадир видит акты только своей бригады"). ПЭО/Логистика/Абонотдел —
-     * по territories() пользователя напрямую (у них нет бригад). Остальные
-     * роли — без ограничений.
+     * Территориальный скоуп участников цепочки (без admin/head_support/operator —
+     * они проверяются отдельно в каждом методе выше, у кого есть оверсайт/обход).
+     * Бригадир/монтажник — строго по бригаде заявки (ticket.brigade_id).
+     * ПЭО/Логистика/Абонотдел — по territories() пользователя напрямую.
      */
-    private function inScope(User $user, Act $act): bool
+    private function scopeMatch(User $user, Act $act): bool
     {
-        if ($user->isAdmin() || $user->isHeadSupport() || $user->isOperator()) return true;
-
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = $user->brigades->pluck('id');
             if ($brigadeIds->isNotEmpty()) {
