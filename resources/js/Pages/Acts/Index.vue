@@ -2,88 +2,157 @@
   <Head title="Акты" />
   <AppLayout title="Акты">
 
-    <!-- Фильтры -->
-    <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Статус</label>
-        <select v-model="f.status" @change="apply" class="field-input">
-          <option value="">Все</option>
-          <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Тип</label>
-        <select v-model="f.type" @change="apply" class="field-input">
-          <option value="">Все</option>
-          <option value="regular">Обычный</option>
-          <option value="repair">Ремонт/Восстановление</option>
-        </select>
-      </div>
+    <!-- Вкладки -->
+    <div class="flex bg-gray-100 rounded-xl p-1 gap-0.5 w-fit mb-4">
+      <button v-for="t in tabs" :key="t.id" @click="switchTab(t.id)"
+              :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                       tab === t.id ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+        {{ t.label }}
+      </button>
     </div>
 
-    <!-- Таблица -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      <div class="px-4 py-2 border-b border-gray-100">
-        <span class="text-sm text-gray-500">Всего: {{ acts.total }}</span>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs">
-          <thead class="bg-gray-50 text-[11px] text-gray-400 uppercase tracking-wide">
-            <tr>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Номер</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Заявка</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Тип</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Статус</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Бригадир</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">ПЭО</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Логистика</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Абонотдел</th>
-              <th class="px-2 py-1 text-left whitespace-nowrap">Создан</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <template v-for="row in rows" :key="row.key">
-              <tr v-if="row.isGroup" class="bg-gray-50/80">
-                <td colspan="9" class="px-2 py-1 text-[11px] font-semibold text-gray-600 whitespace-nowrap">
-                  {{ row.territoryName }}<span class="text-gray-400 font-normal"> · {{ row.brigadeName }}</span>
-                </td>
-              </tr>
-              <tr v-else class="hover:bg-gray-50 cursor-pointer"
-                  @click="router.get(route('acts.show', row.act.id))">
-                <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">{{ row.act.number }}</td>
-                <td class="px-2 py-1 whitespace-nowrap text-blue-600">#{{ row.act.ticket?.number }}</td>
-                <td class="px-2 py-1 whitespace-nowrap">
-                  <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(row.act.type) }}</span>
-                </td>
-                <td class="px-2 py-1 whitespace-nowrap">
-                  <span :class="statusClass(row.act.status)" class="px-1.5 py-0.5 rounded font-medium">{{ statusLabels[row.act.status] || row.act.status }}</span>
-                </td>
-                <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.foreman_reviewed_at) }}</td>
-                <td class="px-2 py-1 whitespace-nowrap">{{ row.act.type === 'regular' ? stageMark(row.act.peo_processed_at) : '—' }}</td>
-                <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.logistics_processed_at) }}</td>
-                <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.subscriber_dept_completed_at) }}</td>
-                <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(row.act.created_at) }}</td>
-              </tr>
-            </template>
-            <tr v-if="!acts.data.length">
-              <td colspan="9" class="px-4 py-8 text-center text-gray-400">Нет актов</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Пагинация -->
-      <div v-if="acts.last_page > 1"
-           class="px-4 py-2 border-t border-gray-100 flex items-center gap-2">
-        <button v-for="link in acts.links" :key="link.label"
-                :disabled="!link.url || link.active"
-                @click="link.url && router.get(link.url, {}, { preserveState: true })"
-                v-html="link.label"
-                :class="['px-3 py-0.5 rounded-lg text-sm transition-colors',
-                         link.active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600 disabled:opacity-40 disabled:cursor-default']" />
-      </div>
+    <!-- Вкладка "Отчёты" — заглушка -->
+    <div v-if="tab === 'reports'" class="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400">
+      Отчёты по актам появятся здесь позже.
     </div>
+
+    <template v-else>
+      <!-- Фильтры -->
+      <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
+        <div v-if="tab === 'archive'" class="flex-1 min-w-48">
+          <label class="block text-xs text-gray-500 mb-1">Поиск</label>
+          <input v-model="f.search" @keydown.enter="apply"
+                 placeholder="Номер акта, номер заявки, адрес..."
+                 class="field-input w-full" />
+        </div>
+        <div v-if="tab === 'active'">
+          <label class="block text-xs text-gray-500 mb-1">Статус</label>
+          <select v-model="f.status" @change="apply" class="field-input">
+            <option value="">Все</option>
+            <option v-for="(label, key) in activeStatusLabels" :key="key" :value="key">{{ label }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Тип</label>
+          <select v-model="f.type" @change="apply" class="field-input">
+            <option value="">Все</option>
+            <option value="regular">Обычный</option>
+            <option value="repair">Ремонт/Восстановление</option>
+          </select>
+        </div>
+        <div v-if="tab === 'archive'">
+          <label class="block text-xs text-gray-500 mb-1">Сортировка</label>
+          <select v-model="f.sort" @change="apply" class="field-input">
+            <option value="completed_at">По дате завершения</option>
+            <option value="created_at">По дате создания</option>
+            <option value="number">По номеру</option>
+          </select>
+        </div>
+        <div v-if="tab === 'archive'">
+          <button @click="toggleSortDir" class="btn-outline text-sm" :title="f.sort_dir === 'asc' ? 'По возрастанию' : 'По убыванию'">
+            {{ f.sort_dir === 'asc' ? '↑' : '↓' }}
+          </button>
+        </div>
+        <div v-if="tab === 'archive'">
+          <button @click="apply" class="btn-primary text-sm">Найти</button>
+        </div>
+      </div>
+
+      <!-- Таблица -->
+      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="px-4 py-2 border-b border-gray-100">
+          <span class="text-sm text-gray-500">Всего: {{ acts.total }}</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50 text-[11px] text-gray-400 uppercase tracking-wide">
+              <tr v-if="tab === 'active'">
+                <th class="px-2 py-1 text-left whitespace-nowrap">Номер</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Заявка</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Тип</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Статус</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Бригадир</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">ПЭО</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Логистика</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Абонотдел</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Создан</th>
+              </tr>
+              <tr v-else>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Номер</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Заявка</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Тип</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Территория / адрес</th>
+                <th class="px-2 py-1 text-right whitespace-nowrap">Материалы</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Завершил</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Завершён</th>
+              </tr>
+            </thead>
+
+            <!-- Активные: группировка по территории/бригаде -->
+            <tbody v-if="tab === 'active'" class="divide-y divide-gray-100">
+              <template v-for="row in groupedRows" :key="row.key">
+                <tr v-if="row.isGroup" class="bg-gray-50/80">
+                  <td colspan="9" class="px-2 py-1 text-[11px] font-semibold text-gray-600 whitespace-nowrap">
+                    {{ row.territoryName }}<span class="text-gray-400 font-normal"> · {{ row.brigadeName }}</span>
+                  </td>
+                </tr>
+                <tr v-else class="hover:bg-gray-50 cursor-pointer" @click="router.get(route('acts.show', row.act.id))">
+                  <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">{{ row.act.number }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap text-blue-600">#{{ row.act.ticket?.number }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap">
+                    <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(row.act.type) }}</span>
+                  </td>
+                  <td class="px-2 py-1 whitespace-nowrap">
+                    <span :class="statusClass(row.act.status)" class="px-1.5 py-0.5 rounded font-medium">{{ statusLabels[row.act.status] || row.act.status }}</span>
+                  </td>
+                  <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.foreman_reviewed_at) }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap">{{ row.act.type === 'regular' ? stageMark(row.act.peo_processed_at) : '—' }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.logistics_processed_at) }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap">{{ stageMark(row.act.subscriber_dept_completed_at) }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(row.act.created_at) }}</td>
+                </tr>
+              </template>
+              <tr v-if="!acts.data.length">
+                <td colspan="9" class="px-4 py-8 text-center text-gray-400">Нет актов</td>
+              </tr>
+            </tbody>
+
+            <!-- Архив: плоский список, без группировки -->
+            <tbody v-else class="divide-y divide-gray-100">
+              <tr v-for="act in acts.data" :key="act.id"
+                  class="hover:bg-gray-50 cursor-pointer" @click="router.get(route('acts.show', act.id))">
+                <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">{{ act.number }}</td>
+                <td class="px-2 py-1 whitespace-nowrap text-blue-600">#{{ act.ticket?.number }}</td>
+                <td class="px-2 py-1 whitespace-nowrap">
+                  <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(act.type) }}</span>
+                </td>
+                <td class="px-2 py-1 whitespace-nowrap">
+                  <span v-if="act.ticket?.address?.territory">{{ act.ticket.address.territory.name }} · </span>{{ act.ticket?.address?.full_address || '—' }}
+                </td>
+                <td class="px-2 py-1 whitespace-nowrap text-right font-medium">{{ materialsTotal(act) }} ₽</td>
+                <td class="px-2 py-1 whitespace-nowrap">{{ act.subscriber_dept_completer?.name || '—' }}</td>
+                <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(act.subscriber_dept_completed_at) }}</td>
+              </tr>
+              <tr v-if="!acts.data.length">
+                <td colspan="7" class="px-4 py-8 text-center text-gray-400">Ничего не найдено</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Пагинация -->
+        <div v-if="acts.last_page > 1"
+             class="px-4 py-2 border-t border-gray-100 flex items-center gap-2">
+          <button v-for="link in acts.links" :key="link.label"
+                  :disabled="!link.url || link.active"
+                  @click="link.url && router.get(link.url, {}, { preserveState: true })"
+                  v-html="link.label"
+                  :class="['px-3 py-0.5 rounded-lg text-sm transition-colors',
+                           link.active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600 disabled:opacity-40 disabled:cursor-default']" />
+        </div>
+      </div>
+    </template>
   </AppLayout>
 </template>
 
@@ -93,9 +162,16 @@ import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const props = defineProps({
-  acts: Object,
-  filters: Object,
+  tab:     { type: String, default: 'active' },
+  acts:    { type: Object, default: null },
+  filters: { type: Object, default: () => ({}) },
 })
+
+const tabs = [
+  { id: 'active',  label: 'Активные' },
+  { id: 'archive', label: 'Архив' },
+  { id: 'reports', label: 'Отчёты' },
+]
 
 const statusLabels = {
   pending_foreman:          'Ждёт бригадира',
@@ -106,19 +182,38 @@ const statusLabels = {
   completed:                'Завершён',
 }
 
+// В "Активных" завершённые не показываются вовсе (они в Архиве) — статус
+// "Завершён" в фильтре этой вкладки не нужен.
+const activeStatusLabels = Object.fromEntries(
+  Object.entries(statusLabels).filter(([key]) => key !== 'completed')
+)
+
 const f = reactive({
-  status: props.filters?.status || '',
-  type:   props.filters?.type   || '',
+  status:   props.filters?.status   || '',
+  type:     props.filters?.type     || '',
+  search:   props.filters?.search   || '',
+  sort:     props.filters?.sort     || 'completed_at',
+  sort_dir: props.filters?.sort_dir || 'desc',
 })
 
 function apply() {
-  router.get(route('acts.index'), { ...f }, { preserveState: true, replace: true })
+  router.get(route('acts.index'), { tab: props.tab, ...f }, { preserveState: true, replace: true })
 }
 
-// Строки таблицы + вставленные заголовки групп по территории/бригаде.
+function switchTab(id) {
+  router.get(route('acts.index'), { tab: id }, { preserveState: false })
+}
+
+function toggleSortDir() {
+  f.sort_dir = f.sort_dir === 'asc' ? 'desc' : 'asc'
+  apply()
+}
+
+// Строки таблицы + вставленные заголовки групп по территории/бригаде (только для "Активных").
 // Список уже отсортирован бэкендом (territory.sort_order, territory.name, brigade.name) —
-// здесь только расставляем разделители при смене группы (задел под отчёты по территориям/бригадам).
-const rows = computed(() => {
+// здесь только расставляем разделители при смене группы.
+const groupedRows = computed(() => {
+  if (!props.acts) return []
   const result = []
   let lastKey = null
   for (const act of props.acts.data) {
@@ -133,6 +228,10 @@ const rows = computed(() => {
   }
   return result
 })
+
+function materialsTotal(act) {
+  return (act.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
+}
 
 function typeLabel(type) {
   return type === 'repair' ? 'Ремонт' : type === 'regular' ? 'Обычный' : '—'

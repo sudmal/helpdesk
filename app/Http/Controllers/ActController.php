@@ -14,6 +14,16 @@ class ActController extends Controller
     {
         $this->authorize('viewAny', Act::class);
         $user = auth()->user();
+        $tab  = in_array($request->tab, ['active', 'archive', 'reports']) ? $request->tab : 'active';
+
+        // Отчёты пока пустая заглушка — отдельного запроса под неё нет.
+        if ($tab === 'reports') {
+            return Inertia::render('Acts/Index', [
+                'tab'     => $tab,
+                'acts'    => null,
+                'filters' => [],
+            ]);
+        }
 
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
@@ -28,7 +38,7 @@ class ActController extends Controller
 
         // Джойны нужны для сортировки/группировки по территории и бригаде —
         // задел под будущие отчёты по актам (см. память project-acts-feature).
-        $acts = Act::query()
+        $query = Act::query()
             ->select('acts.*')
             ->leftJoin('tickets', 'tickets.id', '=', 'acts.ticket_id')
             ->leftJoin('addresses', 'addresses.id', '=', 'tickets.address_id')
@@ -49,18 +59,48 @@ class ActController extends Controller
             ->when($userTerritories->isNotEmpty(), fn($q) =>
                 $q->whereIn('addresses.territory_id', $userTerritories)
             )
-            ->when($request->status, fn($q) => $q->where('acts.status', $request->status))
-            ->when($request->type, fn($q) => $q->where('acts.type', $request->type))
-            ->orderBy('territories.sort_order')
-            ->orderBy('territories.name')
-            ->orderBy('brigades.name')
-            ->orderByDesc('acts.created_at')
-            ->paginate(30)
-            ->withQueryString();
+            ->when($request->type, fn($q) => $q->where('acts.type', $request->type));
+
+        if ($tab === 'archive') {
+            // Полностью завершённые акты уходят сюда с главной вкладки и здесь
+            // ищутся/сортируются как обычный архив, а не очередь на согласование.
+            $query->where('acts.status', 'completed');
+
+            $query->when($request->search, function ($q) use ($request) {
+                $s = '%' . $request->search . '%';
+                $q->where(function ($qq) use ($s) {
+                    $qq->where('acts.number', 'like', $s)
+                       ->orWhereHas('ticket', fn($t) => $t->where('number', 'like', $s))
+                       ->orWhereHas('ticket.address', fn($a) => $a
+                           ->where('street', 'like', $s)
+                           ->orWhere('city', 'like', $s)
+                           ->orWhere('building', 'like', $s));
+                });
+            });
+
+            $sortable = [
+                'completed_at' => 'acts.subscriber_dept_completed_at',
+                'created_at'   => 'acts.created_at',
+                'number'       => 'acts.number',
+            ];
+            $sortColumn = $sortable[$request->sort] ?? $sortable['completed_at'];
+            $sortDir    = $request->sort_dir === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortColumn, $sortDir);
+        } else {
+            $query->where('acts.status', '!=', 'completed')
+                ->when($request->status, fn($q) => $q->where('acts.status', $request->status))
+                ->orderBy('territories.sort_order')
+                ->orderBy('territories.name')
+                ->orderBy('brigades.name')
+                ->orderByDesc('acts.created_at');
+        }
+
+        $acts = $query->paginate(30)->withQueryString();
 
         return Inertia::render('Acts/Index', [
+            'tab'     => $tab,
             'acts'    => $acts,
-            'filters' => $request->only(['status', 'type']),
+            'filters' => $request->only(['status', 'type', 'search', 'sort', 'sort_dir']),
         ]);
     }
 
