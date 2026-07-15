@@ -55,7 +55,14 @@ class TicketPolicy
     /** Удаление — только Админ */
     public function delete(User $user, Ticket $ticket): bool
     {
-        return $user->isAdmin();
+        if (!$user->isAdmin()) return false;
+
+        // Акт по заявке уже подтверждён бригадиром (approved и далее по цепочке) —
+        // удаление заявки каскадно стирает акт/материалы/историю (см. память
+        // project-acts-feature), запрещаем, пока акт не в pending_foreman.
+        if ($ticket->act && $ticket->act->foreman_reviewed_at !== null) return false;
+
+        return true;
     }
 
     /** Назначение бригады */
