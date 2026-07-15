@@ -20,7 +20,7 @@ class ConnectionRequestController extends Controller
 
         $territory = $request->get('territory') ?: null;
 
-        $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory'])
+        $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'act'])
             ->when($territory, fn($q) => $q->where('territory_id', $territory))
             ->latest();
 
@@ -70,6 +70,7 @@ class ConnectionRequestController extends Controller
             'address_string' => 'required|string|max:255',
             'description'    => 'nullable|string|max:2000',
             'territory_id'   => 'required|exists:territories,id',
+            'brigade_id'     => 'nullable|exists:brigades,id',
         ]);
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
@@ -91,6 +92,7 @@ class ConnectionRequestController extends Controller
             'scheduled_at'   => 'nullable|date',
             'notes'          => 'nullable|string|max:2000',
             'territory_id'   => 'nullable|exists:territories,id',
+            'brigade_id'     => 'nullable|exists:brigades,id',
         ]);
 
         if (isset($data['status'])) {
@@ -118,15 +120,25 @@ class ConnectionRequestController extends Controller
         return back()->with('success', 'Заявка обновлена');
     }
 
+    /**
+     * Материалы теперь формируют полноценный Акт (Act + ActMaterial + ActHistory,
+     * тот же workflow согласования Бригадир -> ПЭО/Логистика -> Абонотдел, что и
+     * у заявок), а не пишутся на connection_request напрямую и не под свободный
+     * текстовый "номер акта" — см. память project-acts-feature, "Заявки на
+     * подключение". Act.type всегда 'regular' (репейр-акты сюда не относятся,
+     * это всегда новое подключение) — выбор Интернет/КТВ влияет только на
+     * префикс номера акта (in-/cn-), у самих заявок на подключение нет поля
+     * типа услуги.
+     */
     public function close(Request $request, ConnectionRequest $connectionRequest)
     {
         $request->validate([
-            'notes'      => 'nullable|string|max:2000',
-            'act_number' => [
-                'nullable', 'string', 'max:50',
+            'notes'                    => 'nullable|string|max:2000',
+            'service'                  => [
+                'nullable', 'in:internet,ctv',
                 function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($request->input('materials')) && (empty($value) || mb_strlen(trim($value)) < 5)) {
-                        $fail('При использовании материалов обязателен номер акта (минимум 5 символов).');
+                    if (!empty($request->input('materials')) && empty($value)) {
+                        $fail('При использовании материалов обязателен тип услуги (Интернет/КТВ).');
                     }
                 },
             ],
@@ -135,22 +147,29 @@ class ConnectionRequestController extends Controller
             'materials.*.quantity'    => 'required_with:materials.*|numeric|min:0.01',
         ]);
 
-        $actNumber = filled($request->act_number) ? $request->act_number : 'б/а';
+        $actNumber = null;
 
-        DB::transaction(function () use ($connectionRequest, $actNumber, $request) {
+        DB::transaction(function () use ($connectionRequest, $request, &$actNumber) {
             $connectionRequest->update([
                 'status'         => 'closed',
-                'act_number'     => $actNumber,
                 'notes'          => $request->notes,
                 'needs_callback' => false,
             ]);
 
             if (!empty($request->materials)) {
-                $connectionRequest->materials()->delete();
+                $actNumber = \App\Models\Act::generateNumberForConnectionRequest($request->service);
+                $act = \App\Models\Act::create([
+                    'connection_request_id' => $connectionRequest->id,
+                    'number'                => $actNumber,
+                    'type'                  => 'regular',
+                    'status'                => 'pending_foreman',
+                    'created_by'            => $request->user()->id,
+                ]);
+
                 foreach ($request->materials as $item) {
                     $material = Material::find($item['material_id']);
                     if (!$material) continue;
-                    $connectionRequest->materials()->create([
+                    $act->materials()->create([
                         'material_id'   => $material->id,
                         'material_name' => $material->name,
                         'material_code' => $material->code,
@@ -160,12 +179,17 @@ class ConnectionRequestController extends Controller
                         'created_by'    => $request->user()->id,
                     ]);
                 }
+
+                $act->history()->create([
+                    'user_id' => $request->user()->id,
+                    'action'  => 'created',
+                ]);
             }
         });
 
         $this->logEvent($connectionRequest, $request->user()->id, 'closed',
             $request->notes,
-            ['act_number' => $actNumber]);
+            $actNumber ? ['act_number' => $actNumber] : null);
 
         return back()->with('success', 'Подключение выполнено');
     }
@@ -185,7 +209,7 @@ class ConnectionRequestController extends Controller
 
     public function detail(ConnectionRequest $connectionRequest)
     {
-        $connectionRequest->load(['creator', 'assignee', 'territory', 'materials', 'logs.user']);
+        $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'materials', 'logs.user', 'act']);
         return response()->json($connectionRequest);
     }
 
