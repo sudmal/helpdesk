@@ -513,6 +513,7 @@ const isFormComplete = computed(() =>
   !needsApartment.value &&
   !!form.service_type_id &&
   !!form.type_id &&
+  !!form.brigade_id &&
   !!form.phone.trim() &&
   !!form.scheduled_at &&
   !!form.description.trim()
@@ -524,6 +525,7 @@ const fieldError = computed(() => ({
   apartment:    submitted.value && needsApartment.value,
   service_type: submitted.value && !form.service_type_id,
   type:         submitted.value && !form.type_id,
+  brigade:      submitted.value && !form.brigade_id,
   phone:        submitted.value && !form.phone.trim(),
   scheduled_at: submitted.value && !form.scheduled_at,
   description:  submitted.value && !form.description.trim(),
