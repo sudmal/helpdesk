@@ -75,8 +75,9 @@
 
       <!-- Материалы -->
       <div v-if="act.materials?.length" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div class="px-5 py-3 border-b border-gray-100">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <h3 class="font-medium text-sm text-gray-700">📦 Расходные материалы</h3>
+          <span class="text-sm font-semibold text-blue-600">Итого: {{ totalMaterials }} ₽</span>
         </div>
         <table class="w-full text-xs">
           <thead class="bg-gray-50 text-[11px] text-gray-400 uppercase tracking-wide">
@@ -148,6 +149,10 @@ const statusLabels = {
   pending_subscriber_dept:  'Ждёт Абонотдел',
   completed:                'Завершён',
 }
+
+const totalMaterials = computed(() =>
+  (props.act.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
+)
 
 const hasAnyAction = computed(() =>
   props.can.foremanReview || props.can.processPeo || props.can.processLogistics || props.can.complete

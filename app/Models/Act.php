@@ -6,6 +6,33 @@ use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 
 class Act extends Model
 {
+    /**
+     * Гейт Абонотдела на уровне модели (не только Policy/контроллера) — акт с
+     * реальным типом (не legacy-бэкфилл, там type=null) нельзя перевести в
+     * completed, пока не проведены все требуемые для этого типа стороны:
+     * regular — ПЭО + Логистика, repair — только Логистика. См. память
+     * project-acts-feature. Бэкфилл старых ticket_materials сознательно
+     * оставляет type=null и обходит эту проверку — это исторические данные
+     * до появления самого workflow.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Act $act) {
+            if (!$act->isDirty('status') || $act->status !== 'completed' || $act->type === null) {
+                return;
+            }
+
+            $logisticsDone = $act->logistics_processed_at !== null;
+            $peoDone       = $act->type !== 'regular' || $act->peo_processed_at !== null;
+
+            if (!$logisticsDone || !$peoDone) {
+                throw new \RuntimeException(
+                    "Акт {$act->number} нельзя завершить: не проведены все требуемые отделы (ПЭО/Логистика)."
+                );
+            }
+        });
+    }
+
     protected $fillable = [
         'ticket_id', 'number', 'type', 'status', 'created_by',
         'foreman_reviewed_by', 'foreman_reviewed_at', 'foreman_return_comment',
