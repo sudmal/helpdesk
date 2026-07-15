@@ -26,9 +26,19 @@ class ActController extends Controller
             $userTerritories = collect(); // admin/head_support/operator — без ограничений
         }
 
-        $acts = Act::with([
-                'ticket:id,number,address_id,type_id,service_type_id',
+        // Джойны нужны для сортировки/группировки по территории и бригаде —
+        // задел под будущие отчёты по актам (см. память project-acts-feature).
+        $acts = Act::query()
+            ->select('acts.*')
+            ->leftJoin('tickets', 'tickets.id', '=', 'acts.ticket_id')
+            ->leftJoin('addresses', 'addresses.id', '=', 'tickets.address_id')
+            ->leftJoin('territories', 'territories.id', '=', 'addresses.territory_id')
+            ->leftJoin('brigades', 'brigades.id', '=', 'tickets.brigade_id')
+            ->with([
+                'ticket:id,number,address_id,brigade_id,type_id,service_type_id',
                 'ticket.address:id,city,street,building,apartment,territory_id',
+                'ticket.address.territory:id,name',
+                'ticket.brigade:id,name',
                 'materials',
                 'creator:id,name',
                 'foremanReviewer:id,name',
@@ -37,11 +47,14 @@ class ActController extends Controller
                 'subscriberDeptCompleter:id,name',
             ])
             ->when($userTerritories->isNotEmpty(), fn($q) =>
-                $q->whereHas('ticket.address', fn($a) => $a->whereIn('territory_id', $userTerritories))
+                $q->whereIn('addresses.territory_id', $userTerritories)
             )
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
-            ->when($request->type, fn($q) => $q->where('type', $request->type))
-            ->latest()
+            ->when($request->status, fn($q) => $q->where('acts.status', $request->status))
+            ->when($request->type, fn($q) => $q->where('acts.type', $request->type))
+            ->orderBy('territories.sort_order')
+            ->orderBy('territories.name')
+            ->orderBy('brigades.name')
+            ->orderByDesc('acts.created_at')
             ->paginate(30)
             ->withQueryString();
 
@@ -56,7 +69,7 @@ class ActController extends Controller
         $this->authorize('view', $act);
 
         $act->load([
-            'ticket.address', 'ticket.type', 'ticket.serviceType',
+            'ticket.address.territory', 'ticket.type', 'ticket.serviceType',
             'materials.material',
             'history.user',
             'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor', 'subscriberDeptCompleter',

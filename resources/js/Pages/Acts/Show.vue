@@ -19,6 +19,23 @@
             <span :class="statusClass(act.status)" class="px-2 py-1 rounded-lg text-xs font-medium">{{ statusLabels[act.status] || act.status }}</span>
           </div>
         </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
+          <div>
+            <p class="text-xs text-gray-400 mb-0.5">Дата создания</p>
+            <p class="text-sm font-medium text-gray-700">{{ fmtDateTime(act.created_at) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 mb-0.5">Территория / адрес</p>
+            <p class="text-sm font-medium text-gray-700">
+              <span v-if="act.ticket.address?.territory">{{ act.ticket.address.territory.name }} — </span>{{ act.ticket.address?.full_address || '—' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 mb-0.5">Монтажник (автор)</p>
+            <p class="text-sm font-medium text-gray-700">{{ act.creator?.name || '—' }}</p>
+          </div>
+        </div>
       </div>
 
       <!-- Прогресс по этапам -->
@@ -104,11 +121,14 @@
       <!-- История -->
       <div v-if="act.history?.length" class="bg-white rounded-2xl border border-gray-200 p-5">
         <h3 class="font-medium text-sm text-gray-700 mb-3">История</h3>
-        <div class="space-y-2">
-          <div v-for="h in act.history" :key="h.id" class="flex items-start gap-2 text-xs">
-            <span class="text-gray-400 whitespace-nowrap">{{ fmtDateTime(h.created_at) }}</span>
-            <span class="text-gray-700">{{ actionLabel(h.action) }}</span>
-            <span v-if="h.user" class="text-gray-400">— {{ h.user.name }}</span>
+        <div class="space-y-2.5">
+          <div v-for="h in act.history" :key="h.id" class="text-xs">
+            <div class="flex flex-wrap items-baseline gap-x-2">
+              <span class="text-gray-400 whitespace-nowrap font-mono">{{ fmtDateTime(h.created_at) }}</span>
+              <span class="text-gray-800 font-medium">{{ h.user?.name || 'Система' }}</span>
+              <span class="text-gray-500">— {{ actionLabel(h.action) }}</span>
+            </div>
+            <p v-if="h.new_value" class="text-gray-400 mt-0.5 pl-1">↳ {{ h.new_value }}</p>
           </div>
         </div>
       </div>
