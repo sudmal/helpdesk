@@ -120,10 +120,9 @@
               </td>
               <td class="px-3 py-1.5 whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDate(r.scheduled_at) : '—' }}</td>
               <td class="px-3 py-1.5 text-gray-600 max-w-48 truncate" :title="r.notes">
-                <button v-if="r.act_number && r.materials?.length"
-                        @click="openView(r)"
-                        class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act_number }}]</button>
-                <span v-else-if="r.act_number" class="mr-1 text-gray-400">[{{ r.act_number }}]</span>
+                <button v-if="r.act"
+                        @click="router.get(route('acts.show', r.act.id))"
+                        class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act.number }}]</button>
                 {{ r.notes || '—' }}
               </td>
               <td class="px-3 py-1.5 whitespace-nowrap">
@@ -202,6 +201,13 @@
             </select>
           </div>
           <div>
+            <label class="block text-xs text-gray-500 mb-1">Бригада <span class="text-red-400">*</span></label>
+            <select v-model="createForm.brigade_id" class="field-input w-full">
+              <option :value="null">— выберите бригаду —</option>
+              <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs text-gray-500 mb-1">Описание</label>
             <textarea v-model="createForm.description" class="field-input w-full" rows="3"
                       placeholder="Желаемый тариф, заметки..."></textarea>
@@ -237,6 +243,13 @@
             <select v-model="editForm.territory_id" class="field-input w-full">
               <option :value="null">— не указана —</option>
               <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Бригада</label>
+            <select v-model="editForm.brigade_id" class="field-input w-full">
+              <option :value="null">— не указана —</option>
+              <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
           </div>
           <div>
@@ -306,11 +319,6 @@
         <h3 class="text-base font-semibold mb-4">Закрыть — подключение выполнено</h3>
         <div class="space-y-3">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Номер акта</label>
-            <input v-model="closeForm.act_number" class="field-input w-full"
-                   placeholder="А-123 (или оставьте пустым → б/а)" />
-          </div>
-          <div>
             <label class="block text-xs text-gray-500 mb-1">Примечания</label>
             <textarea v-model="closeForm.notes" class="field-input w-full" rows="3"></textarea>
           </div>
@@ -318,6 +326,14 @@
             <div class="flex items-center justify-between mb-2">
               <label class="text-xs text-gray-500 font-medium">Использованные материалы</label>
               <button @click="addMaterialRow" class="text-xs text-blue-600 hover:underline">+ добавить</button>
+            </div>
+            <div v-if="closeForm.materials.length" class="mb-2">
+              <label class="block text-xs text-gray-500 mb-1">Тип услуги (для номера акта) <span class="text-red-400">*</span></label>
+              <select v-model="closeForm.service" class="field-input w-full">
+                <option value="">— выберите —</option>
+                <option value="internet">Интернет</option>
+                <option value="ctv">КТВ</option>
+              </select>
             </div>
             <div v-for="(row, idx) in closeForm.materials" :key="idx"
                  class="flex gap-2 items-center mb-1.5">
@@ -348,55 +364,6 @@
                   class="px-4 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
             Выполнено
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модал: Просмотр акта -->
-    <div v-if="modals.view" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Акт выполненных работ № {{ viewRecord?.act_number }}</h3>
-        <div class="space-y-2 text-sm mb-4">
-          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Клиент:</span><span class="font-medium">{{ viewRecord?.name }}</span></div>
-          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Телефон:</span><span>{{ viewRecord?.phone }}</span></div>
-          <div class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Адрес:</span><span>{{ viewRecord?.address_string }}</span></div>
-          <div v-if="viewRecord?.notes" class="flex gap-2"><span class="text-gray-500 w-28 shrink-0">Примечания:</span><span>{{ viewRecord?.notes }}</span></div>
-        </div>
-        <div v-if="viewRecord?.materials?.length">
-          <div class="text-xs font-medium text-gray-500 mb-2">Использованные материалы:</div>
-          <table class="w-full text-xs">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-3 py-2 text-left text-gray-500">№</th>
-                <th class="px-3 py-2 text-left text-gray-500">Код</th>
-                <th class="px-3 py-2 text-left text-gray-500">Материал</th>
-                <th class="px-3 py-2 text-right text-gray-500">Кол-во</th>
-                <th class="px-3 py-2 text-right text-gray-500">Цена</th>
-                <th class="px-3 py-2 text-right text-gray-500">Сумма</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr v-for="(m, idx) in viewRecord.materials" :key="m.id">
-                <td class="px-3 py-1.5 text-gray-400">{{ idx + 1 }}</td>
-                <td class="px-3 py-1.5 font-mono text-gray-600">{{ m.material_code || '—' }}</td>
-                <td class="px-3 py-1.5">{{ m.material_name }} <span class="text-gray-400">{{ m.material_unit }}</span></td>
-                <td class="px-3 py-1.5 text-right">{{ m.quantity }}</td>
-                <td class="px-3 py-1.5 text-right text-gray-500">{{ m.price_at_time }}</td>
-                <td class="px-3 py-1.5 text-right font-medium">{{ (m.quantity * m.price_at_time).toFixed(2) }}</td>
-              </tr>
-            </tbody>
-            <tfoot class="border-t-2 border-gray-200">
-              <tr>
-                <td colspan="5" class="px-3 py-2 text-right text-gray-500 font-medium">Итого:</td>
-                <td class="px-3 py-2 text-right font-bold">
-                  {{ viewRecord.materials.reduce((s,m) => s + m.quantity * m.price_at_time, 0).toFixed(2) }}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <div class="mt-5 flex justify-end">
-          <button @click="modals.view = false" class="btn-outline text-sm">Закрыть</button>
         </div>
       </div>
     </div>
@@ -442,6 +409,10 @@
               <div class="text-xs text-gray-400 mb-0.5">Территория</div>
               <div class="text-sm">{{ detailData.territory.name }}</div>
             </div>
+            <div v-if="detailData.brigade">
+              <div class="text-xs text-gray-400 mb-0.5">Бригада</div>
+              <div class="text-sm">{{ detailData.brigade.name }}</div>
+            </div>
             <div v-if="detailData.scheduled_at">
               <div class="text-xs text-gray-400 mb-0.5">Дата подключения</div>
               <div class="text-sm">{{ fmtDateTime(detailData.scheduled_at) }}</div>
@@ -454,14 +425,15 @@
               <div class="text-xs text-gray-400 mb-0.5">Примечания</div>
               <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ detailData.notes }}</div>
             </div>
-            <div v-if="detailData.act_number">
+            <div v-if="detailData.act">
               <div class="text-xs text-gray-400 mb-0.5">Акт</div>
-              <div class="text-sm font-medium">{{ detailData.act_number }}</div>
+              <button @click="router.get(route('acts.show', detailData.act.id))"
+                      class="text-sm font-medium text-blue-600 hover:underline">{{ detailData.act.number }} →</button>
             </div>
           </div>
 
-          <!-- Материалы -->
-          <div v-if="detailData.materials && detailData.materials.length" class="border-t border-gray-100 pt-4">
+          <!-- Материалы (теперь на акте, не на самой заявке) -->
+          <div v-if="detailData.act?.materials && detailData.act.materials.length" class="border-t border-gray-100 pt-4">
             <div class="text-xs font-medium text-gray-500 mb-2">Использованные материалы</div>
             <table class="w-full text-xs">
               <thead>
@@ -473,7 +445,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-50">
-                <tr v-for="m in detailData.materials" :key="m.id">
+                <tr v-for="m in detailData.act.materials" :key="m.id">
                   <td class="py-1">{{ m.material_name }} <span class="text-gray-400">{{ m.material_unit }}</span></td>
                   <td class="py-1 text-right">{{ m.quantity }}</td>
                   <td class="py-1 text-right text-gray-500">{{ m.price_at_time }}</td>
@@ -484,7 +456,7 @@
                 <tr>
                   <td colspan="3" class="pt-1.5 text-right text-gray-500">Итого:</td>
                   <td class="pt-1.5 text-right font-bold text-blue-600">
-                    {{ detailData.materials.reduce((s,m) => s + m.quantity * m.price_at_time, 0).toFixed(2) }} ₽
+                    {{ detailData.act.materials.reduce((s,m) => s + m.quantity * m.price_at_time, 0).toFixed(2) }} ₽
                   </td>
                 </tr>
               </tfoot>
@@ -533,7 +505,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -542,6 +514,7 @@ const props = defineProps({
   requests:          Object,
   filters:           Object,
   territories:        Array,
+  brigades:           { type: Array, default: () => [] },
   selectedTerritory:  { type: Number, default: null },
   pendingByTerritory:  { type: Object, default: () => ({}) },
   totalPending:        { type: Number, default: 0 },
@@ -575,24 +548,23 @@ function reset() {
 }
 
 // Модалы
-const modals      = reactive({ create: false, edit: false, schedule: false, reject: false, close: false, view: false, detail: false })
+const modals      = reactive({ create: false, edit: false, schedule: false, reject: false, close: false, detail: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
-const viewRecord   = ref(null)
 const closeErrors  = ref('')
 
-const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null })
-const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null })
+const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null })
+const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null })
 const editErrors  = ref('')
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })
-const closeForm    = reactive({ act_number: '', notes: '', materials: [] })
+const closeForm    = reactive({ service: '', notes: '', materials: [] })
 
 function openCreate() {
   Object.assign(createForm, {
     name: '', phone: '', address_string: '', description: '',
-    territory_id: props.selectedTerritory ?? null,
+    territory_id: props.selectedTerritory ?? null, brigade_id: null,
   })
   createErrors.value = ''
   modals.create = true
@@ -606,6 +578,7 @@ function openEdit(r) {
     address_string: r.address_string,
     description:    r.description ?? '',
     territory_id:   r.territory_id ?? null,
+    brigade_id:     r.brigade_id ?? null,
   })
   editErrors.value = ''
   modals.edit = true
@@ -630,13 +603,9 @@ function openReject(r) {
 
 function openClose(r) {
   activeRecord.value = r
-  Object.assign(closeForm, { act_number: '', notes: r.notes ?? '', materials: [] })
+  Object.assign(closeForm, { service: '', notes: r.notes ?? '', materials: [] })
+  closeErrors.value = ''
   modals.close = true
-}
-
-function openView(r) {
-  viewRecord.value = r
-  modals.view = true
 }
 
 function matRowTotal(row) {
@@ -663,6 +632,10 @@ function submitCreate() {
   }
   if (!createForm.territory_id) {
     createErrors.value = 'Выберите территорию'
+    return
+  }
+  if (!createForm.brigade_id) {
+    createErrors.value = 'Выберите бригаду'
     return
   }
   submitting.value = true
@@ -705,15 +678,15 @@ function submitReject() {
 
 function submitClose() {
   const materials = closeForm.materials.filter(m => m.material_id && m.quantity)
-  if (materials.length > 0 && (!closeForm.act_number || closeForm.act_number.trim().length < 5)) {
-    closeErrors.value = 'При использовании материалов обязателен номер акта (минимум 5 символов)'
+  if (materials.length > 0 && !closeForm.service) {
+    closeErrors.value = 'При использовании материалов обязателен тип услуги (Интернет/КТВ)'
     return
   }
   closeErrors.value = ''
   submitting.value = true
   router.post(route('connection-requests.close', activeRecord.value.id), {
-    act_number: closeForm.act_number,
-    notes:      closeForm.notes,
+    service: closeForm.service,
+    notes:   closeForm.notes,
     materials,
   }, {
     onSuccess: () => { modals.close = false },
@@ -749,6 +722,13 @@ function fmtDateTime(val) {
 // Detail modal
 const detailData    = ref(null)
 const detailLoading = ref(false)
+
+// Переход сюда со страницы акта (Acts/Show.vue -> "Заявка на подключение") —
+// сразу открываем карточку конкретной заявки по ?open=<id>.
+onMounted(() => {
+  const openId = new URLSearchParams(window.location.search).get('open')
+  if (openId) openDetail({ id: openId })
+})
 
 async function openDetail(r) {
   detailData.value    = null

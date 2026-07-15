@@ -163,7 +163,7 @@
                     <span v-if="needsAck(row.act)" class="ml-1 text-red-600 font-bold"
                           title="Бригадир изменил состав акта — есть неподтверждённые изменения">(!)</span>
                   </td>
-                  <td class="px-2 py-1 whitespace-nowrap text-blue-600">#{{ row.act.ticket?.number }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap text-blue-600">{{ requestLabel(row.act) }}</td>
                   <td class="px-2 py-1 whitespace-nowrap">
                     <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(row.act.type) }}</span>
                   </td>
@@ -198,12 +198,12 @@
               <tr v-for="act in acts.data" :key="act.id"
                   class="hover:bg-gray-50 cursor-pointer" @click="router.get(route('acts.show', act.id))">
                 <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">{{ act.number }}</td>
-                <td class="px-2 py-1 whitespace-nowrap text-blue-600">#{{ act.ticket?.number }}</td>
+                <td class="px-2 py-1 whitespace-nowrap text-blue-600">{{ requestLabel(act) }}</td>
                 <td class="px-2 py-1 whitespace-nowrap">
                   <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(act.type) }}</span>
                 </td>
                 <td class="px-2 py-1 whitespace-nowrap">
-                  <span v-if="act.ticket?.address?.territory">{{ act.ticket.address.territory.name }} · </span>{{ act.ticket?.address?.full_address || '—' }}
+                  <span v-if="requestTerritoryName(act)">{{ requestTerritoryName(act) }} · </span>{{ requestAddress(act) }}
                 </td>
                 <td class="px-2 py-1 whitespace-nowrap text-right font-medium">{{ materialsTotal(act) }} ₽</td>
                 <td class="px-2 py-1 whitespace-nowrap">{{ act.subscriber_dept_completer?.name || '—' }}</td>
@@ -309,8 +309,8 @@ const groupedRows = computed(() => {
   const result = []
   let lastKey = null
   for (const act of props.acts.data) {
-    const territoryName = act.ticket?.address?.territory?.name || 'Без территории'
-    const brigadeName = act.ticket?.brigade?.name || 'Без бригады'
+    const territoryName = requestTerritoryName(act) || 'Без территории'
+    const brigadeName = act.ticket?.brigade?.name || act.connection_request?.brigade?.name || 'Без бригады'
     const key = territoryName + '|' + brigadeName
     if (key !== lastKey) {
       result.push({ isGroup: true, key: 'g-' + key, territoryName, brigadeName })
@@ -323,6 +323,23 @@ const groupedRows = computed(() => {
 
 function materialsTotal(act) {
   return (act.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
+}
+
+// Акт теперь бывает от заявки (ticket) ИЛИ от заявки на подключение
+// (connection_request) — эти три хелпера достают общее поле из того
+// источника, который реально заполнен у конкретного акта.
+function requestLabel(act) {
+  if (act.ticket) return '#' + act.ticket.number
+  if (act.connection_request) return act.connection_request.name
+  return '—'
+}
+
+function requestTerritoryName(act) {
+  return act.ticket?.address?.territory?.name || act.connection_request?.territory?.name || ''
+}
+
+function requestAddress(act) {
+  return act.ticket?.address?.full_address || act.connection_request?.address_string || '—'
 }
 
 function typeLabel(type) {

@@ -27,9 +27,13 @@
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h2 class="text-lg font-semibold text-gray-800 font-mono">{{ act.number }}</h2>
-            <button class="text-sm text-blue-600 hover:underline mt-0.5"
+            <button v-if="act.ticket" class="text-sm text-blue-600 hover:underline mt-0.5"
                     @click="router.get(route('tickets.show', act.ticket.id))">
               Заявка #{{ act.ticket.number }}
+            </button>
+            <button v-else-if="act.connection_request" class="text-sm text-blue-600 hover:underline mt-0.5"
+                    @click="router.get(route('connection-requests.index') + '?open=' + act.connection_request.id)">
+              Заявка на подключение — {{ act.connection_request.name }}
             </button>
           </div>
           <div class="flex items-center gap-2 flex-wrap justify-end">
@@ -46,7 +50,12 @@
           <div>
             <p class="text-xs text-gray-400 mb-0.5">Территория / адрес</p>
             <p class="text-sm font-medium text-gray-700">
-              <span v-if="act.ticket.address?.territory">{{ act.ticket.address.territory.name }} — </span>{{ act.ticket.address?.full_address || '—' }}
+              <template v-if="act.ticket">
+                <span v-if="act.ticket.address?.territory">{{ act.ticket.address.territory.name }} — </span>{{ act.ticket.address?.full_address || '—' }}
+              </template>
+              <template v-else-if="act.connection_request">
+                <span v-if="act.connection_request.territory">{{ act.connection_request.territory.name }} — </span>{{ act.connection_request.address_string || '—' }}
+              </template>
             </p>
           </div>
           <div>

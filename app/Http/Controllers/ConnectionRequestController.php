@@ -54,6 +54,7 @@ class ConnectionRequestController extends Controller
             'requests'           => $query->paginate(50)->withQueryString(),
             'filters'            => $request->only(['status', 'search', 'territory']),
             'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+            'brigades'           => Brigade::orderBy('name')->get(['id', 'name']),
             'selectedTerritory'  => $territory ? (int)$territory : null,
             'pendingByTerritory' => $pendingByTerritory,
             'totalPending'       => $pendingByTerritory->sum(),
@@ -70,7 +71,9 @@ class ConnectionRequestController extends Controller
             'address_string' => 'required|string|max:255',
             'description'    => 'nullable|string|max:2000',
             'territory_id'   => 'required|exists:territories,id',
-            'brigade_id'     => 'nullable|exists:brigades,id',
+            // Акт по заявке жёстко привязан к бригаде (ресурсы, отчётность) —
+            // см. память project-acts-feature, "Заявки на подключение".
+            'brigade_id'     => 'required|exists:brigades,id',
         ]);
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
@@ -209,7 +212,7 @@ class ConnectionRequestController extends Controller
 
     public function detail(ConnectionRequest $connectionRequest)
     {
-        $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'materials', 'logs.user', 'act']);
+        $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'materials', 'logs.user', 'act.materials']);
         return response()->json($connectionRequest);
     }
 
