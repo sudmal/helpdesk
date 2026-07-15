@@ -62,7 +62,17 @@ class ActController extends Controller
             'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor', 'subscriberDeptCompleter',
         ]);
 
-        return Inertia::render('Acts/Show', ['act' => $act]);
+        $user = auth()->user();
+
+        return Inertia::render('Acts/Show', [
+            'act' => $act,
+            'can' => [
+                'foremanReview'    => $user->can('foremanReview', $act),
+                'processPeo'       => $user->can('processPeo', $act),
+                'processLogistics' => $user->can('processLogistics', $act),
+                'complete'         => $user->can('complete', $act),
+            ],
+        ]);
     }
 
     public function approve(Act $act): RedirectResponse

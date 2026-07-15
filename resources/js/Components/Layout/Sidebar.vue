@@ -46,6 +46,7 @@
       </template>
       <NavItem :href="route('addresses.index')"     icon="database" label="Адреса" />
       <NavItem v-if="can('materials.view')" :href="route('materials.index')"    icon="package"  label="Материалы" />
+      <NavItem v-if="can('acts.view')" :href="route('acts.index')" icon="file-text" label="Акты" />
       <NavItem v-if="canManageSettings"
                :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" />
       <NavItem :href="route('calls.index')" icon="phone" label="Звонки" />
