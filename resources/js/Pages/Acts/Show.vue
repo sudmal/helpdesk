@@ -2,11 +2,13 @@
   <Head :title="`Акт ${act.number}`" />
   <AppLayout :title="`Акт ${act.number}`">
 
+    <template #before-title>
+      <button @click="goBack" class="btn-act-outline shrink-0">← К списку актов</button>
+    </template>
+
     <!-- Все действия с актом — в самой верхней панели, рядом с заголовком и колокольчиком -->
     <template #actions>
       <div class="flex items-center gap-2 flex-wrap justify-end">
-        <button @click="goBack" class="btn-act-outline">← К списку актов</button>
-
         <a v-if="act.status !== 'pending_foreman'" :href="route('acts.print', act.id)" target="_blank"
            class="btn-act-outline">Печать акта</a>
 

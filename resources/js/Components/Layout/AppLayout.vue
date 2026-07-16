@@ -19,19 +19,23 @@
     <!-- Main -->
     <div class="flex-1 flex flex-col overflow-hidden min-w-0">
 
-      <!-- Topbar -->
-      <header class="print:hidden h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-3 shrink-0">
-        <!-- Бургер для мобильного -->
-        <button @click="sidebarOpen = !sidebarOpen"
-                class="md:hidden p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+      <!-- Topbar: 3 колонки (слева/заголовок по центру/справа), чтобы заголовок
+           оставался по центру независимо от того, сколько кнопок слева и справа -->
+      <header class="print:hidden h-14 bg-white border-b border-slate-200 shadow-sm shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-4 gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <!-- Бургер для мобильного -->
+          <button @click="sidebarOpen = !sidebarOpen"
+                  class="md:hidden p-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <slot name="before-title" />
+        </div>
 
-        <h1 class="text-base font-semibold text-gray-800 truncate">{{ title }}</h1>
+        <h1 class="text-base font-semibold text-gray-800 truncate text-center">{{ title }}</h1>
 
-        <div class="ml-auto flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-2 shrink-0 justify-self-end">
           <slot name="actions" />
           <PushNotifications />
         </div>
