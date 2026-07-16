@@ -208,6 +208,13 @@
             </select>
           </div>
           <div>
+            <label class="block text-xs text-gray-500 mb-1">Участок <span class="text-red-400">*</span></label>
+            <select v-model="createForm.service_type_id" class="field-input w-full">
+              <option :value="null">— выберите участок —</option>
+              <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs text-gray-500 mb-1">Описание</label>
             <textarea v-model="createForm.description" class="field-input w-full" rows="3"
                       placeholder="Желаемый тариф, заметки..."></textarea>
@@ -250,6 +257,13 @@
             <select v-model="editForm.brigade_id" class="field-input w-full">
               <option :value="null">— не указана —</option>
               <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Участок</label>
+            <select v-model="editForm.service_type_id" class="field-input w-full">
+              <option :value="null">— не указан —</option>
+              <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
             </select>
           </div>
           <div>
@@ -323,13 +337,6 @@
             <textarea v-model="closeForm.notes" class="field-input w-full" rows="3"></textarea>
           </div>
           <div>
-            <div v-if="closeForm.materials.length" class="mb-3">
-              <select v-model="closeForm.service" class="field-input w-full">
-                <option value="">Тип услуги (для номера акта) *</option>
-                <option value="internet">Интернет</option>
-                <option value="ctv">КТВ</option>
-              </select>
-            </div>
             <label class="block text-xs text-gray-500 font-medium mb-2">Использованные материалы</label>
             <div v-for="(row, idx) in closeForm.materials" :key="idx"
                  class="flex gap-2 items-center mb-1.5">
@@ -411,6 +418,10 @@
             <div v-if="detailData.brigade">
               <div class="text-xs text-gray-400 mb-0.5">Бригада</div>
               <div class="text-sm">{{ detailData.brigade.name }}</div>
+            </div>
+            <div v-if="detailData.service_type">
+              <div class="text-xs text-gray-400 mb-0.5">Участок</div>
+              <div class="text-sm">{{ detailData.service_type.name }}</div>
             </div>
             <div v-if="detailData.scheduled_at">
               <div class="text-xs text-gray-400 mb-0.5">Дата подключения</div>
@@ -514,6 +525,7 @@ const props = defineProps({
   filters:           Object,
   territories:        Array,
   brigades:           { type: Array, default: () => [] },
+  serviceTypes:       { type: Array, default: () => [] },
   selectedTerritory:  { type: Number, default: null },
   pendingByTerritory:  { type: Object, default: () => ({}) },
   totalPending:        { type: Number, default: 0 },
@@ -552,18 +564,18 @@ const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')
 
-const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null })
-const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null })
+const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null })
+const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null })
 const editErrors  = ref('')
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })
-const closeForm    = reactive({ service: '', notes: '', materials: [] })
+const closeForm    = reactive({ notes: '', materials: [] })
 
 function openCreate() {
   Object.assign(createForm, {
     name: '', phone: '', address_string: '', description: '',
-    territory_id: props.selectedTerritory ?? null, brigade_id: null,
+    territory_id: props.selectedTerritory ?? null, brigade_id: null, service_type_id: null,
   })
   createErrors.value = ''
   modals.create = true
@@ -578,6 +590,7 @@ function openEdit(r) {
     description:    r.description ?? '',
     territory_id:   r.territory_id ?? null,
     brigade_id:     r.brigade_id ?? null,
+    service_type_id: r.service_type_id ?? null,
   })
   editErrors.value = ''
   modals.edit = true
@@ -602,7 +615,7 @@ function openReject(r) {
 
 function openClose(r) {
   activeRecord.value = r
-  Object.assign(closeForm, { service: '', notes: r.notes ?? '', materials: [] })
+  Object.assign(closeForm, { notes: r.notes ?? '', materials: [] })
   closeErrors.value = ''
   modals.close = true
 }
@@ -635,6 +648,10 @@ function submitCreate() {
   }
   if (!createForm.brigade_id) {
     createErrors.value = 'Выберите бригаду'
+    return
+  }
+  if (!createForm.service_type_id) {
+    createErrors.value = 'Выберите участок'
     return
   }
   submitting.value = true
@@ -677,15 +694,14 @@ function submitReject() {
 
 function submitClose() {
   const materials = closeForm.materials.filter(m => m.material_id && m.quantity)
-  if (materials.length > 0 && !closeForm.service) {
-    closeErrors.value = 'При использовании материалов обязателен тип услуги (Интернет/КТВ)'
+  if (materials.length > 0 && !activeRecord.value?.service_type_id) {
+    closeErrors.value = 'У заявки не указан участок (тип услуги) — укажите его в редактировании заявки перед закрытием с материалами'
     return
   }
   closeErrors.value = ''
   submitting.value = true
   router.post(route('connection-requests.close', activeRecord.value.id), {
-    service: closeForm.service,
-    notes:   closeForm.notes,
+    notes: closeForm.notes,
     materials,
   }, {
     onSuccess: () => { modals.close = false },

@@ -61,10 +61,10 @@ class Act extends Model
     public function subscriberDeptCompleter(): BelongsTo { return $this->belongsTo(User::class, 'subscriber_dept_completed_by'); }
 
     /**
-     * Номер акта: <буква участка заявки><буква типа акта>-NNNNNN.
+     * Номер акта: <буква участка заявки><буква типа акта>-YYMMDDNN.
      * Буква участка — та же логика, что в Ticket::generateNumber() (i=интернет, c=КТВ, Т=прочее).
      * Буква типа: r = обычный, v = ремонт/восстановление.
-     * Нумерация сквозная в рамках префикса, никогда не сбрасывается.
+     * Цифровая часть — см. nextNumberForPrefix().
      */
     public static function generateNumber(Ticket $ticket, string $type): string
     {
@@ -84,35 +84,50 @@ class Act extends Model
     }
 
     /**
-     * Номер акта для заявки на подключение: <in|cn>-NNNNNN — своя, отдельная от
-     * заявок сквозная нумерация (заявки на подключение не имеют поля типа услуги,
-     * выбор Интернет/КТВ делается прямо при закрытии заявки). Тип самого акта
-     * (Act.type) при этом всегда 'regular' — см. память project-acts-feature,
-     * "Заявки на подключение" — регулярный/ремонтный акт как ось не относится
-     * к новым подключениям, только к типу услуги в номере.
+     * Номер акта для заявки на подключение: <in|cn>-YYMMDDNN — буквенный префикс
+     * определяется участком (ServiceType), который теперь выбирается один раз при
+     * создании заявки на подключение (connection_requests.service_type_id), а не
+     * заново при закрытии. Тип самого акта (Act.type) при этом всегда 'regular' —
+     * см. память project-acts-feature, "Заявки на подключение" — регулярный/
+     * ремонтный акт как ось не относится к новым подключениям, только к участку
+     * в номере.
      */
-    public static function generateNumberForConnectionRequest(string $service): string
+    public static function generateNumberForConnectionRequest(ConnectionRequest $connectionRequest): string
     {
-        $prefix = $service === 'ctv' ? 'cn' : 'in';
+        $lower = mb_strtolower((string) $connectionRequest->serviceType?->name);
+        $prefix = (str_contains($lower, 'ктв') || str_contains($lower, 'ctv') || str_contains($lower, 'кабел'))
+            ? 'cn' : 'in';
 
         return static::nextNumberForPrefix($prefix);
     }
 
+    /**
+     * Цифровая часть номера (2026-07-16): YYMMDDNN — дата создания акта +
+     * порядковый номер СЕГОДНЯ в рамках именно этого буквенного префикса
+     * (свой отдельный счётчик с 01 на каждый префикс каждый день; префиксы
+     * друг другу не мешают). Буквенная часть перед дефисом не менялась.
+     *
+     * Существующие акты со старой сквозной схемой (<префикс>-NNNNNN, без даты)
+     * сознательно не переименовываются и не мешают новой генерации — LIKE-поиск
+     * ищет строго по сегодняшней дате в качестве части префикса, старые шести-
+     * значные номера под него не подпадают.
+     */
     private static function nextNumberForPrefix(string $prefix): string
     {
-        $prefixLen = mb_strlen($prefix);
+        $searchPrefix = $prefix . '-' . now()->format('ymd');
+        $searchLen    = mb_strlen($searchPrefix);
 
-        $lastNumber = static::where('number', 'LIKE', $prefix . '-%')
-            ->orderByRaw('CAST(SUBSTRING(number, ' . ($prefixLen + 2) . ') AS UNSIGNED) DESC')
+        $lastNumber = static::where('number', 'LIKE', $searchPrefix . '%')
+            ->orderByRaw('CAST(SUBSTRING(number, ' . ($searchLen + 1) . ') AS UNSIGNED) DESC')
             ->value('number');
 
-        $lastNum = $lastNumber ? (int) mb_substr($lastNumber, $prefixLen + 1) : 0;
+        $lastNum = $lastNumber ? (int) mb_substr($lastNumber, $searchLen) : 0;
 
         $candidate = $lastNum + 1;
-        while (static::where('number', $prefix . '-' . str_pad($candidate, 6, '0', STR_PAD_LEFT))->exists()) {
+        while (static::where('number', $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT))->exists()) {
             $candidate++;
         }
 
-        return $prefix . '-' . str_pad($candidate, 6, '0', STR_PAD_LEFT);
+        return $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Brigade;
 use App\Models\ConnectionRequest;
 use App\Models\ConnectionRequestLog;
 use App\Models\Material;
+use App\Models\ServiceType;
 use App\Models\Territory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,7 @@ class ConnectionRequestController extends Controller
 
         $territory = $request->get('territory') ?: null;
 
-        $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'act'])
+        $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act'])
             ->when($territory, fn($q) => $q->where('territory_id', $territory))
             ->latest();
 
@@ -55,6 +56,7 @@ class ConnectionRequestController extends Controller
             'filters'            => $request->only(['status', 'search', 'territory']),
             'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
             'brigades'           => Brigade::orderBy('name')->get(['id', 'name']),
+            'serviceTypes'       => ServiceType::active()->get(['id', 'name', 'color']),
             'selectedTerritory'  => $territory ? (int)$territory : null,
             'pendingByTerritory' => $pendingByTerritory,
             'totalPending'       => $pendingByTerritory->sum(),
@@ -74,6 +76,9 @@ class ConnectionRequestController extends Controller
             // Акт по заявке жёстко привязан к бригаде (ресурсы, отчётность) —
             // см. память project-acts-feature, "Заявки на подключение".
             'brigade_id'     => 'required|exists:brigades,id',
+            // Участок (тип услуги) — выбирается один раз здесь и используется
+            // при закрытии для номера акта (in-/cn-) вместо повторного вопроса.
+            'service_type_id' => 'required|exists:service_types,id',
         ]);
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
@@ -96,6 +101,7 @@ class ConnectionRequestController extends Controller
             'notes'          => 'nullable|string|max:2000',
             'territory_id'   => 'nullable|exists:territories,id',
             'brigade_id'     => 'nullable|exists:brigades,id',
+            'service_type_id' => 'nullable|exists:service_types,id',
         ]);
 
         if (isset($data['status'])) {
@@ -129,26 +135,24 @@ class ConnectionRequestController extends Controller
      * у заявок), а не пишутся на connection_request напрямую и не под свободный
      * текстовый "номер акта" — см. память project-acts-feature, "Заявки на
      * подключение". Act.type всегда 'regular' (репейр-акты сюда не относятся,
-     * это всегда новое подключение) — выбор Интернет/КТВ влияет только на
-     * префикс номера акта (in-/cn-), у самих заявок на подключение нет поля
-     * типа услуги.
+     * это всегда новое подключение) — участок (тип услуги) влияет только на
+     * префикс номера акта (in-/cn-) и теперь берётся из самой заявки
+     * (service_type_id, выбирается при создании), а не спрашивается заново здесь.
      */
     public function close(Request $request, ConnectionRequest $connectionRequest)
     {
         $request->validate([
             'notes'                    => 'nullable|string|max:2000',
-            'service'                  => [
-                'nullable', 'in:internet,ctv',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($request->input('materials')) && empty($value)) {
-                        $fail('При использовании материалов обязателен тип услуги (Интернет/КТВ).');
-                    }
-                },
-            ],
             'materials'               => 'nullable|array',
             'materials.*.material_id' => 'required_with:materials.*|integer|exists:materials,id',
             'materials.*.quantity'    => 'required_with:materials.*|numeric|min:0.01',
         ]);
+
+        if (!empty($request->materials) && !$connectionRequest->service_type_id) {
+            return back()->withErrors([
+                'service_type_id' => 'У заявки не указан участок (тип услуги) — укажите его в редактировании заявки перед закрытием с материалами.',
+            ])->withInput();
+        }
 
         $actNumber = null;
 
@@ -160,7 +164,7 @@ class ConnectionRequestController extends Controller
             ]);
 
             if (!empty($request->materials)) {
-                $actNumber = \App\Models\Act::generateNumberForConnectionRequest($request->service);
+                $actNumber = \App\Models\Act::generateNumberForConnectionRequest($connectionRequest);
                 $act = \App\Models\Act::create([
                     'connection_request_id' => $connectionRequest->id,
                     'number'                => $actNumber,
@@ -212,7 +216,7 @@ class ConnectionRequestController extends Controller
 
     public function detail(ConnectionRequest $connectionRequest)
     {
-        $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'materials', 'logs.user', 'act.materials']);
+        $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'serviceType', 'materials', 'logs.user', 'act.materials']);
         return response()->json($connectionRequest);
     }
 

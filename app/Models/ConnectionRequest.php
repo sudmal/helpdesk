@@ -12,7 +12,7 @@ class ConnectionRequest extends Model
     protected $fillable = [
         'name', 'phone', 'address_string', 'description',
         'status', 'scheduled_at', 'notes', 'act_number',
-        'assigned_to', 'created_by', 'territory_id', 'brigade_id', 'needs_callback',
+        'assigned_to', 'created_by', 'territory_id', 'brigade_id', 'service_type_id', 'needs_callback',
     ];
 
     protected $casts = [
@@ -38,6 +38,11 @@ class ConnectionRequest extends Model
     public function brigade(): BelongsTo
     {
         return $this->belongsTo(Brigade::class);
+    }
+
+    public function serviceType(): BelongsTo
+    {
+        return $this->belongsTo(ServiceType::class);
     }
 
     public function act(): HasOne
