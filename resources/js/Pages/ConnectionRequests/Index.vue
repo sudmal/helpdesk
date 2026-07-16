@@ -323,15 +323,14 @@
             <textarea v-model="closeForm.notes" class="field-input w-full" rows="3"></textarea>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 font-medium mb-2">Использованные материалы</label>
-            <div v-if="closeForm.materials.length" class="mb-2">
-              <label class="block text-xs text-gray-500 mb-1">Тип услуги (для номера акта) <span class="text-red-400">*</span></label>
+            <div v-if="closeForm.materials.length" class="mb-3">
               <select v-model="closeForm.service" class="field-input w-full">
-                <option value="">— выберите —</option>
+                <option value="">Тип услуги (для номера акта) *</option>
                 <option value="internet">Интернет</option>
                 <option value="ctv">КТВ</option>
               </select>
             </div>
+            <label class="block text-xs text-gray-500 font-medium mb-2">Использованные материалы</label>
             <div v-for="(row, idx) in closeForm.materials" :key="idx"
                  class="flex gap-2 items-center mb-1.5">
               <select v-model="row.material_id" class="field-input flex-1 text-xs">
