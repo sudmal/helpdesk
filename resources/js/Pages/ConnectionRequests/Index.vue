@@ -204,7 +204,7 @@
             <label class="block text-xs text-gray-500 mb-1">Бригада <span class="text-red-400">*</span></label>
             <select v-model="createForm.brigade_id" class="field-input w-full">
               <option :value="null">— выберите бригаду —</option>
-              <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+              <option v-for="b in createAvailableBrigades" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
           </div>
           <div>
@@ -256,7 +256,7 @@
             <label class="block text-xs text-gray-500 mb-1">Бригада</label>
             <select v-model="editForm.brigade_id" class="field-input w-full">
               <option :value="null">— не указана —</option>
-              <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+              <option v-for="b in editAvailableBrigades" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
           </div>
           <div>
@@ -515,7 +515,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -567,6 +567,32 @@ const closeErrors  = ref('')
 const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null })
 const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null })
 const editErrors  = ref('')
+
+// Бригады, обслуживающие выбранную территорию (пустая территория = все бригады)
+const createAvailableBrigades = computed(() => {
+  if (!createForm.territory_id) return props.brigades ?? []
+  return (props.brigades ?? []).filter(b =>
+    b.territories?.some(t => t.id == createForm.territory_id)
+  )
+})
+const editAvailableBrigades = computed(() => {
+  if (!editForm.territory_id) return props.brigades ?? []
+  return (props.brigades ?? []).filter(b =>
+    b.territories?.some(t => t.id == editForm.territory_id)
+  )
+})
+
+// Если смена территории делает выбранную бригаду недоступной — сбросить выбор
+watch(() => createForm.territory_id, (territoryId) => {
+  if (createForm.brigade_id && territoryId && !createAvailableBrigades.value.some(b => b.id == createForm.brigade_id)) {
+    createForm.brigade_id = null
+  }
+})
+watch(() => editForm.territory_id, (territoryId) => {
+  if (editForm.brigade_id && territoryId && !editAvailableBrigades.value.some(b => b.id == editForm.brigade_id)) {
+    editForm.brigade_id = null
+  }
+})
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })

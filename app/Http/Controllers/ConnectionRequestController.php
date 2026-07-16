@@ -55,7 +55,7 @@ class ConnectionRequestController extends Controller
             'requests'           => $query->paginate(50)->withQueryString(),
             'filters'            => $request->only(['status', 'search', 'territory']),
             'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
-            'brigades'           => Brigade::orderBy('name')->get(['id', 'name']),
+            'brigades'           => Brigade::with('territories:id,name')->orderBy('name')->get(['id', 'name']),
             'serviceTypes'       => ServiceType::active()->get(['id', 'name', 'color']),
             'selectedTerritory'  => $territory ? (int)$territory : null,
             'pendingByTerritory' => $pendingByTerritory,
