@@ -5,6 +5,8 @@
     <!-- Все действия с актом — в самой верхней панели, рядом с заголовком и колокольчиком -->
     <template #actions>
       <div class="flex items-center gap-2 flex-wrap justify-end">
+        <button @click="goBack" class="btn-act-outline">← К списку актов</button>
+
         <a v-if="act.status !== 'pending_foreman'" :href="route('acts.print', act.id)" target="_blank"
            class="btn-act-outline">Печать акта</a>
 
@@ -263,6 +265,19 @@ function fmtDateTime(d) {
 
 function post(routeName) {
   router.post(route(routeName, props.act.id), {}, { preserveScroll: true })
+}
+
+// Возврат к списку актов — именно к той вкладке/фильтру/странице, откуда
+// сюда пришли (Acts/Index.vue передаёт свой текущий адрес через ?from=),
+// а не всегда на дефолтную /acts. Если открыли карточку напрямую по ссылке
+// (from нет) — обычный переход на список.
+function goBack() {
+  const from = new URLSearchParams(window.location.search).get('from')
+  if (from) {
+    router.get(from)
+  } else {
+    router.get(route('acts.index'))
+  }
 }
 
 function approve() {

@@ -156,7 +156,7 @@
                   </td>
                 </tr>
                 <tr v-else class="hover:bg-gray-50 cursor-pointer" :class="needsAck(row.act) ? 'bg-red-50/70' : ''"
-                    @click="router.get(route('acts.show', row.act.id))">
+                    @click="openAct(row.act.id)">
                   <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(row.act.created_at) }}</td>
                   <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">
                     {{ row.act.number }}
@@ -196,7 +196,7 @@
             <!-- Архив: плоский список, без группировки -->
             <tbody v-else class="divide-y divide-gray-100">
               <tr v-for="act in acts.data" :key="act.id"
-                  class="hover:bg-gray-50 cursor-pointer" @click="router.get(route('acts.show', act.id))">
+                  class="hover:bg-gray-50 cursor-pointer" @click="openAct(act.id)">
                 <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">{{ act.number }}</td>
                 <td class="px-2 py-1 whitespace-nowrap text-blue-600">{{ requestLabel(act) }}</td>
                 <td class="px-2 py-1 whitespace-nowrap">
@@ -289,6 +289,14 @@ function apply() {
 
 function switchTab(id) {
   router.get(route('acts.index'), { tab: id }, { preserveState: false })
+}
+
+// Передаём текущий адрес списка (вкладка/фильтры/страница) актом через query —
+// кнопка "Назад" на карточке акта возвращает именно сюда, а не на дефолтный
+// /acts. Надёжнее, чем полагаться на history back — не зависит от того,
+// сколько раз до этого меняли фильтры (replace/push вперемешку).
+function openAct(id) {
+  router.get(route('acts.show', id), { from: window.location.href })
 }
 
 function toggleSortDir() {
