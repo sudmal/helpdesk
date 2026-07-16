@@ -183,11 +183,7 @@ class ActController extends Controller
         $this->authorize('view', $act);
         abort_if($act->status === 'pending_foreman', 404, 'Печать доступна после утверждения бригадиром.');
 
-        $act->load([
-            'ticket.address', 'connectionRequest',
-            'materials',
-            'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor', 'subscriberDeptCompleter',
-        ]);
+        $act->load(['ticket.address', 'connectionRequest', 'materials', 'creator']);
 
         $customerName = $act->ticket
             ? $act->ticket->address?->subscriber_name
@@ -199,9 +195,12 @@ class ActController extends Controller
 
         $total = $act->materials->sum(fn($m) => $m->price_at_time * $m->quantity);
 
-        $mark = fn(?\App\Models\User $user, ?string $at) => $user && $at
-            ? $user->name . ', ' . \Carbon\Carbon::parse($at)->format('d.m.Y')
-            : '______________';
+        // Только дата, без ФИО обработавшего — печатная форма это физический
+        // документ под ручную подпись/штамп отдела, печатать туда имя из
+        // системы вместо места под подпись странно выглядит (пользователь
+        // 2026-07-16). Кто именно обработал — и так видно в самой карточке
+        // акта в системе, дублировать на бумаге не нужно.
+        $mark = fn(?string $at) => $at ? \Carbon\Carbon::parse($at)->format('d.m.Y') : '______________';
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('acts.print', [
             'act'                => $act,
@@ -210,10 +209,10 @@ class ActController extends Controller
             'createdAt'          => $act->created_at->format('d.m.Y'),
             'installerName'      => $act->creator?->name,
             'total'              => $total,
-            'markForeman'        => $mark($act->foremanReviewer, $act->foreman_reviewed_at),
-            'markPeo'            => $act->type === 'regular' ? $mark($act->peoProcessor, $act->peo_processed_at) : 'не требуется',
-            'markLogistics'      => $mark($act->logisticsProcessor, $act->logistics_processed_at),
-            'markSubscriberDept' => $mark($act->subscriberDeptCompleter, $act->subscriber_dept_completed_at),
+            'markForeman'        => $mark($act->foreman_reviewed_at),
+            'markPeo'            => $act->type === 'regular' ? $mark($act->peo_processed_at) : 'не требуется',
+            'markLogistics'      => $mark($act->logistics_processed_at),
+            'markSubscriberDept' => $mark($act->subscriber_dept_completed_at),
         ]);
 
         return $pdf->stream("act-{$act->number}.pdf");

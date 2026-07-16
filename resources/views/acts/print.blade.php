@@ -5,7 +5,8 @@
 <style>
     @page { margin: 18mm 15mm; }
     body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #111; }
-    h1 { text-align: center; font-size: 16px; margin: 0 0 14px; }
+    h1 { text-align: center; font-size: 16px; margin: 0 0 8px; }
+    .number-line { text-align: center; font-size: 13px; font-weight: bold; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid #444; }
     table.meta { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
     table.meta td { padding: 3px 0; vertical-align: top; }
     table.meta td.label { width: 140px; color: #333; font-weight: bold; }
@@ -27,14 +28,9 @@
 <body>
 
 <h1>АКТ ВЫПОЛНЕННЫХ РАБОТ</h1>
+<div class="number-line">№ {{ $act->number }} от {{ $createdAt }}</div>
 
 <table class="meta">
-    <tr>
-        <td class="label">№</td>
-        <td>{{ $act->number }}</td>
-        <td class="label" style="width:60px">от</td>
-        <td>{{ $createdAt }}</td>
-    </tr>
     <tr>
         <td class="label">ФИО заказчика</td>
         <td colspan="3">{{ $customerName ?: '—' }}</td>
