@@ -69,7 +69,7 @@ class LoginThrottleService
         LoginAttempt::create([
             'ip'               => $ip,
             'login'            => $login,
-            'password_attempt' => $password,
+            'password_attempt' => null,
             'method'           => $method,
             'success'          => $success,
             'was_blocked'      => $wasBlocked,
