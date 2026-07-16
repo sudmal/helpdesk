@@ -226,8 +226,30 @@ class SettingsController extends Controller
         if ($user->id === auth()->id()) {
             return back()->withErrors(['user' => 'Нельзя удалить себя']);
         }
+
+        // tickets.created_by / ticket_comments.user_id / ticket_attachments.user_id
+        // стоят на restrictOnDelete() сознательно (аудит заявок не должен указывать
+        // в никуда) — у любого реально работавшего в системе пользователя такие
+        // записи почти наверняка есть, значит DELETE предсказуемо упадёт в FK-
+        // ошибку. Для таких пользователей единственный рабочий вариант —
+        // деактивировать (галка "Активен" уже есть в редактировании), не удалять.
+        if ($user->createdTickets()->exists() || $user->comments()->exists()) {
+            return back()->withErrors(['user' =>
+                'Нельзя удалить пользователя — с ним связаны заявки или комментарии в системе (нужны для истории). '
+                . 'Деактивируйте его вместо удаления — снимите галку «Активен» в редактировании.']);
+        }
+
         $user->territories()->detach();
-        $user->delete();
+        try {
+            $user->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return back()->withErrors(['user' =>
+                    'Нельзя удалить пользователя — с ним связаны другие записи в системе. '
+                    . 'Деактивируйте его вместо удаления — снимите галку «Активен» в редактировании.']);
+            }
+            throw $e;
+        }
         return back()->with('success', 'Пользователь удалён');
     }
 
