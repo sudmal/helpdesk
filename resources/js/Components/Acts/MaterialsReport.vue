@@ -8,7 +8,7 @@
       </button>
     </div>
 
-    <!-- ── Расход за период ── -->
+    <!-- ── Расход материалов за период ── -->
     <div v-show="activeSub === 'consumption'" class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
@@ -25,7 +25,7 @@
 
       <div v-if="selectedEntity" class="flex items-center gap-2 text-sm">
         <button @click="clearEntity" class="text-blue-600 hover:text-blue-800 font-medium">
-          ← Ко всем {{ dimension === 'brigade' ? 'бригадам' : 'территориям' }}
+          ← Ко всем {{ dimensionLabelPlural(dimension) }}
         </button>
         <span class="text-gray-300">/</span>
         <span class="text-gray-700 font-medium">{{ selectedEntity.label }}</span>
@@ -56,7 +56,7 @@
           </thead>
           <thead v-else>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
-              <th class="text-left px-4 py-2.5">Территория</th>
+              <th class="text-left px-4 py-2.5">{{ dimension === 'service_type' ? 'Участок' : 'Территория' }}</th>
               <th class="text-right px-4 py-2.5 w-28">Кол-во</th>
               <th class="text-right px-4 py-2.5 w-32">Сумма, ₽</th>
               <th class="text-right px-4 py-2.5 w-24">Заявок</th>
@@ -92,6 +92,106 @@
             </template>
             <template v-else>
               <tr v-for="r in consumption.state.data.rows" :key="r.key" class="hover:bg-blue-50 cursor-pointer" @click="drillInto(r)">
+                <td class="px-4 py-1.5 text-blue-600 hover:underline">{{ r.label }} →</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ r.qty }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ formatMoney(r.amount) }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ r.request_count }}</td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Поступления от абонентов ── -->
+    <div v-show="activeSub === 'revenue'" class="space-y-4">
+      <p class="text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+        Только акты типа «Обычный» — материалы по ним оплачивает абонент. Ремонтные акты
+        (восстановление) сюда не входят, так как абонент их не оплачивает.
+      </p>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
+          <button v-for="d in dimensions" :key="d.key" @click="setRevenueDimension(d.key)"
+                  :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                           revenueDimension === d.key ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+            {{ d.label }}
+          </button>
+        </div>
+        <a :href="revenueExportUrl" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Экспорт CSV →</a>
+      </div>
+
+      <RangePicker :range="revenue" />
+
+      <div v-if="revenueSelectedEntity" class="flex items-center gap-2 text-sm">
+        <button @click="clearRevenueEntity" class="text-blue-600 hover:text-blue-800 font-medium">
+          ← Ко всем {{ dimensionLabelPlural(revenueDimension) }}
+        </button>
+        <span class="text-gray-300">/</span>
+        <span class="text-gray-700 font-medium">{{ revenueSelectedEntity.label }}</span>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div v-if="revenue.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
+        <div class="overflow-x-auto" v-else>
+        <table class="w-full text-sm">
+          <thead v-if="showRevenueMaterialColumns">
+            <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
+              <th class="text-center px-3 py-2.5 w-16">Код</th>
+              <th class="text-left px-4 py-2.5">Материал</th>
+              <th class="text-center px-3 py-2.5 w-16">Ед.</th>
+              <th class="text-right px-4 py-2.5 w-28">Кол-во</th>
+              <th class="text-right px-4 py-2.5 w-32">Сумма, ₽</th>
+              <th class="text-right px-4 py-2.5 w-24">Δ к пред. периоду</th>
+            </tr>
+          </thead>
+          <thead v-else-if="revenueDimension === 'brigade'">
+            <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
+              <th class="text-left px-4 py-2.5">Бригада</th>
+              <th class="text-right px-4 py-2.5 w-28">Кол-во</th>
+              <th class="text-right px-4 py-2.5 w-32">Сумма, ₽</th>
+              <th class="text-right px-4 py-2.5 w-24">Заявок</th>
+              <th class="text-right px-4 py-2.5 w-32">₽ на заявку</th>
+            </tr>
+          </thead>
+          <thead v-else>
+            <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
+              <th class="text-left px-4 py-2.5">{{ revenueDimension === 'service_type' ? 'Участок' : 'Территория' }}</th>
+              <th class="text-right px-4 py-2.5 w-28">Кол-во</th>
+              <th class="text-right px-4 py-2.5 w-32">Сумма, ₽</th>
+              <th class="text-right px-4 py-2.5 w-24">Заявок</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr v-if="!revenue.state.data.rows.length">
+              <td :colspan="showRevenueMaterialColumns ? 6 : revenueDimension === 'brigade' ? 5 : 4" class="text-center py-10 text-gray-400 text-xs">Нет данных за выбранный период</td>
+            </tr>
+            <template v-else-if="showRevenueMaterialColumns">
+              <tr v-for="r in revenue.state.data.rows" :key="r.key" class="hover:bg-gray-50">
+                <td class="px-3 py-1.5 text-center font-mono text-xs text-gray-400">{{ r.code || '—' }}</td>
+                <td class="px-4 py-1.5 text-gray-800">{{ r.label }}</td>
+                <td class="px-3 py-1.5 text-center text-gray-500 text-xs">{{ r.unit }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ r.qty }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ formatMoney(r.amount) }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">
+                  <span v-if="r.change_pct === null" class="text-blue-500 text-xs">новый</span>
+                  <span v-else :class="r.change_pct > 0 ? 'text-red-500' : r.change_pct < 0 ? 'text-green-600' : 'text-gray-400'">
+                    {{ r.change_pct > 0 ? '+' : '' }}{{ r.change_pct }}%
+                  </span>
+                </td>
+              </tr>
+            </template>
+            <template v-else-if="revenueDimension === 'brigade'">
+              <tr v-for="r in revenue.state.data.rows" :key="r.key" class="hover:bg-blue-50 cursor-pointer" @click="drillIntoRevenue(r)">
+                <td class="px-4 py-1.5 text-blue-600 hover:underline">{{ r.label }} →</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ r.qty }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ formatMoney(r.amount) }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ r.request_count }}</td>
+                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ formatMoney(r.avg_amount_per_ticket) }}</td>
+              </tr>
+            </template>
+            <template v-else>
+              <tr v-for="r in revenue.state.data.rows" :key="r.key" class="hover:bg-blue-50 cursor-pointer" @click="drillIntoRevenue(r)">
                 <td class="px-4 py-1.5 text-blue-600 hover:underline">{{ r.label }} →</td>
                 <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ r.qty }}</td>
                 <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ formatMoney(r.amount) }}</td>
@@ -154,7 +254,7 @@
       </div>
     </div>
 
-    <!-- ── Прогноз ── -->
+    <!-- ── Прогноз (скрыт из навигации — не удалять, см. память project-acts-feature) ── -->
     <div v-show="activeSub === 'forecast'" class="space-y-4">
       <div v-if="forecastLoading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
       <template v-else>
@@ -192,10 +292,13 @@ import RangePicker from '@/Components/Reports/RangePicker.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
 // ── Sub-tabs ──
+// "Прогноз" сознательно убран из этого списка (не показывается кнопкой), но
+// весь код и разметка вкладки ниже оставлены нетронутыми — см. память
+// project-acts-feature, "Отчёты переехали из Материалов в Акты".
 const subTabs = [
-  { id: 'consumption', label: 'Расход за период' },
+  { id: 'consumption', label: 'Расход материалов' },
+  { id: 'revenue',     label: 'Поступления от абонентов' },
   { id: 'monthly',     label: 'По месяцам' },
-  { id: 'forecast',    label: 'Прогноз' },
 ]
 const activeSub = ref('consumption')
 
@@ -207,6 +310,7 @@ function switchSub(id) {
 
 function ensureSubLoaded(id) {
   if (id === 'consumption') consumption.ensureLoaded()
+  if (id === 'revenue')     revenue.ensureLoaded()
   if (id === 'monthly')     ensureMonthlyLoaded()
   if (id === 'forecast')    ensureForecastLoaded()
 }
@@ -215,19 +319,30 @@ function buildForSub(id) {
   if (id === 'forecast') buildForecastCharts()
 }
 
-// ── Расход за период ──
+// ── Общее для "Расход материалов" и "Поступления от абонентов" ──
 const dimensions = [
-  { key: 'all',      label: 'Общий' },
-  { key: 'brigade',  label: 'По бригадам' },
-  { key: 'territory',label: 'По территориям' },
+  { key: 'all',          label: 'Общий' },
+  { key: 'brigade',      label: 'По бригадам' },
+  { key: 'territory',    label: 'По территориям' },
+  { key: 'service_type', label: 'По участкам' },
 ]
+
+function dimensionLabelPlural(d) {
+  return d === 'brigade' ? 'бригадам' : d === 'service_type' ? 'участкам' : 'территориям'
+}
+
+function formatMoney(val) {
+  return Number(val).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// ── Расход материалов за период ──
 const dimension       = ref('all')
-const selectedEntity  = ref(null) // { key, label } | null — drill-down в конкретную бригаду/территорию
+const selectedEntity  = ref(null) // { key, label } | null — drill-down в конкретную бригаду/территорию/участок
 
 const showMaterialColumns = computed(() => dimension.value === 'all' || selectedEntity.value !== null)
 
 const consumption = useReportRange(
-  'materials.report.consumption',
+  'acts.report.consumption',
   { rows: [], totals: { qty: 0, amount: 0 } },
   () => ({ dimension: dimension.value, entity_id: selectedEntity.value?.key ?? null })
 )
@@ -252,7 +367,42 @@ const exportUrl = computed(() => {
   const { from, to } = consumption.currentRange()
   const params = new URLSearchParams({ dimension: dimension.value, from, to })
   if (selectedEntity.value) params.set('entity_id', selectedEntity.value.key)
-  return route('materials.report.export') + '?' + params.toString()
+  return route('acts.report.export') + '?' + params.toString()
+})
+
+// ── Поступления от абонентов (тот же движок, только only_billable=1 — только акты типа "Обычный") ──
+const revenueDimension      = ref('all')
+const revenueSelectedEntity = ref(null)
+
+const showRevenueMaterialColumns = computed(() => revenueDimension.value === 'all' || revenueSelectedEntity.value !== null)
+
+const revenue = useReportRange(
+  'acts.report.consumption',
+  { rows: [], totals: { qty: 0, amount: 0 } },
+  () => ({ dimension: revenueDimension.value, entity_id: revenueSelectedEntity.value?.key ?? null, only_billable: 1 })
+)
+
+function setRevenueDimension(d) {
+  revenueDimension.value = d
+  revenueSelectedEntity.value = null
+  revenue.refresh()
+}
+
+function drillIntoRevenue(row) {
+  revenueSelectedEntity.value = { key: row.key, label: row.label }
+  revenue.refresh()
+}
+
+function clearRevenueEntity() {
+  revenueSelectedEntity.value = null
+  revenue.refresh()
+}
+
+const revenueExportUrl = computed(() => {
+  const { from, to } = revenue.currentRange()
+  const params = new URLSearchParams({ dimension: revenueDimension.value, from, to, only_billable: 1 })
+  if (revenueSelectedEntity.value) params.set('entity_id', revenueSelectedEntity.value.key)
+  return route('acts.report.export') + '?' + params.toString()
 })
 
 const charts = {}
@@ -273,7 +423,7 @@ const monthlyData    = reactive({ months: [], materials: [] })
 async function fetchMonthly() {
   monthlyLoading.value = true
   try {
-    const res = await axios.get(route('materials.report.monthly-matrix'), { params: { months: monthsPeriod.value } })
+    const res = await axios.get(route('acts.report.monthly-matrix'), { params: { months: monthsPeriod.value } })
     monthlyData.months    = res.data.months
     monthlyData.materials = res.data.materials
   } finally {
@@ -285,7 +435,7 @@ async function fetchMonthly() {
 function ensureMonthlyLoaded() { if (!monthlyLoaded.value) fetchMonthly() }
 function setMonthsPeriod(p) { monthsPeriod.value = p; fetchMonthly() }
 
-// ── Прогноз ──
+// ── Прогноз (недоступен из UI, код сохранён — см. комментарий у subTabs) ──
 const forecastLoading = ref(false)
 const forecastLoaded  = ref(false)
 const forecastData    = reactive({ top: [], aggregate: { months: [], values: [], method: 'insufficient_data' } })
@@ -299,7 +449,7 @@ function setForecastCanvasRef(el, key) {
 async function fetchForecast() {
   forecastLoading.value = true
   try {
-    const res = await axios.get(route('materials.report.forecast'), { params: { top: 5 } })
+    const res = await axios.get(route('acts.report.forecast'), { params: { top: 5 } })
     forecastData.top       = res.data.top
     forecastData.aggregate = res.data.aggregate
   } finally {
@@ -363,10 +513,6 @@ const ForecastBadge = defineComponent({
     }
   }
 })
-
-function formatMoney(val) {
-  return Number(val).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
 
 onMounted(() => {
   ensureSubLoaded(activeSub.value)

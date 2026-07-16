@@ -16,57 +16,7 @@
       <div v-if="!canViewReports" class="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400">
         Нет доступа к отчётам.
       </div>
-      <div v-else class="space-y-4">
-        <!-- Расход материалов (перенесено из общих Отчётов, 2026-07-15) -->
-        <div class="flex items-center justify-between">
-          <RangePicker :range="materials" />
-          <a :href="route('materials.index') + '?tab=report'" class="text-sm text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
-            Подробный отчёт →
-          </a>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 class="text-sm font-semibold text-gray-600 mb-4">Динамика расхода (ед.) по неделям</h2>
-            <div v-if="materials.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
-            <div v-else-if="!materials.state.data.weekly.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
-            <canvas v-else ref="materialQtyCanvas" style="max-height:280px" />
-          </div>
-          <div class="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 class="text-sm font-semibold text-gray-600 mb-4">Динамика суммы (₽) по неделям</h2>
-            <div v-if="materials.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
-            <div v-else-if="!materials.state.data.weekly.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
-            <canvas v-else ref="materialAmtCanvas" style="max-height:280px" />
-          </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Топ-10 материалов по сумме</div>
-          <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
-                <th class="text-center px-4 py-2.5 w-20">Код</th>
-                <th class="text-left px-4 py-2.5">Наименование</th>
-                <th class="text-center px-4 py-2.5 w-20">Ед.</th>
-                <th class="text-right px-4 py-2.5 w-28">Кол-во</th>
-                <th class="text-right px-4 py-2.5 w-36">Сумма, ₽</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr v-if="!materials.state.data.top.length">
-                <td colspan="5" class="text-center py-6 text-gray-400 text-xs">—</td>
-              </tr>
-              <tr v-for="(m, i) in materials.state.data.top" :key="i" class="hover:bg-gray-50">
-                <td class="px-4 py-1.5 text-center text-gray-400 font-mono text-xs">{{ m.code || '—' }}</td>
-                <td class="px-4 py-1.5 text-gray-800">{{ m.name }}</td>
-                <td class="px-4 py-1.5 text-center text-gray-500 text-xs">{{ m.unit }}</td>
-                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ m.qty }}</td>
-                <td class="px-4 py-1.5 text-right font-mono tabular-nums">{{ formatMoney(m.amount) }}</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        </div>
-      </div>
+      <MaterialsReport v-else />
     </div>
 
     <template v-else>
@@ -232,13 +182,10 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { reactive, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
-import Chart from 'chart.js/auto'
-Chart.defaults.animation = false
 import AppLayout from '@/Components/Layout/AppLayout.vue'
-import RangePicker from '@/Components/Reports/RangePicker.vue'
-import { useReportRange } from '@/Composables/useReportRange'
+import MaterialsReport from '@/Components/Acts/MaterialsReport.vue'
 
 const props = defineProps({
   tab:             { type: String, default: 'active' },
@@ -368,54 +315,4 @@ function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString('ru-RU') : '—'
 }
 
-// ── Вкладка "Отчёты": Расход материалов (перенесено из общих Отчётов, 2026-07-15) ──
-const materials = useReportRange('reports.material-dynamics', { weekly: { labels: [], qty: [], amount: [] }, top: [] })
-const materialQtyCanvas = ref(null)
-const materialAmtCanvas = ref(null)
-const reportCharts = {}
-
-function formatMoney(val) {
-  return Number(val).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function destroyReportChart(key) {
-  if (reportCharts[key]) { reportCharts[key].destroy(); delete reportCharts[key] }
-}
-
-function buildMaterialsCharts() {
-  destroyReportChart('qty')
-  destroyReportChart('amt')
-  const data = materials.state.data
-  const labels = data.weekly.labels
-  if (!labels.length) return
-  if (materialQtyCanvas.value) {
-    reportCharts.qty = new Chart(materialQtyCanvas.value, {
-      type: 'line',
-      data: { labels, datasets: [{ label: 'Кол-во', data: data.weekly.qty,
-        borderColor: 'rgba(59,130,246,0.85)', backgroundColor: 'rgba(59,130,246,0.15)', fill: true, tension: 0.35 }] },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
-    })
-  }
-  if (materialAmtCanvas.value) {
-    reportCharts.amt = new Chart(materialAmtCanvas.value, {
-      type: 'line',
-      data: { labels, datasets: [{ label: 'Сумма', data: data.weekly.amount,
-        borderColor: 'rgba(34,197,94,0.85)', backgroundColor: 'rgba(34,197,94,0.15)', fill: true, tension: 0.35 }] },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
-    })
-  }
-}
-
-watch(() => materials.state.data, () => nextTick(buildMaterialsCharts))
-
-onMounted(() => {
-  if (props.tab === 'reports' && props.canViewReports) {
-    materials.ensureLoaded()
-    nextTick(buildMaterialsCharts)
-  }
-})
-
-onBeforeUnmount(() => {
-  Object.values(reportCharts).forEach(c => c.destroy())
-})
 </script>

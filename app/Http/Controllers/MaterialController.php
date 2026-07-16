@@ -25,7 +25,6 @@ class MaterialController extends Controller
         return Inertia::render('Materials/Index', [
             'materials'     => $materials,
             'canManage'     => auth()->user()->hasPermission('materials.manage'),
-            'canViewReport' => auth()->user()->can('manage-settings'),
         ]);
     }
 

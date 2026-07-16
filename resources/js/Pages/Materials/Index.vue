@@ -2,22 +2,14 @@
   <Head title="Расходные материалы" />
   <AppLayout title="Расходные материалы">
     <template #actions>
-      <button v-if="canManage && activeTab === 'catalog'" @click="openCreate"
+      <button v-if="canManage" @click="openCreate"
               class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700
                      text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
         + Добавить
       </button>
     </template>
 
-    <div v-if="canViewReport" class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-4 w-fit">
-      <button v-for="t in tabs" :key="t.id" @click="activeTab = t.id"
-              :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                       activeTab === t.id ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-        {{ t.label }}
-      </button>
-    </div>
-
-    <div v-show="activeTab === 'catalog'">
+    <div>
       <div class="mb-2">
         <input v-model="search" type="search" placeholder="Поиск по коду или наименованию..."
                class="w-full max-w-sm border border-gray-200 rounded-xl px-3 py-1.5 text-sm
@@ -73,10 +65,6 @@
         </table>
         </div>
       </div>
-    </div>
-
-    <div v-show="activeTab === 'report'">
-      <MaterialsReport v-if="activeTab === 'report'" />
     </div>
 
     <!-- Модалка -->
@@ -163,16 +151,8 @@ import { ref, computed } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
-import MaterialsReport from '@/Components/Materials/MaterialsReport.vue'
 
-const props = defineProps({ materials: Array, canManage: Boolean, canViewReport: Boolean })
-
-const tabs = [
-  { id: 'catalog', label: 'Справочник' },
-  { id: 'report',  label: 'Отчёт' },
-]
-const wantsReportTab = new URLSearchParams(window.location.search).get('tab') === 'report'
-const activeTab = ref(props.canViewReport && wantsReportTab ? 'report' : 'catalog')
+const props = defineProps({ materials: Array, canManage: Boolean })
 
 const search = ref('')
 const filtered = computed(() => {

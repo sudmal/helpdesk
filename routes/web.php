@@ -192,6 +192,15 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('/{act}/materials/{material}', [App\Http\Controllers\ActController::class, 'updateMaterial'])->name('materials.update');
         Route::delete('/{act}/materials/{material}', [App\Http\Controllers\ActController::class, 'removeMaterial'])->name('materials.destroy');
         Route::post('/{act}/acknowledge', [App\Http\Controllers\ActController::class, 'acknowledge'])->name('acknowledge');
+
+        // Отчёты по расходу материалов/поступлениям от абонентов — переехали сюда из
+        // раздела "Материалы" (см. память project-acts-feature). Доступ (reports.view)
+        // проверяется внутри самих методов MaterialReportController, не middleware —
+        // тот же паттерн, что уже был у reports.material-dynamics.
+        Route::get('/report/consumption',    [App\Http\Controllers\MaterialReportController::class, 'consumption'])->name('report.consumption');
+        Route::get('/report/monthly-matrix', [App\Http\Controllers\MaterialReportController::class, 'monthlyMatrix'])->name('report.monthly-matrix');
+        Route::get('/report/forecast',       [App\Http\Controllers\MaterialReportController::class, 'forecast'])->name('report.forecast');
+        Route::get('/report/export',         [App\Http\Controllers\MaterialReportController::class, 'exportCsv'])->name('report.export');
     });
 
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
@@ -202,13 +211,6 @@ Route::middleware(['auth', 'active'])->group(function () {
 Route::resource('materials', App\Http\Controllers\MaterialController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware('auth');
-
-Route::middleware('can:manage-settings')->prefix('materials/report')->name('materials.report.')->group(function () {
-    Route::get('/consumption', [App\Http\Controllers\MaterialReportController::class, 'consumption'])->name('consumption');
-    Route::get('/monthly-matrix', [App\Http\Controllers\MaterialReportController::class, 'monthlyMatrix'])->name('monthly-matrix');
-    Route::get('/forecast', [App\Http\Controllers\MaterialReportController::class, 'forecast'])->name('forecast');
-    Route::get('/export', [App\Http\Controllers\MaterialReportController::class, 'exportCsv'])->name('export');
-});
 
 // Р Р°СЃС…РѕРґРЅРёРєРё РїРѕ Р·Р°СЏРІРєРµ
 Route::post('tickets/{ticket}/materials', [App\Http\Controllers\MaterialController::class, 'storeForTicket'])

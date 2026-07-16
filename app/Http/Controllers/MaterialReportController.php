@@ -7,9 +7,21 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\Brigade;
 use App\Models\Territory;
+use App\Models\ServiceType;
 
 class MaterialReportController extends Controller
 {
+    // Раздел "Материалы" больше не имеет своей вкладки отчётов — весь этот
+    // контроллер теперь обслуживает вкладку "Акты → Отчёты" (см. память
+    // project-acts-feature, "Отчёты переехали из Материалов в Акты"),
+    // доступ по reports.view (шире, чем прежний manage-settings — теперь видят
+    // и ПЭО/Логистика/Абонотдел, не только админ/руководитель).
+    private function authorizeReports(Request $request): void
+    {
+        $user = $request->user();
+        abort_unless($user->isAdmin() || $user->isHeadSupport() || $user->hasPermission('reports.view'), 403);
+    }
+
     private function parseRange(Request $request): array
     {
         $from = $request->get('from', now()->subMonth()->toDateString());
@@ -27,11 +39,17 @@ class MaterialReportController extends Controller
         return [$prevFrom, $prevTo];
     }
 
-    // filterDim/filterId (опционально) — фильтр по конкретной бригаде/территории применяется
+    // filterDim/filterId (опционально) — фильтр по конкретной бригаде/территории/участку применяется
     // ВНУТРИ каждой ветки union'а (до unionAll), а не поверх готового union'а — Laravel мержит
     // биндинги ->where() поверх DB::raw()-подзапроса не по текстовому порядку "?", а по типу клозы
     // (where/union/...), из-за чего плейсхолдеры съезжают. Фильтрация до union — безопасный способ.
-    private function unionQuery(Carbon $from, Carbon $to, ?string $filterDim = null, $filterId = null)
+    //
+    // onlyBillable — оставляет только акты типа 'regular' (обычное закрытие, которое реально
+    // оплачивает абонент); ремонтные акты абонент не оплачивает, поэтому отчёт "Поступления от
+    // абонентов" их исключает. У заявок на подключение Act.type всегда 'regular' (см. память
+    // project-acts-feature), фильтр там факту не мешает, но джойн на acts всё равно нужен, чтобы
+    // тип вообще было откуда взять единообразно с тикетной веткой.
+    private function unionQuery(Carbon $from, Carbon $to, ?string $filterDim = null, $filterId = null, bool $onlyBillable = false)
     {
         // Материалы заявок теперь висят на Акте (act_materials -> acts -> tickets),
         // а не напрямую на тикете — см. фичу "Акты".
@@ -44,7 +62,13 @@ class MaterialReportController extends Controller
 
         $crSide = DB::table('connection_request_materials as crm')
             ->join('connection_requests as cr', 'crm.connection_request_id', '=', 'cr.id')
+            ->join('acts as a2', 'a2.connection_request_id', '=', 'cr.id')
             ->whereBetween('crm.created_at', [$from, $to]);
+
+        if ($onlyBillable) {
+            $ticketSide->where('a.type', 'regular');
+            $crSide->where('a2.type', 'regular');
+        }
 
         if ($filterDim === 'brigade') {
             if ($filterId === 'connection_requests') {
@@ -61,10 +85,18 @@ class MaterialReportController extends Controller
                 $ticketSide->where('addr.territory_id', $filterId);
                 $crSide->where('cr.territory_id', $filterId);
             }
+        } elseif ($filterDim === 'service_type') {
+            if ($filterId === 'unknown') {
+                $ticketSide->whereNull('t.service_type_id');
+                $crSide->whereNull('cr.service_type_id');
+            } elseif ($filterId !== null) {
+                $ticketSide->where('t.service_type_id', $filterId);
+                $crSide->where('cr.service_type_id', $filterId);
+            }
         }
 
-        $ticketSide->selectRaw("tm.material_id, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time, tm.created_at, t.brigade_id as brigade_id, addr.territory_id as territory_id, a.ticket_id as source_id, 'ticket' as source");
-        $crSide->selectRaw("crm.material_id, crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time, crm.created_at, NULL as brigade_id, cr.territory_id as territory_id, crm.connection_request_id as source_id, 'connection_request' as source");
+        $ticketSide->selectRaw("tm.material_id, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time, tm.created_at, t.brigade_id as brigade_id, addr.territory_id as territory_id, t.service_type_id as service_type_id, a.ticket_id as source_id, 'ticket' as source");
+        $crSide->selectRaw("crm.material_id, crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time, crm.created_at, NULL as brigade_id, cr.territory_id as territory_id, cr.service_type_id as service_type_id, crm.connection_request_id as source_id, 'connection_request' as source");
 
         return $ticketSide->unionAll($crSide);
     }
@@ -87,16 +119,19 @@ class MaterialReportController extends Controller
     // entity_id (если задан и dimension != all) -> список материалов ИМЕННО этой бригады/территории
     public function consumption(Request $request)
     {
-        $dimension = $request->get('dimension', 'all');
-        $entityId  = $request->get('entity_id');
+        $this->authorizeReports($request);
+
+        $dimension    = $request->get('dimension', 'all');
+        $entityId     = $request->get('entity_id');
+        $onlyBillable = $request->boolean('only_billable');
         [$from, $to] = $this->parseRange($request);
 
         $drillDown = $dimension !== 'all' && $entityId !== null && $entityId !== '';
 
         if ($drillDown) {
-            $rows = $this->aggregateMaterials($from, $to, $dimension, $entityId);
+            $rows = $this->aggregateMaterials($from, $to, $dimension, $entityId, $onlyBillable);
         } else {
-            $rows = $this->aggregateByDimension($from, $to, $dimension);
+            $rows = $this->aggregateByDimension($from, $to, $dimension, $onlyBillable);
         }
 
         $result = [
@@ -113,8 +148,8 @@ class MaterialReportController extends Controller
         if ($dimension === 'all' || $drillDown) {
             [$prevFrom, $prevTo] = $this->previousRange($from, $to);
             $prevRows = $drillDown
-                ? $this->aggregateMaterials($prevFrom, $prevTo, $dimension, $entityId)
-                : $this->aggregateByDimension($prevFrom, $prevTo, 'all');
+                ? $this->aggregateMaterials($prevFrom, $prevTo, $dimension, $entityId, $onlyBillable)
+                : $this->aggregateByDimension($prevFrom, $prevTo, 'all', $onlyBillable);
             $prevByKey = collect($prevRows)->keyBy('key');
 
             foreach ($result['rows'] as &$row) {
@@ -131,10 +166,10 @@ class MaterialReportController extends Controller
         return response()->json($result);
     }
 
-    // Список материалов (как в dimension=all), опционально отфильтрованный по конкретной бригаде/территории
-    private function aggregateMaterials(Carbon $from, Carbon $to, ?string $filterDim = null, $filterId = null): array
+    // Список материалов (как в dimension=all), опционально отфильтрованный по конкретной бригаде/территории/участку
+    private function aggregateMaterials(Carbon $from, Carbon $to, ?string $filterDim = null, $filterId = null, bool $onlyBillable = false): array
     {
-        $union = $this->unionQuery($from, $to, $filterDim, $filterId);
+        $union = $this->unionQuery($from, $to, $filterDim, $filterId, $onlyBillable);
 
         $raw = DB::table(DB::raw("({$union->toSql()}) as x"))
             ->mergeBindings($union)
@@ -160,9 +195,9 @@ class MaterialReportController extends Controller
         ])->toArray();
     }
 
-    private function aggregateByDimension(Carbon $from, Carbon $to, string $dimension): array
+    private function aggregateByDimension(Carbon $from, Carbon $to, string $dimension, bool $onlyBillable = false): array
     {
-        $union = $this->unionQuery($from, $to);
+        $union = $this->unionQuery($from, $to, null, null, $onlyBillable);
 
         if ($dimension === 'brigade') {
             $raw = DB::table(DB::raw("({$union->toSql()}) as x"))
@@ -219,6 +254,32 @@ class MaterialReportController extends Controller
             })->toArray();
         }
 
+        if ($dimension === 'service_type') {
+            $raw = DB::table(DB::raw("({$union->toSql()}) as x"))
+                ->mergeBindings($union)
+                ->selectRaw('
+                    service_type_id,
+                    SUM(quantity) as qty,
+                    SUM(quantity * price_at_time) as amount,
+                    COUNT(DISTINCT CONCAT(source, "-", source_id)) as request_count
+                ')
+                ->groupBy('service_type_id')
+                ->orderByDesc('amount')
+                ->get();
+
+            $serviceTypeNames = ServiceType::whereIn('id', $raw->pluck('service_type_id')->filter()->all())->pluck('name', 'id');
+
+            return $raw->map(function ($r) use ($serviceTypeNames) {
+                return [
+                    'key'           => $r->service_type_id ?? 'unknown',
+                    'label'         => $r->service_type_id ? ($serviceTypeNames[$r->service_type_id] ?? '—') : 'Без участка',
+                    'qty'           => (float)$r->qty,
+                    'amount'        => (float)$r->amount,
+                    'request_count' => (int)$r->request_count,
+                ];
+            })->toArray();
+        }
+
         // dimension === 'all' -> по материалам
         $raw = DB::table(DB::raw("({$union->toSql()}) as x"))
             ->mergeBindings($union)
@@ -247,6 +308,8 @@ class MaterialReportController extends Controller
     // ── Таблица материал × месяц ──
     public function monthlyMatrix(Request $request)
     {
+        $this->authorizeReports($request);
+
         $months = $request->get('months', '12'); // '12' | '24' | 'all'
 
         $union = $this->unionQueryAllTime();
@@ -318,6 +381,8 @@ class MaterialReportController extends Controller
     // ── Прогноз: линейный тренд (+ сезонность при достаточной истории) ──
     public function forecast(Request $request)
     {
+        $this->authorizeReports($request);
+
         $topN = (int)$request->get('top', 5);
 
         $union = $this->unionQueryAllTime();
@@ -441,17 +506,20 @@ class MaterialReportController extends Controller
     // ── Экспорт CSV текущей таблицы "Расход за период" (учитывает drill-down по бригаде/территории) ──
     public function exportCsv(Request $request)
     {
-        $dimension = $request->get('dimension', 'all');
-        $entityId  = $request->get('entity_id');
+        $this->authorizeReports($request);
+
+        $dimension    = $request->get('dimension', 'all');
+        $entityId     = $request->get('entity_id');
+        $onlyBillable = $request->boolean('only_billable');
         [$from, $to] = $this->parseRange($request);
 
         $drillDown = $dimension !== 'all' && $entityId !== null && $entityId !== '';
         $rows = $drillDown
-            ? $this->aggregateMaterials($from, $to, $dimension, $entityId)
-            : $this->aggregateByDimension($from, $to, $dimension);
+            ? $this->aggregateMaterials($from, $to, $dimension, $entityId, $onlyBillable)
+            : $this->aggregateByDimension($from, $to, $dimension, $onlyBillable);
         $byMaterial = $dimension === 'all' || $drillDown;
 
-        $filename = 'materials_' . $dimension . ($drillDown ? '_' . $entityId : '') . '_' . $from->format('Y-m-d') . '_' . $to->format('Y-m-d') . '.csv';
+        $filename = ($onlyBillable ? 'revenue_' : 'materials_') . $dimension . ($drillDown ? '_' . $entityId : '') . '_' . $from->format('Y-m-d') . '_' . $to->format('Y-m-d') . '.csv';
 
         return response()->streamDownload(function () use ($rows, $dimension, $byMaterial) {
             $out = fopen('php://output', 'w');
@@ -466,6 +534,11 @@ class MaterialReportController extends Controller
                 fputcsv($out, ['Бригада', 'Кол-во', 'Сумма, руб', 'Заявок', 'Сумма на заявку, руб']);
                 foreach ($rows as $r) {
                     fputcsv($out, [$r['label'], $r['qty'], $r['amount'], $r['request_count'], $r['avg_amount_per_ticket']]);
+                }
+            } elseif ($dimension === 'service_type') {
+                fputcsv($out, ['Участок', 'Кол-во', 'Сумма, руб', 'Заявок']);
+                foreach ($rows as $r) {
+                    fputcsv($out, [$r['label'], $r['qty'], $r['amount'], $r['request_count']]);
                 }
             } else {
                 fputcsv($out, ['Территория', 'Кол-во', 'Сумма, руб', 'Заявок']);
