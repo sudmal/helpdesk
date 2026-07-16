@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConnectionRequestController;
 use App\Http\Controllers\Api\TicketController;
@@ -30,6 +31,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/connection-requests/{connectionRequest}/close',             [ConnectionRequestController::class, 'close']);
     Route::post('/connection-requests/{connectionRequest}/mark-called',       [ConnectionRequestController::class, 'markCalled']);
     Route::delete('/connection-requests/{connectionRequest}',                 [ConnectionRequestController::class, 'destroy']);
+
+    // Полевая часть workflow "Акты" — утверждение бригадиром, правка состава
+    // материалов, подтверждение монтажником. Звенья ПЭО/Логистика/Абонотдел
+    // намеренно не выведены в API — это офисные роли, работают только через веб.
+    Route::get('/acts/{act}',                          [ActController::class, 'show']);
+    Route::post('/acts/{act}/approve',                  [ActController::class, 'approve']);
+    Route::post('/acts/{act}/materials',                [ActController::class, 'addMaterial']);
+    Route::put('/acts/{act}/materials/{material}',      [ActController::class, 'updateMaterial']);
+    Route::delete('/acts/{act}/materials/{material}',   [ActController::class, 'removeMaterial']);
+    Route::post('/acts/{act}/acknowledge',              [ActController::class, 'acknowledge']);
 
     Route::get('/service_types', function () {
         return response()->json(

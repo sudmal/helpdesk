@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Act;
 use App\Models\Brigade;
 use App\Models\ConnectionRequest;
 use App\Models\Material;
@@ -19,7 +20,7 @@ class ConnectionRequestController extends Controller
         $territories  = $this->getUserTerritories($user);
         $territoryIds = $territories->pluck('id');
 
-        $query = ConnectionRequest::with(['territory', 'creator', 'assignee'])
+        $query = ConnectionRequest::with(['territory', 'serviceType', 'creator', 'assignee', 'act'])
             ->whereIn('territory_id', $territoryIds)
             ->where(function ($q) {
                 $q->whereIn('status', ['pending', 'scheduled', 'rejected'])
@@ -60,25 +61,26 @@ class ConnectionRequestController extends Controller
 
     public function show(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
-        $connectionRequest->load(['territory', 'creator', 'assignee', 'materials']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'materials', 'act']);
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
 
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'           => 'required|string|max:100',
-            'phone'          => 'required|string|max:30',
-            'address_string' => 'required|string|max:255',
-            'description'    => 'nullable|string|max:2000',
-            'territory_id'   => 'required|exists:territories,id',
+            'name'            => 'required|string|max:100',
+            'phone'           => 'required|string|max:30',
+            'address_string'  => 'required|string|max:255',
+            'description'     => 'nullable|string|max:2000',
+            'territory_id'    => 'required|exists:territories,id',
+            'service_type_id' => 'nullable|exists:service_types,id',
         ]);
 
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
 
         $cr = ConnectionRequest::create($data);
-        $cr->load(['territory', 'creator', 'assignee']);
+        $cr->load(['territory', 'serviceType', 'creator', 'assignee']);
 
         return response()->json($this->formatOne($cr), 201);
     }
@@ -86,14 +88,15 @@ class ConnectionRequestController extends Controller
     public function update(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
         $data = $request->validate([
-            'name'           => 'sometimes|string|max:100',
-            'phone'          => 'sometimes|string|max:30',
-            'address_string' => 'sometimes|string|max:255',
-            'description'    => 'nullable|string|max:2000',
-            'territory_id'   => 'sometimes|exists:territories,id',
-            'status'         => 'sometimes|in:pending,scheduled,rejected',
-            'scheduled_at'   => 'nullable|date',
-            'notes'          => 'nullable|string|max:2000',
+            'name'            => 'sometimes|string|max:100',
+            'phone'           => 'sometimes|string|max:30',
+            'address_string'  => 'sometimes|string|max:255',
+            'description'     => 'nullable|string|max:2000',
+            'territory_id'    => 'sometimes|exists:territories,id',
+            'service_type_id' => 'nullable|exists:service_types,id',
+            'status'          => 'sometimes|in:pending,scheduled,rejected',
+            'scheduled_at'    => 'nullable|date',
+            'notes'           => 'nullable|string|max:2000',
         ]);
 
         if (isset($data['status'])) {
@@ -101,44 +104,57 @@ class ConnectionRequestController extends Controller
         }
 
         $connectionRequest->update($data);
-        $connectionRequest->load(['territory', 'creator', 'assignee', 'materials']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'materials']);
 
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
 
+    /**
+     * Закрытие с материалами создаёт полноценный Акт (Act/ActMaterial/ActHistory),
+     * как и веб-версия (см. ConnectionRequestController::close, память
+     * project-acts-feature) — раньше здесь писался только плоский текстовый
+     * act_number, из-за чего заявки на подключение, закрытые с телефона,
+     * не попадали в workflow согласования Бригадир→ПЭО/Логистика→Абонотдел.
+     */
     public function close(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
         $request->validate([
-            'notes'      => 'nullable|string|max:2000',
-            'act_number' => [
-                'nullable', 'string', 'max:50',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($request->input('materials')) && (empty($value) || mb_strlen(trim($value)) < 5)) {
-                        $fail('При использовании материалов обязателен номер акта (минимум 5 символов).');
-                    }
-                },
-            ],
-            'materials'               => 'nullable|array',
-            'materials.*.material_id' => 'required_with:materials.*|integer|exists:materials,id',
-            'materials.*.quantity'    => 'required_with:materials.*|numeric|min:0.01',
+            'notes'                    => 'nullable|string|max:2000',
+            'materials'                => 'nullable|array',
+            'materials.*.material_id'  => 'required_with:materials.*|integer|exists:materials,id',
+            'materials.*.quantity'     => 'required_with:materials.*|numeric|min:0.01',
         ]);
 
-        $actNumber = filled($request->act_number) ? $request->act_number : 'б/а';
+        if (!empty($request->materials) && !$connectionRequest->service_type_id) {
+            return response()->json([
+                'message' => 'У заявки не указан участок (тип услуги) — укажите его перед закрытием с материалами.',
+                'errors'  => ['service_type_id' => ['У заявки не указан участок (тип услуги).']],
+            ], 422);
+        }
 
-        DB::transaction(function () use ($connectionRequest, $actNumber, $request) {
+        $actNumber = null;
+
+        DB::transaction(function () use ($connectionRequest, $request, &$actNumber) {
             $connectionRequest->update([
                 'status'         => 'closed',
-                'act_number'     => $actNumber,
                 'notes'          => $request->notes,
                 'needs_callback' => false,
             ]);
 
             if (!empty($request->materials)) {
-                $connectionRequest->materials()->delete();
+                $actNumber = Act::generateNumberForConnectionRequest($connectionRequest);
+                $act = Act::create([
+                    'connection_request_id' => $connectionRequest->id,
+                    'number'                => $actNumber,
+                    'type'                  => 'regular',
+                    'status'                => 'pending_foreman',
+                    'created_by'            => $request->user()->id,
+                ]);
+
                 foreach ($request->materials as $item) {
                     $material = Material::find($item['material_id']);
                     if (!$material) continue;
-                    $connectionRequest->materials()->create([
+                    $act->materials()->create([
                         'material_id'   => $material->id,
                         'material_name' => $material->name,
                         'material_code' => $material->code,
@@ -148,12 +164,17 @@ class ConnectionRequestController extends Controller
                         'created_by'    => $request->user()->id,
                     ]);
                 }
+
+                $act->history()->create([
+                    'user_id' => $request->user()->id,
+                    'action'  => 'created',
+                ]);
             }
         });
 
-        $connectionRequest->load(['territory', 'creator', 'assignee', 'materials']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'act']);
 
-        return response()->json($this->formatOne($connectionRequest, withMaterials: true));
+        return response()->json($this->formatOne($connectionRequest));
     }
 
     public function markCalled(ConnectionRequest $connectionRequest): JsonResponse
@@ -179,9 +200,23 @@ class ConnectionRequestController extends Controller
             'status'         => $r->status,
             'scheduled_at'   => $r->scheduled_at?->toIso8601String(),
             'notes'          => $r->notes,
-            'act_number'     => $r->act_number,
+            // act_number оставлен для обратной совместимости со старыми сборками
+            // приложения — заполняется из старой плоской колонки, если она есть
+            // (легаси-заявки), иначе из номера полноценного Акта (см. `act` ниже).
+            'act_number'     => $r->act_number ?: $r->act?->number,
+            'act'            => $r->relationLoaded('act') && $r->act ? [
+                'id'                   => $r->act->id,
+                'number'               => $r->act->number,
+                'status'               => $r->act->status,
+                'materials_changed_at' => $r->act->materials_changed_at?->toIso8601String(),
+            ] : null,
             'needs_callback' => (bool) $r->needs_callback,
             'territory'      => $r->territory ? ['id' => $r->territory->id, 'name' => $r->territory->name] : null,
+            'service_type'   => $r->serviceType ? [
+                'id'    => $r->serviceType->id,
+                'name'  => $r->serviceType->name,
+                'color' => $r->serviceType->color,
+            ] : null,
             'creator'        => $r->creator?->name,
             'assigned_to'    => $r->assigned_to,
             'assignee'       => $r->assignee ? ['id' => $r->assignee->id, 'name' => $r->assignee->name] : null,

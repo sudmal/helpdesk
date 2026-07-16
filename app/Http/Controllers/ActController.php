@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\{Act, ActMaterial, Brigade, Material, Territory};
+use App\Services\ActService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,8 @@ use Inertia\Response;
 
 class ActController extends Controller
 {
+    public function __construct(private ActService $actService) {}
+
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Act::class);
@@ -221,14 +224,7 @@ class ActController extends Controller
     public function approve(Act $act): RedirectResponse
     {
         $this->authorize('foremanReview', $act);
-        $user = auth()->user();
-
-        $act->update([
-            'status'              => 'approved',
-            'foreman_reviewed_by' => $user->id,
-            'foreman_reviewed_at' => now(),
-        ]);
-        $this->logHistory($act, $user->id, 'approved');
+        $this->actService->approve($act, auth()->user());
 
         return back()->with('success', 'Акт утверждён');
     }
@@ -286,25 +282,8 @@ class ActController extends Controller
             'material_id' => 'required|exists:materials,id',
             'quantity'    => 'required|numeric|min:0.001',
         ]);
-        $user = auth()->user();
-        $material = Material::findOrFail($request->material_id);
 
-        $actMaterial = $act->materials()->create([
-            'material_id'   => $material->id,
-            'material_name' => $material->name,
-            'material_code' => $material->code,
-            'material_unit' => $material->unit,
-            'price_at_time' => $material->price,
-            'quantity'      => $request->quantity,
-            'created_by'    => $user->id,
-        ]);
-
-        $this->flagMaterialsChanged($act, $user->id);
-        $this->logHistory(
-            $act, $user->id, 'material_added', null, null,
-            "{$actMaterial->material_name} — {$actMaterial->quantity} {$actMaterial->material_unit}",
-            $actMaterial->id
-        );
+        $this->actService->addMaterial($act, auth()->user(), (int) $request->material_id, (float) $request->quantity);
 
         return back()->with('success', 'Материал добавлен в акт');
     }
@@ -315,14 +294,8 @@ class ActController extends Controller
         $this->authorize('editMaterials', $act);
         abort_unless($material->act_id === $act->id, 404);
         $request->validate(['quantity' => 'required|numeric|min:0.001']);
-        $user = auth()->user();
 
-        $old = "{$material->material_name} — {$material->quantity} {$material->material_unit}";
-        $material->update(['quantity' => $request->quantity]);
-        $new = "{$material->material_name} — {$material->quantity} {$material->material_unit}";
-
-        $this->flagMaterialsChanged($act, $user->id);
-        $this->logHistory($act, $user->id, 'material_changed', 'quantity', $old, $new, $material->id);
+        $this->actService->updateMaterial($act, $material, auth()->user(), (float) $request->quantity);
 
         return back()->with('success', 'Материал изменён');
     }
@@ -332,13 +305,8 @@ class ActController extends Controller
     {
         $this->authorize('editMaterials', $act);
         abort_unless($material->act_id === $act->id, 404);
-        $user = auth()->user();
 
-        $old = "{$material->material_name} — {$material->quantity} {$material->material_unit}";
-        $material->delete();
-
-        $this->flagMaterialsChanged($act, $user->id);
-        $this->logHistory($act, $user->id, 'material_removed', null, $old, null);
+        $this->actService->removeMaterial($act, $material, auth()->user());
 
         return back()->with('success', 'Материал удалён из акта');
     }
@@ -347,11 +315,7 @@ class ActController extends Controller
     public function acknowledge(Act $act): RedirectResponse
     {
         $this->authorize('acknowledge', $act);
-        $user = auth()->user();
-
-        $act->history()->whereNull('acknowledged_at')->update(['acknowledged_at' => now()]);
-        $act->update(['materials_changed_at' => null]);
-        $this->logHistory($act, $user->id, 'acknowledged');
+        $this->actService->acknowledge($act, auth()->user());
 
         return back()->with('success', 'Изменения подтверждены');
     }
@@ -372,18 +336,6 @@ class ActController extends Controller
         });
 
         $act->status = $done ? 'pending_subscriber_dept' : 'processing';
-    }
-
-    /**
-     * Флаг "монтажнику есть что подтвердить" — не поднимаем его, если бригадир
-     * правит акт, который сам же и создал (нет смысла уведомлять самого себя).
-     */
-    private function flagMaterialsChanged(Act $act, int $editorId): void
-    {
-        if ($act->created_by !== $editorId) {
-            $act->materials_changed_at = now();
-            $act->save();
-        }
     }
 
     private function logHistory(

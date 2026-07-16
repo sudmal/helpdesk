@@ -225,6 +225,13 @@ class TicketController extends Controller
             'apartment'    => $t->apartment,
             'close_notes'  => $t->close_notes,
             'act_number'   => $t->act?->number,
+            'act'          => $t->act ? [
+                'id'                   => $t->act->id,
+                'number'               => $t->act->number,
+                'type'                 => $t->act->type,
+                'status'               => $t->act->status,
+                'materials_changed_at' => $t->act->materials_changed_at?->toIso8601String(),
+            ] : null,
             'address'      => $t->address ? [
                 // Без квартиры: apartment этой заявки уже есть отдельным полем выше,
                 // мобильное приложение само дописывает его к адресу. Квартира в
