@@ -88,7 +88,15 @@ class HandleInertiaRequests extends Middleware
                         }
                         $territoryIds = $territoryIds->merge($user->territories()->pluck('territories.id'))->unique();
                         if ($territoryIds->isNotEmpty()) {
-                            $base->whereHas('ticket.address', fn($q) => $q->whereIn('territory_id', $territoryIds));
+                            // Акт теперь бывает от заявки (ticket) ИЛИ от заявки на подключение
+                            // (connection_request) — territory проверяется у того источника,
+                            // который реально заполнен (см. память project-acts-feature,
+                            // "Заявки на подключение"). Раньше проверялся только ticket.address —
+                            // из-за этого бейдж не загорался у актов заявок на подключение.
+                            $base->where(function ($q) use ($territoryIds) {
+                                $q->whereHas('ticket.address', fn($qq) => $qq->whereIn('territory_id', $territoryIds))
+                                  ->orWhereHas('connectionRequest', fn($qq) => $qq->whereIn('territory_id', $territoryIds));
+                            });
                         }
                     }
 
