@@ -323,10 +323,7 @@
             <textarea v-model="closeForm.notes" class="field-input w-full" rows="3"></textarea>
           </div>
           <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-xs text-gray-500 font-medium">Использованные материалы</label>
-              <button @click="addMaterialRow" class="text-xs text-blue-600 hover:underline">+ добавить</button>
-            </div>
+            <label class="block text-xs text-gray-500 font-medium mb-2">Использованные материалы</label>
             <div v-if="closeForm.materials.length" class="mb-2">
               <label class="block text-xs text-gray-500 mb-1">Тип услуги (для номера акта) <span class="text-red-400">*</span></label>
               <select v-model="closeForm.service" class="field-input w-full">
@@ -350,10 +347,13 @@
               </div>
               <button @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-600 px-1 shrink-0">✕</button>
             </div>
-            <div v-if="!closeForm.materials.length" class="text-xs text-gray-400">Материалы не добавлены</div>
-            <div v-if="closeMaterialsTotal > 0"
-                 class="text-right text-sm font-semibold text-gray-700 mt-2 pr-7">
-              Итого: <span class="text-blue-600">{{ closeMaterialsTotal.toFixed(2) }} ₽</span>
+            <div v-if="!closeForm.materials.length" class="text-xs text-gray-400 mb-2">Материалы не добавлены</div>
+            <!-- Кнопка добавления сразу после списка — новая строка появляется прямо здесь, а не наверху -->
+            <div class="flex items-center justify-between">
+              <button @click="addMaterialRow" class="text-xs text-blue-600 hover:underline">+ добавить</button>
+              <div v-if="closeMaterialsTotal > 0" class="text-sm font-semibold text-gray-700">
+                Итого: <span class="text-blue-600">{{ closeMaterialsTotal.toFixed(2) }} ₽</span>
+              </div>
             </div>
           </div>
         </div>
