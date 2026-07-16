@@ -327,6 +327,9 @@ class TicketController extends Controller
             return back()->withErrors(['act_type' => 'При использовании материалов обязателен тип акта.'])->withInput();
         }
 
+        // attempts=3: см. Act::createWithGeneratedNumber() — конкурентное закрытие
+        // с тем же префиксом номера акта может словить deadlock на lockForUpdate(),
+        // Laravel в этом случае полностью переиграет транзакцию.
         \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $materialsData, $request) {
             $this->ticketService->updateStatus($ticket, 'closed', auth()->user(), $request->comment);
 
@@ -339,14 +342,12 @@ class TicketController extends Controller
             // Материалы теперь формируют Акт (Act + ActMaterial), а не пишутся на тикет напрямую —
             // см. фичу "Акты" (согласование Бригадир -> ПЭО/Логистика -> Абонотдел).
             if (!empty($materialsData) && is_array($materialsData)) {
-                $number = \App\Models\Act::generateNumber($ticket, $request->act_type);
-                $act = \App\Models\Act::create([
+                $act = \App\Models\Act::createWithGeneratedNumber([
                     'ticket_id'  => $ticket->id,
-                    'number'     => $number,
                     'type'       => $request->act_type,
                     'status'     => 'pending_foreman',
                     'created_by' => auth()->id(),
-                ]);
+                ], fn() => \App\Models\Act::generateNumber($ticket, $request->act_type));
 
                 foreach ($materialsData as $item) {
                     if (empty($item['material_id']) || empty($item['quantity'])) continue;
@@ -369,7 +370,7 @@ class TicketController extends Controller
                     'action'  => 'created',
                 ]);
             }
-        });
+        }, 3);
 
         return back()->with('success', 'Заявка закрыта');
     }

@@ -156,6 +156,9 @@ class ConnectionRequestController extends Controller
 
         $actNumber = null;
 
+        // attempts=3: см. Act::createWithGeneratedNumber() — конкурентное закрытие
+        // с тем же префиксом номера акта может словить deadlock на lockForUpdate(),
+        // Laravel в этом случае полностью переиграет транзакцию.
         DB::transaction(function () use ($connectionRequest, $request, &$actNumber) {
             $connectionRequest->update([
                 'status'         => 'closed',
@@ -164,14 +167,13 @@ class ConnectionRequestController extends Controller
             ]);
 
             if (!empty($request->materials)) {
-                $actNumber = \App\Models\Act::generateNumberForConnectionRequest($connectionRequest);
-                $act = \App\Models\Act::create([
+                $act = \App\Models\Act::createWithGeneratedNumber([
                     'connection_request_id' => $connectionRequest->id,
-                    'number'                => $actNumber,
                     'type'                  => 'regular',
                     'status'                => 'pending_foreman',
                     'created_by'            => $request->user()->id,
-                ]);
+                ], fn() => \App\Models\Act::generateNumberForConnectionRequest($connectionRequest));
+                $actNumber = $act->number;
 
                 foreach ($request->materials as $item) {
                     $material = Material::find($item['material_id']);
@@ -192,7 +194,7 @@ class ConnectionRequestController extends Controller
                     'action'  => 'created',
                 ]);
             }
-        });
+        }, 3);
 
         $this->logEvent($connectionRequest, $request->user()->id, 'closed',
             $request->notes,

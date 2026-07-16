@@ -149,19 +149,22 @@ class TicketController extends Controller
             'attachments.*' => 'file|mimes:jpeg,jpg,png,gif,pdf|max:20480',
         ]);
 
+        // attempts=3: если материалы формируют Акт с автогенерируемым номером,
+        // конкурентное закрытие другой заявки с тем же префиксом может словить
+        // deadlock на lockForUpdate() внутри Act::createWithGeneratedNumber()
+        // (см. память project-acts-feature) — Laravel в этом случае полностью
+        // переиграет транзакцию, а не просто прокинет ошибку наверх.
         DB::transaction(function () use ($ticket, $request) {
             $this->ticketService->updateStatus($ticket, 'closed', $request->user(), $request->close_notes);
 
             // Материалы формируют Акт (Act + ActMaterial) — см. фичу "Акты".
             if (!empty($request->materials)) {
-                $number = Act::generateNumber($ticket, $request->act_type);
-                $act = Act::create([
+                $act = Act::createWithGeneratedNumber([
                     'ticket_id'  => $ticket->id,
-                    'number'     => $number,
                     'type'       => $request->act_type,
                     'status'     => 'pending_foreman',
                     'created_by' => $request->user()->id,
-                ]);
+                ], fn() => Act::generateNumber($ticket, $request->act_type));
 
                 foreach ($request->materials as $item) {
                     $material = Material::find($item['material_id']);
@@ -182,7 +185,7 @@ class TicketController extends Controller
                     'action'  => 'created',
                 ]);
             }
-        });
+        }, 3);
 
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
