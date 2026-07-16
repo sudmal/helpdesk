@@ -5,6 +5,9 @@
     <!-- Все действия с актом — в самой верхней панели, рядом с заголовком и колокольчиком -->
     <template #actions>
       <div class="flex items-center gap-2 flex-wrap justify-end">
+        <a v-if="act.status !== 'pending_foreman'" :href="route('acts.print', act.id)" target="_blank"
+           class="btn-act-outline">Печать акта</a>
+
         <button v-if="can.acknowledge" @click="acknowledge" class="btn-act-primary">Принято</button>
 
         <template v-if="can.foremanReview && !editMode">

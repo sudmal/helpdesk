@@ -170,6 +170,55 @@ class ActController extends Controller
         ]);
     }
 
+    /**
+     * Печатная форма акта — доступна только после утверждения бригадиром
+     * (не в pending_foreman), см. память project-acts-feature. Список
+     * материалов — только реально использованные (act.materials), не общий
+     * каталог: бумажный шаблон, на котором это основано, содержит фиксированный
+     * список из 16 позиций с пустыми клетками под ручное заполнение — тут
+     * вместо клеток печатаются только позиции, которые реально есть на акте.
+     */
+    public function print(Act $act): \Illuminate\Http\Response
+    {
+        $this->authorize('view', $act);
+        abort_if($act->status === 'pending_foreman', 404, 'Печать доступна после утверждения бригадиром.');
+
+        $act->load([
+            'ticket.address', 'connectionRequest',
+            'materials',
+            'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor', 'subscriberDeptCompleter',
+        ]);
+
+        $customerName = $act->ticket
+            ? $act->ticket->address?->subscriber_name
+            : $act->connectionRequest?->name;
+
+        $address = $act->ticket
+            ? $act->ticket->address?->full_address
+            : $act->connectionRequest?->address_string;
+
+        $total = $act->materials->sum(fn($m) => $m->price_at_time * $m->quantity);
+
+        $mark = fn(?\App\Models\User $user, ?string $at) => $user && $at
+            ? $user->name . ', ' . \Carbon\Carbon::parse($at)->format('d.m.Y')
+            : '______________';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('acts.print', [
+            'act'                => $act,
+            'customerName'       => $customerName,
+            'address'            => $address,
+            'createdAt'          => $act->created_at->format('d.m.Y'),
+            'installerName'      => $act->creator?->name,
+            'total'              => $total,
+            'markForeman'        => $mark($act->foremanReviewer, $act->foreman_reviewed_at),
+            'markPeo'            => $act->type === 'regular' ? $mark($act->peoProcessor, $act->peo_processed_at) : 'не требуется',
+            'markLogistics'      => $mark($act->logisticsProcessor, $act->logistics_processed_at),
+            'markSubscriberDept' => $mark($act->subscriberDeptCompleter, $act->subscriber_dept_completed_at),
+        ]);
+
+        return $pdf->stream("act-{$act->number}.pdf");
+    }
+
     public function approve(Act $act): RedirectResponse
     {
         $this->authorize('foremanReview', $act);

@@ -183,6 +183,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['auth', 'active'])->prefix('acts')->name('acts.')->group(function () {
         Route::get('/', [App\Http\Controllers\ActController::class, 'index'])->name('index');
         Route::get('/{act}', [App\Http\Controllers\ActController::class, 'show'])->name('show');
+        Route::get('/{act}/print', [App\Http\Controllers\ActController::class, 'print'])->name('print');
         Route::post('/{act}/approve', [App\Http\Controllers\ActController::class, 'approve'])->name('approve');
         Route::post('/{act}/process-peo', [App\Http\Controllers\ActController::class, 'processPeo'])->name('process-peo');
         Route::post('/{act}/process-logistics', [App\Http\Controllers\ActController::class, 'processLogistics'])->name('process-logistics');
