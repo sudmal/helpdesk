@@ -5,7 +5,7 @@
       <span class="font-semibold text-lg tracking-tight">HelpDesk</span>
     </div>
     <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-      <a :href="route('tickets.create')"
+      <a v-if="can('tickets.create')" :href="route('tickets.create')"
           class="flex items-center gap-2.5 px-3 py-2 mb-1.5 rounded-xl
                  bg-green-600 hover:bg-green-700 text-white font-medium text-sm
                  transition-colors shadow-sm">
@@ -152,9 +152,15 @@ const canManageSettings = computed(() =>
 const isForeman = computed(() => props.user?.role?.slug === 'foreman')
 const foremanBrigadeId = computed(() => page.props.auth?.foreman_brigade_id)
 
+// Повторяет User::hasPermission() на сервере — включая скоуп-wildcard'ы вида
+// "tickets.*" (покрывает "tickets.view"/"tickets.create"/...). Без этого
+// клиентская проверка расходилась с реальными правами для ролей, где такой
+// wildcard есть (Начальник ТП, Оператор ТП) — риск и спрятать доступное
+// действие, и показать недоступное, в зависимости от набора прав.
 function can(permission) {
   const perms = props.user?.role?.permissions ?? []
-  return perms.includes('*') || perms.includes(permission)
+  if (perms.includes('*')) return true
+  return perms.some(p => p === permission || (p.endsWith('.*') && permission.startsWith(p.slice(0, -1))))
 }
 
 function logout() {
