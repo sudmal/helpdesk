@@ -27,10 +27,10 @@
       </div>
     </template>
 
-    <div class="max-w-3xl mx-auto space-y-4">
+    <div class="max-w-3xl mx-auto space-y-3">
 
       <!-- Шапка: номер + бейджи типа/статуса -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-5">
+      <div class="bg-white rounded-xl border border-gray-200 p-3.5">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h2 class="text-lg font-semibold text-gray-800 font-mono">{{ act.number }}</h2>
@@ -49,7 +49,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100">
           <div>
             <p class="text-xs text-gray-400 mb-0.5">Дата создания</p>
             <p class="text-sm font-medium text-gray-700">{{ fmtDateTime(act.created_at) }}</p>
@@ -72,14 +72,14 @@
         </div>
       </div>
 
-      <div v-if="act.materials_changed_at" class="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+      <div v-if="act.materials_changed_at" class="bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 text-sm text-red-700 flex items-center justify-between gap-3">
         <span>⚠ Бригадир изменил состав акта — изменения отмечены красным ниже. Перепишите бумажный акт по факту изменений и переподпишите его у абонента, затем подтвердите.</span>
         <button v-if="can.acknowledge" @click="acknowledge" class="btn-act-primary shrink-0">Принято</button>
       </div>
 
       <!-- Прогресс по этапам -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-5">
-        <h3 class="font-medium text-sm text-gray-700 mb-3">Прогресс согласования</h3>
+      <div class="bg-white rounded-xl border border-gray-200 p-3.5">
+        <h3 class="font-medium text-sm text-gray-700 mb-2.5">Прогресс согласования</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div class="rounded-xl border border-gray-100 p-3">
             <p class="text-xs text-gray-400 mb-1">Бригадир</p>
@@ -113,7 +113,7 @@
       </div>
 
       <!-- Акция -->
-      <div v-if="act.promotion_name" class="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3 flex items-center justify-between flex-wrap gap-2">
+      <div v-if="act.promotion_name" class="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between flex-wrap gap-2">
         <div class="text-sm text-emerald-800">
           🎁 Акция «<span class="font-medium">{{ act.promotion_name }}</span>»
         </div>
@@ -125,8 +125,8 @@
 
       <!-- Материалы -->
       <div v-if="act.materials?.length || removedPending.length || can.editMaterials"
-           class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+           class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-100">
           <h3 class="font-medium text-sm text-gray-700">📦 Расходные материалы</h3>
           <span class="text-sm font-semibold text-blue-600">Итого: {{ totalMaterials }} ₽</span>
         </div>
@@ -200,8 +200,8 @@
       </div>
 
       <!-- История -->
-      <div v-if="act.history?.length" class="bg-white rounded-2xl border border-gray-200 p-5">
-        <h3 class="font-medium text-sm text-gray-700 mb-3">История</h3>
+      <div v-if="act.history?.length" class="bg-white rounded-xl border border-gray-200 p-3.5">
+        <h3 class="font-medium text-sm text-gray-700 mb-2.5">История</h3>
         <div class="space-y-2.5">
           <div v-for="h in act.history" :key="h.id" class="text-xs"
                :class="isUnackedEntry(h) ? 'bg-red-50 rounded-lg px-2 py-1.5 -mx-2' : ''">

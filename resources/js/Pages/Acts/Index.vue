@@ -3,9 +3,9 @@
   <AppLayout title="Акты">
 
     <!-- Вкладки -->
-    <div class="flex bg-gray-100 rounded-xl p-1 gap-0.5 w-fit mb-4">
+    <div class="flex bg-gray-100 rounded-lg p-1 gap-0.5 w-fit mb-3">
       <button v-for="t in tabs" :key="t.id" @click="switchTab(t.id)"
-              :class="['px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+              :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors',
                        tab === t.id ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
         {{ t.label }}
       </button>
@@ -13,7 +13,7 @@
 
     <!-- Вкладка "Отчёты" -->
     <div v-if="tab === 'reports'">
-      <div v-if="!canViewReports" class="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400">
+      <div v-if="!canViewReports" class="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400">
         Нет доступа к отчётам.
       </div>
       <MaterialsReport v-else />
@@ -21,22 +21,22 @@
 
     <template v-else>
       <!-- Фильтры -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
+      <div class="bg-white rounded-xl border border-gray-200 p-3 mb-3 flex flex-wrap gap-2.5 items-end">
         <div v-if="tab === 'archive'" class="flex-1 min-w-48">
-          <label class="block text-xs text-gray-500 mb-1">Поиск</label>
+          <label class="field-label">Поиск</label>
           <input v-model="f.search" @keydown.enter="apply"
                  placeholder="Номер акта, номер заявки, адрес..."
                  class="field-input w-full" />
         </div>
         <div v-if="tab === 'active'">
-          <label class="block text-xs text-gray-500 mb-1">Статус</label>
+          <label class="field-label">Статус</label>
           <select v-model="f.status" @change="apply" class="field-input">
             <option value="">Все</option>
             <option v-for="(label, key) in activeStatusLabels" :key="key" :value="key">{{ label }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Тип</label>
+          <label class="field-label">Тип</label>
           <select v-model="f.type" @change="apply" class="field-input">
             <option value="">Все</option>
             <option value="regular">Обычный</option>
@@ -44,7 +44,7 @@
           </select>
         </div>
         <div v-if="tab === 'archive'">
-          <label class="block text-xs text-gray-500 mb-1">Сортировка</label>
+          <label class="field-label">Сортировка</label>
           <select v-model="f.sort" @change="apply" class="field-input">
             <option value="completed_at">По дате завершения</option>
             <option value="created_at">По дате создания</option>
@@ -67,8 +67,8 @@
       </div>
 
       <!-- Таблица -->
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div class="px-4 py-2 border-b border-gray-100">
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="px-3.5 py-2 border-b border-gray-100">
           <span class="text-sm text-gray-500">Всего: {{ acts.total }}</span>
         </div>
 
