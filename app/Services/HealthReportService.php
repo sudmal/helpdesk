@@ -4,6 +4,8 @@ namespace App\Services;
 
 class HealthReportService
 {
+    private const BACKUPS_DIR = '/var/backups/helpdesk';
+
     public function collect(): array
     {
         return [
@@ -13,7 +15,26 @@ class HealthReportService
             'memory'   => $this->memory(),
             'uptime'   => $this->uptime(),
             'services' => $this->services(),
+            'backups'  => $this->backups(),
         ];
+    }
+
+    private function backups(): array
+    {
+        if (!is_dir(self::BACKUPS_DIR)) {
+            return [];
+        }
+
+        return collect(scandir(self::BACKUPS_DIR))
+            ->reject(fn ($f) => in_array($f, ['.', '..']))
+            ->map(fn ($f) => [
+                'name'  => $f,
+                'size'  => filesize(self::BACKUPS_DIR . '/' . $f),
+                'mtime' => filemtime(self::BACKUPS_DIR . '/' . $f),
+            ])
+            ->sortByDesc('mtime')
+            ->values()
+            ->all();
     }
 
     private function disk(): array
@@ -130,6 +151,15 @@ class HealthReportService
 
         if (($report['disk']['used_pct'] ?? 0) >= 90) {
             $issues[] = "Диск заполнен на {$report['disk']['used_pct']}%";
+        }
+
+        // Бэкап — раз в сутки в 03:00, порог с запасом на случай задержки
+        $lastBackup = collect($report['backups'])->max('mtime');
+        if ($lastBackup === null) {
+            $issues[] = 'Бэкапы не найдены';
+        } elseif (now()->timestamp - $lastBackup > 30 * 3600) {
+            $hoursAgo = round((now()->timestamp - $lastBackup) / 3600);
+            $issues[] = "Последний бэкап был {$hoursAgo} ч. назад";
         }
 
         $smart = $report['smart'];

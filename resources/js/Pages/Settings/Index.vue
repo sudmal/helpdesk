@@ -567,6 +567,21 @@
             </div>
           </div>
         </div>
+
+        <!-- Бэкапы -->
+        <div class="bg-white border border-gray-200 rounded-xl p-3.5">
+          <h3 class="font-medium text-sm text-gray-700 mb-2">🗄 Бэкапы</h3>
+          <div v-if="!health.data.backups?.length" class="text-xs text-gray-400">Не найдены</div>
+          <table v-else class="w-full text-xs">
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="b in health.data.backups" :key="b.name">
+                <td class="py-1 pr-3 font-mono text-gray-700">{{ b.name }}</td>
+                <td class="py-1 pr-3 text-gray-500 text-right tabular-nums whitespace-nowrap">{{ fmtBytes(b.size) }}</td>
+                <td class="py-1 text-gray-400 text-right whitespace-nowrap">{{ fmtBackupDate(b.mtime) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </template>
     </div>
 
@@ -1511,6 +1526,11 @@ function fmtBytes(bytes) {
   if (bytes == null) return '—'
   const gb = bytes / 1024 / 1024 / 1024
   return gb >= 1 ? `${gb.toFixed(1)} ГБ` : `${(bytes / 1024 / 1024).toFixed(0)} МБ`
+}
+
+function fmtBackupDate(unixTs) {
+  if (!unixTs) return '—'
+  return new Date(unixTs * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtSnapshotTime(unixTs) {
