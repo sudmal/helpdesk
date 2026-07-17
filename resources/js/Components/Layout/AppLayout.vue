@@ -11,7 +11,7 @@
          @click="sidebarOpen = false" />
 
     <!-- Sidebar -->
-    <div :class="['print:hidden fixed md:relative flex flex-col w-64 bg-[#141c2b] text-white shrink-0 h-full z-40 transition-transform duration-200',
+    <div :class="['print:hidden fixed md:relative flex flex-col w-56 bg-[#141c2b] text-white shrink-0 h-full z-40 transition-transform duration-200',
                   sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0']">
       <Sidebar :user="$page.props.auth.user" />
     </div>
@@ -21,8 +21,8 @@
 
       <!-- Topbar: 3 колонки (слева/заголовок по центру/справа), чтобы заголовок
            оставался по центру независимо от того, сколько кнопок слева и справа -->
-      <header class="print:hidden h-14 bg-white border-b border-slate-200 shadow-sm shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-4 gap-3">
-        <div class="flex items-center gap-3 min-w-0">
+      <header class="print:hidden h-11 bg-white border-b border-slate-200 shadow-sm shrink-0 grid grid-cols-[1fr_auto_1fr] items-center px-3 gap-2">
+        <div class="flex items-center gap-2 min-w-0">
           <!-- Бургер для мобильного -->
           <button @click="sidebarOpen = !sidebarOpen"
                   class="md:hidden p-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0">
@@ -33,30 +33,30 @@
           <slot name="before-title" />
         </div>
 
-        <h1 class="text-base font-semibold text-gray-800 truncate text-center">{{ title }}</h1>
+        <h1 class="text-sm font-semibold text-gray-800 truncate text-center">{{ title }}</h1>
 
-        <div class="flex items-center gap-2 shrink-0 justify-self-end">
+        <div class="flex items-center gap-1.5 shrink-0 justify-self-end">
           <slot name="actions" />
           <PushNotifications />
         </div>
       </header>
 
       <!-- Flash -->
-      <div v-if="flash.success || flash.error" class="px-4 pt-3 shrink-0">
+      <div v-if="flash.success || flash.error" class="px-3 pt-2 shrink-0">
         <div v-if="flash.success"
              class="flex items-center gap-2 bg-green-50 border border-green-200 text-green-800
-                    rounded-xl px-4 py-2.5 text-sm">
+                    rounded-lg px-3 py-1.5 text-sm">
           ✓ {{ flash.success }}
         </div>
         <div v-if="flash.error"
              class="flex items-center gap-2 bg-red-50 border border-red-200 text-red-800
-                    rounded-xl px-4 py-2.5 text-sm">
+                    rounded-lg px-3 py-1.5 text-sm">
           ✕ {{ flash.error }}
         </div>
       </div>
 
       <!-- Content -->
-      <main class="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-6" style="scrollbar-gutter: stable">
+      <main class="flex-1 overflow-y-auto px-3 md:px-4 py-3" style="scrollbar-gutter: stable">
         <slot />
       </main>
     </div>

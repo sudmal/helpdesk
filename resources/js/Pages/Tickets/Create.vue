@@ -3,15 +3,15 @@
   <AppLayout title="Новая заявка">
 
     <!-- Двухколоночный layout: форма слева, история справа -->
-    <div class="flex gap-5 items-start">
+    <div class="flex gap-3 items-start">
 
       <!-- ── Левая колонка: форма ── -->
-      <div class="flex-1 min-w-0 space-y-4">
+      <div class="flex-1 min-w-0 space-y-3">
 
         <!-- Адрес (обязателен) -->
-        <div :class="['bg-white rounded-2xl border p-5',
+        <div :class="['bg-white rounded-xl border p-3.5',
                       showAddressError ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200']">
-          <h3 class="font-medium text-sm text-gray-700 mb-3">
+          <h3 class="font-medium text-sm text-gray-700 mb-2">
             Адрес абонента <span class="text-red-500">*</span>
           </h3>
 
@@ -26,7 +26,7 @@
                      @input="searchAddresses"
                      @focus="showAddressError = false"
                      placeholder="Улица, дом, квартира, абонент, телефон..."
-                     class="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm
+                     class="w-full pl-9 pr-9 py-1.5 border border-gray-200 rounded-lg text-sm
                             focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
               <svg v-if="addressLoading"
                    class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin"
@@ -55,10 +55,10 @@
           </div>
           <!-- LANBilling -->
           <template v-if="lanbillingEnabled">
-          <div class="flex gap-2 mb-3">
+          <div class="flex gap-2 mt-2 mb-2">
             <input v-model="billingQuery"
                    placeholder="Телефон или № договора → LANBilling"
-                   class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm
+                   class="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm
                           focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
             <button @click="lookupBilling" type="button" :disabled="billingLoading"
                     class="btn-outline text-sm whitespace-nowrap">
@@ -69,7 +69,7 @@
 
           <!-- Выбранный адрес -->
           <div v-if="selectedAddress"
-               class="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start justify-between gap-2">
+               class="bg-blue-50 border border-blue-200 rounded-lg p-2.5 flex items-start justify-between gap-2">
             <div>
               <p class="text-sm font-medium text-blue-800">📍 {{ selectedAddress.label }}</p>
               <div class="flex items-center gap-2 mt-1 flex-wrap">
@@ -106,13 +106,13 @@
 
         <!-- Форма деталей -->
         <form @submit.prevent="submitTicket"
-              class="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+              class="bg-white rounded-xl border border-gray-200 p-3.5 space-y-3">
           <h3 class="font-medium text-sm text-gray-700">Детали заявки</h3>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2">
 
             <!-- Участок * -->
-            <div>
+            <div class="field-row">
               <label class="field-label">Участок <span class="text-red-500">*</span></label>
               <select v-model="form.service_type_id"
                       :class="['field-input', fieldError.service_type ? 'border-red-400 bg-red-50' : '']">
@@ -122,7 +122,7 @@
             </div>
 
             <!-- Тип заявки * -->
-            <div>
+            <div class="field-row">
               <label class="field-label">Тип заявки <span class="text-red-500">*</span></label>
               <select v-model="form.type_id"
                       :class="['field-input', fieldError.type ? 'border-red-400 bg-red-50' : '']">
@@ -132,7 +132,7 @@
             </div>
 
             <!-- Бригада * -->
-            <div>
+            <div class="field-row">
               <label class="field-label">Бригада <span class="text-red-500">*</span></label>
               <select v-model="form.brigade_id"
                       :class="['field-input', fieldError.brigade ? 'border-red-400 bg-red-50' : '']">
@@ -142,7 +142,7 @@
             </div>
 
             <!-- Приоритет -->
-            <div>
+            <div class="field-row">
               <label class="field-label">Приоритет <span class="text-red-500">*</span></label>
               <select v-model="form.priority" class="field-input">
                 <option value="low">Низкий</option>
@@ -154,14 +154,17 @@
 
             <!-- Телефон * -->
             <div>
-              <label class="field-label">Телефон <span class="text-red-500">*</span></label>
-              <input v-model="form.phone" type="tel"
-                     :class="['field-input', fieldError.phone ? 'border-red-400 bg-red-50' : '']"
-                     placeholder="+7..." />
-              <p v-if="fieldError.phone" class="text-xs text-red-500 mt-1">⚠ Укажите телефон</p>
+              <div class="field-row">
+                <label class="field-label">Телефон <span class="text-red-500">*</span></label>
+                <div :class="['input-group flex-1', fieldError.phone ? 'has-error' : '']">
+                  <span class="input-group-prefix">📞</span>
+                  <input v-model="form.phone" type="tel" placeholder="+7..." />
+                </div>
+              </div>
+              <p v-if="fieldError.phone" class="text-xs text-red-500 mt-1 ml-[6.5rem]">⚠ Укажите телефон</p>
               <!-- Подсказка из журнала звонков -->
-              <div v-if="phoneLookup" class="mt-1.5 rounded-xl border border-blue-200 bg-blue-50 text-xs divide-y divide-blue-100">
-                <div v-if="phoneLookup.last_call" class="px-3 py-1.5 flex items-center justify-between gap-2">
+              <div v-if="phoneLookup" class="mt-1.5 ml-[6.5rem] rounded-lg border border-blue-200 bg-blue-50 text-xs divide-y divide-blue-100">
+                <div v-if="phoneLookup.last_call" class="px-2.5 py-1 flex items-center justify-between gap-2">
                   <span class="text-blue-700">
                     📞 {{ phoneLookup.last_call.called_at }}
                     <span v-if="phoneLookup.last_call.address_string"> — {{ phoneLookup.last_call.address_string }}</span>
@@ -173,7 +176,7 @@
                   </button>
                 </div>
                 <div v-for="t in phoneLookup.tickets" :key="t.id"
-                     class="px-3 py-1 flex items-center justify-between gap-2 hover:bg-blue-100 cursor-pointer"
+                     class="px-2.5 py-0.5 flex items-center justify-between gap-2 hover:bg-blue-100 cursor-pointer"
                      @click="applyLookupAddress({ id: t.address_id, label: t.address, full_address: t.address }, t.apartment)">
                   <span class="text-gray-600">{{ t.date }} {{ t.type }} — {{ t.address }}<span v-if="t.apartment" class="text-gray-400"> кв.{{ t.apartment }}</span></span>
                   <span class="text-gray-400 shrink-0">{{ t.status }}</span>
@@ -182,22 +185,26 @@
             </div>
 
             <!-- Договор -->
-            <div>
+            <div class="field-row">
               <label class="field-label">№ договора</label>
               <input v-model="form.contract_no" class="field-input" placeholder="12345" />
             </div>
 
             <!-- Время выезда * -->
-            <div class="col-span-2" :class="fieldError.scheduled_at ? 'ring-1 ring-red-300 rounded-xl p-2 bg-red-50' : ''">
-              <label class="field-label">
-                Время выезда <span class="text-red-500">*</span>
-              </label>
-              <TimePicker v-model="form.scheduled_at"
-                          :work-start="settings.work_hours_start"
-                          :work-end="settings.work_hours_end"
-                          :step-minutes="Number(settings.schedule_step_minutes)" />
+            <div class="col-span-2" :class="fieldError.scheduled_at ? 'ring-1 ring-red-300 rounded-lg p-1.5 bg-red-50' : ''">
+              <div class="flex items-center gap-2">
+                <label class="field-label w-24 shrink-0 text-right mb-0">
+                  Время выезда <span class="text-red-500">*</span>
+                </label>
+                <div class="flex-1">
+                  <TimePicker v-model="form.scheduled_at"
+                              :work-start="settings.work_hours_start"
+                              :work-end="settings.work_hours_end"
+                              :step-minutes="Number(settings.schedule_step_minutes)" />
+                </div>
+              </div>
               <div v-if="form.errors.scheduled_at"
-                   class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                   class="mt-1.5 ml-[6.5rem] p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
                 ⚠ {{ form.errors.scheduled_at }}
               </div>
             </div>
@@ -206,7 +213,7 @@
           <!-- Описание * -->
           <div>
             <label class="field-label">Описание <span class="text-red-500">*</span></label>
-            <textarea v-model="form.description" rows="4"
+            <textarea v-model="form.description" rows="3"
                       :class="['field-input resize-none', fieldError.description ? 'border-red-400 bg-red-50' : '']"
                       placeholder="Опишите проблему или задачу..."></textarea>
           <p v-if="fieldError.description" class="text-xs text-red-500 mt-1">⚠ Заполните описание</p>
@@ -241,8 +248,8 @@
 
       <!-- ── Правая колонка: история по адресу ── -->
       <div v-if="selectedAddress && historyTotal > 0"
-           class="w-72 shrink-0 bg-white rounded-2xl border border-amber-200 overflow-hidden
-                  sticky top-4 max-h-[calc(100vh-6rem)] flex flex-col">
+           class="w-72 shrink-0 bg-white rounded-xl border border-amber-200 overflow-hidden
+                  sticky top-3 max-h-[calc(100vh-5rem)] flex flex-col">
         <div class="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
           <h3 class="font-medium text-sm text-amber-800">
             📋 Заявки по адресу
@@ -724,10 +731,3 @@ async function applyAddrModal() {
     suggestions.value = []
   } finally { addrModalLoading.value = false }
 }</script>
-
-<style scoped>
-.btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium transition-colors disabled:cursor-not-allowed; }
-.btn-outline  { @apply border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors; }
-.field-label  { @apply block text-xs text-gray-500 mb-1; }
-.field-input  { @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-slate-50; }
-</style>

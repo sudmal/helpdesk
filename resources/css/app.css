@@ -8,9 +8,67 @@
 }
 
 @layer components {
-  /* Кнопки действий карточки акта (Pages/Acts/Show.vue) — .btn-primary/.btn-outline,
-     используемые по всему сайту, нигде не определены (рендерятся как голый текст),
-     поэтому для акта заведены отдельные стили, не трогая остальной сайт. */
+  /* Единые компактные стили форм — раньше был скопирован почти без изменений
+     в 8+ отдельных .vue-файлов (Territories/Tickets/Addresses/Settings/Brigades),
+     каждый со своим <style scoped>, поэтому расхождения (py-2 vs py-1.5 и т.п.)
+     копились независимо друг от друга. Теперь одно место — компактный "строгий
+     деловой" стиль по всему порталу, без огромных инпутов и отступов. Локальные
+     scoped-блоки с этими же классами в отдельных файлах удалены, чтобы не
+     перебивать эти правила своей более высокой специфичностью (scoped добавляет
+     атрибут-селектор поверх класса).
+  */
+  .field-label {
+    @apply block text-xs text-gray-500 mb-0.5 font-medium;
+  }
+  .field-input {
+    @apply w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm
+           focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400
+           bg-slate-50 transition-colors;
+  }
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg
+           text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-outline {
+    @apply border border-gray-200 hover:bg-gray-50 text-gray-700 px-3.5 py-1.5
+           rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 rounded-lg text-xs font-medium transition-colors;
+  }
+
+  /* Строка "лейбл слева — поле справа" — компактная альтернатива классической
+     стопке label/input (экономит одну строку на каждое поле). Лейбл фиксированной
+     ширины, поле тянется на всё оставшееся место. */
+  .field-row {
+    @apply flex items-center gap-2;
+  }
+  .field-row > .field-label {
+    @apply mb-0 w-24 shrink-0 text-right;
+  }
+  .field-row > .field-input {
+    @apply flex-1;
+  }
+
+  /* Группа "иконка/префикс + поле" единым блоком с общей рамкой — по образцу,
+     который показал пользователь (символ слева в своей ячейке, поле — в своей,
+     обе половины визуально сшиты в одну рамку). */
+  .input-group {
+    @apply flex items-stretch w-full border border-gray-200 rounded-lg overflow-hidden
+           focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400 bg-slate-50;
+  }
+  .input-group-prefix {
+    @apply flex items-center justify-center px-2.5 text-gray-400 bg-gray-100 border-r border-gray-200 text-sm shrink-0;
+  }
+  .input-group input,
+  .input-group select {
+    @apply flex-1 min-w-0 border-0 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none focus:ring-0;
+  }
+  .input-group.has-error {
+    @apply border-red-300 ring-1 ring-red-200;
+  }
+
+  /* Кнопки действий карточки акта (Pages/Acts/Show.vue) */
   .btn-act-primary {
     @apply px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors;
   }

@@ -1,11 +1,11 @@
 <template>
   <InertiaLink :href="href"
-        :class="['flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer',
+        :class="['flex items-center gap-2 px-2.5 py-1 rounded-md text-[13px] leading-tight font-medium transition-colors cursor-pointer',
                  isActive
                    ? 'bg-blue-600 text-white'
                    : 'text-white/70 hover:bg-white/10 hover:text-white']">
-    <Icon :name="icon" class="w-4 h-4 shrink-0" />
-    {{ label }}
+    <Icon :name="icon" class="w-3.5 h-3.5 shrink-0" />
+    <span class="truncate">{{ label }}</span>
     <slot />
   </InertiaLink>
 </template>
