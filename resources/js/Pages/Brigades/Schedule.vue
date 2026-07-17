@@ -3,7 +3,7 @@
   <AppLayout :title="`Расписание: ${brigade.name}`">
 
     <!-- Toolbar (скрыт при печати) -->
-    <div class="flex flex-wrap items-center gap-3 mb-5 print:hidden">
+    <div class="flex flex-wrap items-center gap-3 mb-3 print:hidden">
       <div class="flex items-center gap-1">
         <button @click="changeMonth(-1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -79,7 +79,7 @@
     </div>
 
     <!-- Легенда (скрыта при печати) -->
-    <div class="flex flex-wrap gap-4 mb-4 text-xs text-gray-600 print:hidden">
+    <div class="flex flex-wrap gap-3 mb-3 text-xs text-gray-600 print:hidden">
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-green-200 border border-green-300"></span>Рабочий день</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-400"></span>Выходной</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-amber-300 border border-amber-400"></span>Пожелание</span>
@@ -94,13 +94,13 @@
     </div>
 
     <!-- Заголовок для печати -->
-    <div class="hidden print:block mb-4">
+    <div class="hidden print:block mb-3">
       <h1 class="text-lg font-bold">Расписание бригады: {{ brigade.name }}</h1>
       <p class="text-sm text-gray-600">{{ monthLabel }} · Выходов: {{ targetDays }} из {{ days.length }}</p>
     </div>
 
     <!-- Сетка -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden schedule-grid">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden schedule-grid">
       <div ref="scrollRef" class="overflow-x-auto">
         <table class="border-collapse" style="min-width: max-content">
           <thead>

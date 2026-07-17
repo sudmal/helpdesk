@@ -2,7 +2,7 @@
   <Head :title="activeTab === 'queue' ? 'Очередь АТС' : 'Журнал звонков'" />
   <AppLayout :title="activeTab === 'queue' ? 'Очередь АТС' : 'Журнал звонков'">
 
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2">
         <button @click="activeTab = 'calls'"
                 :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
@@ -27,9 +27,9 @@
         </button>
 
       </div>
-    <div v-if="activeTab === 'calls'" class="p-4 space-y-4">
+    <div v-if="activeTab === 'calls'" class="p-4 space-y-3">
 
-      <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
+      <div class="bg-white rounded-xl border border-gray-200 p-4 mb-3 flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-36">
           <label class="block text-xs text-gray-500 mb-1">Телефон</label>
           <input v-model="f.phone" @keydown.enter="apply" class="field-input" placeholder="+7..." />
@@ -83,7 +83,7 @@
             {{ p.l }}
           </button>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm flex-1">
+        <div class="bg-white rounded-xl border border-gray-200 px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm flex-1">
           <canvas ref="pieCanvas" width="44" height="44" class="shrink-0"></canvas>
           <div class="flex items-baseline gap-1.5">
             <span class="font-semibold text-gray-700">{{ stats.total }}</span>
@@ -112,8 +112,8 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
           <span class="text-sm text-gray-500 shrink-0">Всего: {{ calls.total }}</span>
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
             <div v-for="item in BLOCK_LEGEND" :key="item.label" class="flex items-center gap-1">
@@ -193,12 +193,12 @@
                 </td>
               </tr>
               <tr v-if="!calls.data.length">
-                <td colspan="13" class="px-2 py-6 text-center text-gray-400">Нет записей</td>
+                <td colspan="13" class="px-2 py-4 text-center text-gray-400">Нет записей</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div v-if="calls.last_page > 1" class="px-5 py-3 border-t border-gray-100 flex items-center gap-2">
+        <div v-if="calls.last_page > 1" class="px-4 py-3 border-t border-gray-100 flex items-center gap-2">
           <button v-for="link in calls.links" :key="link.label"
                   :disabled="!link.url || link.active"
                   @click="link.url && router.get(link.url, {}, { preserveState: true })"
@@ -209,7 +209,7 @@
       </div>
     </div>
     <div v-if="activeTab === 'queue'" class="p-4">
-      <div class="bg-white rounded-2xl border border-gray-200 px-5 py-2.5 flex items-start gap-4 text-sm mb-4">
+      <div class="bg-white rounded-xl border border-gray-200 px-4 py-2.5 flex items-start gap-3 text-sm mb-3">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 min-w-0">
           <div class="flex items-baseline gap-1.5">
             <span class="text-lg font-bold" :class="qLatest?.waiting > 0 ? 'text-amber-500' : 'text-gray-300'">{{ qLatest?.waiting ?? '—' }}</span>
@@ -253,8 +253,8 @@
       </div>
 
       <!-- Очередь + Операторы -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
-        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden min-w-0">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden min-w-0">
           <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <span class="text-sm font-semibold text-gray-700">В очереди</span>
             <span v-if="qDetail.callers.length"
@@ -262,7 +262,7 @@
               {{ qDetail.callers.length }}
             </span>
           </div>
-          <div v-if="!qDetail.callers.length" class="px-4 py-4 text-sm text-gray-400 text-center">Пусто</div>
+          <div v-if="!qDetail.callers.length" class="px-4 py-3 text-sm text-gray-400 text-center">Пусто</div>
           <div v-else class="divide-y divide-gray-50">
             <div v-for="c in qDetail.callers" :key="c.pos"
                  class="px-3 py-1.5">
@@ -282,11 +282,11 @@
             </div>
           </div>
         </div>
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
             <span class="text-sm font-semibold text-gray-700">Операторы</span>
           </div>
-          <div v-if="!qDetail.members.length" class="px-4 py-6 text-sm text-gray-400 text-center">
+          <div v-if="!qDetail.members.length" class="px-4 py-4 text-sm text-gray-400 text-center">
             Нет данных от АТС
           </div>
           <table v-else class="w-full text-sm">
@@ -359,7 +359,7 @@
           <button @click="loadQueue" class="btn-outline text-xs py-1">Обновить</button>
         </div>
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 p-5">
+      <div class="bg-white rounded-xl border border-gray-200 p-3.5">
         <div v-if="qHistory.length === 0" class="flex items-center justify-center h-48 text-gray-400 text-sm">
           {{ qLoading ? 'Загрузка...' : 'Нет данных за выбранный период' }}
         </div>
@@ -383,8 +383,8 @@
       </div>
     </div>
 
-    <div v-if="activeTab === 'shifts'" class="p-4 space-y-4">
-      <div class="bg-white rounded-2xl border border-gray-200 p-4 flex flex-wrap gap-3 items-end justify-between">
+    <div v-if="activeTab === 'shifts'" class="p-4 space-y-3">
+      <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-3 items-end justify-between">
         <div class="flex flex-wrap gap-3 items-end">
           <div>
             <label class="block text-xs text-gray-500 mb-1">Дата с</label>
@@ -399,7 +399,7 @@
         <button @click="toggleShiftSettings" class="btn-outline text-sm">⚙ Настроить смены</button>
       </div>
 
-      <div v-if="currentShift" class="bg-white rounded-2xl border-2 border-blue-400 overflow-hidden">
+      <div v-if="currentShift" class="bg-white rounded-xl border-2 border-blue-400 overflow-hidden">
         <div class="px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex flex-wrap items-center gap-3">
           <span class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase tracking-wide">
             <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>Текущая
@@ -489,7 +489,7 @@
       </div>
 
 
-      <div v-if="showShiftSettings" class="bg-white rounded-2xl border border-gray-200 p-4">
+      <div v-if="showShiftSettings" class="bg-white rounded-xl border border-gray-200 p-4">
         <div class="flex items-center justify-between mb-3">
           <span class="text-sm font-semibold text-gray-700">Смены</span>
           <button @click="showShiftSettings = false" class="text-gray-400 hover:text-gray-600 text-sm">Закрыть</button>
@@ -537,8 +537,8 @@
 
       <div v-if="shiftLoading" class="text-center text-gray-400 py-10 text-sm">Загрузка...</div>
       <div v-else-if="!shiftDates.length" class="text-center text-gray-400 py-10 text-sm">Нет отчётов за выбранный период</div>
-      <div v-else class="space-y-4">
-        <div v-for="date in shiftDates" :key="date" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div v-else class="space-y-3">
+        <div v-for="date in shiftDates" :key="date" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div class="px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-sm font-semibold text-gray-700 capitalize">
             {{ formatShiftDate(date) }}
           </div>
@@ -557,7 +557,7 @@
                 <span class="ml-auto text-gray-400 text-xs">{{ expandedShiftId === r.id ? '▲' : '▼' }}</span>
               </div>
               <div v-if="expandedShiftId === r.id" class="px-4 pb-4 overflow-x-auto">
-                <div v-if="shiftDetailLoading" class="text-center text-gray-400 py-4 text-sm">Загрузка...</div>
+                <div v-if="shiftDetailLoading" class="text-center text-gray-400 py-3 text-sm">Загрузка...</div>
                 <table v-else-if="shiftDetail" class="w-full text-xs min-w-[720px]">
                   <thead class="text-gray-400 uppercase border-b border-gray-100">
                     <tr>

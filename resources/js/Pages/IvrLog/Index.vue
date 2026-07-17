@@ -1,7 +1,7 @@
 ﻿<template>
   <Head title="Журнал IVR" />
   <AppLayout title="Журнал IVR">
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
 
       <!-- Фильтры -->
       <div class="p-4 border-b border-gray-100 flex flex-wrap gap-3 items-end bg-gray-50">
@@ -83,7 +83,7 @@
       </div>
 
       <!-- Пагинация -->
-      <div v-if="logs.last_page > 1" class="px-5 py-3 border-t border-gray-100 flex items-center gap-2">
+      <div v-if="logs.last_page > 1" class="px-4 py-3 border-t border-gray-100 flex items-center gap-2">
         <button v-for="link in logs.links" :key="link.label"
                 :disabled="!link.url || link.active"
                 @click="link.url && router.get(link.url, {}, { preserveState: true })"

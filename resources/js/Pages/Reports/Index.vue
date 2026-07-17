@@ -2,7 +2,7 @@
   <Head title="Отчёты" />
   <AppLayout title="Отчёты">
 
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
         <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
                 :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
@@ -13,15 +13,15 @@
         </button>
       </div>
 
-    <div v-show="activeTab === 'brigade'" class="p-4 space-y-4">
+    <div v-show="activeTab === 'brigade'" class="p-4 space-y-3">
       <RangePicker :range="brigade" />
-      <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 class="text-sm font-semibold text-gray-600 mb-4">Количество заявок по бригадам</h2>
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3">Количество заявок по бригадам</h2>
         <div v-if="brigade.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
         <div v-else-if="!brigade.state.data.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
         <canvas v-else ref="brigadeCanvas" style="max-height:320px" />
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -34,7 +34,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="!brigade.state.data.labels.length">
-              <td colspan="4" class="text-center py-6 text-gray-400 text-xs">—</td>
+              <td colspan="4" class="text-center py-4 text-gray-400 text-xs">—</td>
             </tr>
             <tr v-for="(label, i) in brigade.state.data.labels" :key="i" class="hover:bg-gray-50">
               <td class="px-4 py-2 text-gray-800">{{ label }}</td>
@@ -49,15 +49,15 @@
     </div>
 
     <!-- Частота по территориям -->
-    <div v-show="activeTab === 'territory'" class="p-4 space-y-4">
+    <div v-show="activeTab === 'territory'" class="p-4 space-y-3">
       <RangePicker :range="territory" />
-      <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 class="text-sm font-semibold text-gray-600 mb-4">Частота обращений по территориям</h2>
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3">Частота обращений по территориям</h2>
         <div v-if="territory.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
         <div v-else-if="!territory.state.data.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
         <canvas v-else ref="territoryCanvas" style="max-height:320px" />
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -69,7 +69,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="!territory.state.data.labels.length">
-              <td colspan="3" class="text-center py-6 text-gray-400 text-xs">—</td>
+              <td colspan="3" class="text-center py-4 text-gray-400 text-xs">—</td>
             </tr>
             <tr v-for="(label, i) in territory.state.data.labels" :key="i" class="hover:bg-gray-50">
               <td class="px-4 py-2 text-gray-800">{{ label }}</td>
@@ -85,18 +85,18 @@
     </div>
 
     <!-- Соблюдение сроков -->
-    <div v-show="activeTab === 'deadlines'" class="p-4 space-y-4">
+    <div v-show="activeTab === 'deadlines'" class="p-4 space-y-3">
       <RangePicker :range="deadlines" />
-      <div class="grid grid-cols-3 gap-4">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
           <div class="text-3xl font-bold text-gray-800">{{ deadlines.state.data.summary.total }}</div>
           <div class="text-xs text-gray-500 mt-1">Закрыто заявок</div>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
           <div class="text-3xl font-bold text-green-600">{{ deadlines.state.data.summary.on_time }}</div>
           <div class="text-xs text-gray-500 mt-1">Закрыто в срок</div>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
           <div :class="['text-3xl font-bold',
                         deadlines.state.data.summary.pct >= 80 ? 'text-green-600'
                         : deadlines.state.data.summary.pct >= 60 ? 'text-yellow-500'
@@ -106,13 +106,13 @@
           <div class="text-xs text-gray-500 mt-1">Соблюдение сроков</div>
         </div>
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 class="text-sm font-semibold text-gray-600 mb-4">Соблюдение сроков по бригадам</h2>
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3">Соблюдение сроков по бригадам</h2>
         <div v-if="deadlines.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
         <div v-else-if="!deadlines.state.data.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет закрытых заявок за выбранный период</div>
         <canvas v-else ref="deadlineCanvas" style="max-height:320px" />
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -126,7 +126,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="!deadlines.state.data.labels.length">
-              <td colspan="5" class="text-center py-6 text-gray-400 text-xs">—</td>
+              <td colspan="5" class="text-center py-4 text-gray-400 text-xs">—</td>
             </tr>
             <tr v-for="(label, i) in deadlines.state.data.labels" :key="i" class="hover:bg-gray-50">
               <td class="px-4 py-2 text-gray-800">{{ label }}</td>
@@ -146,9 +146,9 @@
     </div>
 
     <!-- Распределение по дням -->
-    <div v-show="activeTab === 'distribution'" class="p-4 space-y-4">
-      <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-5">
+    <div v-show="activeTab === 'distribution'" class="p-4 space-y-3">
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-gray-600">Распределение заявок по типу обращения</h2>
           <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
             <button @click="switchDistMode('day')"
@@ -169,7 +169,7 @@
       </div>
 
       <!-- Легенда / итоговая таблица -->
-      <div v-if="hasDistData" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div v-if="hasDistData" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Итого за текущий месяц</div>
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -199,7 +199,7 @@
     </div>
 
     <!-- Работа ТП -->
-    <div v-show="activeTab === 'callcenter'" class="p-4 space-y-4">
+    <div v-show="activeTab === 'callcenter'" class="p-4 space-y-3">
       <RangePicker :range="callcenter" />
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div class="bg-white rounded-xl border border-gray-200 p-3 text-center"><p class="text-2xl font-bold text-gray-800">{{ callcenter.state.data.summary?.total ?? 0 }}</p><p class="text-xs text-gray-500 mt-0.5">Всего звонков</p></div>
@@ -208,24 +208,24 @@
         <div class="bg-blue-50 rounded-xl border border-blue-200 p-3 text-center"><p class="text-2xl font-bold text-blue-700">{{ callcenter.state.data.summary?.peak_hour != null ? callcenter.state.data.summary.peak_hour + ':00' : '—' }}</p><p class="text-xs text-gray-500 mt-0.5">Пиковый час</p></div>
         <div class="bg-orange-50 rounded-xl border border-orange-200 p-3 text-center"><p class="text-2xl font-bold text-orange-600">{{ callcenter.state.data.summary?.worst_hour != null ? callcenter.state.data.summary.worst_hour + ':00' : '—' }}</p><p class="text-xs text-gray-500 mt-0.5">Больше пропусков</p></div>
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 p-4">
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
         <div v-if="callcenter.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
         <div v-else-if="!(callcenter.state.data.hours ?? []).some(h => h.total > 0)" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
         <template v-else>
           <h2 class="text-sm font-semibold text-gray-600 mb-3">Отвечено / Пропущено</h2>
           <canvas ref="callcenterCanvas" style="max-height:240px" />
-          <div class="mt-5 pt-4 border-t border-gray-100">
+          <div class="mt-5 pt-3 border-t border-gray-100">
             <h2 class="text-sm font-semibold text-gray-600 mb-3">Очередь и операторы</h2>
             <canvas ref="callcenterCanvas2" style="max-height:180px" />
           </div>
         </template>
       </div>
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium"><th class="text-left px-3 py-2.5">Час</th><th class="text-right px-3 py-2.5">Всего</th><th class="text-right px-3 py-2.5">Отвечено</th><th class="text-right px-3 py-2.5">Пропущено</th><th class="text-right px-3 py-2.5">Пропуск %</th><th class="text-right px-3 py-2.5 hidden md:table-cell">Ср. ожидание</th><th class="text-right px-3 py-2.5 hidden lg:table-cell">Макс. очередь</th><th class="text-right px-3 py-2.5 hidden lg:table-cell">Ср. операторов</th></tr></thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-if="!(callcenter.state.data.hours ?? []).some(h => h.total > 0)"><td colspan="8" class="text-center py-6 text-gray-400 text-xs">—</td></tr>
+            <tr v-if="!(callcenter.state.data.hours ?? []).some(h => h.total > 0)"><td colspan="8" class="text-center py-4 text-gray-400 text-xs">—</td></tr>
             <tr v-for="h in (callcenter.state.data.hours ?? []).filter(h => h.total > 0)" :key="h.hour" :class="[h.miss_rate >= 40 ? 'bg-red-50 hover:bg-red-100' : h.miss_rate >= 20 ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-gray-50']">
               <td class="px-3 py-1.5 font-medium text-gray-700 tabular-nums">{{ String(h.hour).padStart(2,'0') }}:00</td>
               <td class="px-3 py-1.5 text-right tabular-nums font-medium">{{ h.total }}</td>

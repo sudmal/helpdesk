@@ -3,7 +3,7 @@
   <AppLayout title="Календарь заявок">
 
     <!-- main card -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
 
       <!-- filters: territory + serviceType + brigade -->
       <div class="px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-3">
@@ -175,7 +175,7 @@
       <div v-if="view === 'month'" class="relative overflow-x-auto">
       <!-- Оверлей загрузки -->
       <div v-if="monthLoading"
-           class="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center z-20">
+           class="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center z-20">
         <div class="flex flex-col items-center gap-3">
           <div class="w-10 h-10 rounded-full animate-spin"
                style="border: 3px solid #e5e7eb; border-top-color: #2563eb;"></div>
@@ -208,8 +208,8 @@
       <div v-if="popup.show"
            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
            @click.self="popup.show = false">
-        <div class="bg-white rounded-2xl shadow-2xl w-96 overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div class="bg-white rounded-xl shadow-2xl w-96 overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div>
               <p class="text-xs text-gray-400 font-mono">{{ popup.number }}</p>
               <h3 class="font-semibold text-gray-800">{{ popup.address }}</h3>
@@ -217,7 +217,7 @@
             <button @click="popup.show = false"
                     class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
           </div>
-          <div class="px-5 py-4 space-y-2 text-sm">
+          <div class="px-4 py-3 space-y-2 text-sm">
             <div class="flex gap-2 flex-wrap">
               <span class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-800 border"
                     :style="{ backgroundColor: popup.statusColor + '25', borderColor: popup.statusColor + '50' }">
@@ -236,7 +236,7 @@
               {{ popup.description }}
             </p>
           </div>
-          <div class="px-5 pb-4">
+          <div class="px-4 pb-4">
             <a :href="popup.url"
                class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white
                       py-2.5 rounded-xl font-medium text-sm transition-colors">

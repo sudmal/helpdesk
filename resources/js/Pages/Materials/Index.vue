@@ -16,7 +16,7 @@
                       focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
       </div>
 
-      <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -71,7 +71,7 @@
     <Modal v-if="showModal"
            :title="editing ? 'Редактировать материал' : 'Новый материал'"
            @close="showModal = false">
-      <form @submit.prevent="submit" class="space-y-4">
+      <form @submit.prevent="submit" class="space-y-3">
 
         <!-- Код -->
         <div>

@@ -2,7 +2,7 @@
   <Head title="Справка" />
   <AppLayout title="Справка">
 
-    <div class="flex gap-1 mb-6 bg-white border border-gray-200 rounded-2xl p-1 w-fit flex-wrap">
+    <div class="flex gap-1 mb-3 bg-white border border-gray-200 rounded-xl p-1 w-fit flex-wrap">
       <button v-for="tab in tabs" :key="tab.id"
               @click="activeTab = tab.id"
               :class="['px-4 py-2 rounded-xl text-sm font-medium transition-colors',
@@ -17,8 +17,8 @@
     <div v-if="activeTab === 'about'" class="space-y-6">
 
       <!-- Hero -->
-      <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 text-white">
-        <div class="flex items-start justify-between flex-wrap gap-4">
+      <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-8 text-white">
+        <div class="flex items-start justify-between flex-wrap gap-3">
           <div>
             <div class="flex items-center gap-3 mb-3">
               <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center font-bold text-xl">HD</div>
@@ -54,25 +54,25 @@
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide px-1 mb-3">Ключевые функции</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">📋</div>
             <h3 class="font-semibold text-gray-800">Управление заявками</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Полный жизненный цикл: создание, назначение бригаде, выезд, закрытие с актом. Комментарии, вложения, история каждого изменения.</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">👷</div>
             <h3 class="font-semibold text-gray-800">Бригады и расписание</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Управление составом бригад, автоматическая генерация сменного расписания с учётом пожеланий сотрудников и ограничений.</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">🔔</div>
             <h3 class="font-semibold text-gray-800">Умные уведомления</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Telegram, Email, Max — мгновенно при событиях и по расписанию. Утренняя сводка заявок на день и вечерний отчёт для руководства.</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">🔌</div>
             <h3 class="font-semibold text-gray-800">Интеграции</h3>
             <p class="text-sm text-gray-500 leading-relaxed">
@@ -81,31 +81,31 @@
             </p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">📱</div>
             <h3 class="font-semibold text-gray-800">Android-приложение</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Нативное приложение для выездных сотрудников (Android 11+). Заявки, закрытие, перенос, комментарии, фото — всё в телефоне.</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">🔌</div>
             <h3 class="font-semibold text-gray-800">Заявки на подключение</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Отдельный модуль для новых подключений: приём заявки, назначение бригады и даты, завершение с актом и материалами. Фильтрация по территориям.</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">📋</div>
             <h3 class="font-semibold text-gray-800">Акты выполненных работ</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Материалы, указанные при закрытии заявки или подключения, автоматически формируют акт с автономером. Согласование: Бригадир → ПЭО и Логистика → Абонотдел, печатная форма после утверждения.</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">🛎️</div>
             <h3 class="font-semibold text-gray-800">Запросы услуг</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Приём заявок от абонентов на дополнительные услуги (статический IP, IPTV и др.). Список услуг настраивается. Диспетчер создаёт запрос, администратор выполняет или отклоняет с комментарием.</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-2">
+          <div class="bg-white rounded-xl border border-gray-200 p-3.5 flex flex-col gap-2">
             <div class="text-2xl">📊</div>
             <h3 class="font-semibold text-gray-800">Аналитика и отчёты</h3>
             <p class="text-sm text-gray-500 leading-relaxed">Нагрузка на бригады, частота по территориям, соблюдение сроков, обработка звонков — за любой период. Динамика расхода материалов — отдельно, в разделе «Акты → Отчёты».</p>
@@ -117,7 +117,7 @@
       <!-- Дополнительные возможности -->
       <div>
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide px-1 mb-3">Дополнительные возможности</h2>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
             <div class="flex items-start gap-2.5">
               <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
@@ -172,7 +172,7 @@
       </div>
 
       <!-- Стек -->
-      <div class="bg-gray-50 rounded-2xl border border-gray-200 px-5 py-4 flex flex-wrap gap-2 items-center">
+      <div class="bg-gray-50 rounded-xl border border-gray-200 px-4 py-3 flex flex-wrap gap-2 items-center">
         <span class="text-xs text-gray-400 font-medium mr-1">Технологии:</span>
         <span v-for="t in ['Laravel 12', 'Vue 3', 'Inertia.js', 'Tailwind CSS', 'MySQL', 'Android (Kotlin)']" :key="t"
               class="text-xs bg-white border border-gray-200 text-gray-600 px-2.5 py-1 rounded-lg font-medium">
@@ -185,7 +185,7 @@
 
 
     <!-- О СИСТЕМЕ -->
-    <div v-if="activeTab === 'overview'" class="space-y-4">
+    <div v-if="activeTab === 'overview'" class="space-y-3">
 
       <HelpSection title="Назначение системы" icon="🏢">
         <p>HelpDesk — система управления заявками технической поддержки. Охватывает полный цикл обработки обращений: от регистрации входящего звонка до закрытия заявки и последующего анализа истории обслуживания.</p>
@@ -326,7 +326,7 @@
     </div>
 
     <!-- ДИСПЕТЧЕРЫ -->
-    <div v-if="activeTab === 'dispatcher'" class="space-y-4">
+    <div v-if="activeTab === 'dispatcher'" class="space-y-3">
 
       <HelpSection title="Дашборд" icon="📊">
         <p>Главная страница — оперативный обзор всех заявок на выбранный день.</p>
@@ -538,7 +538,7 @@
     </div>
 
     <!-- ТЕХНИКИ -->
-    <div v-if="activeTab === 'technician'" class="space-y-4">
+    <div v-if="activeTab === 'technician'" class="space-y-3">
 
       <HelpSection title="Мобильное приложение" icon="📱">
         <p>Для работы в поле рекомендуется приложение <b>SP-Helpdesk</b> (Android 11+) — ссылка для скачивания в нижней части левого меню.</p>
@@ -594,7 +594,7 @@
     </div>
 
     <!-- АДМИНИСТРАТОРЫ -->
-    <div v-if="activeTab === 'admin'" class="space-y-4">
+    <div v-if="activeTab === 'admin'" class="space-y-3">
 
       <HelpSection title="Пользователи" icon="👤">
         <p>Раздел <b>Настройки → Пользователи</b>.</p>
@@ -812,7 +812,7 @@
     </div>
 
     <!-- ПРИЛОЖЕНИЕ -->
-    <div v-if="activeTab === 'app'" class="space-y-4">
+    <div v-if="activeTab === 'app'" class="space-y-3">
 
       <HelpSection title="Скачивание и установка" icon="📥">
         <p>Приложение <b>SP-Helpdesk</b> — нативное Android-приложение для выездных сотрудников.</p>
@@ -922,13 +922,13 @@ const HelpSection = defineComponent({
   name: 'HelpSection',
   props: { title: String, icon: String },
   setup(props, { slots }) {
-    return () => h('div', { class: 'bg-white rounded-2xl border border-gray-200 overflow-hidden' }, [
-      h('div', { class: 'flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50' }, [
+    return () => h('div', { class: 'bg-white rounded-xl border border-gray-200 overflow-hidden' }, [
+      h('div', { class: 'flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50' }, [
         h('span', { class: 'text-base leading-none' }, props.icon),
         h('h2', { class: 'font-semibold text-gray-800 text-sm' }, props.title),
       ]),
       h('div', {
-        class: 'px-5 py-4 text-sm text-gray-700 space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5 [&_b]:font-semibold [&_p]:leading-relaxed [&_ul_ul]:mt-1.5 [&_ul_ul]:list-[circle]'
+        class: 'px-4 py-3 text-sm text-gray-700 space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5 [&_b]:font-semibold [&_p]:leading-relaxed [&_ul_ul]:mt-1.5 [&_ul_ul]:list-[circle]'
       }, slots.default?.()),
     ])
   },

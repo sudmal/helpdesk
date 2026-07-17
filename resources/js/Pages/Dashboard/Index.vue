@@ -22,7 +22,7 @@
     </Teleport>
 
     <!-- ── Переключатель участков + дата ── -->
-    <div class="bg-white rounded-2xl border border-gray-200 px-3 py-1.5 mb-1 flex items-center gap-2 flex-wrap">
+    <div class="bg-white rounded-xl border border-gray-200 px-3 py-1.5 mb-1 flex items-center gap-2 flex-wrap">
       <span class="text-xs text-gray-400 font-medium">Участок:</span>
       <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
         <button v-for="st in serviceTypes" :key="st.id"
@@ -77,7 +77,7 @@
     </div>
 
     <!-- ── Основная таблица заявок ── -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
       <!-- Вкладки территорий -->
       <div class="bg-gray-50 border-b border-gray-200 flex items-end px-2 pt-1 flex-wrap">
         <button v-for="t in territories" :key="t.id"
@@ -211,7 +211,7 @@
 
     <!-- ── ПРОСРОЧЕННЫЕ ── -->
     <div v-if="overdue?.length" ref="overdueSection"
-         class="bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
+         class="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
       <div class="px-4 py-3 border-b border-red-200 flex items-center justify-between flex-wrap gap-2">
         <h2 class="font-semibold text-red-700 text-sm flex items-center gap-2">
           <input type="checkbox" :checked="selectAllOverdue" @change="toggleSelectAllOverdue"

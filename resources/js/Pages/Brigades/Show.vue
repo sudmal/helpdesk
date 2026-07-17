@@ -1,7 +1,7 @@
 <template>
   <Head :title="`Бригада — ${brigade.name}`" />
   <AppLayout :title="`Бригада: ${brigade.name}`">
-    <div class="max-w-2xl space-y-4">
+    <div class="max-w-2xl space-y-3">
 
       <div v-if="$page.props.flash?.success"
            class="bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-4 py-3">
@@ -9,8 +9,8 @@
       </div>
 
       <!-- Общая инфо -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-5">
-        <div class="flex items-center gap-3 mb-4">
+      <div class="bg-white rounded-xl border border-gray-200 p-3.5">
+        <div class="flex items-center gap-3 mb-3">
           <div class="w-12 h-12 rounded-xl bg-green-100 text-green-700 flex items-center justify-center text-2xl">👷</div>
           <div>
             <h2 class="text-lg font-semibold text-gray-800">{{ brigade.name }}</h2>
@@ -27,7 +27,7 @@
       </div>
 
       <!-- Территории -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-5">
+      <div class="bg-white rounded-xl border border-gray-200 p-3.5">
         <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
           Территории
           <Tip>Назначаются администратором. Определяют участки работы бригады и фильтруют входящие уведомления о заявках.</Tip>
@@ -42,7 +42,7 @@
       </div>
 
       <!-- Состав -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-5">
+      <div class="bg-white rounded-xl border border-gray-200 p-3.5">
         <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
           Состав
           <span class="text-xs font-normal text-gray-400">({{ form.member_ids.length }} чел.)</span>
@@ -54,7 +54,7 @@
           {{ form.errors.member_ids }}
         </div>
 
-        <div class="divide-y divide-gray-100 mb-4">
+        <div class="divide-y divide-gray-100 mb-3">
           <label v-for="t in technicians" :key="t.id"
                  class="flex items-center gap-3 py-2.5"
                  :class="isDisabled(t) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
