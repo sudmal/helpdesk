@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceRequest;
+use App\Models\ServiceRequestLog;
 use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -47,7 +48,8 @@ class ServiceRequestController extends Controller
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
 
-        ServiceRequest::create($data);
+        $serviceRequest = ServiceRequest::create($data);
+        $this->logEvent($serviceRequest, $request->user()->id, 'created');
 
         return back()->with('success', 'Заявка на услугу создана');
     }
@@ -65,6 +67,7 @@ class ServiceRequestController extends Controller
         ]);
 
         $serviceRequest->update($data);
+        $this->logEvent($serviceRequest, $request->user()->id, 'edited');
 
         return back()->with('success', 'Заявка обновлена');
     }
@@ -83,6 +86,7 @@ class ServiceRequestController extends Controller
             'processed_by'  => $request->user()->id,
             'processed_at'  => now(),
         ]);
+        $this->logEvent($serviceRequest, $request->user()->id, 'accepted', $request->admin_comment);
 
         return back()->with('success', 'Заявка принята');
     }
@@ -101,6 +105,7 @@ class ServiceRequestController extends Controller
             'processed_by'  => $request->user()->id,
             'processed_at'  => now(),
         ]);
+        $this->logEvent($serviceRequest, $request->user()->id, 'rejected', $request->admin_comment);
 
         return back()->with('success', 'Заявка отклонена');
     }
@@ -112,10 +117,21 @@ class ServiceRequestController extends Controller
         return back()->with('success', 'Заявка удалена');
     }
 
-    public function detail(\App\Models\ServiceRequest $serviceRequest)
+    public function detail(ServiceRequest $serviceRequest)
     {
-        $serviceRequest->load(['creator', 'processor']);
+        $serviceRequest->load(['creator', 'processor', 'logs.user']);
         return response()->json($serviceRequest);
+    }
+
+    private function logEvent(ServiceRequest $req, ?int $userId, string $action, ?string $notes = null, ?array $meta = null): void
+    {
+        ServiceRequestLog::create([
+            'service_request_id' => $req->id,
+            'user_id' => $userId,
+            'action'  => $action,
+            'notes'   => $notes,
+            'meta'    => $meta,
+        ]);
     }
 
     private function getServicesList(): array

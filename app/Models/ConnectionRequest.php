@@ -57,6 +57,9 @@ class ConnectionRequest extends Model
 
     public function logs(): HasMany
     {
-        return $this->hasMany(ConnectionRequestLog::class)->latest();
+        // latest() сортирует только по created_at (секундная точность) — две
+        // записи лога в одну секунду иначе оказываются в непредсказуемом
+        // порядке; id как тай-брейкер даёт стабильный порядок.
+        return $this->hasMany(ConnectionRequestLog::class)->latest()->orderByDesc('id');
     }
 }

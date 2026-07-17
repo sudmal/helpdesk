@@ -240,9 +240,9 @@
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
             <h3 class="text-base font-semibold text-gray-800">Запрос услуги</h3>
-            <span v-if="detailRecord" :class="statusClass(detailRecord.status)"
+            <span v-if="detailData" :class="statusClass(detailData.status)"
                   class="px-2 py-0.5 rounded text-xs font-medium">
-              {{ statusLabel(detailRecord.status) }}
+              {{ statusLabel(detailData.status) }}
             </span>
           </div>
           <button @click="modals.detail = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -252,71 +252,61 @@
           </button>
         </div>
 
-        <div v-if="detailRecord" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <div v-if="detailLoading" class="flex-1 flex items-center justify-center p-10 text-sm text-gray-400">
+          Загрузка...
+        </div>
+        <div v-else-if="detailData" class="flex-1 overflow-y-auto p-6 space-y-4">
           <!-- Основные данные -->
           <div class="grid grid-cols-2 gap-3 text-sm">
             <div>
               <div class="text-xs text-gray-400 mb-0.5">Имя</div>
-              <div class="font-medium">{{ detailRecord.name }}</div>
+              <div class="font-medium">{{ detailData.name }}</div>
             </div>
             <div>
               <div class="text-xs text-gray-400 mb-0.5">Телефон</div>
-              <div class="font-mono">{{ detailRecord.phone }}</div>
+              <div class="font-mono">{{ detailData.phone }}</div>
             </div>
             <div class="col-span-2">
               <div class="text-xs text-gray-400 mb-0.5">Адрес</div>
-              <div>{{ detailRecord.address_string }}</div>
+              <div>{{ detailData.address_string }}</div>
             </div>
             <div class="col-span-2">
               <div class="text-xs text-gray-400 mb-0.5">Услуга</div>
               <div>
                 <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium text-xs">
-                  {{ detailRecord.service_name }}
+                  {{ detailData.service_name }}
                 </span>
               </div>
             </div>
-            <div v-if="detailRecord.description" class="col-span-2">
+            <div v-if="detailData.description" class="col-span-2">
               <div class="text-xs text-gray-400 mb-0.5">Описание</div>
-              <div class="text-gray-700 whitespace-pre-wrap">{{ detailRecord.description }}</div>
+              <div class="text-gray-700 whitespace-pre-wrap">{{ detailData.description }}</div>
             </div>
-            <div v-if="detailRecord.admin_comment" class="col-span-2">
+            <div v-if="detailData.admin_comment" class="col-span-2">
               <div class="text-xs text-gray-400 mb-0.5">Комментарий администратора</div>
-              <div class="text-gray-700 whitespace-pre-wrap">{{ detailRecord.admin_comment }}</div>
+              <div class="text-gray-700 whitespace-pre-wrap">{{ detailData.admin_comment }}</div>
             </div>
           </div>
 
           <!-- История -->
           <div class="border-t border-gray-100 pt-4">
             <div class="text-xs font-medium text-gray-500 mb-3">История</div>
-            <div class="space-y-2">
-              <!-- Создание -->
-              <div class="flex gap-3 text-xs">
+            <div v-if="!detailData.logs || !detailData.logs.length"
+                 class="text-xs text-gray-400">История не записана (заявка создана до включения логирования)</div>
+            <div v-else class="space-y-2">
+              <div v-for="log in detailData.logs" :key="log.id"
+                   class="flex gap-3 text-xs">
                 <div class="flex flex-col items-center">
-                  <div class="w-2 h-2 rounded-full bg-green-400 mt-0.5 shrink-0"></div>
-                  <div v-if="detailRecord.status !== 'pending'" class="w-px flex-1 bg-gray-200 mt-1"></div>
+                  <div :class="logDotClass(log.action)" class="w-2 h-2 rounded-full mt-0.5 shrink-0"></div>
+                  <div class="w-px flex-1 bg-gray-200 mt-1"></div>
                 </div>
-                <div class="pb-2">
+                <div class="pb-3 min-w-0">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-medium text-gray-800">Запрос создан</span>
-                    <span class="text-gray-400">{{ fmtDateTime(detailRecord.created_at) }}</span>
-                    <span v-if="detailRecord.creator" class="text-gray-500">— {{ detailRecord.creator.name }}</span>
+                    <span class="font-medium text-gray-800">{{ logActionLabel(log.action) }}</span>
+                    <span class="text-gray-400">{{ fmtDateTime(log.created_at) }}</span>
+                    <span v-if="log.user" class="text-gray-500">— {{ log.user.name }}</span>
                   </div>
-                </div>
-              </div>
-              <!-- Обработка -->
-              <div v-if="detailRecord.processed_at" class="flex gap-3 text-xs">
-                <div class="flex flex-col items-center">
-                  <div :class="detailRecord.status === 'accepted' ? 'bg-emerald-500' : 'bg-red-400'"
-                       class="w-2 h-2 rounded-full mt-0.5 shrink-0"></div>
-                </div>
-                <div>
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-medium text-gray-800">
-                      {{ detailRecord.status === 'accepted' ? 'Выполнено' : 'Отклонено' }}
-                    </span>
-                    <span class="text-gray-400">{{ fmtDateTime(detailRecord.processed_at) }}</span>
-                    <span v-if="detailRecord.processor" class="text-gray-500">— {{ detailRecord.processor.name }}</span>
-                  </div>
+                  <div v-if="log.notes" class="mt-0.5 text-gray-600 whitespace-pre-wrap">{{ log.notes }}</div>
                 </div>
               </div>
             </div>
@@ -475,10 +465,40 @@ function fmtDateTime(val) {
   return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
-const detailRecord = ref(null)
+const detailData    = ref(null)
+const detailLoading = ref(false)
 
-function openDetail(r) {
-  detailRecord.value = r
-  modals.detail = true
+async function openDetail(r) {
+  detailData.value    = null
+  detailLoading.value = true
+  modals.detail        = true
+  try {
+    const res = await fetch(route('service-requests.detail', r.id), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    detailData.value = await res.json()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function logActionLabel(action) {
+  return {
+    created:  'Запрос создан',
+    edited:   'Данные изменены',
+    accepted: 'Выполнено',
+    rejected: 'Отклонено',
+  }[action] ?? action
+}
+
+function logDotClass(action) {
+  return {
+    created:  'bg-green-400',
+    edited:   'bg-gray-300',
+    accepted: 'bg-emerald-500',
+    rejected: 'bg-red-400',
+  }[action] ?? 'bg-gray-300'
 }
 </script>

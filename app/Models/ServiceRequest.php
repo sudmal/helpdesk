@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceRequest extends Model
 {
@@ -25,5 +26,12 @@ class ServiceRequest extends Model
     public function processor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by');
+    }
+
+    public function logs(): HasMany
+    {
+        // latest() сортирует только по created_at (секундная точность) — id
+        // как тай-брейкер даёт стабильный порядок при записях в одну секунду.
+        return $this->hasMany(ServiceRequestLog::class)->latest()->orderByDesc('id');
     }
 }
