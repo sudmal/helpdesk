@@ -542,6 +542,7 @@
               <p><span class="text-xs text-gray-400">Reallocated blocks: </span>{{ health.data.smart.reallocated_blocks ?? '—' }}</p>
               <p><span class="text-xs text-gray-400">Наработка: </span>{{ health.data.smart.power_on_hours ?? '—' }} ч</p>
               <p v-if="health.data.smart.temperature_c"><span class="text-xs text-gray-400">Температура: </span>{{ health.data.smart.temperature_c }}°C</p>
+              <p class="text-[11px] text-gray-400 mt-1">Снимок SMART обновляется раз в 10 мин, на {{ fmtSnapshotTime(health.data.smart.snapshot_at) }}</p>
             </template>
             <p v-else class="text-xs text-gray-400">SMART недоступен</p>
           </div>
@@ -1510,6 +1511,11 @@ function fmtBytes(bytes) {
   if (bytes == null) return '—'
   const gb = bytes / 1024 / 1024 / 1024
   return gb >= 1 ? `${gb.toFixed(1)} ГБ` : `${(bytes / 1024 / 1024).toFixed(0)} МБ`
+}
+
+function fmtSnapshotTime(unixTs) {
+  if (!unixTs) return '—'
+  return new Date(unixTs * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtUptime(seconds) {

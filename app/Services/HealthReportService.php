@@ -30,15 +30,26 @@ class HealthReportService
         ];
     }
 
+    // SMART требует прямого доступа к /dev/sda, который PHP-FPM намеренно не
+    // имеет (PrivateDevices в systemd-юните — не ослабляем ради этого таба).
+    // Вместо этого читаем снимок, который каждые 10 минут пишет root через
+    // smart-snapshot.timer — см. /usr/local/bin/smart-snapshot.sh.
+    private const SNAPSHOT_PATH = '/var/cache/vega8-smart.json';
+
     private function smart(): ?array
     {
-        $raw = @shell_exec('sudo /usr/sbin/smartctl -H -A --json=c /dev/sda 2>&1');
+        if (!is_file(self::SNAPSHOT_PATH)) {
+            return null;
+        }
+
+        $raw = @file_get_contents(self::SNAPSHOT_PATH);
         if (!$raw) {
             return null;
         }
 
         $data = json_decode($raw, true);
         if (!is_array($data) || !isset($data['smart_status'])) {
+            \Log::warning('HealthReportService: не удалось разобрать снимок smartctl', ['raw' => $raw]);
             return null;
         }
 
@@ -54,6 +65,7 @@ class HealthReportService
             'reallocated_blocks'  => $reallocated['raw']['value'] ?? null,
             'power_on_hours'      => $data['power_on_time']['hours'] ?? null,
             'temperature_c'       => $data['temperature']['current'] ?? null,
+            'snapshot_at'         => filemtime(self::SNAPSHOT_PATH),
         ];
     }
 
