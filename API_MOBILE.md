@@ -253,6 +253,15 @@ attachments[]  = <file: photo.jpg>
 [{ "id": 5, "code": "RJ45", "name": "Коннектор RJ-45", "unit": "шт", "price": 15.00 }]
 ```
 
+### GET /promotions
+
+Акции по подключениям — только для подключений (`/connection-requests/{id}/close`, поле
+`promotion_id`), к заявкам (`/tickets/{id}/close`) не относятся.
+
+```json
+[{ "id": 3, "name": "Летняя акция 500", "price": 500.00 }]
+```
+
 ---
 
 ## Рекомендуемый порядок при закрытии заявки с фото
@@ -357,7 +366,9 @@ POST /tickets/{id}/close   multipart/form-data
 > `materials` возвращается только в `/connection-requests/{id}` и ответах экшн-эндпоинтов (`/close`, `/update`).  
 > В списке (`GET /connection-requests`) поле `materials` **отсутствует**.  
 > **`act`** — `null`, если заявку ещё не закрывали материалами; иначе краткая карточка акта
-> (`id`, `number`, `status`, `materials_changed_at`) — полная версия через `GET /acts/{id}`, см. «Акты» ниже.  
+> (`id`, `number`, `status`, `materials_changed_at`, `promotion_name`, `promotion_price` —
+> два последних не `null`, только если акт закрыт с акцией) — полная версия через
+> `GET /acts/{id}`, см. «Акты» ниже.  
 > **`act_number`** — оставлено для обратной совместимости со старыми сборками приложения;
 > для заявок, закрытых материалами, дублирует `act.number`. Для новых интеграций используйте `act`.
 
@@ -450,19 +461,28 @@ POST /tickets/{id}/close   multipart/form-data
   "materials": [
     { "material_id": 5, "quantity": 2 },
     { "material_id": 8, "quantity": 1 }
-  ]
+  ],
+  "promotion_id": 3
 }
 ```
 
-- `notes` и `materials` опциональны.
+- `notes`, `materials`, `promotion_id` опциональны.
 - **Если переданы `materials`, у заявки должен быть заполнен `service_type_id`**
   (см. `POST`/`PUT` выше) — иначе сервер вернёт `422` с полем `service_type_id` в `errors`.
   Приложению стоит не показывать форму материалов вовсе, пока участок не выбран,
   либо запросить его прямо на экране закрытия.
 - Материалы попадают в `ActMaterial` акта, а не пишутся на саму заявку —
   `GET /connection-requests/{id}` их больше не хранит после закрытия, смотрите `act`.
+- **`promotion_id`** — id из `GET /promotions`. Абонент по акции платит фиксированную
+  цену **вместо** суммы материалов — сама сумма материалов при этом никуда не девается,
+  идёт в списание Логистике как обычно, просто не совпадает с тем, что берётся с абонента.
+  **Требует непустой `materials`** — акция без акта не имеет смысла, сервер вернёт `422`,
+  если `promotion_id` передан, а `materials` пуст. Показывать выбор акции в UI имеет смысл
+  только когда список материалов уже не пуст (как и `service_type_id`, акция без материалов
+  просто не создаёт акт, и прикреплять её не к чему).
 
-**200:** полный объект `ConnectionRequest` (поле `act` заполнено, если были материалы).
+**200:** полный объект `ConnectionRequest` (поле `act` заполнено, если были материалы;
+`act.promotion_name`/`act.promotion_price` заполнены, если была выбрана акция).
 
 **422 (нет участка, но переданы материалы):**
 ```json
@@ -532,6 +552,8 @@ POST /tickets/{id}/close   multipart/form-data
   "foreman_reviewed_at": null,
   "foreman_reviewed_by": null,
   "materials_changed_at": null,
+  "promotion_name": null,
+  "promotion_price": null,
   "materials": [
     {
       "id": 501,
@@ -572,6 +594,11 @@ POST /tickets/{id}/close   multipart/form-data
   `pending_foreman`, и это не тот акт, который бригадир создал сам себе)
 - `acknowledge` — есть неподтверждённые правки бригадира, можно вызвать `/acknowledge`
   (монтажник-создатель акта, `materials_changed_at` не `null`)
+
+`promotion_name`/`promotion_price` — заполнены, только если акт заявки на подключение
+закрыт с акцией (см. `POST /connection-requests/{id}/close` выше); у тикетных актов
+всегда `null`. Абонент платит `promotion_price`, а не сумму `materials` — но сама
+сумма материалов в `materials` остаётся реальной (для Логистики), не пересчитывается.
 
 `action` в `history`: `created`, `approved`, `material_added`, `material_changed`,
 `material_removed`, `acknowledged` (плюс office-действия `peo_processed`/

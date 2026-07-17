@@ -102,6 +102,11 @@ class ActController extends Controller
             'foreman_reviewed_at'   => $act->foreman_reviewed_at?->toIso8601String(),
             'foreman_reviewed_by'   => $act->foremanReviewer?->name,
             'materials_changed_at'  => $act->materials_changed_at?->toIso8601String(),
+            // Акция — только у актов заявок на подключение (connection_request_id
+            // не null), у тикетных всегда null. См. память project-acts-feature,
+            // "Акции по подключениям".
+            'promotion_name'        => $act->promotion_name,
+            'promotion_price'       => $act->promotion_price !== null ? (float) $act->promotion_price : null,
             'materials' => $act->materials->map(fn(ActMaterial $m) => [
                 'id'            => $m->id,
                 'material_id'   => $m->material_id,
