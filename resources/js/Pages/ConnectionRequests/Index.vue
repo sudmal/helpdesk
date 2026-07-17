@@ -358,9 +358,21 @@
             <div class="flex items-center justify-between">
               <button @click="addMaterialRow" class="text-xs text-blue-600 hover:underline">+ добавить</button>
               <div v-if="closeMaterialsTotal > 0" class="text-sm font-semibold text-gray-700">
-                Итого: <span class="text-blue-600">{{ closeMaterialsTotal.toFixed(2) }} ₽</span>
+                Материалы: <span class="text-blue-600">{{ closeMaterialsTotal.toFixed(2) }} ₽</span>
               </div>
             </div>
+          </div>
+
+          <div v-if="closeForm.materials.length">
+            <label class="block text-xs text-gray-500 font-medium mb-1">Акция</label>
+            <select v-model="closeForm.promotion_id" class="field-input w-full text-xs">
+              <option :value="null">— без акции, по реальной стоимости материалов —</option>
+              <option v-for="p in promotions" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }} ₽</option>
+            </select>
+            <p v-if="selectedPromotion" class="text-xs text-gray-500 mt-1">
+              Абонент платит <span class="font-semibold text-emerald-600">{{ selectedPromotion.price }} ₽</span>
+              вместо {{ closeMaterialsTotal.toFixed(2) }} ₽ по факту материалов — реальная стоимость всё равно уйдёт в списание Логистике.
+            </p>
           </div>
         </div>
         <div v-if="closeErrors" class="text-xs text-red-600 mt-2">{{ closeErrors }}</div>
@@ -531,6 +543,7 @@ const props = defineProps({
   totalPending:        { type: Number, default: 0 },
   overdueByTerritory:  { type: Object, default: () => ({}) },
   materialsCatalog:  Array,
+  promotions:        { type: Array, default: () => [] },
 })
 
 const totalOverdue = computed(() =>
@@ -596,7 +609,7 @@ watch(() => editForm.territory_id, (territoryId) => {
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })
-const closeForm    = reactive({ notes: '', materials: [] })
+const closeForm    = reactive({ notes: '', materials: [], promotion_id: null })
 
 function openCreate() {
   Object.assign(createForm, {
@@ -641,10 +654,14 @@ function openReject(r) {
 
 function openClose(r) {
   activeRecord.value = r
-  Object.assign(closeForm, { notes: r.notes ?? '', materials: [] })
+  Object.assign(closeForm, { notes: r.notes ?? '', materials: [], promotion_id: null })
   closeErrors.value = ''
   modals.close = true
 }
+
+const selectedPromotion = computed(() =>
+  (props.promotions ?? []).find(p => p.id === closeForm.promotion_id) ?? null
+)
 
 function matRowTotal(row) {
   if (!row.material_id || !row.quantity) return '0.00'
@@ -729,6 +746,7 @@ function submitClose() {
   router.post(route('connection-requests.close', activeRecord.value.id), {
     notes: closeForm.notes,
     materials,
+    promotion_id: materials.length ? closeForm.promotion_id : null,
   }, {
     onSuccess: () => { modals.close = false },
     onFinish:  () => { submitting.value = false },

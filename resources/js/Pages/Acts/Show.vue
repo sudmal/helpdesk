@@ -112,6 +112,17 @@
         </div>
       </div>
 
+      <!-- Акция -->
+      <div v-if="act.promotion_name" class="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3 flex items-center justify-between flex-wrap gap-2">
+        <div class="text-sm text-emerald-800">
+          🎁 Акция «<span class="font-medium">{{ act.promotion_name }}</span>»
+        </div>
+        <div class="text-sm text-emerald-800">
+          Абонент платит: <span class="font-semibold">{{ Number(act.promotion_price).toFixed(2) }} ₽</span>
+          <span class="text-emerald-600/70"> (материалы по факту — {{ totalMaterials }} ₽, идут в списание Логистике как есть)</span>
+        </div>
+      </div>
+
       <!-- Материалы -->
       <div v-if="act.materials?.length || removedPending.length || can.editMaterials"
            class="bg-white rounded-2xl border border-gray-200 overflow-hidden">

@@ -49,6 +49,18 @@ class MaterialReportController extends Controller
     // абонентов" их исключает. У заявок на подключение Act.type всегда 'regular' (см. память
     // project-acts-feature), фильтр там факту не мешает, но джойн на acts всё равно нужен, чтобы
     // тип вообще было откуда взять единообразно с тикетной веткой.
+    //
+    // Акции (2026-07-17): если у акта заявки на подключение задана акция
+    // (acts.promotion_price не null), абонент платит фиксированную сумму, а не
+    // сумму материалов — реальные материалы при этом ВСЕГДА остаются как есть в
+    // "Расходе" (onlyBillable=false, промо не влияет). Но "Поступления от
+    // абонентов" (onlyBillable=true) должны показывать именно оплаченную сумму,
+    // а не сумму материалов — иначе выручка была бы завышена/занижена относительно
+    // факта. Материальные строки промо-актов такие акты в onlyBillable-ветке не
+    // считаются (иначе задвоили бы выручку по количеству использованных
+    // материалов) — вместо них одна синтетическая строка на акт с суммой акции,
+    // сгруппированная по промо (не по материалу) через отдельный material_code
+    // вида "PROMO-<id>", чтобы разные акции не схлопывались в одну строку отчёта.
     private function unionQuery(Carbon $from, Carbon $to, ?string $filterDim = null, $filterId = null, bool $onlyBillable = false)
     {
         // Материалы заявок теперь висят на Акте (act_materials -> acts -> tickets),
@@ -60,14 +72,27 @@ class MaterialReportController extends Controller
             ->whereNull('t.deleted_at')
             ->whereBetween('tm.created_at', [$from, $to]);
 
-        $crSide = DB::table('connection_request_materials as crm')
-            ->join('connection_requests as cr', 'crm.connection_request_id', '=', 'cr.id')
-            ->join('acts as a2', 'a2.connection_request_id', '=', 'cr.id')
+        // ИСПРАВЛЕНО 2026-07-17: раньше здесь читалась connection_request_materials —
+        // легаси-таблица, в которую с миграции на Акты (2026-07-15/16) ничего не
+        // пишется (материалы заявок на подключение, как и заявок, висят на
+        // act_materials). Отчёт молча не учитывал расход/выручку по подключениям
+        // с момента миграции — найдено и исправлено в рамках фичи "Акции".
+        $crMaterialsSide = DB::table('act_materials as crm')
+            ->join('acts as a2', 'crm.act_id', '=', 'a2.id')
+            ->join('connection_requests as cr', 'a2.connection_request_id', '=', 'cr.id')
             ->whereBetween('crm.created_at', [$from, $to]);
+
+        $crPromoSide = null;
 
         if ($onlyBillable) {
             $ticketSide->where('a.type', 'regular');
-            $crSide->where('a2.type', 'regular');
+            $crMaterialsSide->where('a2.type', 'regular')->whereNull('a2.promotion_price');
+
+            $crPromoSide = DB::table('acts as a3')
+                ->join('connection_requests as cr2', 'a3.connection_request_id', '=', 'cr2.id')
+                ->where('a3.type', 'regular')
+                ->whereNotNull('a3.promotion_price')
+                ->whereBetween('a3.created_at', [$from, $to]);
         }
 
         if ($filterDim === 'brigade') {
@@ -75,30 +100,42 @@ class MaterialReportController extends Controller
                 $ticketSide->whereRaw('1 = 0'); // у заявок на ремонт бригада есть всегда — этот бакет только из connection_requests
             } elseif ($filterId !== null) {
                 $ticketSide->where('t.brigade_id', $filterId);
-                $crSide->whereRaw('1 = 0'); // у заявок на подключение бригады не бывает вообще
+                $crMaterialsSide->whereRaw('1 = 0'); // у заявок на подключение бригады не бывает вообще
+                $crPromoSide?->whereRaw('1 = 0');
             }
         } elseif ($filterDim === 'territory') {
             if ($filterId === 'unknown') {
                 $ticketSide->whereNull('addr.territory_id');
-                $crSide->whereNull('cr.territory_id');
+                $crMaterialsSide->whereNull('cr.territory_id');
+                $crPromoSide?->whereNull('cr2.territory_id');
             } elseif ($filterId !== null) {
                 $ticketSide->where('addr.territory_id', $filterId);
-                $crSide->where('cr.territory_id', $filterId);
+                $crMaterialsSide->where('cr.territory_id', $filterId);
+                $crPromoSide?->where('cr2.territory_id', $filterId);
             }
         } elseif ($filterDim === 'service_type') {
             if ($filterId === 'unknown') {
                 $ticketSide->whereNull('t.service_type_id');
-                $crSide->whereNull('cr.service_type_id');
+                $crMaterialsSide->whereNull('cr.service_type_id');
+                $crPromoSide?->whereNull('cr2.service_type_id');
             } elseif ($filterId !== null) {
                 $ticketSide->where('t.service_type_id', $filterId);
-                $crSide->where('cr.service_type_id', $filterId);
+                $crMaterialsSide->where('cr.service_type_id', $filterId);
+                $crPromoSide?->where('cr2.service_type_id', $filterId);
             }
         }
 
         $ticketSide->selectRaw("tm.material_id, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time, tm.created_at, t.brigade_id as brigade_id, addr.territory_id as territory_id, t.service_type_id as service_type_id, a.ticket_id as source_id, 'ticket' as source");
-        $crSide->selectRaw("crm.material_id, crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time, crm.created_at, NULL as brigade_id, cr.territory_id as territory_id, cr.service_type_id as service_type_id, crm.connection_request_id as source_id, 'connection_request' as source");
+        $crMaterialsSide->selectRaw("crm.material_id, crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time, crm.created_at, NULL as brigade_id, cr.territory_id as territory_id, cr.service_type_id as service_type_id, a2.connection_request_id as source_id, 'connection_request' as source");
 
-        return $ticketSide->unionAll($crSide);
+        $union = $ticketSide->unionAll($crMaterialsSide);
+
+        if ($crPromoSide) {
+            $crPromoSide->selectRaw("NULL as material_id, a3.promotion_name as material_name, CONCAT('PROMO-', a3.promotion_id) as material_code, 'шт' as material_unit, 1 as quantity, a3.promotion_price as price_at_time, a3.created_at as created_at, NULL as brigade_id, cr2.territory_id as territory_id, cr2.service_type_id as service_type_id, a3.connection_request_id as source_id, 'connection_request' as source");
+            $union = $union->unionAll($crPromoSide);
+        }
+
+        return $union;
     }
 
     private function unionQueryAllTime()
@@ -109,7 +146,11 @@ class MaterialReportController extends Controller
             ->whereNull('t.deleted_at')
             ->selectRaw("tm.material_id, tm.material_name, tm.material_code, tm.material_unit, tm.quantity, tm.price_at_time, tm.created_at");
 
-        $crSide = DB::table('connection_request_materials as crm')
+        // См. unionQuery() выше — connection_request_materials легаси и всегда пуста
+        // с миграции на Акты, реальные материалы заявок на подключение в act_materials.
+        $crSide = DB::table('act_materials as crm')
+            ->join('acts as a2', 'crm.act_id', '=', 'a2.id')
+            ->whereNotNull('a2.connection_request_id')
             ->selectRaw("crm.material_id, crm.material_name, crm.material_code, crm.material_unit, crm.quantity, crm.price_at_time, crm.created_at");
 
         return $ticketSide->unionAll($crSide);

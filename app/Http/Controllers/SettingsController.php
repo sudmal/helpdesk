@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{TicketType, TicketStatus, User, Role, Territory, ServiceType, SystemSetting, Brigade};
+use App\Models\{TicketType, TicketStatus, User, Role, Territory, ServiceType, SystemSetting, Brigade, Promotion};
 use App\Console\Commands\{SendDailySummary, SendEveningReport};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Hash, Artisan};
@@ -23,6 +23,7 @@ class SettingsController extends Controller
             'ticketTypes'      => TicketType::orderBy('sort_order')->get(),
             'ticketStatuses'   => TicketStatus::orderBy('sort_order')->get(),
             'serviceTypes'     => ServiceType::orderBy('sort_order')->get(),
+            'promotions'       => Promotion::orderBy('sort_order')->orderBy('name')->get(),
             'users'            => User::with(['role', 'territories', 'brigades'])->orderBy('name')->get(),
             'roles'            => Role::orderBy('name')->get(),
             'territories'      => $territoriesQuery->get(['id', 'name']),

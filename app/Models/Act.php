@@ -18,6 +18,15 @@ class Act extends Model
     protected static function booted(): void
     {
         static::saving(function (Act $act) {
+            // Акция — только для актов заявок на подключение (см. память
+            // project-acts-feature, "Акции по подключениям"). Тикетные акты
+            // (ремонт/обычные заявки) фиксированной ценой не оперируют.
+            if ($act->promotion_id !== null && $act->connection_request_id === null) {
+                throw new \RuntimeException(
+                    'Акция применима только к актам заявок на подключение.'
+                );
+            }
+
             if (!$act->isDirty('status') || $act->status !== 'completed' || $act->type === null) {
                 return;
             }
@@ -40,6 +49,7 @@ class Act extends Model
         'logistics_processed_by', 'logistics_processed_at',
         'subscriber_dept_completed_by', 'subscriber_dept_completed_at',
         'materials_changed_at',
+        'promotion_id', 'promotion_name', 'promotion_price',
     ];
 
     protected $casts = [
@@ -48,10 +58,12 @@ class Act extends Model
         'logistics_processed_at'       => 'datetime',
         'subscriber_dept_completed_at' => 'datetime',
         'materials_changed_at'         => 'datetime',
+        'promotion_price'              => 'float',
     ];
 
     public function ticket(): BelongsTo             { return $this->belongsTo(Ticket::class); }
     public function connectionRequest(): BelongsTo  { return $this->belongsTo(ConnectionRequest::class); }
+    public function promotion(): BelongsTo          { return $this->belongsTo(Promotion::class); }
     public function materials(): HasMany  { return $this->hasMany(ActMaterial::class); }
     public function history(): HasMany    { return $this->hasMany(ActHistory::class)->latest(); }
     public function creator(): BelongsTo  { return $this->belongsTo(User::class, 'created_by'); }

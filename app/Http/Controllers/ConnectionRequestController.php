@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Act;
 use App\Models\Brigade;
 use App\Models\ConnectionRequest;
 use App\Models\ConnectionRequestLog;
 use App\Models\Material;
+use App\Models\Promotion;
 use App\Models\ServiceType;
 use App\Models\Territory;
 use Illuminate\Http\Request;
@@ -62,6 +64,7 @@ class ConnectionRequestController extends Controller
             'totalPending'       => $pendingByTerritory->sum(),
             'overdueByTerritory' => $overdueByTerritory,
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
+            'promotions'         => Promotion::active()->get(['id', 'name', 'price']),
         ]);
     }
 
@@ -146,6 +149,17 @@ class ConnectionRequestController extends Controller
             'materials'               => 'nullable|array',
             'materials.*.material_id' => 'required_with:materials.*|integer|exists:materials,id',
             'materials.*.quantity'    => 'required_with:materials.*|numeric|min:0.01',
+            // Акция — фиксированная цена абонента, отдельно от реальной стоимости
+            // материалов (та по-прежнему идёт в Логистику как есть) — см. память
+            // project-acts-feature, "Акции по подключениям".
+            'promotion_id'             => [
+                'nullable', 'integer', 'exists:promotions,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value && empty($request->input('materials'))) {
+                        $fail('Акция применяется только вместе с материалами (нужен акт).');
+                    }
+                },
+            ],
         ]);
 
         if (!empty($request->materials) && !$connectionRequest->service_type_id) {
@@ -155,11 +169,12 @@ class ConnectionRequestController extends Controller
         }
 
         $actNumber = null;
+        $promotion = $request->filled('promotion_id') ? Promotion::find($request->promotion_id) : null;
 
         // attempts=3: см. Act::createWithGeneratedNumber() — конкурентное закрытие
         // с тем же префиксом номера акта может словить deadlock на lockForUpdate(),
         // Laravel в этом случае полностью переиграет транзакцию.
-        DB::transaction(function () use ($connectionRequest, $request, &$actNumber) {
+        DB::transaction(function () use ($connectionRequest, $request, $promotion, &$actNumber) {
             $connectionRequest->update([
                 'status'         => 'closed',
                 'notes'          => $request->notes,
@@ -167,12 +182,18 @@ class ConnectionRequestController extends Controller
             ]);
 
             if (!empty($request->materials)) {
-                $act = \App\Models\Act::createWithGeneratedNumber([
+                $act = Act::createWithGeneratedNumber([
                     'connection_request_id' => $connectionRequest->id,
                     'type'                  => 'regular',
                     'status'                => 'pending_foreman',
                     'created_by'            => $request->user()->id,
-                ], fn() => \App\Models\Act::generateNumberForConnectionRequest($connectionRequest));
+                    // Снапшот на момент закрытия (как price_at_time у ActMaterial) —
+                    // будущее изменение цены акции в справочнике не переписывает
+                    // задним числом уже закрытые акты.
+                    'promotion_id'    => $promotion?->id,
+                    'promotion_name'  => $promotion?->name,
+                    'promotion_price' => $promotion?->price,
+                ], fn() => Act::generateNumberForConnectionRequest($connectionRequest));
                 $actNumber = $act->number;
 
                 foreach ($request->materials as $item) {
@@ -218,7 +239,7 @@ class ConnectionRequestController extends Controller
 
     public function detail(ConnectionRequest $connectionRequest)
     {
-        $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'serviceType', 'materials', 'logs.user', 'act.materials']);
+        $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'serviceType', 'materials', 'logs.user', 'act.materials', 'act.promotion']);
         return response()->json($connectionRequest);
     }
 

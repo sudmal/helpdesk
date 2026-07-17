@@ -196,7 +196,12 @@ class ActController extends Controller
             ? $act->ticket->address?->full_address
             : $act->connectionRequest?->address_string;
 
-        $total = $act->materials->sum(fn($m) => $m->price_at_time * $m->quantity);
+        $materialsTotal = $act->materials->sum(fn($m) => $m->price_at_time * $m->quantity);
+        // Акция (только у актов заявок на подключение) — абонент по факту платит
+        // фиксированную акционную цену, а не сумму материалов; сама сумма
+        // материалов остаётся в печатной форме отдельной строкой для сверки —
+        // см. память project-acts-feature, "Акции по подключениям".
+        $amountDue = $act->promotion_price ?? $materialsTotal;
 
         // Только дата, без ФИО обработавшего — печатная форма это физический
         // документ под ручную подпись/штамп отдела, печатать туда имя из
@@ -211,7 +216,9 @@ class ActController extends Controller
             'address'            => $address,
             'createdAt'          => $act->created_at->format('d.m.Y'),
             'installerName'      => $act->creator?->name,
-            'total'              => $total,
+            'materialsTotal'     => $materialsTotal,
+            'amountDue'          => $amountDue,
+            'promotionName'      => $act->promotion_name,
             'markForeman'        => $mark($act->foreman_reviewed_at),
             'markPeo'            => $act->type === 'regular' ? $mark($act->peo_processed_at) : 'не требуется',
             'markLogistics'      => $mark($act->logistics_processed_at),

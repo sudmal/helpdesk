@@ -14,6 +14,7 @@ use App\Http\Controllers\{
     LanBillingController,
     ConnectionRequestController,
     ServiceRequestController,
+    PromotionController,
 };
 use Illuminate\Support\Facades\Route;
 
@@ -145,6 +146,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/services',             [ServiceTypeController::class, 'store'])->name('services.store');
         Route::put('/services/{serviceType}',    [ServiceTypeController::class, 'update'])->name('services.update');
         Route::delete('/services/{serviceType}', [ServiceTypeController::class, 'destroy'])->name('services.destroy');
+
+        // Акции по подключениям (справочник фиксированных цен)
+        Route::post('/promotions',              [PromotionController::class, 'store'])->name('promotions.store');
+        Route::put('/promotions/{promotion}',    [PromotionController::class, 'update'])->name('promotions.update');
+        Route::delete('/promotions/{promotion}', [PromotionController::class, 'destroy'])->name('promotions.destroy');
 
         // Р РѕР»Рё
         Route::put('/roles/{role}',  [SettingsController::class, 'updateRole'])->name('roles.update');

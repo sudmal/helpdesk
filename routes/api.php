@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ConnectionRequestController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Models\Material;
+use App\Models\Promotion;
 use App\Models\ServiceType;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +54,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/materials', function () {
         return response()->json(
             Material::active()->orderBy('sort_order')->get(['id', 'code', 'name', 'unit', 'price'])
+        );
+    });
+
+    // Акции по подключениям — только для передачи promotion_id в
+    // /connection-requests/{id}/close, справочником в приложении не управляют.
+    Route::get('/promotions', function () {
+        return response()->json(
+            Promotion::active()->get(['id', 'name', 'price'])
         );
     });
 });

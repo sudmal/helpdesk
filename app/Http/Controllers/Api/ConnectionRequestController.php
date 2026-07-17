@@ -7,6 +7,7 @@ use App\Models\Act;
 use App\Models\Brigade;
 use App\Models\ConnectionRequest;
 use App\Models\Material;
+use App\Models\Promotion;
 use App\Models\Territory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -123,6 +124,17 @@ class ConnectionRequestController extends Controller
             'materials'                => 'nullable|array',
             'materials.*.material_id'  => 'required_with:materials.*|integer|exists:materials,id',
             'materials.*.quantity'     => 'required_with:materials.*|numeric|min:0.01',
+            // Акция — фиксированная цена абонента, отдельно от реальной стоимости
+            // материалов (та по-прежнему идёт в Логистику как есть) — см. память
+            // project-acts-feature, "Акции по подключениям".
+            'promotion_id'             => [
+                'nullable', 'integer', 'exists:promotions,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value && empty($request->input('materials'))) {
+                        $fail('Акция применяется только вместе с материалами (нужен акт).');
+                    }
+                },
+            ],
         ]);
 
         if (!empty($request->materials) && !$connectionRequest->service_type_id) {
@@ -132,10 +144,12 @@ class ConnectionRequestController extends Controller
             ], 422);
         }
 
+        $promotion = $request->filled('promotion_id') ? Promotion::find($request->promotion_id) : null;
+
         // attempts=3: см. Act::createWithGeneratedNumber() — конкурентное закрытие
         // с тем же префиксом номера акта может словить deadlock на lockForUpdate(),
         // Laravel в этом случае полностью переиграет транзакцию.
-        DB::transaction(function () use ($connectionRequest, $request) {
+        DB::transaction(function () use ($connectionRequest, $request, $promotion) {
             $connectionRequest->update([
                 'status'         => 'closed',
                 'notes'          => $request->notes,
@@ -148,6 +162,9 @@ class ConnectionRequestController extends Controller
                     'type'                  => 'regular',
                     'status'                => 'pending_foreman',
                     'created_by'            => $request->user()->id,
+                    'promotion_id'    => $promotion?->id,
+                    'promotion_name'  => $promotion?->name,
+                    'promotion_price' => $promotion?->price,
                 ], fn() => Act::generateNumberForConnectionRequest($connectionRequest));
 
                 foreach ($request->materials as $item) {
@@ -208,6 +225,8 @@ class ConnectionRequestController extends Controller
                 'number'               => $r->act->number,
                 'status'               => $r->act->status,
                 'materials_changed_at' => $r->act->materials_changed_at?->toIso8601String(),
+                'promotion_name'       => $r->act->promotion_name,
+                'promotion_price'      => $r->act->promotion_price !== null ? (float) $r->act->promotion_price : null,
             ] : null,
             'needs_callback' => (bool) $r->needs_callback,
             'territory'      => $r->territory ? ['id' => $r->territory->id, 'name' => $r->territory->name] : null,

@@ -70,8 +70,14 @@
     </tbody>
 </table>
 
+@if ($promotionName)
+<div class="total" style="font-weight:normal;">Стоимость материалов (справочно): {{ number_format($materialsTotal, 2, ',', ' ') }} руб.</div>
+<div class="note">По акции «{{ $promotionName }}» с Вашего личного счёта будет списана фиксированная сумма ниже, в течение трёх суток!</div>
+<div class="total">К оплате: {{ number_format($amountDue, 2, ',', ' ') }} руб.</div>
+@else
 <div class="note">Данная сумма будет списана с Вашего личного счёта в течение трёх суток!</div>
-<div class="total">Итого: {{ number_format($total, 2, ',', ' ') }} руб.</div>
+<div class="total">Итого: {{ number_format($amountDue, 2, ',', ' ') }} руб.</div>
+@endif
 
 <div class="signline">ФИО исполнителя: {{ $installerName ?: '—' }} &nbsp;&nbsp;&nbsp;&nbsp; Подпись: ______________</div>
 <div class="signline">Подпись заказчика: ______________</div>

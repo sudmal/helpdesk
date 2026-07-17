@@ -68,6 +68,31 @@
       </div>
     </div>
 
+    <!-- ── Акции по подключениям ── -->
+    <div v-if="activeTab === 'promotions'">
+      <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold">Акции по подключениям</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Фиксированная цена для абонента при закрытии заявки на подключение — реальная стоимость материалов при этом учитывается отдельно, для списания в Логистике</p>
+        </div>
+        <button @click="openPromotionModal()" class="btn-primary text-sm">+ Добавить</button>
+      </div>
+      <div class="divide-y divide-gray-100">
+        <div v-for="p in promotions" :key="p.id"
+             class="flex items-center px-4 py-1 gap-2 hover:bg-gray-50">
+          <span class="flex-1 text-sm font-medium">{{ p.name }}</span>
+          <span class="text-sm text-gray-600 tabular-nums">{{ p.price }} ₽</span>
+          <span :class="['text-xs px-2 py-0.5 rounded-full',
+                         p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500']">
+            {{ p.is_active ? 'Активна' : 'Отключена' }}
+          </span>
+          <button @click="openPromotionModal(p)" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg">✏️</button>
+          <button @click="deletePromotion(p)"    class="p-1.5 text-gray-400 hover:text-red-500 rounded-lg">🗑</button>
+        </div>
+        <div v-if="!promotions?.length" class="px-6 py-8 text-center text-sm text-gray-400">Нет акций</div>
+      </div>
+    </div>
+
     <!-- ── Общие настройки ── -->
     <div v-if="activeTab === 'general'" class="p-4 max-w-xl">
       <form @submit.prevent="saveGeneral" class="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
@@ -506,6 +531,28 @@
       </form>
     </Modal>
 
+    <!-- Акция -->
+    <Modal v-if="showPromotionModal" :title="editingPromotion ? 'Редактировать акцию' : 'Новая акция'" @close="closePromotionModal">
+      <form @submit.prevent="submitPromotion" class="space-y-4">
+        <div>
+          <label class="field-label">Название *</label>
+          <input v-model="promotionForm.name" required class="field-input" placeholder="Летняя акция 500" />
+        </div>
+        <div>
+          <label class="field-label">Фиксированная цена для абонента, ₽ *</label>
+          <input v-model="promotionForm.price" required type="number" min="0" step="0.01" class="field-input" />
+        </div>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" v-model="promotionForm.is_active" class="rounded" /> Активна
+        </label>
+        <div v-if="promotionErrors" class="text-xs text-red-600">{{ promotionErrors }}</div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button" @click="closePromotionModal" class="btn-outline text-sm">Отмена</button>
+          <button class="btn-primary text-sm">{{ editingPromotion ? 'Сохранить' : 'Создать' }}</button>
+        </div>
+      </form>
+    </Modal>
+
     <!-- Статус заявки -->
     <Modal v-if="showStatusModal" :title="editingStatus ? 'Редактировать статус' : 'Новый статус'" @close="closeStatusModal">
       <form @submit.prevent="submitStatus" class="space-y-4">
@@ -867,6 +914,7 @@ const props = defineProps({
   ticketTypes:    Array,
   ticketStatuses: Array,
   serviceTypes:   { type: Array, default: () => [] },
+  promotions:     { type: Array, default: () => [] },
   users:          { type: Array, default: () => [] },
   roles:          { type: Array, default: () => [] },
   territories:    { type: Array, default: () => [] },
@@ -882,6 +930,7 @@ const tabs = [
   { key: 'types',         label: 'Типы заявок' },
   { key: 'svc-list',      label: 'Услуги (запросы)' },
   { key: 'services',      label: 'Участки' },
+  { key: 'promotions',    label: 'Акции' },
   { key: 'territories',   label: 'Территории' },
   { key: 'statuses',      label: 'Статусы' },
   { key: 'users',         label: 'Пользователи' },
@@ -928,6 +977,30 @@ function submitType() {
 }
 function deleteType(t) {
   if (confirm(`Удалить тип «${t.name}»?`)) router.delete(route('settings.ticket-types.destroy', t.id))
+}
+
+// ── Акции ────────────────────────────────────────────────────────────
+const showPromotionModal = ref(false)
+const editingPromotion   = ref(null)
+const promotionForm = useForm({ name: '', price: '', is_active: true, sort_order: 0 })
+const promotionErrors = ref('')
+
+function openPromotionModal(p = null) {
+  editingPromotion.value = p
+  if (p) Object.assign(promotionForm, { name: p.name, price: p.price, is_active: p.is_active })
+  else promotionForm.reset()
+  promotionErrors.value = ''
+  showPromotionModal.value = true
+}
+function closePromotionModal() { showPromotionModal.value = false; editingPromotion.value = null; promotionForm.reset() }
+function submitPromotion() {
+  const opts = { onSuccess: closePromotionModal, onError: (errs) => { promotionErrors.value = Object.values(errs)[0] ?? 'Ошибка' } }
+  editingPromotion.value
+    ? promotionForm.put(route('settings.promotions.update', editingPromotion.value.id), opts)
+    : promotionForm.post(route('settings.promotions.store'), opts)
+}
+function deletePromotion(p) {
+  if (confirm(`Удалить акцию «${p.name}»?`)) router.delete(route('settings.promotions.destroy', p.id))
 }
 
 // ── Статусы ──────────────────────────────────────────────────────────
