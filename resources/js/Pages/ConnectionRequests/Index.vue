@@ -3,12 +3,12 @@
   <AppLayout title="Подключения">
 
     <!-- Вкладки территорий + Фильтры -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
 
       <!-- Вкладки -->
-      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
+      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2.5 pt-1.5 flex-wrap">
         <button @click="selectTerritory(null)"
-                :class="['px-3 py-2 text-sm font-medium flex items-center gap-1.5 rounded-t-xl transition-colors relative',
+                :class="['px-2.5 py-1.5 text-sm font-medium flex items-center gap-1.5 rounded-t-lg transition-colors relative',
                          selectedTerritory === null
                            ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
@@ -24,7 +24,7 @@
         </button>
         <button v-for="t in territories" :key="t.id"
                 @click="selectTerritory(t.id)"
-                :class="['px-3 py-2 text-sm font-medium flex items-center gap-1.5 rounded-t-xl transition-colors relative',
+                :class="['px-2.5 py-1.5 text-sm font-medium flex items-center gap-1.5 rounded-t-lg transition-colors relative',
                          selectedTerritory === t.id
                            ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
@@ -41,13 +41,13 @@
       </div>
 
       <!-- Фильтры -->
-      <div class="p-4 flex flex-wrap gap-3 items-end">
+      <div class="p-3 flex flex-wrap gap-2.5 items-end">
         <div class="flex-1 min-w-48">
-          <label class="block text-xs text-gray-500 mb-1">Поиск</label>
+          <label class="field-label">Поиск</label>
           <input v-model="f.search" @keydown.enter="apply" class="field-input w-full" placeholder="Имя, телефон, адрес..." />
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Статус</label>
+          <label class="field-label">Статус</label>
           <select v-model="f.status" class="field-input">
             <option value="">Все</option>
             <option value="pending">Ожидает</option>
@@ -64,11 +64,11 @@
     </div>
 
     <!-- Таблица -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm text-gray-500">Всего: {{ requests.total }}</span>
         <button @click="openCreate"
-                class="px-3 py-1.5 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
+                class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
           + Новая заявка
         </button>
       </div>
@@ -166,7 +166,7 @@
 
       <!-- Пагинация -->
       <div v-if="requests.last_page > 1"
-           class="px-5 py-3 border-t border-gray-100 flex items-center gap-2">
+           class="px-4 py-2.5 border-t border-gray-100 flex items-center gap-2">
         <button v-for="link in requests.links" :key="link.label"
                 :disabled="!link.url || link.active"
                 @click="link.url && router.get(link.url, {}, { preserveState: true })"
@@ -178,50 +178,50 @@
 
     <!-- Модал: Создать заявку -->
     <div v-if="modals.create" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Новая заявка на подключение</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Имя клиента <span class="text-red-400">*</span></label>
-            <input v-model="createForm.name" class="field-input w-full" placeholder="Иванов Иван" />
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">Новая заявка на подключение</h3>
+        <div class="space-y-2">
+          <div class="field-row">
+            <label class="field-label">Имя <span class="text-red-400">*</span></label>
+            <input v-model="createForm.name" class="field-input" placeholder="Иванов Иван" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
-            <input v-model="createForm.phone" class="field-input w-full" placeholder="+7..." />
+          <div class="field-row">
+            <label class="field-label">Телефон <span class="text-red-400">*</span></label>
+            <input v-model="createForm.phone" class="field-input" placeholder="+7..." />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
-            <input v-model="createForm.address_string" class="field-input w-full" placeholder="ул. Ленина, 5, кв. 10" />
+          <div class="field-row">
+            <label class="field-label">Адрес <span class="text-red-400">*</span></label>
+            <input v-model="createForm.address_string" class="field-input" placeholder="ул. Ленина, 5, кв. 10" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Территория <span class="text-red-400">*</span></label>
-            <select v-model="createForm.territory_id" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Территория <span class="text-red-400">*</span></label>
+            <select v-model="createForm.territory_id" class="field-input">
               <option :value="null">— выберите территорию —</option>
               <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Бригада <span class="text-red-400">*</span></label>
-            <select v-model="createForm.brigade_id" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Бригада <span class="text-red-400">*</span></label>
+            <select v-model="createForm.brigade_id" class="field-input">
               <option :value="null">— выберите бригаду —</option>
               <option v-for="b in createAvailableBrigades" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Участок <span class="text-red-400">*</span></label>
-            <select v-model="createForm.service_type_id" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Участок <span class="text-red-400">*</span></label>
+            <select v-model="createForm.service_type_id" class="field-input">
               <option :value="null">— выберите участок —</option>
               <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Описание</label>
-            <textarea v-model="createForm.description" class="field-input w-full" rows="3"
+            <label class="field-label">Описание</label>
+            <textarea v-model="createForm.description" class="field-input resize-none" rows="2"
                       placeholder="Желаемый тариф, заметки..."></textarea>
           </div>
         </div>
-        <div v-if="createErrors" class="mt-3 text-xs text-red-600">{{ createErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div v-if="createErrors" class="mt-2 text-xs text-red-600">{{ createErrors }}</div>
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.create = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitCreate" :disabled="submitting" class="btn-primary text-sm">Создать</button>
         </div>
@@ -230,49 +230,49 @@
 
     <!-- Модал: Редактировать -->
     <div v-if="modals.edit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Редактировать заявку</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Имя клиента <span class="text-red-400">*</span></label>
-            <input v-model="editForm.name" class="field-input w-full" />
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">Редактировать заявку</h3>
+        <div class="space-y-2">
+          <div class="field-row">
+            <label class="field-label">Имя <span class="text-red-400">*</span></label>
+            <input v-model="editForm.name" class="field-input" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
-            <input v-model="editForm.phone" class="field-input w-full" />
+          <div class="field-row">
+            <label class="field-label">Телефон <span class="text-red-400">*</span></label>
+            <input v-model="editForm.phone" class="field-input" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
-            <input v-model="editForm.address_string" class="field-input w-full" />
+          <div class="field-row">
+            <label class="field-label">Адрес <span class="text-red-400">*</span></label>
+            <input v-model="editForm.address_string" class="field-input" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Территория</label>
-            <select v-model="editForm.territory_id" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Территория</label>
+            <select v-model="editForm.territory_id" class="field-input">
               <option :value="null">— не указана —</option>
               <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Бригада</label>
-            <select v-model="editForm.brigade_id" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Бригада</label>
+            <select v-model="editForm.brigade_id" class="field-input">
               <option :value="null">— не указана —</option>
               <option v-for="b in editAvailableBrigades" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Участок</label>
-            <select v-model="editForm.service_type_id" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Участок</label>
+            <select v-model="editForm.service_type_id" class="field-input">
               <option :value="null">— не указан —</option>
               <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Описание</label>
-            <textarea v-model="editForm.description" class="field-input w-full" rows="3"></textarea>
+            <label class="field-label">Описание</label>
+            <textarea v-model="editForm.description" class="field-input resize-none" rows="2"></textarea>
           </div>
         </div>
-        <div v-if="editErrors" class="mt-3 text-xs text-red-600">{{ editErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div v-if="editErrors" class="mt-2 text-xs text-red-600">{{ editErrors }}</div>
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.edit = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitEdit" :disabled="submitting" class="btn-primary text-sm">Сохранить</button>
         </div>
@@ -281,27 +281,27 @@
 
     <!-- Модал: Назначить/Изменить -->
     <div v-if="modals.schedule" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Изменить заявку</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Статус</label>
-            <select v-model="scheduleForm.status" class="field-input w-full">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">Изменить заявку</h3>
+        <div class="space-y-2">
+          <div class="field-row">
+            <label class="field-label">Статус</label>
+            <select v-model="scheduleForm.status" class="field-input">
               <option value="pending">Ожидает</option>
               <option value="scheduled">Назначено</option>
               <option value="rejected">Отклонено</option>
             </select>
           </div>
-          <div v-if="scheduleForm.status === 'scheduled'">
-            <label class="block text-xs text-gray-500 mb-1">Дата подключения</label>
-            <input v-model="scheduleForm.scheduled_at" type="datetime-local" class="field-input w-full" />
+          <div v-if="scheduleForm.status === 'scheduled'" class="field-row">
+            <label class="field-label">Дата подкл.</label>
+            <input v-model="scheduleForm.scheduled_at" type="datetime-local" class="field-input" />
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Примечания</label>
-            <textarea v-model="scheduleForm.notes" class="field-input w-full" rows="3"></textarea>
+            <label class="field-label">Примечания</label>
+            <textarea v-model="scheduleForm.notes" class="field-input resize-none" rows="2"></textarea>
           </div>
         </div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.schedule = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitSchedule" :disabled="submitting" class="btn-primary text-sm">Сохранить</button>
         </div>
@@ -310,17 +310,17 @@
 
     <!-- Модал: Отклонить -->
     <div v-if="modals.reject" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Отклонить заявку</h3>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">Отклонить заявку</h3>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Причина отклонения</label>
-          <textarea v-model="rejectForm.notes" class="field-input w-full" rows="4"
+          <label class="field-label">Причина отклонения</label>
+          <textarea v-model="rejectForm.notes" class="field-input resize-none" rows="3"
                     placeholder="Нет технической возможности..."></textarea>
         </div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.reject = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitReject" :disabled="submitting"
-                  class="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
+                  class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
             Отклонить
           </button>
         </div>
@@ -329,15 +329,15 @@
 
     <!-- Модал: Выполнено -->
     <div v-if="modals.close" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Закрыть — подключение выполнено</h3>
-        <div class="space-y-3">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">Закрыть — подключение выполнено</h3>
+        <div class="space-y-2">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Примечания</label>
-            <textarea v-model="closeForm.notes" class="field-input w-full" rows="3"></textarea>
+            <label class="field-label">Примечания</label>
+            <textarea v-model="closeForm.notes" class="field-input resize-none" rows="2"></textarea>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 font-medium mb-2">Использованные материалы</label>
+            <label class="field-label font-medium">Использованные материалы</label>
             <div v-for="(row, idx) in closeForm.materials" :key="idx"
                  class="flex gap-2 items-center mb-1.5">
               <select v-model="row.material_id" class="field-input flex-1 text-xs">
@@ -353,7 +353,7 @@
               </div>
               <button @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-600 px-1 shrink-0">✕</button>
             </div>
-            <div v-if="!closeForm.materials.length" class="text-xs text-gray-400 mb-2">Материалы не добавлены</div>
+            <div v-if="!closeForm.materials.length" class="text-xs text-gray-400 mb-1.5">Материалы не добавлены</div>
             <!-- Кнопка добавления сразу после списка — новая строка появляется прямо здесь, а не наверху -->
             <div class="flex items-center justify-between">
               <button @click="addMaterialRow" class="text-xs text-blue-600 hover:underline">+ добавить</button>
@@ -364,7 +364,7 @@
           </div>
 
           <div v-if="closeForm.materials.length">
-            <label class="block text-xs text-gray-500 font-medium mb-1">Акция</label>
+            <label class="field-label font-medium">Акция</label>
             <select v-model="closeForm.promotion_id" class="field-input w-full text-xs">
               <option :value="null">— без акции, по реальной стоимости материалов —</option>
               <option v-for="p in promotions" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }} ₽</option>
@@ -376,10 +376,10 @@
           </div>
         </div>
         <div v-if="closeErrors" class="text-xs text-red-600 mt-2">{{ closeErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.close = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitClose" :disabled="submitting"
-                  class="px-4 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
+                  class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
             Выполнено
           </button>
         </div>
@@ -388,8 +388,8 @@
 
     <!-- Модал: Полная информация -->
     <div v-if="modals.detail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="modals.detail = false">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
             <h3 class="text-base font-semibold text-gray-800">Заявка на подключение</h3>
             <span v-if="detailData" :class="statusClass(detailData.status)"
@@ -408,9 +408,9 @@
           <div class="text-gray-400 text-sm">Загрузка...</div>
         </div>
 
-        <div v-else-if="detailData" class="flex-1 overflow-y-auto p-6 space-y-5">
+        <div v-else-if="detailData" class="flex-1 overflow-y-auto p-4 space-y-4">
           <!-- Основные данные -->
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-2 gap-3">
             <div>
               <div class="text-xs text-gray-400 mb-0.5">Имя клиента</div>
               <div class="text-sm font-medium">{{ detailData.name }}</div>
@@ -455,7 +455,7 @@
           </div>
 
           <!-- Материалы (теперь на акте, не на самой заявке) -->
-          <div v-if="detailData.act?.materials && detailData.act.materials.length" class="border-t border-gray-100 pt-4">
+          <div v-if="detailData.act?.materials && detailData.act.materials.length" class="border-t border-gray-100 pt-3">
             <div class="text-xs font-medium text-gray-500 mb-2">Использованные материалы</div>
             <table class="w-full text-xs">
               <thead>
@@ -486,8 +486,8 @@
           </div>
 
           <!-- История -->
-          <div class="border-t border-gray-100 pt-4">
-            <div class="text-xs font-medium text-gray-500 mb-3">История</div>
+          <div class="border-t border-gray-100 pt-3">
+            <div class="text-xs font-medium text-gray-500 mb-2">История</div>
             <div v-if="!detailData.logs || !detailData.logs.length"
                  class="text-xs text-gray-400">История не записана (заявка создана до включения логирования)</div>
             <div v-else class="space-y-2">
@@ -516,7 +516,7 @@
           </div>
         </div>
 
-        <div class="px-6 py-3 border-t border-gray-100 flex justify-end shrink-0">
+        <div class="px-4 py-2.5 border-t border-gray-100 flex justify-end shrink-0">
           <button @click="modals.detail = false" class="btn-outline text-sm">Закрыть</button>
         </div>
       </div>

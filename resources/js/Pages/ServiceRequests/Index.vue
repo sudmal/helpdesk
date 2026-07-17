@@ -3,13 +3,13 @@
   <AppLayout title="Запросы услуг">
 
     <!-- Фильтры -->
-    <div class="bg-white rounded-2xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
+    <div class="bg-white rounded-xl border border-gray-200 p-3 mb-3 flex flex-wrap gap-2.5 items-end">
       <div class="flex-1 min-w-48">
-        <label class="block text-xs text-gray-500 mb-1">Поиск</label>
+        <label class="field-label">Поиск</label>
         <input v-model="f.search" @keydown.enter="apply" class="field-input" placeholder="Имя, телефон, адрес, услуга..." />
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Статус</label>
+        <label class="field-label">Статус</label>
         <select v-model="f.status" class="field-input">
           <option value="">Все</option>
           <option value="pending">Ожидает</option>
@@ -24,8 +24,8 @@
     </div>
 
     <!-- Таблица -->
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <span class="text-sm text-gray-500">Всего: {{ requests.total }}</span>
           <span v-if="totalPending > 0"
@@ -34,7 +34,7 @@
           </span>
         </div>
         <button @click="openCreate"
-                class="px-3 py-1.5 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
+                class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
           + Новый запрос
         </button>
       </div>
@@ -103,7 +103,7 @@
 
       <!-- Пагинация -->
       <div v-if="requests.last_page > 1"
-           class="px-5 py-3 border-t border-gray-100 flex items-center gap-2">
+           class="px-4 py-2.5 border-t border-gray-100 flex items-center gap-2">
         <button v-for="link in requests.links" :key="link.label"
                 :disabled="!link.url || link.active"
                 @click="link.url && router.get(link.url, {}, { preserveState: true })"
@@ -115,36 +115,36 @@
 
     <!-- Модал: Создать запрос -->
     <div v-if="modals.create" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Новый запрос на услугу</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Имя абонента <span class="text-red-400">*</span></label>
-            <input v-model="createForm.name" class="field-input w-full" placeholder="Иванов Иван Иванович" />
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">Новый запрос на услугу</h3>
+        <div class="space-y-2">
+          <div class="field-row">
+            <label class="field-label">Имя <span class="text-red-400">*</span></label>
+            <input v-model="createForm.name" class="field-input" placeholder="Иванов Иван Иванович" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
-            <input v-model="createForm.phone" class="field-input w-full" placeholder="+7..." />
+          <div class="field-row">
+            <label class="field-label">Телефон <span class="text-red-400">*</span></label>
+            <input v-model="createForm.phone" class="field-input" placeholder="+7..." />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
-            <input v-model="createForm.address_string" class="field-input w-full" placeholder="ул. Ленина, 5, кв. 10" />
+          <div class="field-row">
+            <label class="field-label">Адрес <span class="text-red-400">*</span></label>
+            <input v-model="createForm.address_string" class="field-input" placeholder="ул. Ленина, 5, кв. 10" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Запрашиваемая услуга <span class="text-red-400">*</span></label>
-            <select v-model="createForm.service_name" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Услуга <span class="text-red-400">*</span></label>
+            <select v-model="createForm.service_name" class="field-input">
               <option value="">— выберите услугу —</option>
               <option v-for="s in servicesList" :key="s" :value="s">{{ s }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Описание / пожелания</label>
-            <textarea v-model="createForm.description" class="field-input w-full" rows="3"
+            <label class="field-label">Описание / пожелания</label>
+            <textarea v-model="createForm.description" class="field-input resize-none" rows="2"
                       placeholder="Дополнительная информация..."></textarea>
           </div>
         </div>
-        <div v-if="createErrors" class="mt-3 text-xs text-red-600">{{ createErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div v-if="createErrors" class="mt-2 text-xs text-red-600">{{ createErrors }}</div>
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.create = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitCreate" :disabled="submitting" class="btn-primary text-sm">Создать</button>
         </div>
@@ -153,35 +153,35 @@
 
     <!-- Модал: Редактировать (оператор, пока pending) -->
     <div v-if="modals.edit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-4">Редактировать запрос</h3>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Имя абонента <span class="text-red-400">*</span></label>
-            <input v-model="editForm.name" class="field-input w-full" />
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">Редактировать запрос</h3>
+        <div class="space-y-2">
+          <div class="field-row">
+            <label class="field-label">Имя <span class="text-red-400">*</span></label>
+            <input v-model="editForm.name" class="field-input" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Телефон <span class="text-red-400">*</span></label>
-            <input v-model="editForm.phone" class="field-input w-full" />
+          <div class="field-row">
+            <label class="field-label">Телефон <span class="text-red-400">*</span></label>
+            <input v-model="editForm.phone" class="field-input" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Адрес <span class="text-red-400">*</span></label>
-            <input v-model="editForm.address_string" class="field-input w-full" />
+          <div class="field-row">
+            <label class="field-label">Адрес <span class="text-red-400">*</span></label>
+            <input v-model="editForm.address_string" class="field-input" />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Услуга <span class="text-red-400">*</span></label>
-            <select v-model="editForm.service_name" class="field-input w-full">
+          <div class="field-row">
+            <label class="field-label">Услуга <span class="text-red-400">*</span></label>
+            <select v-model="editForm.service_name" class="field-input">
               <option value="">— выберите услугу —</option>
               <option v-for="s in servicesList" :key="s" :value="s">{{ s }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Описание</label>
-            <textarea v-model="editForm.description" class="field-input w-full" rows="3"></textarea>
+            <label class="field-label">Описание</label>
+            <textarea v-model="editForm.description" class="field-input resize-none" rows="2"></textarea>
           </div>
         </div>
-        <div v-if="editErrors" class="mt-3 text-xs text-red-600">{{ editErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div v-if="editErrors" class="mt-2 text-xs text-red-600">{{ editErrors }}</div>
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.edit = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitEdit" :disabled="submitting" class="btn-primary text-sm">Сохранить</button>
         </div>
@@ -190,21 +190,21 @@
 
     <!-- Модал: Выполнить (администратор) -->
     <div v-if="modals.accept" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-1">Выполнить запрос</h3>
-        <p class="text-xs text-gray-500 mb-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-1">Выполнить запрос</h3>
+        <p class="text-xs text-gray-500 mb-3">
           {{ activeRecord?.name }} — {{ activeRecord?.service_name }}
         </p>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Комментарий <span class="text-red-400">*</span></label>
-          <textarea v-model="processForm.admin_comment" class="field-input w-full" rows="4"
+          <label class="field-label">Комментарий <span class="text-red-400">*</span></label>
+          <textarea v-model="processForm.admin_comment" class="field-input resize-none" rows="3"
                     placeholder="Услуга будет подключена в течение..."></textarea>
         </div>
         <div v-if="processErrors" class="mt-2 text-xs text-red-600">{{ processErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.accept = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitAccept" :disabled="submitting"
-                  class="px-4 py-2 rounded-xl text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
+                  class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
             Выполнить
           </button>
         </div>
@@ -213,21 +213,21 @@
 
     <!-- Модал: Отклонить (администратор) -->
     <div v-if="modals.reject" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-base font-semibold mb-1">Отклонить запрос</h3>
-        <p class="text-xs text-gray-500 mb-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-1">Отклонить запрос</h3>
+        <p class="text-xs text-gray-500 mb-3">
           {{ activeRecord?.name }} — {{ activeRecord?.service_name }}
         </p>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Причина отклонения <span class="text-red-400">*</span></label>
-          <textarea v-model="processForm.admin_comment" class="field-input w-full" rows="4"
+          <label class="field-label">Причина отклонения <span class="text-red-400">*</span></label>
+          <textarea v-model="processForm.admin_comment" class="field-input resize-none" rows="3"
                     placeholder="Нет технической возможности..."></textarea>
         </div>
         <div v-if="processErrors" class="mt-2 text-xs text-red-600">{{ processErrors }}</div>
-        <div class="mt-5 flex justify-end gap-2">
+        <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.reject = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitReject" :disabled="submitting"
-                  class="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
+                  class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
             Отклонить
           </button>
         </div>
@@ -236,8 +236,8 @@
 
     <!-- Модал: Полная информация -->
     <div v-if="modals.detail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="modals.detail = false">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
-        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
             <h3 class="text-base font-semibold text-gray-800">Запрос услуги</h3>
             <span v-if="detailData" :class="statusClass(detailData.status)"
@@ -255,7 +255,7 @@
         <div v-if="detailLoading" class="flex-1 flex items-center justify-center p-10 text-sm text-gray-400">
           Загрузка...
         </div>
-        <div v-else-if="detailData" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <div v-else-if="detailData" class="flex-1 overflow-y-auto p-4 space-y-3">
           <!-- Основные данные -->
           <div class="grid grid-cols-2 gap-3 text-sm">
             <div>
@@ -289,8 +289,8 @@
           </div>
 
           <!-- История -->
-          <div class="border-t border-gray-100 pt-4">
-            <div class="text-xs font-medium text-gray-500 mb-3">История</div>
+          <div class="border-t border-gray-100 pt-3">
+            <div class="text-xs font-medium text-gray-500 mb-2">История</div>
             <div v-if="!detailData.logs || !detailData.logs.length"
                  class="text-xs text-gray-400">История не записана (заявка создана до включения логирования)</div>
             <div v-else class="space-y-2">
@@ -313,7 +313,7 @@
           </div>
         </div>
 
-        <div class="px-6 py-3 border-t border-gray-100 flex justify-end shrink-0">
+        <div class="px-4 py-2.5 border-t border-gray-100 flex justify-end shrink-0">
           <button @click="modals.detail = false" class="btn-outline text-sm">Закрыть</button>
         </div>
       </div>
