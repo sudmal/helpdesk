@@ -80,17 +80,17 @@
             </div>
           </div>
 
-          <!-- Поля — сетка адаптивная -->
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-2 text-sm mb-2.5">
-            <div><p class="text-xs text-gray-400 mb-0.5">Телефон</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.phone ?? ticket.address?.phone ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-400 mb-0.5">Договор</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.contract_no ?? ticket.address?.contract_no ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-400 mb-0.5">Территория</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.address?.territory?.name ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-400 mb-0.5">Бригада</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.brigade?.name ?? 'Не назначена' ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-400 mb-0.5">Создал</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.creator?.name ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-400 mb-0.5">Создана</p><p class="text-sm font-medium text-gray-700 break-words">{{ formatDate(ticket.created_at) ?? '—' }}</p></div>
-<div><p class="text-xs text-gray-400 mb-0.5">Запланирован</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.scheduled_at ? formatDateTime(ticket.scheduled_at) : '—' ?? '—' }}</p></div>
-            <div v-if="ticket.closed_at"><p class="text-xs text-gray-400 mb-0.5">Закрыта</p><p class="text-sm font-medium text-gray-700 break-words">{{ formatDate(ticket.closed_at) ?? '—' }}</p></div>
-            <div v-if="ticket.act?.number"><p class="text-xs text-gray-400 mb-0.5">Акт</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.act.number }}</p></div>
+          <!-- Поля — сетка адаптивная, лейбл в строку со значением -->
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-1.5 text-sm mb-2.5">
+            <p><span class="text-xs text-gray-400">Телефон: </span><span class="font-medium text-gray-700 break-words">{{ ticket.phone ?? ticket.address?.phone ?? '—' }}</span></p>
+            <p><span class="text-xs text-gray-400">Договор: </span><span class="font-medium text-gray-700 break-words">{{ ticket.contract_no ?? ticket.address?.contract_no ?? '—' }}</span></p>
+            <p><span class="text-xs text-gray-400">Территория: </span><span class="font-medium text-gray-700 break-words">{{ ticket.address?.territory?.name ?? '—' }}</span></p>
+            <p><span class="text-xs text-gray-400">Бригада: </span><span class="font-medium text-gray-700 break-words">{{ ticket.brigade?.name ?? 'Не назначена' ?? '—' }}</span></p>
+            <p><span class="text-xs text-gray-400">Создал: </span><span class="font-medium text-gray-700 break-words">{{ ticket.creator?.name ?? '—' }}</span></p>
+            <p><span class="text-xs text-gray-400">Создана: </span><span class="font-medium text-gray-700 break-words">{{ formatDate(ticket.created_at) ?? '—' }}</span></p>
+            <p><span class="text-xs text-gray-400">Запланирован: </span><span class="font-medium text-gray-700 break-words">{{ ticket.scheduled_at ? formatDateTime(ticket.scheduled_at) : '—' ?? '—' }}</span></p>
+            <p v-if="ticket.closed_at"><span class="text-xs text-gray-400">Закрыта: </span><span class="font-medium text-gray-700 break-words">{{ formatDate(ticket.closed_at) ?? '—' }}</span></p>
+            <p v-if="ticket.act?.number"><span class="text-xs text-gray-400">Акт: </span><span class="font-medium text-gray-700 break-words">{{ ticket.act.number }}</span></p>
           </div>
 
           <div class="mt-2.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">

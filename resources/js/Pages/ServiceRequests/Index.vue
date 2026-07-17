@@ -256,35 +256,24 @@
           Загрузка...
         </div>
         <div v-else-if="detailData" class="flex-1 overflow-y-auto p-4 space-y-3">
-          <!-- Основные данные -->
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <div class="text-xs text-gray-400 mb-0.5">Имя</div>
-              <div class="font-medium">{{ detailData.name }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400 mb-0.5">Телефон</div>
-              <div class="font-mono">{{ detailData.phone }}</div>
-            </div>
-            <div class="col-span-2">
-              <div class="text-xs text-gray-400 mb-0.5">Адрес</div>
-              <div>{{ detailData.address_string }}</div>
-            </div>
-            <div class="col-span-2">
-              <div class="text-xs text-gray-400 mb-0.5">Услуга</div>
-              <div>
-                <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium text-xs">
-                  {{ detailData.service_name }}
-                </span>
-              </div>
-            </div>
+          <!-- Основные данные — лейбл в строку со значением -->
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+            <p><span class="text-xs text-gray-400">Имя: </span><span class="font-medium">{{ detailData.name }}</span></p>
+            <p><span class="text-xs text-gray-400">Телефон: </span><span class="font-mono">{{ detailData.phone }}</span></p>
+            <p class="col-span-2"><span class="text-xs text-gray-400">Адрес: </span>{{ detailData.address_string }}</p>
+            <p class="col-span-2">
+              <span class="text-xs text-gray-400">Услуга: </span>
+              <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium text-xs">
+                {{ detailData.service_name }}
+              </span>
+            </p>
             <div v-if="detailData.description" class="col-span-2">
-              <div class="text-xs text-gray-400 mb-0.5">Описание</div>
-              <div class="text-gray-700 whitespace-pre-wrap">{{ detailData.description }}</div>
+              <p class="text-xs text-gray-400 mb-0.5">Описание</p>
+              <p class="text-gray-700 whitespace-pre-wrap">{{ detailData.description }}</p>
             </div>
             <div v-if="detailData.admin_comment" class="col-span-2">
-              <div class="text-xs text-gray-400 mb-0.5">Комментарий администратора</div>
-              <div class="text-gray-700 whitespace-pre-wrap">{{ detailData.admin_comment }}</div>
+              <p class="text-xs text-gray-400 mb-0.5">Комментарий администратора</p>
+              <p class="text-gray-700 whitespace-pre-wrap">{{ detailData.admin_comment }}</p>
             </div>
           </div>
 

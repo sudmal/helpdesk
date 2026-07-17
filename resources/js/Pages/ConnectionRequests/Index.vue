@@ -408,49 +408,28 @@
           <div class="text-gray-400 text-sm">Загрузка...</div>
         </div>
 
-        <div v-else-if="detailData" class="flex-1 overflow-y-auto p-4 space-y-4">
-          <!-- Основные данные -->
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <div class="text-xs text-gray-400 mb-0.5">Имя клиента</div>
-              <div class="text-sm font-medium">{{ detailData.name }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400 mb-0.5">Телефон</div>
-              <div class="text-sm font-mono">{{ detailData.phone }}</div>
-            </div>
-            <div class="col-span-2">
-              <div class="text-xs text-gray-400 mb-0.5">Адрес</div>
-              <div class="text-sm">{{ detailData.address_string }}</div>
-            </div>
-            <div v-if="detailData.territory">
-              <div class="text-xs text-gray-400 mb-0.5">Территория</div>
-              <div class="text-sm">{{ detailData.territory.name }}</div>
-            </div>
-            <div v-if="detailData.brigade">
-              <div class="text-xs text-gray-400 mb-0.5">Бригада</div>
-              <div class="text-sm">{{ detailData.brigade.name }}</div>
-            </div>
-            <div v-if="detailData.service_type">
-              <div class="text-xs text-gray-400 mb-0.5">Участок</div>
-              <div class="text-sm">{{ detailData.service_type.name }}</div>
-            </div>
-            <div v-if="detailData.scheduled_at">
-              <div class="text-xs text-gray-400 mb-0.5">Дата подключения</div>
-              <div class="text-sm">{{ fmtDateTime(detailData.scheduled_at) }}</div>
-            </div>
+        <div v-else-if="detailData" class="flex-1 overflow-y-auto p-4 space-y-3">
+          <!-- Основные данные — лейбл в строку со значением -->
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+            <p><span class="text-xs text-gray-400">Имя клиента: </span><span class="font-medium">{{ detailData.name }}</span></p>
+            <p><span class="text-xs text-gray-400">Телефон: </span><span class="font-mono">{{ detailData.phone }}</span></p>
+            <p class="col-span-2"><span class="text-xs text-gray-400">Адрес: </span>{{ detailData.address_string }}</p>
+            <p v-if="detailData.territory"><span class="text-xs text-gray-400">Территория: </span>{{ detailData.territory.name }}</p>
+            <p v-if="detailData.brigade"><span class="text-xs text-gray-400">Бригада: </span>{{ detailData.brigade.name }}</p>
+            <p v-if="detailData.service_type"><span class="text-xs text-gray-400">Участок: </span>{{ detailData.service_type.name }}</p>
+            <p v-if="detailData.scheduled_at"><span class="text-xs text-gray-400">Дата подключения: </span>{{ fmtDateTime(detailData.scheduled_at) }}</p>
+            <p v-if="detailData.act">
+              <span class="text-xs text-gray-400">Акт: </span>
+              <button @click="router.get(route('acts.show', detailData.act.id))"
+                      class="font-medium text-blue-600 hover:underline">{{ detailData.act.number }} →</button>
+            </p>
             <div v-if="detailData.description" class="col-span-2">
-              <div class="text-xs text-gray-400 mb-0.5">Описание</div>
-              <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ detailData.description }}</div>
+              <p class="text-xs text-gray-400 mb-0.5">Описание</p>
+              <p class="text-gray-700 whitespace-pre-wrap">{{ detailData.description }}</p>
             </div>
             <div v-if="detailData.notes" class="col-span-2">
-              <div class="text-xs text-gray-400 mb-0.5">Примечания</div>
-              <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ detailData.notes }}</div>
-            </div>
-            <div v-if="detailData.act">
-              <div class="text-xs text-gray-400 mb-0.5">Акт</div>
-              <button @click="router.get(route('acts.show', detailData.act.id))"
-                      class="text-sm font-medium text-blue-600 hover:underline">{{ detailData.act.number }} →</button>
+              <p class="text-xs text-gray-400 mb-0.5">Примечания</p>
+              <p class="text-gray-700 whitespace-pre-wrap">{{ detailData.notes }}</p>
             </div>
           </div>
 

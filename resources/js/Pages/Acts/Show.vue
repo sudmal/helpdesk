@@ -49,26 +49,20 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100">
-          <div>
-            <p class="text-xs text-gray-400 mb-0.5">Дата создания</p>
-            <p class="text-sm font-medium text-gray-700">{{ fmtDateTime(act.created_at) }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-400 mb-0.5">Территория / адрес</p>
-            <p class="text-sm font-medium text-gray-700">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-1.5 mt-2.5 pt-2.5 border-t border-gray-100 text-sm">
+          <p><span class="text-xs text-gray-400">Дата создания: </span><span class="font-medium text-gray-700">{{ fmtDateTime(act.created_at) }}</span></p>
+          <p>
+            <span class="text-xs text-gray-400">Территория / адрес: </span>
+            <span class="font-medium text-gray-700">
               <template v-if="act.ticket">
                 <span v-if="act.ticket.address?.territory">{{ act.ticket.address.territory.name }} — </span>{{ act.ticket.address?.full_address || '—' }}
               </template>
               <template v-else-if="act.connection_request">
                 <span v-if="act.connection_request.territory">{{ act.connection_request.territory.name }} — </span>{{ act.connection_request.address_string || '—' }}
               </template>
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-400 mb-0.5">Монтажник (автор)</p>
-            <p class="text-sm font-medium text-gray-700">{{ act.creator?.name || '—' }}</p>
-          </div>
+            </span>
+          </p>
+          <p><span class="text-xs text-gray-400">Монтажник (автор): </span><span class="font-medium text-gray-700">{{ act.creator?.name || '—' }}</span></p>
         </div>
       </div>
 
