@@ -117,7 +117,7 @@
           <h3 class="font-medium text-sm mb-3 text-gray-700">Назначить бригаду</h3>
           <form @submit.prevent="submitAssign" class="flex gap-2 flex-wrap">
             <select v-model="assignForm.brigade_id"
-                    class="flex-1 min-w-[160px] border border-gray-200 rounded-xl px-3 py-1.5 text-sm">
+                    class="field-input flex-1 min-w-[160px]">
               <option value="">— Бригада —</option>
               <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
@@ -205,8 +205,7 @@
                 class="border-t border-gray-100 pt-3 space-y-2">
             <textarea v-model="commentBody" rows="3"
                       placeholder="Добавить комментарий..."
-                      class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm resize-none
-                             focus:outline-none focus:ring-2 focus:ring-blue-500/30"></textarea>
+                      class="field-input resize-none"></textarea>
             <div class="flex items-center gap-2 flex-wrap">
               <label class="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
                 <input type="checkbox" v-model="commentInternal" class="rounded" />
@@ -289,38 +288,37 @@
 
     <!-- Модалка закрытия -->
     <Modal v-if="showCloseModal" title="Закрыть заявку" size="lg" @close="showCloseModal = false">
-      <form @submit.prevent="submitClose" class="space-y-3">
-        <div v-if="$page.props.closeReasons?.length">
-          <label class="block text-xs text-gray-500 mb-1">Причина <span class="text-gray-400">(шаблон)</span></label>
+      <form @submit.prevent="submitClose" class="space-y-2">
+        <div v-if="$page.props.closeReasons?.length" class="field-row">
+          <label class="field-label">Причина</label>
           <select @change="e => { closeComment = e.target.value; e.target.selectedIndex = 0 }"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                  class="field-input">
             <option value="">— выбрать из шаблонов —</option>
             <option v-for="r in $page.props.closeReasons" :key="r" :value="r">{{ r }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Комментарий</label>
-          <textarea v-model="closeComment" rows="3"
-                    class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm resize-none"></textarea>
+          <label class="field-label">Комментарий</label>
+          <textarea v-model="closeComment" rows="3" class="field-input resize-none"></textarea>
         </div>
         <AttachmentUpload v-model="closeFiles" label="Прикрепить фото/документы" />
 
         <!-- Расходные материалы -->
-        <div class="border-t border-gray-100 pt-3">
+        <div class="border-t border-gray-100 pt-2.5">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" v-model="useMaterials"
                    class="rounded w-4 h-4 text-blue-600" />
             <span class="text-sm text-gray-700">📦 Использовались расходные материалы</span>
           </label>
-          <div v-if="useMaterials" class="mt-2">
-            <label class="block text-xs text-gray-500 mb-1">Тип акта *</label>
-            <select v-model="closeActType" required
-                    class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm bg-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/30">
-              <option value="">— выбрать тип —</option>
-              <option value="regular">Обычный</option>
-              <option value="repair">Ремонт/Восстановление</option>
-            </select>
+          <div v-if="useMaterials" class="mt-2 space-y-2">
+            <div class="field-row">
+              <label class="field-label">Тип акта *</label>
+              <select v-model="closeActType" required class="field-input">
+                <option value="">— выбрать тип —</option>
+                <option value="regular">Обычный</option>
+                <option value="repair">Ремонт/Восстановление</option>
+              </select>
+            </div>
             <MaterialsForm :materials="materialsCatalog" v-model="materialItems" />
           </div>
         </div>
@@ -334,18 +332,19 @@
 
     <!-- Модалка переноса -->
     <Modal v-if="showPostponeModal" title="Перенести заявку" @close="showPostponeModal = false">
-      <form @submit.prevent="submitPostpone" class="space-y-3">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Новая дата и время выезда *</label>
-          <TimePicker v-model="postponeDateTime"
-                      :work-start="settings?.work_hours_start ?? '09:00'"
-                      :work-end="settings?.work_hours_end ?? '17:00'"
-                      :step-minutes="Number(settings?.schedule_step_minutes ?? 30)" />
+      <form @submit.prevent="submitPostpone" class="space-y-2">
+        <div class="flex items-center gap-2">
+          <label class="field-label w-24 shrink-0 text-right mb-0">Дата выезда *</label>
+          <div class="flex-1">
+            <TimePicker v-model="postponeDateTime"
+                        :work-start="settings?.work_hours_start ?? '09:00'"
+                        :work-end="settings?.work_hours_end ?? '17:00'"
+                        :step-minutes="Number(settings?.schedule_step_minutes ?? 30)" />
+          </div>
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Причина переноса</label>
-          <textarea v-model="postponeComment" rows="2"
-                    class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm resize-none"></textarea>
+          <label class="field-label">Причина переноса</label>
+          <textarea v-model="postponeComment" rows="2" class="field-input resize-none"></textarea>
         </div>
         <div class="flex justify-end gap-2 pt-1">
           <button type="button" @click="showPostponeModal = false" class="btn-outline text-sm">Отмена</button>
@@ -573,8 +572,3 @@ function confirmDelete() {
   }
 }
 </script>
-
-<style scoped>
-.btn-sm     { @apply px-3 py-1.5 rounded-xl text-sm font-medium transition-colors; }
-.btn-outline { @apply border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors; }
-</style>
