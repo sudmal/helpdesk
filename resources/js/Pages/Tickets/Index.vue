@@ -11,7 +11,7 @@
         </svg>
         Карта
       </a>
-      <a :href="route('tickets.create')"
+      <a v-if="canCreate" :href="route('tickets.create')"
          class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700
                 text-white px-3 py-0.5 rounded-lg text-sm font-medium transition-colors">
         + Новая
@@ -362,6 +362,7 @@ const props = defineProps({
   overdueCount: { type: Number, default: 0 },
   sort:         { type: String, default: 'created_at' },
   sortDir:      { type: String, default: 'desc' },
+  canCreate:    { type: Boolean, default: false },
 })
 
 const localFilters = ref({

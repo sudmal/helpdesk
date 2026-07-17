@@ -102,6 +102,7 @@ class TicketController extends Controller
                     ->whereNotNull('scheduled_at')
                     ->where('scheduled_at', '<', today())
                     ->count()),
+            'canCreate' => $user->can('create', Ticket::class),
         ]);
     }
 
@@ -228,6 +229,16 @@ class TicketController extends Controller
             'canClose'       => auth()->user()->can('close', $ticket),
             'canComment'     => auth()->user()->can('comment', $ticket),
             'canDelete'      => auth()->user()->can('delete', $ticket),
+            // Раньше "В работу"/"Пауза"/"Перенести" во фронте проверялись через
+            // canClose — но у TicketPolicy это отдельные способности с другими
+            // правилами (start/pause: только бригадир/монтажник/админ, без учёта
+            // tickets.close; postpone: шире close — ещё head_support/operator).
+            // Несовпадение приводило к тому, что кнопка показывалась не тем, кому
+            // положено, и вела на 403 — см. память project-acts-feature, "403 на
+            // недоступных действиях".
+            'canStart'       => auth()->user()->can('start', $ticket),
+            'canPause'       => auth()->user()->can('pause', $ticket),
+            'canPostpone'    => auth()->user()->can('postpone', $ticket),
             'settings'       => [
                 'lanbillingEnabled'    => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),
                 'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),

@@ -7,15 +7,15 @@
                 @click="$inertia.get(route('tickets.edit', ticket.id))"
                 class="btn-outline text-sm" title="Изменить">✏️</button>
 
-        <button v-if="canClose && ticket.status.slug === 'new'"
+        <button v-if="canStart && ticket.status.slug === 'new'"
                 @click="doAction('start')"
                 class="btn-sm bg-amber-500 hover:bg-amber-600 text-white" title="В работу">▶</button>
 
-        <button v-if="canClose && ticket.status.slug === 'in_progress'"
+        <button v-if="canPause && ticket.status.slug === 'in_progress'"
                 @click="doAction('pause')"
                 class="btn-sm bg-gray-500 hover:bg-gray-600 text-white" title="Пауза">⏸</button>
 
-        <button v-if="canClose && !ticket.status.is_final"
+        <button v-if="canPostpone && !ticket.status.is_final"
                 @click="showPostponeModal = true"
                 class="btn-outline text-sm" title="Перенести">📅</button>
 
@@ -453,6 +453,7 @@ const props = defineProps({
   ticket: Object, addressHistory: Array, statuses: Array, brigades: Array,
   materialsCatalog: { type: Array, default: () => [] },
   canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canComment: Boolean, canDelete: Boolean,
+  canStart: Boolean, canPause: Boolean, canPostpone: Boolean,
   settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
 })
 
