@@ -33,15 +33,15 @@
       </div>
     </template>
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
 
       <!-- ── Основная информация ── -->
-      <div class="xl:col-span-2 space-y-4">
+      <div class="xl:col-span-2 space-y-3">
 
         <!-- Карточка -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6">
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
           <!-- Шапка карточки: адрес слева, время справа, бейджи под адресом -->
-          <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="flex items-start justify-between gap-3 mb-3">
             <!-- Левая часть: номер + адрес + бейджи -->
             <div class="flex-1 min-w-0">
               <span class="text-xs text-gray-400 font-mono">{{ ticket.number }}</span>
@@ -81,7 +81,7 @@
           </div>
 
           <!-- Поля — сетка адаптивная -->
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-4">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-3">
             <div><p class="text-xs text-gray-400 mb-0.5">Телефон</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.phone ?? ticket.address?.phone ?? '—' }}</p></div>
             <div><p class="text-xs text-gray-400 mb-0.5">Договор</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.contract_no ?? ticket.address?.contract_no ?? '—' }}</p></div>
             <div><p class="text-xs text-gray-400 mb-0.5">Территория</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.address?.territory?.name ?? '—' }}</p></div>
@@ -93,7 +93,7 @@
             <div v-if="ticket.act?.number"><p class="text-xs text-gray-400 mb-0.5">Акт</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.act.number }}</p></div>
           </div>
 
-          <div class="mt-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+          <div class="mt-3 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
             <p class="text-xs text-gray-400 mb-1.5 font-medium uppercase tracking-wide">Описание</p>
             <p class="text-base text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
               {{ ticket.description || '—' }}
@@ -113,11 +113,11 @@
 
         <!-- Назначение бригады -->
         <div v-if="canAssign && !ticket.status.is_final"
-             class="bg-white rounded-2xl border border-gray-200 p-4">
+             class="bg-white rounded-xl border border-gray-200 p-4">
           <h3 class="font-medium text-sm mb-3 text-gray-700">Назначить бригаду</h3>
           <form @submit.prevent="submitAssign" class="flex gap-2 flex-wrap">
             <select v-model="assignForm.brigade_id"
-                    class="flex-1 min-w-[160px] border border-gray-200 rounded-xl px-3 py-2 text-sm">
+                    class="flex-1 min-w-[160px] border border-gray-200 rounded-xl px-3 py-1.5 text-sm">
               <option value="">— Бригада —</option>
               <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
@@ -127,15 +127,15 @@
 
         <!-- Вложения -->
         <div v-if="ticket.attachments?.length"
-             class="bg-white rounded-2xl border border-gray-200 p-4">
+             class="bg-white rounded-xl border border-gray-200 p-4">
           <h3 class="font-medium text-sm mb-3 text-gray-700">Вложения</h3>
           <AttachmentList :attachments="ticket.attachments" />
         </div>
 
         <!-- Расходные материалы (просмотр) -->
         <div v-if="ticket.act?.materials?.length"
-             class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+             class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
+          <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100">
             <h3 class="font-medium text-sm text-gray-700 flex items-center gap-2">
               📦 Расходные материалы
               <span class="text-xs font-mono text-gray-400">{{ ticket.act.number }}</span>
@@ -148,25 +148,25 @@
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-gray-50 border-b border-gray-100 text-gray-500">
-                <th class="text-center px-3 py-2 w-16">Код</th>
-                <th class="text-left px-4 py-2">Наименование</th>
-                <th class="text-center px-3 py-2 w-24">Кол-во</th>
-                <th class="text-right px-3 py-2 w-24">Цена/ед</th>
-                <th class="text-right px-4 py-2 w-24">Сумма</th>
+                <th class="text-center px-3 py-1.5 w-16">Код</th>
+                <th class="text-left px-4 py-1.5">Наименование</th>
+                <th class="text-center px-3 py-1.5 w-24">Кол-во</th>
+                <th class="text-right px-3 py-1.5 w-24">Цена/ед</th>
+                <th class="text-right px-4 py-1.5 w-24">Сумма</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr v-for="m in ticket.act.materials" :key="m.id"
                   class="hover:bg-gray-50">
-                <td class="px-3 py-2 text-center text-gray-400 font-mono text-xs">{{ m.material_code || '—' }}</td>
-                <td class="px-4 py-2 text-gray-800">{{ m.material_name }}</td>
-                <td class="px-3 py-2 text-center text-gray-600">
+                <td class="px-3 py-1.5 text-center text-gray-400 font-mono text-xs">{{ m.material_code || '—' }}</td>
+                <td class="px-4 py-1.5 text-gray-800">{{ m.material_name }}</td>
+                <td class="px-3 py-1.5 text-center text-gray-600">
                   {{ m.quantity }} {{ m.material_unit }}
                 </td>
-                <td class="px-3 py-2 text-right text-gray-500 tabular-nums">
+                <td class="px-3 py-1.5 text-right text-gray-500 tabular-nums">
                   {{ m.price_at_time }} ₽
                 </td>
-                <td class="px-4 py-2 text-right font-medium tabular-nums">
+                <td class="px-4 py-1.5 text-right font-medium tabular-nums">
                   {{ (m.price_at_time * m.quantity).toFixed(2) }} ₽
                 </td>
               </tr>
@@ -176,12 +176,12 @@
         </div>
 
         <!-- Комментарии -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
-          <h3 class="font-medium text-sm mb-4 text-gray-700">
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
+          <h3 class="font-medium text-sm mb-3 text-gray-700">
             Комментарии <span class="text-gray-400">({{ ticket.comments?.length ?? 0 }})</span>
           </h3>
 
-          <div class="space-y-3 mb-4">
+          <div class="space-y-3 mb-3">
             <div v-for="c in ticket.comments" :key="c.id"
                  :class="['rounded-xl p-3', c.is_internal ? 'bg-amber-50 border border-amber-100' : 'bg-gray-50']">
               <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -205,7 +205,7 @@
                 class="border-t border-gray-100 pt-3 space-y-2">
             <textarea v-model="commentBody" rows="3"
                       placeholder="Добавить комментарий..."
-                      class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none
+                      class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm resize-none
                              focus:outline-none focus:ring-2 focus:ring-blue-500/30"></textarea>
             <div class="flex items-center gap-2 flex-wrap">
               <label class="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
@@ -223,11 +223,11 @@
       </div>
 
       <!-- ── Правая колонка ── -->
-      <div class="space-y-4">
+      <div class="space-y-3">
 
         <!-- Карта -->
-        <div v-if="mapAddress" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+        <div v-if="mapAddress" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-1.5 border-b border-gray-100">
             <h3 class="font-medium text-sm text-gray-700">На карте</h3>
             <a :href="mapUrl" target="_blank" rel="noopener"
                class="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
@@ -242,12 +242,12 @@
 
         <!-- История по адресу -->
         <div v-if="addressHistory?.length"
-             class="bg-white rounded-2xl border border-gray-200 p-4">
+             class="bg-white rounded-xl border border-gray-200 p-4">
           <h3 class="font-medium text-sm mb-3 text-gray-700">Предыдущие заявки</h3>
           <div class="space-y-1.5">
             <a v-for="h in addressHistory" :key="h.id"
                :href="route('tickets.show', h.id)"
-               class="block px-3 py-2.5 hover:bg-amber-50 rounded-lg transition-colors">
+               class="block px-3 py-1.5 hover:bg-amber-50 rounded-lg transition-colors">
               <div class="flex items-start justify-between gap-2 mb-0.5">
                 <div>
                   <span class="text-xs font-mono text-blue-600 font-medium">{{ h.number }}</span>
@@ -271,7 +271,7 @@
         </div>
 
         <!-- История изменений -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
           <h3 class="font-medium text-sm mb-3 text-gray-700">История</h3>
           <div class="space-y-2.5 max-h-80 overflow-y-auto">
             <div v-for="h in ticket.history" :key="h.id" class="text-xs border-l-2 border-gray-100 pl-2">
@@ -293,7 +293,7 @@
         <div v-if="$page.props.closeReasons?.length">
           <label class="block text-xs text-gray-500 mb-1">Причина <span class="text-gray-400">(шаблон)</span></label>
           <select @change="e => { closeComment = e.target.value; e.target.selectedIndex = 0 }"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                  class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30">
             <option value="">— выбрать из шаблонов —</option>
             <option v-for="r in $page.props.closeReasons" :key="r" :value="r">{{ r }}</option>
           </select>
@@ -301,7 +301,7 @@
         <div>
           <label class="block text-xs text-gray-500 mb-1">Комментарий</label>
           <textarea v-model="closeComment" rows="3"
-                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none"></textarea>
+                    class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm resize-none"></textarea>
         </div>
         <AttachmentUpload v-model="closeFiles" label="Прикрепить фото/документы" />
 
@@ -315,7 +315,7 @@
           <div v-if="useMaterials" class="mt-2">
             <label class="block text-xs text-gray-500 mb-1">Тип акта *</label>
             <select v-model="closeActType" required
-                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white
+                    class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm bg-white
                            focus:outline-none focus:ring-2 focus:ring-blue-500/30">
               <option value="">— выбрать тип —</option>
               <option value="regular">Обычный</option>
@@ -345,7 +345,7 @@
         <div>
           <label class="block text-xs text-gray-500 mb-1">Причина переноса</label>
           <textarea v-model="postponeComment" rows="2"
-                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none"></textarea>
+                    class="w-full border border-gray-200 rounded-xl px-3 py-1.5 text-sm resize-none"></textarea>
         </div>
         <div class="flex justify-end gap-2 pt-1">
           <button type="button" @click="showPostponeModal = false" class="btn-outline text-sm">Отмена</button>

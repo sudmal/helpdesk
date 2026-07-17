@@ -5,36 +5,36 @@
       <form @submit.prevent="submit" class="space-y-3">
 
         <!-- Адрес -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 space-y-3">
           <h3 class="font-medium text-sm text-gray-700">Адрес абонента</h3>
 
-          <div v-if="currentAddress" class="bg-blue-50 rounded-xl p-2.5 text-sm text-blue-800">
+          <div v-if="currentAddress" class="bg-blue-50 rounded-lg p-2 text-sm text-blue-800">
             📍 {{ currentAddress }}
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div class="field-row">
               <label class="field-label">Город</label>
               <select v-model="addrSel.city" @change="onAddrCity" class="field-input">
                 <option value="">— Выбрать город —</option>
                 <option v-for="c in addrCities" :key="c" :value="c">{{ c }}</option>
               </select>
             </div>
-            <div v-if="addrSel.city">
+            <div v-if="addrSel.city" class="field-row">
               <label class="field-label">Улица</label>
               <select v-model="addrSel.street" @change="onAddrStreet" class="field-input">
                 <option value="">— Выбрать улицу —</option>
                 <option v-for="s in addrStreets" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
-            <div v-if="addrSel.street">
+            <div v-if="addrSel.street" class="field-row">
               <label class="field-label">Дом</label>
               <select v-model="addrSel.building" @change="onAddrBuilding" class="field-input">
                 <option value="">— Выбрать дом —</option>
                 <option v-for="b in addrBuildings" :key="b" :value="b">{{ b }}</option>
               </select>
             </div>
-            <div v-if="addrSel.building">
+            <div v-if="addrSel.building" class="field-row">
               <label class="field-label">Квартира</label>
               <select v-model="selectedApartmentId" @change="onAddrApartment" class="field-input" :disabled="!addrApartments.length">
                 <option value="">{{ addrApartments.length ? '— Выбрать квартиру —' : 'нет квартир в справочнике для этого дома' }}</option>
@@ -47,26 +47,28 @@
         </div>
 
         <!-- Детали -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 space-y-3">
           <h3 class="font-medium text-sm text-gray-700">Детали заявки</h3>
 
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2">
             <div>
-              <label class="field-label">Тип заявки *</label>
-              <select v-model="form.type_id" required class="field-input">
-                <option v-for="t in types" :key="t.id" :value="t.id">{{ t.name }}</option>
-              </select>
-              <FieldError :error="form.errors.type_id" />
+              <div class="field-row">
+                <label class="field-label">Тип заявки *</label>
+                <select v-model="form.type_id" required class="field-input">
+                  <option v-for="t in types" :key="t.id" :value="t.id">{{ t.name }}</option>
+                </select>
+              </div>
+              <FieldError class="ml-[6.5rem]" :error="form.errors.type_id" />
             </div>
 
-            <div>
+            <div class="field-row">
               <label class="field-label">Статус *</label>
               <select v-model="form.status_id" required class="field-input">
                 <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
               </select>
             </div>
 
-            <div>
+            <div class="field-row">
               <label class="field-label">Приоритет *</label>
               <select v-model="form.priority" required class="field-input">
                 <option value="low">Низкий</option>
@@ -77,22 +79,27 @@
             </div>
 
             <div>
-              <label class="field-label">Желаемое время выезда</label>
-              <input v-model="form.scheduled_at" type="datetime-local" class="field-input" />
-              <FieldError :error="form.errors.scheduled_at" />
+              <div class="field-row">
+                <label class="field-label">Время выезда</label>
+                <input v-model="form.scheduled_at" type="datetime-local" class="field-input" />
+              </div>
+              <FieldError class="ml-[6.5rem]" :error="form.errors.scheduled_at" />
             </div>
 
-            <div>
+            <div class="field-row">
               <label class="field-label">Телефон</label>
-              <input v-model="form.phone" type="tel" class="field-input" />
+              <div :class="['input-group flex-1', form.errors.phone ? 'has-error' : '']">
+                <span class="input-group-prefix">📞</span>
+                <input v-model="form.phone" type="tel" />
+              </div>
             </div>
 
-            <div>
+            <div class="field-row">
               <label class="field-label">№ договора</label>
               <input v-model="form.contract_no" class="field-input" />
             </div>
 
-            <div>
+            <div class="field-row">
               <label class="field-label">Бригада</label>
               <select v-model="form.brigade_id" class="field-input">
                 <option value="">— Не назначена —</option>
@@ -100,7 +107,7 @@
               </select>
             </div>
 
-            <div>
+            <div class="field-row">
               <label class="field-label">Участок</label>
               <select v-model="form.service_type_id" class="field-input">
                 <option value="">— Не указан —</option>
@@ -112,7 +119,7 @@
 
           <div>
             <label class="field-label">Описание *</label>
-            <textarea v-model="form.description" rows="4" required
+            <textarea v-model="form.description" rows="3" required
                       class="field-input resize-none"></textarea>
             <FieldError :error="form.errors.description" />
           </div>
