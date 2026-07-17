@@ -506,6 +506,69 @@
       </div>
     </div>
 
+    <div v-if="activeTab === 'health'" class="p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-400">Данные снимаются в момент открытия — не в реальном времени</p>
+        <button @click="loadHealth" :disabled="health.loading" class="btn-outline text-xs py-1 px-3">
+          {{ health.loading ? 'Обновление...' : 'Обновить' }}
+        </button>
+      </div>
+
+      <div v-if="health.loading && !health.data" class="py-10 text-center text-gray-400 text-sm">Загрузка...</div>
+
+      <template v-else-if="health.data">
+        <div v-if="health.data.anomalies?.length" class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 space-y-1">
+          <p class="font-medium">⚠ Обнаружены проблемы:</p>
+          <p v-for="(issue, i) in health.data.anomalies" :key="i">• {{ issue }}</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Диск -->
+          <div class="bg-white border border-gray-200 rounded-xl p-3.5">
+            <h3 class="font-medium text-sm text-gray-700 mb-2">💾 Диск</h3>
+            <div class="w-full bg-gray-100 rounded-full h-2 mb-1.5 overflow-hidden">
+              <div class="h-full rounded-full" :class="diskBarClass(health.data.disk.used_pct)"
+                   :style="{ width: (health.data.disk.used_pct ?? 0) + '%' }"></div>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">{{ fmtBytes(health.data.disk.used_bytes) }} / {{ fmtBytes(health.data.disk.total_bytes) }} ({{ health.data.disk.used_pct }}%)</p>
+
+            <template v-if="health.data.smart">
+              <p><span class="text-xs text-gray-400">SMART: </span>
+                <span :class="health.data.smart.passed ? 'text-green-600' : 'text-red-600'" class="font-medium">
+                  {{ health.data.smart.passed ? 'PASSED' : 'FAILED' }}
+                </span>
+              </p>
+              <p v-if="health.data.smart.lifetime_remain_pct !== null"><span class="text-xs text-gray-400">Ресурс SSD: </span>{{ health.data.smart.lifetime_remain_pct }}%</p>
+              <p><span class="text-xs text-gray-400">Reallocated blocks: </span>{{ health.data.smart.reallocated_blocks ?? '—' }}</p>
+              <p><span class="text-xs text-gray-400">Наработка: </span>{{ health.data.smart.power_on_hours ?? '—' }} ч</p>
+              <p v-if="health.data.smart.temperature_c"><span class="text-xs text-gray-400">Температура: </span>{{ health.data.smart.temperature_c }}°C</p>
+            </template>
+            <p v-else class="text-xs text-gray-400">SMART недоступен</p>
+          </div>
+
+          <!-- CPU/RAM -->
+          <div class="bg-white border border-gray-200 rounded-xl p-3.5">
+            <h3 class="font-medium text-sm text-gray-700 mb-2">⚙ CPU / RAM</h3>
+            <p><span class="text-xs text-gray-400">Load average: </span>{{ health.data.cpu.load1 }} / {{ health.data.cpu.load5 }} / {{ health.data.cpu.load15 }} <span class="text-gray-400">({{ health.data.cpu.cores }} ядер)</span></p>
+            <p><span class="text-xs text-gray-400">RAM: </span>{{ fmtBytes(health.data.memory.used_bytes) }} / {{ fmtBytes(health.data.memory.total_bytes) }} ({{ health.data.memory.used_pct }}%)</p>
+            <p><span class="text-xs text-gray-400">Swap: </span>{{ fmtBytes(health.data.memory.swap_used_bytes) }} / {{ fmtBytes(health.data.memory.swap_total_bytes) }}</p>
+            <p><span class="text-xs text-gray-400">Аптайм: </span>{{ fmtUptime(health.data.uptime) }}</p>
+          </div>
+        </div>
+
+        <!-- Сервисы -->
+        <div class="bg-white border border-gray-200 rounded-xl p-3.5">
+          <h3 class="font-medium text-sm text-gray-700 mb-2">🧩 Сервисы</h3>
+          <div class="grid grid-cols-3 gap-2">
+            <div v-for="svc in health.data.services" :key="svc.name" class="flex items-center gap-1.5 text-sm">
+              <span class="w-2 h-2 rounded-full shrink-0" :class="svc.active ? 'bg-green-500' : 'bg-red-500'"></span>
+              {{ svc.name }}
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
     <!-- ══ МОДАЛКИ ══════════════════════════════════════════════════ -->
 
     <!-- Тип заявки -->
@@ -938,6 +1001,7 @@ const tabs = [
   { key: 'general',       label: 'Общие' },
   { key: 'notifications', label: 'Уведомления' },
   { key: 'lanbilling',    label: 'LANBilling' },
+  { key: 'health',        label: 'Здоровье сервера' },
 ]
 
 // ── Список услуг (Запросы услуг) ────────────────────────────────────
@@ -1419,6 +1483,42 @@ async function testLanbilling() {
   } finally { lbTesting.value = false }
 }
 // ── Безопасность ─────────────────────────────────────────────────────
+// ── Здоровье сервера ─────────────────────────────────────────────
+const health = ref({ loading: false, data: null })
+
+async function loadHealth() {
+  health.value.loading = true
+  try {
+    const { data } = await axios.get(route('settings.health.data'))
+    health.value.data = data
+  } catch (e) {
+    console.error('Health data load failed', e)
+  } finally {
+    health.value.loading = false
+  }
+}
+
+watch(activeTab, (tab) => { if (tab === 'health' && !health.value.data) loadHealth() })
+
+function diskBarClass(pct) {
+  if (pct >= 90) return 'bg-red-500'
+  if (pct >= 75) return 'bg-amber-500'
+  return 'bg-green-500'
+}
+
+function fmtBytes(bytes) {
+  if (bytes == null) return '—'
+  const gb = bytes / 1024 / 1024 / 1024
+  return gb >= 1 ? `${gb.toFixed(1)} ГБ` : `${(bytes / 1024 / 1024).toFixed(0)} МБ`
+}
+
+function fmtUptime(seconds) {
+  if (seconds == null) return '—'
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  return `${days} дн. ${hours} ч.`
+}
+
 const securityModal = ref({ show: false, tab: 'blocked', loading: false, data: null })
 
 async function openSecurityModal() {

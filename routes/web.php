@@ -176,6 +176,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('/service-request-services', [SettingsController::class, 'updateServiceRequestServices'])->name('service-request-services.update');
 
         Route::post('/security/unblock', [SettingsController::class, 'unblockIp'])->name('security.unblock');
+
+        Route::get('/health/data', [SettingsController::class, 'healthData'])->name('health.data');
     });
 
     Route::middleware('can:manage-settings')->get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');

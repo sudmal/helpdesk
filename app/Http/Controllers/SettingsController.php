@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\{TicketType, TicketStatus, User, Role, Territory, ServiceType, SystemSetting, Brigade, Promotion};
 use App\Console\Commands\{SendDailySummary, SendEveningReport};
+use App\Services\HealthReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Hash, Artisan};
 use Inertia\Inertia;
@@ -464,6 +465,18 @@ class SettingsController extends Controller
         app(\App\Services\LoginThrottleService::class)->unblock($request->input('ip'));
 
         return response()->json(['ok' => true]);
+    }
+
+    // ── Здоровье сервера ──────────────────────────────────────────────
+
+    public function healthData(HealthReportService $service)
+    {
+        $this->authorize('manage-settings');
+
+        $report = $service->collect();
+        $report['anomalies'] = $service->evaluateAnomalies($report);
+
+        return response()->json($report);
     }
 
     private function getServiceRequestServices(): array

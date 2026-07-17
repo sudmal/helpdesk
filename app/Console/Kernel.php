@@ -13,6 +13,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('helpdesk:daily-summary --scheduled')->everyMinute()->withoutOverlapping();
         $schedule->command('helpdesk:evening-report --scheduled')->everyMinute()->withoutOverlapping();
         $schedule->command('helpdesk:aggregate-call-stats')->dailyAt('00:05');
+        $schedule->command('helpdesk:check-health')->everyFifteenMinutes()->withoutOverlapping();
     }
 
     protected function commands(): void
