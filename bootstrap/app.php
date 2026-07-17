@@ -7,6 +7,9 @@ use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Inertia\Inertia;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -35,5 +38,21 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\AppServiceProvider::class,
     ])
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Единая понятная страница ошибок (403/404/419/429/500/503) на русском
+        // вместо стандартной англоязычной страницы Laravel — см. память
+        // project-acts-feature (найдено по жалобе пользователя на частые "403
+        // This action is unauthorized" при клике на недоступное действие).
+        // API (/api/*) не трогаем — ForceJsonResponse уже форсирует Accept:
+        // application/json для этих маршрутов, expectsJson() отсекает их сама.
+        $exceptions->respond(function (Response $response, \Throwable $exception, Request $request) {
+            $status = $response->getStatusCode();
+
+            if (!$request->expectsJson() && in_array($status, [403, 404, 419, 429, 500, 503], true)) {
+                return Inertia::render('Errors/Show', ['status' => $status])
+                    ->toResponse($request)
+                    ->setStatusCode($status);
+            }
+
+            return $response;
+        });
     })->create();
