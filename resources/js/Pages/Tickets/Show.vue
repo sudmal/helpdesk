@@ -33,15 +33,15 @@
       </div>
     </template>
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-2.5">
 
       <!-- ── Основная информация ── -->
-      <div class="xl:col-span-2 space-y-3">
+      <div class="xl:col-span-2 space-y-2.5">
 
         <!-- Карточка -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5">
           <!-- Шапка карточки: адрес слева, время справа, бейджи под адресом -->
-          <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="flex items-start justify-between gap-3 mb-2.5">
             <!-- Левая часть: номер + адрес + бейджи -->
             <div class="flex-1 min-w-0">
               <span class="text-xs text-gray-400 font-mono">{{ ticket.number }}</span>
@@ -56,17 +56,17 @@
                   ].filter(Boolean).join(', ')
                 : 'Адрес не указан' }}
               </h2>
-              <div class="flex flex-wrap gap-1.5 mt-2">
-              <Badge v-if="ticket.type"         :color="ticket.type.color"         :label="ticket.type.name" />
-              <Badge v-if="ticket.service_type" :color="ticket.service_type.color" :label="ticket.service_type.name" />
-              <Badge v-if="ticket.status"       :color="ticket.status.color"       :label="ticket.status.name" />
-              <Badge :color="priorityColor" :label="priorityLabel" />
-              <Badge v-if="ticket.days_overdue" color="#dc2626" :label="`Просрочена на ${ticket.days_overdue} дн.`" />
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
+              <Badge v-if="ticket.type"         small :color="ticket.type.color"         :label="ticket.type.name" />
+              <Badge v-if="ticket.service_type" small :color="ticket.service_type.color" :label="ticket.service_type.name" />
+              <Badge v-if="ticket.status"       small :color="ticket.status.color"       :label="ticket.status.name" />
+              <Badge small :color="priorityColor" :label="priorityLabel" />
+              <Badge v-if="ticket.days_overdue" small color="#dc2626" :label="`Просрочена на ${ticket.days_overdue} дн.`" />
               </div>
             </div>
             <!-- Правая часть: время выезда -->
             <div v-if="ticket.scheduled_at" class="shrink-0 text-right">
-              <p class="font-bold text-3xl leading-none tabular-nums"
+              <p class="font-bold text-2xl leading-none tabular-nums"
                  :class="isOverdue ? 'text-red-600' : 'text-green-600'">
                 {{ formatTime(ticket.scheduled_at) }}
               </p>
@@ -81,7 +81,7 @@
           </div>
 
           <!-- Поля — сетка адаптивная -->
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-3">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-2 text-sm mb-2.5">
             <div><p class="text-xs text-gray-400 mb-0.5">Телефон</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.phone ?? ticket.address?.phone ?? '—' }}</p></div>
             <div><p class="text-xs text-gray-400 mb-0.5">Договор</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.contract_no ?? ticket.address?.contract_no ?? '—' }}</p></div>
             <div><p class="text-xs text-gray-400 mb-0.5">Территория</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.address?.territory?.name ?? '—' }}</p></div>
@@ -93,14 +93,14 @@
             <div v-if="ticket.act?.number"><p class="text-xs text-gray-400 mb-0.5">Акт</p><p class="text-sm font-medium text-gray-700 break-words">{{ ticket.act.number }}</p></div>
           </div>
 
-          <div class="mt-3 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-            <p class="text-xs text-gray-400 mb-1.5 font-medium uppercase tracking-wide">Описание</p>
-            <p class="text-base text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
+          <div class="mt-2.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+            <p class="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">Описание</p>
+            <p class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
               {{ ticket.description || '—' }}
             </p>
           </div>
 
-          <div v-if="ticket.close_notes || ticket.closed_at" class="mt-3 bg-green-50 rounded-xl p-3">
+          <div v-if="ticket.close_notes || ticket.closed_at" class="mt-2.5 bg-green-50 rounded-lg p-2.5">
             <div class="flex items-center justify-between mb-1">
               <p class="text-xs text-green-600 font-medium">{{ ticket.status?.slug === 'postponed' ? 'Причина переноса' : 'Итог закрытия' }}</p>
               <p class="text-xs text-green-500">
@@ -113,8 +113,8 @@
 
         <!-- Назначение бригады -->
         <div v-if="canAssign && !ticket.status.is_final"
-             class="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 class="font-medium text-sm mb-3 text-gray-700">Назначить бригаду</h3>
+             class="bg-white rounded-xl border border-gray-200 p-3.5">
+          <h3 class="font-medium text-sm mb-2 text-gray-700">Назначить бригаду</h3>
           <form @submit.prevent="submitAssign" class="flex gap-2 flex-wrap">
             <select v-model="assignForm.brigade_id"
                     class="field-input flex-1 min-w-[160px]">
@@ -127,8 +127,8 @@
 
         <!-- Вложения -->
         <div v-if="ticket.attachments?.length"
-             class="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 class="font-medium text-sm mb-3 text-gray-700">Вложения</h3>
+             class="bg-white rounded-xl border border-gray-200 p-3.5">
+          <h3 class="font-medium text-sm mb-2 text-gray-700">Вложения</h3>
           <AttachmentList :attachments="ticket.attachments" />
         </div>
 
@@ -176,15 +176,15 @@
         </div>
 
         <!-- Комментарии -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 class="font-medium text-sm mb-3 text-gray-700">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5">
+          <h3 class="font-medium text-sm mb-2 text-gray-700">
             Комментарии <span class="text-gray-400">({{ ticket.comments?.length ?? 0 }})</span>
           </h3>
 
-          <div class="space-y-3 mb-3">
+          <div class="space-y-2 mb-2.5">
             <div v-for="c in ticket.comments" :key="c.id"
-                 :class="['rounded-xl p-3', c.is_internal ? 'bg-amber-50 border border-amber-100' : 'bg-gray-50']">
-              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                 :class="['rounded-lg p-2.5', c.is_internal ? 'bg-amber-50 border border-amber-100' : 'bg-gray-50']">
+              <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                 <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
                   {{ c.author?.name?.[0] }}
                 </div>
@@ -202,7 +202,7 @@
 
           <!-- Форма комментария -->
           <form v-if="canComment" @submit.prevent="submitComment"
-                class="border-t border-gray-100 pt-3 space-y-2">
+                class="border-t border-gray-100 pt-2.5 space-y-2">
             <textarea v-model="commentBody" rows="3"
                       placeholder="Добавить комментарий..."
                       class="field-input resize-none"></textarea>
@@ -222,11 +222,11 @@
       </div>
 
       <!-- ── Правая колонка ── -->
-      <div class="space-y-3">
+      <div class="space-y-2.5">
 
         <!-- Карта -->
         <div v-if="mapAddress" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-1.5 border-b border-gray-100">
+          <div class="flex items-center justify-between px-3.5 py-1.5 border-b border-gray-100">
             <h3 class="font-medium text-sm text-gray-700">На карте</h3>
             <a :href="mapUrl" target="_blank" rel="noopener"
                class="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
@@ -241,8 +241,8 @@
 
         <!-- История по адресу -->
         <div v-if="addressHistory?.length"
-             class="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 class="font-medium text-sm mb-3 text-gray-700">Предыдущие заявки</h3>
+             class="bg-white rounded-xl border border-gray-200 p-3.5">
+          <h3 class="font-medium text-sm mb-2 text-gray-700">Предыдущие заявки</h3>
           <div class="space-y-1.5">
             <a v-for="h in addressHistory" :key="h.id"
                :href="route('tickets.show', h.id)"
@@ -270,8 +270,8 @@
         </div>
 
         <!-- История изменений -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 class="font-medium text-sm mb-3 text-gray-700">История</h3>
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5">
+          <h3 class="font-medium text-sm mb-2 text-gray-700">История</h3>
           <div class="space-y-2.5 max-h-80 overflow-y-auto">
             <div v-for="h in ticket.history" :key="h.id" class="text-xs border-l-2 border-gray-100 pl-2">
               <div class="text-gray-400 mb-0.5">
