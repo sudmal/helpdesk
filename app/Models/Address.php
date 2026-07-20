@@ -52,6 +52,7 @@ class Address extends Model
             $query->where(function ($q) use ($word, $like) {
                 $q->where('street',           'like', $like)
                   ->orWhere('city',            'like', $like)
+                  ->orWhere('building',        'like', $like)
                   ->orWhere('subscriber_name', 'like', $like)
                   ->orWhere('phone',           'like', $like)
                   ->orWhere('contract_no',     'like', $like);
