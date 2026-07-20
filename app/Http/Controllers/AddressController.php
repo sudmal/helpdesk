@@ -413,39 +413,65 @@ class AddressController extends Controller
             $userTerritories = collect();
         }
 
-        $words         = array_values(array_filter(explode(' ', $q)));
-        $textWords     = $words;
+        // Точный резолв из модалки "Выбор адреса" -- city/street/building
+        // там УЖЕ известны из иерархии (dropdown'ы), поэтому вместо
+        // реконструкции текстовой строки и прогона через хрупкий разбор
+        // ниже (ломался на нечисловых домах вроде "Гаражи" и на служебных
+        // плейсхолдерах квартиры вроде "-", взятых из старых заявок) --
+        // фильтруем БД напрямую по точным значениям.
+        $exactCity      = trim((string) $request->get('city', ''));
+        $exactStreet    = trim((string) $request->get('street', ''));
+        $exactBuilding  = trim((string) $request->get('building', ''));
+        $exactApartment = trim((string) $request->get('apartment', ''));
+
         $buildingHint  = null;
         $apartmentHint = null;
 
-        // Дом/квартира -- это ХВОСТОВЫЕ числовые токены, а не любое число в
-        // строке. Улицы вида "20 партсъезда" начинают название с числа,
-        // которое не имеет отношения к номеру дома -- раньше первое же
-        // числовое слово (даже в начале, часть названия улицы) считалось
-        // buildingHint, из-за чего запросы вроде "20 парт" или "20 партсъезда
-        // 23A" не находили вообще ничего (дом "20" не существует, реальный
-        // дом "23A" утекал в apartmentHint или вообще терялся).
-        $tailNums = [];
-        while (!empty($textWords) && count($tailNums) < 2 && preg_match('/^\d+[а-яёa-z]?$/iu', end($textWords))) {
-            $tailNums[] = array_pop($textWords);
-        }
-        $tailNums = array_reverse($tailNums);
-        if (count($tailNums) === 2) {
-            [$buildingHint, $apartmentHint] = $tailNums;
-        } elseif (count($tailNums) === 1) {
-            $buildingHint = $tailNums[0];
-        }
+        if ($exactCity !== '' && $exactStreet !== '' && $exactBuilding !== '') {
+            $buildingHint  = $exactBuilding;
+            $apartmentHint = ($exactApartment !== '' && $exactApartment !== '-') ? $exactApartment : null;
 
-        $searchQuery = implode(' ', $textWords);
+            $addresses = Address::with('territory')
+                ->when($userTerritories->isNotEmpty(), fn($q) => $q->whereIn('territory_id', $userTerritories))
+                ->where('city', $exactCity)->where('street', $exactStreet)
+                ->whereIn('building', $this->buildingVariants($exactBuilding))
+                ->orderByRaw('CAST(building AS UNSIGNED)')
+                ->limit(15)
+                ->get(['id', 'city', 'street', 'building', 'apartment',
+                       'subscriber_name', 'phone', 'contract_no', 'territory_id']);
+        } else {
+            $words     = array_values(array_filter(explode(' ', $q)));
+            $textWords = $words;
 
-        $addresses = Address::with('territory')
-            ->when($userTerritories->isNotEmpty(), fn($q) => $q->whereIn('territory_id', $userTerritories))
-            ->when($searchQuery, fn($q) => $q->search($searchQuery))
-            ->when($buildingHint, fn($q) => $q->whereIn('building', $this->buildingVariants($buildingHint)))
-            ->orderByRaw('CAST(building AS UNSIGNED)')
-            ->limit(15)
-            ->get(['id', 'city', 'street', 'building', 'apartment',
-                   'subscriber_name', 'phone', 'contract_no', 'territory_id']);
+            // Дом/квартира -- это ХВОСТОВЫЕ числовые токены, а не любое число в
+            // строке. Улицы вида "20 партсъезда" начинают название с числа,
+            // которое не имеет отношения к номеру дома -- раньше первое же
+            // числовое слово (даже в начале, часть названия улицы) считалось
+            // buildingHint, из-за чего запросы вроде "20 парт" или "20 партсъезда
+            // 23A" не находили вообще ничего (дом "20" не существует, реальный
+            // дом "23A" утекал в apartmentHint или вообще терялся).
+            $tailNums = [];
+            while (!empty($textWords) && count($tailNums) < 2 && preg_match('/^\d+[а-яёa-z]?$/iu', end($textWords))) {
+                $tailNums[] = array_pop($textWords);
+            }
+            $tailNums = array_reverse($tailNums);
+            if (count($tailNums) === 2) {
+                [$buildingHint, $apartmentHint] = $tailNums;
+            } elseif (count($tailNums) === 1) {
+                $buildingHint = $tailNums[0];
+            }
+
+            $searchQuery = implode(' ', $textWords);
+
+            $addresses = Address::with('territory')
+                ->when($userTerritories->isNotEmpty(), fn($q) => $q->whereIn('territory_id', $userTerritories))
+                ->when($searchQuery, fn($q) => $q->search($searchQuery))
+                ->when($buildingHint, fn($q) => $q->whereIn('building', $this->buildingVariants($buildingHint)))
+                ->orderByRaw('CAST(building AS UNSIGNED)')
+                ->limit(15)
+                ->get(['id', 'city', 'street', 'building', 'apartment',
+                       'subscriber_name', 'phone', 'contract_no', 'territory_id']);
+        }
 
         $results     = [];
         $seenBuildings = [];

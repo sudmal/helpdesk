@@ -709,10 +709,21 @@ async function onAddrBuilding() {
 async function applyAddrModal() {
   if (!addrSel.building) return
   addrModalLoading.value = true
-  const q = [addrSel.street, addrSel.building, addrSel.apartment].filter(Boolean).join(' ')
-  addressQuery.value = q
+  // Резолвим точно по city/street/building/apartment (уже известны из
+  // иерархии) -- НЕ через реконструкцию текстовой строки: та ломалась и на
+  // нечисловых домах ("Гаражи"), и на служебных плейсхолдерах квартиры
+  // вроде "-" (взяты из старых заявок, попадали в query и портили разбор).
+  const aptForLabel = addrSel.apartment && addrSel.apartment !== '-' ? addrSel.apartment : null
+  addressQuery.value = [addrSel.street, addrSel.building, aptForLabel].filter(Boolean).join(' ')
   try {
-    const { data } = await axios.get(route('addresses.search'), { params: { q } })
+    const { data } = await axios.get(route('addresses.search'), {
+      params: {
+        city: addrSel.city,
+        street: addrSel.street,
+        building: addrSel.building,
+        apartment: addrSel.apartment,
+      },
+    })
     suggestions.value = data
     const exact = data.find(a => a.building === addrSel.building && (!addrSel.apartment || a.apartment === addrSel.apartment))
     // Раньше при отсутствии "точного" совпадения (a.building раньше вообще
