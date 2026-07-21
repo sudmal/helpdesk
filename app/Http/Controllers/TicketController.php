@@ -199,19 +199,27 @@ class TicketController extends Controller
         ]);
         $ticket->append('days_overdue');
 
-        // История заявок по этому адресу (кроме текущей)
+        // История заявок по этому же абоненту (кроме текущей). address_id один на
+        // подъезд/дом для части адресов (см. память проекта) — квартира не всегда
+        // заполнена на старых заявках, поэтому раньше "заявка без квартиры" считалась
+        // совпадением с ЛЮБОЙ квартирой этого адреса (orWhereNull/orWhere('apartment',''))
+        // и в историю подмешивались чужие абоненты того же дома. Теперь совпадение
+        // либо по точной квартире, либо по телефону — оба сигнала абонента, не адреса
+        // целиком. Если на текущей заявке нет ни квартиры, ни телефона — абонента
+        // надёжно не определить, историю не показываем вообще (пусто лучше, чем чужое).
         $addressHistory = $ticket->address_id
-
             ? Ticket::with(['type', 'status', 'act'])
                 ->where('address_id', $ticket->address_id)
                 ->where('id', '!=', $ticket->id)
-                ->when($ticket->apartment, fn($q) =>
-                    $q->where(function ($sub) use ($ticket) {
-                        $sub->where('apartment', $ticket->apartment)
-                            ->orWhereNull('apartment')
-                            ->orWhere('apartment', '');
-                    })
-                )
+                ->where(function ($q) use ($ticket) {
+                    $q->whereRaw('1 = 0');
+                    if ($ticket->apartment) {
+                        $q->orWhere('apartment', $ticket->apartment);
+                    }
+                    if ($ticket->phone) {
+                        $q->orWhere('phone', $ticket->phone);
+                    }
+                })
                 ->latest()
                 ->take(20)
                 ->get(['id', 'number', 'type_id', 'status_id', 'address_id',
