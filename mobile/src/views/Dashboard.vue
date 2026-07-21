@@ -27,6 +27,10 @@
               class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
         Сортировка: {{ sortOrder === 'time' ? 'по времени' : 'по адресу' }}
       </button>
+      <button @click="menuOpen = false; $router.push({ name: 'connections' })"
+              class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
+        📋 Подключения
+      </button>
       <button @click="doLogout" class="w-full text-left px-4 py-3 text-[#F87171] text-sm active:bg-white/5">
         Выйти
       </button>
@@ -61,7 +65,8 @@
 
           <TicketCard v-for="t in currentList" :key="t.id" :ticket="t" :group="activeTab === 'overdue' ? 'overdue' : activeTab"
                       :is-new="newIds.has(t.id)"
-                      @open="$router.push({ name: 'ticket-detail', params: { id: t.id } })" />
+                      @open="$router.push({ name: 'ticket-detail', params: { id: t.id } })"
+                      @open-act="$router.push({ name: 'act-detail', params: { id: $event } })" />
         </div>
       </PullToRefresh>
     </div>

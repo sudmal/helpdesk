@@ -62,15 +62,16 @@
       </div>
 
       <!-- Акт -->
-      <div v-if="ticket.act" class="bg-[#1E1E1E] rounded-lg p-3 flex items-center justify-between">
+      <button v-if="ticket.act" @click="$router.push({ name: 'act-detail', params: { id: ticket.act.id } })"
+              class="w-full bg-[#1E1E1E] rounded-lg p-3 flex items-center justify-between text-left">
         <div>
           <div class="text-[#E0E0E0] text-sm">Акт {{ ticket.act.number }}</div>
-          <div class="text-[#9E9E9E] text-xs">{{ ticket.act.status }}</div>
+          <div class="text-[#9E9E9E] text-xs">{{ actStatusLabel(ticket.act.status) }}</div>
         </div>
         <span v-if="ticket.act.materials_changed_at" class="text-black text-[10px] px-2 py-1 rounded" style="background:#FBBF24">
           есть правки акта
         </span>
-      </div>
+      </button>
 
       <!-- Вложения -->
       <div v-if="ticket.attachments?.length" class="bg-[#1E1E1E] rounded-lg p-3">
@@ -239,6 +240,11 @@ const materialsTotal = computed(() => {
     return sum + mat.price * item.quantity
   }, 0)
 })
+
+const actStatusLabels = { pending_foreman: 'Ждёт бригадира', approved: 'Утверждён', processing: 'В обработке', pending_subscriber_dept: 'Ждёт Абонотдел', completed: 'Завершён' }
+function actStatusLabel(s) {
+  return actStatusLabels[s] || s
+}
 
 function formatDateTime(s) {
   if (!s) return '—'

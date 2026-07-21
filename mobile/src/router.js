@@ -5,6 +5,9 @@ const routes = [
   { path: '/login', name: 'login', component: () => import('./views/Login.vue') },
   { path: '/', name: 'dashboard', component: () => import('./views/Dashboard.vue'), meta: { requiresAuth: true } },
   { path: '/tickets/:id', name: 'ticket-detail', component: () => import('./views/TicketDetail.vue'), meta: { requiresAuth: true }, props: true },
+  { path: '/connections', name: 'connections', component: () => import('./views/Connections.vue'), meta: { requiresAuth: true } },
+  { path: '/connections/:id', name: 'connection-detail', component: () => import('./views/ConnectionDetail.vue'), meta: { requiresAuth: true }, props: true },
+  { path: '/acts/:id', name: 'act-detail', component: () => import('./views/ActDetail.vue'), meta: { requiresAuth: true }, props: true },
 ]
 
 const router = createRouter({

@@ -17,11 +17,6 @@
           добавлена в {{ createdTime }}
         </span>
 
-        <span v-if="ticket.act?.materials_changed_at"
-              class="text-black text-[10px] px-1.5 py-0.5 rounded shrink-0" style="background:#FBBF24">
-          есть правки акта
-        </span>
-
         <a v-if="phone" :href="'tel:' + phone" @click.stop
            class="shrink-0 w-7 h-7 flex items-center justify-center rounded-full active:bg-white/10">
           <svg class="w-4 h-4 text-[#4ADE80]" fill="currentColor" viewBox="0 0 20 20">
@@ -35,9 +30,15 @@
       <!-- Строка 2: адрес -->
       <div class="text-[#E0E0E0] text-sm mt-1 truncate">{{ addressLine }}</div>
 
-      <!-- Строка 3: тип + статус -->
-      <div class="flex items-center gap-2 mt-1.5">
+      <!-- Строка 3: тип + акт + статус -->
+      <div class="flex items-center gap-1.5 mt-1.5">
         <span class="text-[#9E9E9E] text-xs flex-1 truncate">{{ ticket.type || '—' }}</span>
+        <span v-if="ticket.act" @click.stop="$emit('open-act', ticket.act.id)"
+              class="text-[11px] px-2 py-0.5 rounded shrink-0"
+              :class="ticket.act.materials_changed_at ? 'text-black' : 'text-white'"
+              :style="{ background: ticket.act.materials_changed_at ? '#FBBF24' : actColor }">
+          Акт{{ ticket.act.materials_changed_at ? ' ⚠' : '' }}
+        </span>
         <span class="text-white text-[11px] px-2 py-0.5 rounded shrink-0"
               :style="{ background: ticket.status?.color || '#6B7280' }">
           {{ ticket.status?.name || '—' }}
@@ -58,7 +59,7 @@ const props = defineProps({
   group: { type: String, default: '' }, // overdue | today | tomorrow -- влияет только на формат времени
   isNew: { type: Boolean, default: false }, // заявка есть в списке new_today (создана сегодня)
 })
-defineEmits(['open'])
+defineEmits(['open', 'open-act'])
 
 const phone = computed(() => props.ticket.phone?.trim() || null)
 
@@ -90,6 +91,9 @@ const timeLabel = computed(() => {
   const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   return `${date} ${time}`
 })
+
+const actColors = { pending_foreman: '#CA8A04', approved: '#4F46E5', processing: '#4F46E5', pending_subscriber_dept: '#4F46E5', completed: '#16A34A' }
+const actColor = computed(() => actColors[props.ticket.act?.status] || '#6B7280')
 
 function hexToRgb(hex) {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '')
