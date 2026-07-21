@@ -84,7 +84,7 @@
 
       <!-- Действия -->
       <div v-if="!ticket.status?.is_final" class="flex gap-2">
-        <button @click="closeModal = true" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#10B981">
+        <button @click="openCloseModal" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#10B981">
           Закрыть
         </button>
         <button @click="rescheduleModal = true" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#3B82F6">
@@ -123,14 +123,51 @@
 
     <!-- Модалка закрытия -->
     <div v-if="closeModal" class="fixed inset-0 bg-black/60 flex items-end z-50" @click.self="closeModal = false">
-      <div class="bg-[#1E1E1E] w-full rounded-t-2xl p-4 space-y-3">
+      <div class="bg-[#1E1E1E] w-full rounded-t-2xl p-4 space-y-3 max-h-[85vh] overflow-y-auto">
         <div class="text-white font-medium">Закрыть заявку</div>
         <textarea v-model="closeNotes" placeholder="Что было сделано..." rows="3"
                   class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10"></textarea>
-        <p class="text-[#9E9E9E] text-xs">Материалы и создание акта — доступно в веб-версии портала, здесь скоро появится.</p>
+
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" v-model="useMaterials" class="w-4 h-4" />
+          <span class="text-[#E0E0E0] text-sm">📦 Использовались расходные материалы</span>
+        </label>
+
+        <div v-if="useMaterials" class="space-y-2">
+          <select v-model="closeActType"
+                  class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10">
+            <option value="">— Тип акта —</option>
+            <option value="regular">Обычный</option>
+            <option value="repair">Ремонт/Восстановление</option>
+          </select>
+
+          <div v-if="loadingMaterials" class="text-[#9E9E9E] text-xs">Загрузка справочника...</div>
+
+          <div v-for="(item, idx) in materialItems" :key="idx" class="flex gap-2 items-center">
+            <select v-model="item.material_id"
+                    class="flex-1 min-w-0 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10">
+              <option value="">— Материал —</option>
+              <option v-for="m in materialsCatalog" :key="m.id" :value="m.id">
+                {{ m.code ? '[' + m.code + '] ' : '' }}{{ m.name }} — {{ m.price }}₽/{{ m.unit }}
+              </option>
+            </select>
+            <input v-model.number="item.quantity" type="number" min="0" placeholder="Кол-во"
+                   class="w-16 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10 text-center" />
+            <button @click="removeMaterialRow(idx)" class="text-[#9E9E9E] w-8 h-8 shrink-0 text-lg leading-none">✕</button>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <button @click="addMaterialRow" class="text-[#3B82F6] text-sm">+ Добавить материал</button>
+            <div v-if="materialsTotal > 0" class="text-[#E0E0E0] text-sm font-medium">
+              Итого: {{ materialsTotal.toFixed(2) }}₽
+            </div>
+          </div>
+        </div>
+
         <div class="flex gap-2">
           <button @click="closeModal = false" class="flex-1 h-11 rounded-lg text-white text-sm" style="background:#374151">Отмена</button>
-          <button @click="closeTicket" :disabled="closing" class="flex-1 h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50" style="background:#10B981">
+          <button @click="closeTicket" :disabled="closing || (useMaterials && !closeActType)"
+                  class="flex-1 h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50" style="background:#10B981">
             {{ closing ? '...' : 'Закрыть заявку' }}
           </button>
         </div>
@@ -173,6 +210,11 @@ const copiedField = ref('')
 const closeModal = ref(false)
 const closeNotes = ref('')
 const closing = ref(false)
+const useMaterials = ref(false)
+const closeActType = ref('')
+const materialItems = ref([{ material_id: '', quantity: 1 }])
+const materialsCatalog = ref([])
+const loadingMaterials = ref(false)
 
 const rescheduleModal = ref(false)
 const rescheduleAt = ref('')
@@ -188,6 +230,14 @@ const addressLine = computed(() => {
   if (ticket.value.address?.full) parts.push(ticket.value.address.full)
   if (ticket.value.apartment) parts.push(`кв.${ticket.value.apartment}`)
   return parts.join(', ') || 'Адрес не указан'
+})
+
+const materialsTotal = computed(() => {
+  return materialItems.value.reduce((sum, item) => {
+    const mat = materialsCatalog.value.find(m => m.id == item.material_id)
+    if (!mat || !item.quantity) return sum
+    return sum + mat.price * item.quantity
+  }, 0)
 })
 
 function formatDateTime(s) {
@@ -241,12 +291,44 @@ async function uploadPhoto(e) {
   e.target.value = ''
 }
 
+function addMaterialRow() {
+  materialItems.value.push({ material_id: '', quantity: 1 })
+}
+
+function removeMaterialRow(idx) {
+  materialItems.value.splice(idx, 1)
+  if (!materialItems.value.length) addMaterialRow()
+}
+
+async function openCloseModal() {
+  closeModal.value = true
+  if (!materialsCatalog.value.length && !loadingMaterials.value) {
+    loadingMaterials.value = true
+    try {
+      const { data } = await api.get('/materials')
+      materialsCatalog.value = data
+    } finally {
+      loadingMaterials.value = false
+    }
+  }
+}
+
 async function closeTicket() {
   closing.value = true
   try {
-    const { data } = await api.post(`/tickets/${route.params.id}/close`, { close_notes: closeNotes.value })
+    const payload = { close_notes: closeNotes.value }
+    if (useMaterials.value) {
+      payload.act_type = closeActType.value
+      const validItems = materialItems.value.filter(i => i.material_id && i.quantity > 0)
+      if (validItems.length) payload.materials = validItems
+    }
+    const { data } = await api.post(`/tickets/${route.params.id}/close`, payload)
     ticket.value = data
     closeModal.value = false
+    closeNotes.value = ''
+    useMaterials.value = false
+    closeActType.value = ''
+    materialItems.value = [{ material_id: '', quantity: 1 }]
   } finally {
     closing.value = false
   }
