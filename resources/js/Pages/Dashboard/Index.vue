@@ -88,15 +88,15 @@
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
           <span class="leading-tight whitespace-nowrap">{{ t.name }}</span>
           <div class="flex items-center gap-1 h-[18px]">
-            <span v-if="t.overdue_count > 0"
+            <span v-if="t.overdue_count > 0" title="Просрочено"
                   class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
               {{ t.overdue_count }}
             </span>
-            <span v-if="t.open_count > 0"
+            <span v-if="t.open_count > 0" title="Ожидают"
                   class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
               {{ t.open_count }}
             </span>
-            <span v-if="t.closed_count > 0"
+            <span v-if="t.closed_count > 0" title="Выполнено"
                   class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-green-500 text-white leading-none">
               {{ t.closed_count }}
             </span>
