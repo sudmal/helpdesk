@@ -1,7 +1,7 @@
 import { reactive, watch } from 'vue'
 
 const STORAGE_KEY = 'mobile_settings'
-const defaults = { syncIntervalMinutes: 15, sortOrder: 'time' } // sortOrder: time | address | service
+const defaults = { syncIntervalMinutes: 15, sortOrder: 'time', serviceTypeFilter: '' } // sortOrder: time | address | service
 
 function load() {
   try {

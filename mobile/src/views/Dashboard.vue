@@ -8,7 +8,7 @@
         <div class="text-white/55 text-[10px] leading-tight">{{ lastSyncLabel }}</div>
       </div>
 
-      <select v-model="serviceTypeFilter"
+      <select v-model="settings.serviceTypeFilter"
               class="bg-[#1E1E1E] text-white text-sm rounded-lg px-2 py-1.5 max-w-[40%] border-none">
         <option value="">Все участки</option>
         <option v-for="st in serviceTypes" :key="st" :value="st">{{ st }}</option>
@@ -26,10 +26,6 @@
       <button @click="cycleSortOrder"
               class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
         Сортировка: {{ sortLabel }}
-      </button>
-      <button @click="menuOpen = false; $router.push({ name: 'connections' })"
-              class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
-        📋 Подключения
       </button>
       <button v-if="commentQueue.state.items.length" @click="menuOpen = false; $router.push({ name: 'settings' })"
               class="w-full text-left px-4 py-3 text-[#FBBF24] text-sm active:bg-white/5">
@@ -51,6 +47,10 @@
               :class="activeTab === tab.key ? 'text-white border-white' : 'text-[#AACCFF] border-transparent'">
         {{ tab.label }}
         <span v-if="tab.count" class="ml-1">({{ tab.count }})</span>
+      </button>
+      <button @click="$router.push({ name: 'connections' })"
+              class="flex-1 py-2.5 text-sm font-medium border-b-2 border-transparent text-[#AACCFF]">
+        Подключения
       </button>
     </div>
 
@@ -99,9 +99,8 @@ const raw = ref({ overdue: [], today: [], new_today: [], tomorrow: [] })
 const loading = ref(false)
 const hasLoadedOnce = ref(false)
 const lastSyncLabel = ref('Ещё не синхронизировано')
-const activeTab = ref('overdue')
+const activeTab = ref('today')
 const menuOpen = ref(false)
-const serviceTypeFilter = ref('')
 
 const todayLabel = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })
 
@@ -123,8 +122,8 @@ const todayMerged = computed(() => {
 
 function applyFilterSort(list) {
   let out = list
-  if (serviceTypeFilter.value) {
-    out = out.filter((t) => t.service_type?.name === serviceTypeFilter.value)
+  if (settings.serviceTypeFilter) {
+    out = out.filter((t) => t.service_type?.name === settings.serviceTypeFilter)
   }
   out = [...out]
   if (settings.sortOrder === 'address') {
