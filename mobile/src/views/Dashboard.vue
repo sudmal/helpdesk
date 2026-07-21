@@ -23,13 +23,21 @@
 
     <!-- Выпадающее меню -->
     <div v-if="menuOpen" class="shrink-0 bg-[#1E1E1E] border-b border-white/10">
-      <button @click="sortOrder = sortOrder === 'time' ? 'address' : 'time'; menuOpen = false"
+      <button @click="cycleSortOrder"
               class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
-        Сортировка: {{ sortOrder === 'time' ? 'по времени' : 'по адресу' }}
+        Сортировка: {{ sortLabel }}
       </button>
       <button @click="menuOpen = false; $router.push({ name: 'connections' })"
               class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
         📋 Подключения
+      </button>
+      <button v-if="commentQueue.state.items.length" @click="menuOpen = false; $router.push({ name: 'settings' })"
+              class="w-full text-left px-4 py-3 text-[#FBBF24] text-sm active:bg-white/5">
+        ⏳ Не отправлено комментариев: {{ commentQueue.state.items.length }}
+      </button>
+      <button @click="menuOpen = false; $router.push({ name: 'settings' })"
+              class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
+        ⚙️ Настройки
       </button>
       <button @click="doLogout" class="w-full text-left px-4 py-3 text-[#F87171] text-sm active:bg-white/5">
         Выйти
@@ -66,7 +74,9 @@
           <TicketCard v-for="t in currentList" :key="t.id" :ticket="t" :group="activeTab === 'overdue' ? 'overdue' : activeTab"
                       :is-new="newIds.has(t.id)"
                       @open="$router.push({ name: 'ticket-detail', params: { id: t.id } })"
-                      @open-act="$router.push({ name: 'act-detail', params: { id: $event } })" />
+                      @open-act="$router.push({ name: 'act-detail', params: { id: $event } })"
+                      @swipe-close="$router.push({ name: 'ticket-detail', params: { id: t.id }, query: { action: 'close' } })"
+                      @swipe-reschedule="$router.push({ name: 'ticket-detail', params: { id: t.id }, query: { action: 'reschedule' } })" />
         </div>
       </PullToRefresh>
     </div>
@@ -74,9 +84,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import api from '../api'
 import { auth } from '../store/auth'
+import { settings } from '../store/settings'
+import { commentQueue } from '../store/commentQueue'
 import { useRouter } from 'vue-router'
 import PullToRefresh from '../components/PullToRefresh.vue'
 import TicketCard from '../components/TicketCard.vue'
@@ -90,9 +102,16 @@ const lastSyncLabel = ref('Ещё не синхронизировано')
 const activeTab = ref('overdue')
 const menuOpen = ref(false)
 const serviceTypeFilter = ref('')
-const sortOrder = ref('time') // time | address
 
 const todayLabel = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })
+
+const sortLabels = { time: 'по времени', address: 'по адресу', service: 'по участку' }
+const sortLabel = computed(() => sortLabels[settings.sortOrder] || 'по времени')
+const sortCycle = ['time', 'address', 'service']
+function cycleSortOrder() {
+  const idx = sortCycle.indexOf(settings.sortOrder)
+  settings.sortOrder = sortCycle[(idx + 1) % sortCycle.length]
+}
 
 const newIds = computed(() => new Set(raw.value.new_today.map((t) => t.id)))
 
@@ -108,8 +127,10 @@ function applyFilterSort(list) {
     out = out.filter((t) => t.service_type?.name === serviceTypeFilter.value)
   }
   out = [...out]
-  if (sortOrder.value === 'address') {
+  if (settings.sortOrder === 'address') {
     out.sort((a, b) => (a.address?.full || '').localeCompare(b.address?.full || ''))
+  } else if (settings.sortOrder === 'service') {
+    out.sort((a, b) => (a.service_type?.name || '').localeCompare(b.service_type?.name || ''))
   } else {
     out.sort((a, b) => new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0))
   }
@@ -153,10 +174,19 @@ function doLogout() {
 }
 
 let autoRefreshTimer = null
+function scheduleAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer)
+  autoRefreshTimer = setInterval(() => {
+    load()
+    commentQueue.flush()
+  }, settings.syncIntervalMinutes * 60 * 1000)
+}
+watch(() => settings.syncIntervalMinutes, scheduleAutoRefresh)
+
 onMounted(() => {
   load()
-  // Автообновление раз в 15 минут -- как в Android-приложении
-  autoRefreshTimer = setInterval(load, 15 * 60 * 1000)
+  commentQueue.flush()
+  scheduleAutoRefresh()
 })
 onUnmounted(() => clearInterval(autoRefreshTimer))
 </script>

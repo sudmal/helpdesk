@@ -1,65 +1,82 @@
 <template>
-  <div class="rounded-lg overflow-hidden flex mb-2 shadow-sm" :style="{ background: cardBg }" @click="$emit('open')">
-    <div class="w-1 shrink-0" :style="{ background: stripColor }"></div>
+  <div class="relative mb-2 rounded-lg overflow-hidden">
+    <!-- Подложка со свайп-действиями -->
+    <div v-if="swipable" class="absolute inset-0 flex items-center justify-between px-4 text-white text-sm font-medium"
+         :style="{ background: dragX > 0 ? '#10B981' : dragX < 0 ? '#3B82F6' : 'transparent' }">
+      <span v-if="dragX > 0">✓ Закрыть</span>
+      <span v-else></span>
+      <span v-if="dragX < 0">Перенести →</span>
+      <span v-else></span>
+    </div>
 
-    <div class="flex-1 p-3 min-w-0">
-      <!-- Строка 1: номер, тип услуги, бейджи, звонок, время -->
-      <div class="flex items-center gap-1.5">
-        <span class="text-white font-bold text-[15px] flex-1 truncate">{{ ticket.number }}</span>
+    <!-- Карточка -->
+    <div class="rounded-lg overflow-hidden flex shadow-sm relative"
+         :style="{ background: cardBg, transform: `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.2s' }"
+         @click="onClick"
+         @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd">
+      <div class="w-1 shrink-0" :style="{ background: stripColor }"></div>
 
-        <span v-if="ticket.service_type?.name"
-              class="text-white text-[11px] px-2 py-0.5 rounded shrink-0"
-              :style="{ background: ticket.service_type?.color || '#6B7280' }">
-          {{ ticket.service_type.name }}
-        </span>
+      <div class="flex-1 p-3 min-w-0">
+        <!-- Строка 1: номер, тип услуги, бейджи, звонок, время -->
+        <div class="flex items-center gap-1.5">
+          <span class="text-white font-bold text-[15px] flex-1 truncate">{{ ticket.number }}</span>
 
-        <span v-if="props.isNew" class="text-white text-[10px] px-1.5 py-0.5 rounded shrink-0" style="background:#F97316">
-          добавлена в {{ createdTime }}
-        </span>
+          <span v-if="ticket.service_type?.name"
+                class="text-white text-[11px] px-2 py-0.5 rounded shrink-0"
+                :style="{ background: ticket.service_type?.color || '#6B7280' }">
+            {{ ticket.service_type.name }}
+          </span>
 
-        <a v-if="phone" :href="'tel:' + phone" @click.stop
-           class="shrink-0 w-7 h-7 flex items-center justify-center rounded-full active:bg-white/10">
-          <svg class="w-4 h-4 text-[#4ADE80]" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-          </svg>
-        </a>
+          <span v-if="props.isNew" class="text-white text-[10px] px-1.5 py-0.5 rounded shrink-0" style="background:#F97316">
+            добавлена в {{ createdTime }}
+          </span>
 
-        <span class="text-[#9E9E9E] text-[13px] shrink-0">{{ timeLabel }}</span>
+          <a v-if="phone" :href="'tel:' + phone" @click.stop
+             class="shrink-0 w-7 h-7 flex items-center justify-center rounded-full active:bg-white/10">
+            <svg class="w-4 h-4 text-[#4ADE80]" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+            </svg>
+          </a>
+
+          <span class="text-[#9E9E9E] text-[13px] shrink-0">{{ timeLabel }}</span>
+        </div>
+
+        <!-- Строка 2: адрес -->
+        <div class="text-[#E0E0E0] text-sm mt-1 truncate">{{ addressLine }}</div>
+
+        <!-- Строка 3: тип + акт + статус -->
+        <div class="flex items-center gap-1.5 mt-1.5">
+          <span class="text-[#9E9E9E] text-xs flex-1 truncate">{{ ticket.type || '—' }}</span>
+          <span v-if="ticket.act" @click.stop="$emit('open-act', ticket.act.id)"
+                class="text-[11px] px-2 py-0.5 rounded shrink-0"
+                :class="ticket.act.materials_changed_at ? 'text-black' : 'text-white'"
+                :style="{ background: ticket.act.materials_changed_at ? '#FBBF24' : actColor }">
+            Акт{{ ticket.act.materials_changed_at ? ' ⚠' : '' }}
+          </span>
+          <span class="text-white text-[11px] px-2 py-0.5 rounded shrink-0"
+                :style="{ background: ticket.status?.color || '#6B7280' }">
+            {{ ticket.status?.name || '—' }}
+          </span>
+        </div>
+
+        <!-- Строка 4: превью описания -->
+        <div v-if="descPreview" class="text-[#F59E0B] text-xs mt-1 truncate">{{ descPreview }}</div>
       </div>
-
-      <!-- Строка 2: адрес -->
-      <div class="text-[#E0E0E0] text-sm mt-1 truncate">{{ addressLine }}</div>
-
-      <!-- Строка 3: тип + акт + статус -->
-      <div class="flex items-center gap-1.5 mt-1.5">
-        <span class="text-[#9E9E9E] text-xs flex-1 truncate">{{ ticket.type || '—' }}</span>
-        <span v-if="ticket.act" @click.stop="$emit('open-act', ticket.act.id)"
-              class="text-[11px] px-2 py-0.5 rounded shrink-0"
-              :class="ticket.act.materials_changed_at ? 'text-black' : 'text-white'"
-              :style="{ background: ticket.act.materials_changed_at ? '#FBBF24' : actColor }">
-          Акт{{ ticket.act.materials_changed_at ? ' ⚠' : '' }}
-        </span>
-        <span class="text-white text-[11px] px-2 py-0.5 rounded shrink-0"
-              :style="{ background: ticket.status?.color || '#6B7280' }">
-          {{ ticket.status?.name || '—' }}
-        </span>
-      </div>
-
-      <!-- Строка 4: превью описания -->
-      <div v-if="descPreview" class="text-[#F59E0B] text-xs mt-1 truncate">{{ descPreview }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   ticket: { type: Object, required: true },
   group: { type: String, default: '' }, // overdue | today | tomorrow -- влияет только на формат времени
   isNew: { type: Boolean, default: false }, // заявка есть в списке new_today (создана сегодня)
 })
-defineEmits(['open', 'open-act'])
+const emit = defineEmits(['open', 'open-act', 'swipe-close', 'swipe-reschedule'])
+
+const swipable = computed(() => !props.ticket.status?.is_final)
 
 const phone = computed(() => props.ticket.phone?.trim() || null)
 
@@ -113,4 +130,53 @@ const cardBg = computed(() => {
 })
 
 const stripColor = computed(() => props.ticket.service_type?.color || '#6B7280')
+
+// ── Свайп: вправо -- закрыть заявку, влево -- перенести (как в Android TicketsFragment) ──
+const dragX = ref(0)
+const dragging = ref(false)
+const THRESHOLD = 80
+const MAX_DRAG = 120
+let startX = 0
+let startY = 0
+let axisLocked = null // 'x' | 'y' | null
+let justSwiped = false
+
+function onTouchStart(e) {
+  if (!swipable.value) return
+  const t = e.touches[0]
+  startX = t.clientX
+  startY = t.clientY
+  axisLocked = null
+  dragging.value = true
+}
+
+function onTouchMove(e) {
+  if (!swipable.value || !dragging.value) return
+  const t = e.touches[0]
+  const dx = t.clientX - startX
+  const dy = t.clientY - startY
+  if (axisLocked === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+    axisLocked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+  }
+  if (axisLocked === 'x') {
+    e.preventDefault()
+    dragX.value = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, dx))
+  }
+}
+
+function onTouchEnd() {
+  dragging.value = false
+  if (axisLocked === 'x' && Math.abs(dragX.value) > THRESHOLD) {
+    justSwiped = true
+    emit(dragX.value > 0 ? 'swipe-close' : 'swipe-reschedule')
+    setTimeout(() => (justSwiped = false), 300)
+  }
+  dragX.value = 0
+  axisLocked = null
+}
+
+function onClick() {
+  if (justSwiped) return
+  emit('open')
+}
 </script>

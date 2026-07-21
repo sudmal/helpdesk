@@ -102,14 +102,15 @@
       <!-- Комментарии -->
       <div class="bg-[#1E1E1E] rounded-lg p-3">
         <div class="text-[#9E9E9E] text-xs mb-2">Комментарии</div>
-        <div v-for="c in ticket.comments" :key="c.id" class="mb-3 pb-3 border-b border-white/5 last:border-0 last:mb-0 last:pb-0">
+        <div v-for="c in displayComments" :key="c.id" class="mb-3 pb-3 border-b border-white/5 last:border-0 last:mb-0 last:pb-0">
           <div class="flex justify-between text-xs text-[#9E9E9E] mb-0.5">
             <span>{{ c.author || '—' }}</span>
             <span>{{ formatDateTime(c.created_at) }}</span>
           </div>
           <div class="text-[#E0E0E0] text-sm whitespace-pre-wrap">{{ c.body }}</div>
+          <div v-if="c.pending" class="text-[#FBBF24] text-[10px] mt-0.5">⏳ ожидает отправки</div>
         </div>
-        <div v-if="!ticket.comments?.length" class="text-[#666] text-sm">Комментариев пока нет</div>
+        <div v-if="!displayComments.length" class="text-[#666] text-sm">Комментариев пока нет</div>
 
         <div class="flex gap-2 mt-3">
           <input v-model="commentText" placeholder="Написать комментарий..."
@@ -196,9 +197,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
+import { commentQueue } from '../store/commentQueue'
+import { auth } from '../store/auth'
 
 const props = defineProps({ id: [String, Number] })
 const route = useRoute()
@@ -232,6 +235,18 @@ const addressLine = computed(() => {
   if (ticket.value.apartment) parts.push(`кв.${ticket.value.apartment}`)
   return parts.join(', ') || 'Адрес не указан'
 })
+
+const pendingComments = computed(() => commentQueue.pendingFor(route.params.id))
+const displayComments = computed(() => [
+  ...(ticket.value?.comments || []),
+  ...pendingComments.value.map((p) => ({
+    id: p.id,
+    body: p.body,
+    author: auth.state.user?.name,
+    created_at: p.createdAt,
+    pending: true,
+  })),
+])
 
 const materialsTotal = computed(() => {
   return materialItems.value.reduce((sum, item) => {
@@ -275,11 +290,20 @@ async function load() {
 
 async function sendComment() {
   if (!commentText.value.trim()) return
+  const body = commentText.value.trim()
   sendingComment.value = true
   try {
-    const { data } = await api.post(`/tickets/${route.params.id}/comments`, { body: commentText.value })
+    const { data } = await api.post(`/tickets/${route.params.id}/comments`, { body })
     ticket.value.comments.push(data)
     commentText.value = ''
+  } catch (e) {
+    if (!e.response) {
+      // нет сети -- откладываем в офлайн-очередь, отправится сама при восстановлении связи
+      commentQueue.add(route.params.id, body)
+      commentText.value = ''
+    } else {
+      throw e
+    }
   } finally {
     sendingComment.value = false
   }
@@ -356,5 +380,18 @@ async function rescheduleTicket() {
   }
 }
 
-onMounted(load)
+watch(
+  () => pendingComments.value.length,
+  (newLen, oldLen) => {
+    if (oldLen > 0 && newLen === 0) load()
+  }
+)
+
+onMounted(async () => {
+  await load()
+  commentQueue.flush()
+  if (route.query.action === 'close' && !ticket.value?.status?.is_final) openCloseModal()
+  if (route.query.action === 'reschedule' && !ticket.value?.status?.is_final) rescheduleModal.value = true
+  if (route.query.action) router.replace({ query: {} })
+})
 </script>

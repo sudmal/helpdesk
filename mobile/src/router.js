@@ -8,6 +8,7 @@ const routes = [
   { path: '/connections', name: 'connections', component: () => import('./views/Connections.vue'), meta: { requiresAuth: true } },
   { path: '/connections/:id', name: 'connection-detail', component: () => import('./views/ConnectionDetail.vue'), meta: { requiresAuth: true }, props: true },
   { path: '/acts/:id', name: 'act-detail', component: () => import('./views/ActDetail.vue'), meta: { requiresAuth: true }, props: true },
+  { path: '/settings', name: 'settings', component: () => import('./views/Settings.vue'), meta: { requiresAuth: true } },
 ]
 
 const router = createRouter({

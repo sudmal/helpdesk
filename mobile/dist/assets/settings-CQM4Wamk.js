@@ -1,0 +1,1 @@
+import{D as s,i as a}from"./index-D4kb_RYo.js";const e="mobile_settings",t={syncIntervalMinutes:15,sortOrder:"time"};function o(){try{return{...t,...JSON.parse(localStorage.getItem(e)||"{}")}}catch{return{...t}}}const n=s(o());a(()=>({...n}),r=>localStorage.setItem(e,JSON.stringify(r)),{deep:!0});export{n as s};
