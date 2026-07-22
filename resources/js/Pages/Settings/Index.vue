@@ -550,9 +550,35 @@
           <!-- CPU/RAM -->
           <div class="bg-white border border-gray-200 rounded-xl p-3.5">
             <h3 class="font-medium text-sm text-gray-700 mb-2">⚙ CPU / RAM</h3>
-            <p><span class="text-xs text-gray-400">Load average: </span>{{ fmtLoad(health.data.cpu.load1) }} / {{ fmtLoad(health.data.cpu.load5) }} / {{ fmtLoad(health.data.cpu.load15) }} <span class="text-gray-400">({{ health.data.cpu.cores }} ядер)</span></p>
-            <p><span class="text-xs text-gray-400">RAM: </span>{{ fmtBytes(health.data.memory.used_bytes) }} / {{ fmtBytes(health.data.memory.total_bytes) }} ({{ health.data.memory.used_pct }}%)</p>
-            <p><span class="text-xs text-gray-400">Swap: </span>{{ fmtBytes(health.data.memory.swap_used_bytes) }} / {{ fmtBytes(health.data.memory.swap_total_bytes) }}</p>
+
+            <p class="text-xs text-gray-400 mb-1">Load average ({{ health.data.cpu.cores }} ядер)</p>
+            <div v-for="l in [
+                   { label: '1 мин',  value: health.data.cpu.load1 },
+                   { label: '5 мин',  value: health.data.cpu.load5 },
+                   { label: '15 мин', value: health.data.cpu.load15 },
+                 ]" :key="l.label" class="flex items-center gap-2 mb-1">
+              <span class="text-[11px] text-gray-400 w-11 shrink-0">{{ l.label }}</span>
+              <div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div class="h-full rounded-full" :class="loadBarClass(l.value, health.data.cpu.cores)"
+                     :style="{ width: loadBarWidth(l.value, health.data.cpu.cores) + '%' }"></div>
+              </div>
+              <span class="text-xs text-gray-500 w-10 text-right shrink-0">{{ fmtLoad(l.value) }}</span>
+            </div>
+
+            <p class="text-xs text-gray-400 mt-3 mb-1">RAM</p>
+            <div class="w-full bg-gray-100 rounded-full h-2 mb-1.5 overflow-hidden">
+              <div class="h-full rounded-full" :class="diskBarClass(health.data.memory.used_pct)"
+                   :style="{ width: (health.data.memory.used_pct ?? 0) + '%' }"></div>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">{{ fmtBytes(health.data.memory.used_bytes) }} / {{ fmtBytes(health.data.memory.total_bytes) }} ({{ health.data.memory.used_pct }}%)</p>
+
+            <p class="text-xs text-gray-400 mb-1">Swap</p>
+            <div class="w-full bg-gray-100 rounded-full h-2 mb-1.5 overflow-hidden">
+              <div class="h-full rounded-full" :class="diskBarClass(swapPct())"
+                   :style="{ width: (swapPct() ?? 0) + '%' }"></div>
+            </div>
+            <p class="text-xs text-gray-500 mb-2">{{ fmtBytes(health.data.memory.swap_used_bytes) }} / {{ fmtBytes(health.data.memory.swap_total_bytes) }} ({{ swapPct() }}%)</p>
+
             <p><span class="text-xs text-gray-400">Аптайм: </span>{{ fmtUptime(health.data.uptime) }}</p>
           </div>
         </div>
@@ -1520,6 +1546,26 @@ function diskBarClass(pct) {
   if (pct >= 90) return 'bg-red-500'
   if (pct >= 75) return 'bg-amber-500'
   return 'bg-green-500'
+}
+
+// Порог по загрузке CPU принято мерить относительно числа ядер (load/cores),
+// не в абсолютных единицах -- 2.0 при 8 ядрах это простой, при 2 ядрах перегруз.
+function loadBarClass(load, cores) {
+  const ratio = cores > 0 ? load / cores : 0
+  if (ratio >= 1) return 'bg-red-500'
+  if (ratio >= 0.7) return 'bg-amber-500'
+  return 'bg-green-500'
+}
+
+function loadBarWidth(load, cores) {
+  const ratio = cores > 0 ? load / cores : 0
+  return Math.min(100, ratio * 100)
+}
+
+function swapPct() {
+  const mem = health.value.data?.memory
+  if (!mem?.swap_total_bytes) return 0
+  return Math.round((mem.swap_used_bytes / mem.swap_total_bytes) * 1000) / 10
 }
 
 function fmtBytes(bytes) {
