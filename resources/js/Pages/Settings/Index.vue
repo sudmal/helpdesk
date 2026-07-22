@@ -583,6 +583,48 @@
           </div>
         </div>
 
+        <!-- CPU/RAM -- график за последний час -->
+        <div class="bg-white border border-gray-200 rounded-xl p-3.5">
+          <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <h3 class="font-medium text-sm text-gray-700">📈 CPU / RAM — последний час</h3>
+            <div class="flex items-center gap-3 text-xs text-gray-500">
+              <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5" style="background:#2a78d6"></span>CPU (% от ядер)</span>
+              <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5" style="background:#eb6834"></span>RAM</span>
+            </div>
+          </div>
+
+          <div v-if="historyPoints.length < 2" class="text-xs text-gray-400 py-10 text-center">
+            Копится история (снимок раз в минуту) — график заполнится в течение часа
+          </div>
+
+          <div v-else class="relative">
+            <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" preserveAspectRatio="none" class="w-full" style="height:200px"
+                 @mousemove="onChartMove" @mouseleave="onChartLeave">
+              <g v-for="g in chart.gridY" :key="g.label">
+                <line :x1="34" :x2="CHART_W - 12" :y1="g.y" :y2="g.y" stroke="#e5e7eb" stroke-width="1" />
+                <text :x="30" :y="g.y + 3" text-anchor="end" font-size="9" fill="#9ca3af">{{ g.label }}%</text>
+              </g>
+              <text v-for="(t, i) in chart.xTicks" :key="i" :x="t.x" :y="CHART_H - 4" text-anchor="middle" font-size="9" fill="#9ca3af">{{ t.label }}</text>
+
+              <path :d="chart.memPath" fill="none" stroke="#eb6834" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path :d="chart.cpuPath" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+              <template v-if="hoverCpu">
+                <line :x1="hoverCpu.x" :x2="hoverCpu.x" :y1="14" :y2="CHART_H - 26" stroke="#9ca3af" stroke-width="1" stroke-dasharray="2,2" />
+                <circle :cx="hoverMem.x" :cy="hoverMem.y" r="4" fill="#eb6834" stroke="white" stroke-width="2" />
+                <circle :cx="hoverCpu.x" :cy="hoverCpu.y" r="4" fill="#2a78d6" stroke="white" stroke-width="2" />
+              </template>
+            </svg>
+
+            <div v-if="hoverCpu" class="absolute top-1 bg-white border border-gray-200 rounded-lg shadow-sm px-2.5 py-1.5 text-xs pointer-events-none whitespace-nowrap"
+                 :style="{ left: Math.min(82, Math.max(0, hoverCpu.x / CHART_W * 100)) + '%' }">
+              <div class="text-gray-400 mb-0.5">{{ fmtHistTime(hoverCpu.ts) }}</div>
+              <div><span class="font-medium text-gray-700">{{ hoverCpu.value.toFixed(1) }}%</span> <span class="text-gray-400">CPU</span></div>
+              <div><span class="font-medium text-gray-700">{{ hoverMem.value.toFixed(1) }}%</span> <span class="text-gray-400">RAM</span></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Сервисы -->
         <div class="bg-white border border-gray-200 rounded-xl p-3.5">
           <h3 class="font-medium text-sm text-gray-700 mb-2">🧩 Сервисы</h3>
@@ -1566,6 +1608,73 @@ function swapPct() {
   const mem = health.value.data?.memory
   if (!mem?.swap_total_bytes) return 0
   return Math.round((mem.swap_used_bytes / mem.swap_total_bytes) * 1000) / 10
+}
+
+// ── График CPU/RAM за последний час (resource-snapshot.timer пишет раз в минуту) ──
+const CHART_W = 640
+const CHART_H = 200
+const CHART_PAD = { top: 14, right: 12, bottom: 26, left: 34 }
+
+const historyPoints = computed(() => health.value.data?.history ?? [])
+
+const chart = computed(() => {
+  const points = historyPoints.value
+  const cores  = health.value.data?.cpu?.cores || 1
+  const plotW  = CHART_W - CHART_PAD.left - CHART_PAD.right
+  const plotH  = CHART_H - CHART_PAD.top - CHART_PAD.bottom
+
+  const now  = Date.now() / 1000
+  const xMin = now - 3600
+  const xMax = now
+
+  const xScale = (ts) => CHART_PAD.left + ((ts - xMin) / (xMax - xMin)) * plotW
+  const yScale = (pct) => CHART_PAD.top + (1 - Math.min(100, Math.max(0, pct)) / 100) * plotH
+
+  const toSeries = (getValue) => points.map((p) => {
+    const value = getValue(p)
+    return { ts: p.ts, x: xScale(p.ts), y: yScale(value), value }
+  })
+
+  const cpuPts = toSeries((p) => (p.load1 / cores) * 100)
+  const memPts = toSeries((p) => p.mem_used_pct)
+
+  const toPath = (pts) => pts.length ? 'M' + pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L') : ''
+
+  const gridY = [0, 25, 50, 75, 100].map((v) => ({ y: yScale(v), label: v }))
+
+  const xTicks = []
+  for (let i = 0; i <= 4; i++) {
+    const ts = xMin + (i / 4) * (xMax - xMin)
+    xTicks.push({ x: xScale(ts), label: new Date(ts * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) })
+  }
+
+  return { cpuPts, memPts, cpuPath: toPath(cpuPts), memPath: toPath(memPts), gridY, xTicks }
+})
+
+const hoverIdx = ref(null)
+
+function onChartMove(e) {
+  const pts = chart.value.cpuPts
+  if (!pts.length) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const svgX = ((e.clientX - rect.left) / rect.width) * CHART_W
+  let nearest = 0, best = Infinity
+  pts.forEach((p, i) => {
+    const d = Math.abs(p.x - svgX)
+    if (d < best) { best = d; nearest = i }
+  })
+  hoverIdx.value = nearest
+}
+
+function onChartLeave() {
+  hoverIdx.value = null
+}
+
+const hoverCpu = computed(() => hoverIdx.value !== null ? chart.value.cpuPts[hoverIdx.value] : null)
+const hoverMem = computed(() => hoverIdx.value !== null ? chart.value.memPts[hoverIdx.value] : null)
+
+function fmtHistTime(ts) {
+  return new Date(ts * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtBytes(bytes) {

@@ -16,6 +16,7 @@ class HealthReportService
             'uptime'   => $this->uptime(),
             'services' => $this->services(),
             'backups'  => $this->backups(),
+            'history'  => $this->history(),
         ];
     }
 
@@ -128,6 +129,43 @@ class HealthReportService
             'swap_total_bytes' => $swapTotalKb * 1024,
             'swap_used_bytes'  => ($swapTotalKb - $swapFreeKb) * 1024,
         ];
+    }
+
+    // История CPU/RAM за последний час для графика на вкладке "Здоровье сервера".
+    // PHP видит только МГНОВЕННЫЙ снимок (sys_getloadavg/meminfo на момент запроса)
+    // -- historyю копит root через resource-snapshot.timer раз в минуту, тем же
+    // паттерном, что и SMART выше (root пишет в /var/cache, PHP-FPM только читает).
+    private const HISTORY_PATH = '/var/cache/vega8-resource-history.jsonl';
+
+    private function history(): array
+    {
+        if (!is_file(self::HISTORY_PATH)) {
+            return [];
+        }
+
+        $raw = @file_get_contents(self::HISTORY_PATH);
+        if (!$raw) {
+            return [];
+        }
+
+        $cutoff = now()->timestamp - 3600;
+        $rows   = [];
+        foreach (explode("\n", trim($raw)) as $line) {
+            if ($line === '') {
+                continue;
+            }
+            $row = json_decode($line, true);
+            if (!is_array($row) || !isset($row['ts']) || $row['ts'] < $cutoff) {
+                continue;
+            }
+            $rows[] = [
+                'ts'           => $row['ts'],
+                'load1'        => $row['load1'] ?? null,
+                'mem_used_pct' => $row['mem_used_pct'] ?? null,
+            ];
+        }
+
+        return $rows;
     }
 
     private function uptime(): ?float
