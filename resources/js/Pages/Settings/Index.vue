@@ -550,7 +550,7 @@
           <!-- CPU/RAM -->
           <div class="bg-white border border-gray-200 rounded-xl p-3.5">
             <h3 class="font-medium text-sm text-gray-700 mb-2">⚙ CPU / RAM</h3>
-            <p><span class="text-xs text-gray-400">Load average: </span>{{ health.data.cpu.load1 }} / {{ health.data.cpu.load5 }} / {{ health.data.cpu.load15 }} <span class="text-gray-400">({{ health.data.cpu.cores }} ядер)</span></p>
+            <p><span class="text-xs text-gray-400">Load average: </span>{{ fmtLoad(health.data.cpu.load1) }} / {{ fmtLoad(health.data.cpu.load5) }} / {{ fmtLoad(health.data.cpu.load15) }} <span class="text-gray-400">({{ health.data.cpu.cores }} ядер)</span></p>
             <p><span class="text-xs text-gray-400">RAM: </span>{{ fmtBytes(health.data.memory.used_bytes) }} / {{ fmtBytes(health.data.memory.total_bytes) }} ({{ health.data.memory.used_pct }}%)</p>
             <p><span class="text-xs text-gray-400">Swap: </span>{{ fmtBytes(health.data.memory.swap_used_bytes) }} / {{ fmtBytes(health.data.memory.swap_total_bytes) }}</p>
             <p><span class="text-xs text-gray-400">Аптайм: </span>{{ fmtUptime(health.data.uptime) }}</p>
@@ -1542,7 +1542,13 @@ function fmtUptime(seconds) {
   if (seconds == null) return '—'
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor((seconds % 86400) / 3600)
-  return `${days} дн. ${hours} ч.`
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return `${days} дн. ${hours} ч. ${minutes} мин.`
+}
+
+function fmtLoad(value) {
+  if (value == null) return '—'
+  return Number(value).toFixed(2)
 }
 
 const securityModal = ref({ show: false, tab: 'blocked', loading: false, data: null })
