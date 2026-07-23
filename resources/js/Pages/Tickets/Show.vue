@@ -299,7 +299,8 @@
         </div>
         <div>
           <label class="field-label">Комментарий</label>
-          <textarea v-model="closeComment" rows="3" class="field-input resize-none"></textarea>
+          <textarea v-model="closeComment" rows="3" class="field-input resize-none"
+                    placeholder="Если производился ремонт укажите причину поломки и что сделано - важно для истории!"></textarea>
         </div>
         <AttachmentUpload v-model="closeFiles" label="Прикрепить фото/документы" />
 
@@ -308,15 +309,15 @@
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" v-model="useMaterials"
                    class="rounded w-4 h-4 text-blue-600" />
-            <span class="text-sm text-gray-700">📦 Использовались расходные материалы</span>
+            <span class="text-sm text-gray-700">📦 Использовались расходные материалы (создать акт)</span>
           </label>
           <div v-if="useMaterials" class="mt-2 space-y-2">
             <div class="field-row">
               <label class="field-label">Тип акта *</label>
               <select v-model="closeActType" required class="field-input">
                 <option value="">— выбрать тип —</option>
-                <option value="regular">Обычный</option>
-                <option value="repair">Ремонт/Восстановление</option>
+                <option value="regular">Обычный (Оплата абонентом)</option>
+                <option value="repair">Ремонт/Восстановление (Без оплаты - Нулевой)</option>
               </select>
             </div>
             <MaterialsForm :materials="materialsCatalog" v-model="materialItems" />
