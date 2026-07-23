@@ -302,13 +302,19 @@
             <option v-for="c in addrCities" :key="c" :value="c">{{ c }}</option>
           </select>
         </div>
-        <div v-if="addrSel.city">
+        <div v-if="addrSel.city" class="relative">
           <label class="field-label">Улица</label>
-          <input v-model="addrSel.street" @change="onAddrStreet" list="addrStreetList"
+          <input v-model="streetQuery" @focus="streetDropdownOpen = true"
+                 @input="streetDropdownOpen = true"
+                 @blur="onStreetBlur"
                  class="field-input" placeholder="Начните вводить название..." autocomplete="off" />
-          <datalist id="addrStreetList">
-            <option v-for="s in addrStreets" :key="s" :value="s" />
-          </datalist>
+          <div v-if="streetDropdownOpen && filteredAddrStreets.length"
+               class="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+            <div v-for="s in filteredAddrStreets" :key="s" @mousedown.prevent="selectStreet(s)"
+                 class="px-3 py-1.5 text-sm hover:bg-amber-50 cursor-pointer">
+              {{ s }}
+            </div>
+          </div>
         </div>
         <div v-if="addrSel.street">
           <label class="field-label">Дом</label>
@@ -670,9 +676,40 @@ const addrBuildings    = ref([])
 const addrApartments   = ref([])
 const addrModalLoading = ref(false)
 const addrSel          = reactive({ city: '', street: '', building: '', apartment: '' })
+const streetQuery         = ref('')
+const streetDropdownOpen  = ref(false)
+const filteredAddrStreets = computed(() => {
+  const q = streetQuery.value.trim().toLowerCase()
+  if (!q) return addrStreets.value
+  return addrStreets.value.filter(s => s.toLowerCase().includes(q))
+})
+
+function selectStreet(s) {
+  streetQuery.value = s
+  streetDropdownOpen.value = false
+  addrSel.street = s
+  onAddrStreet()
+}
+
+function onStreetBlur() {
+  // Небольшая задержка, чтобы клик по варианту (mousedown) успел сработать
+  // раньше, чем список скроется по потере фокуса поля.
+  setTimeout(() => {
+    streetDropdownOpen.value = false
+    const q = streetQuery.value.trim().toLowerCase()
+    const exact = addrStreets.value.find(s => s.toLowerCase() === q)
+    if (exact && exact !== addrSel.street) {
+      streetQuery.value = exact
+      addrSel.street = exact
+      onAddrStreet()
+    }
+  }, 150)
+}
+
 async function openAddrModal() {
   Object.assign(addrSel, { city: '', street: '', building: '', apartment: '' })
   addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
+  streetQuery.value = ''; streetDropdownOpen.value = false
   showAddrModal.value = true
   try {
     addrCities.value = (await axios.get(route('addresses.hierarchy'))).data
@@ -682,6 +719,7 @@ async function openAddrModal() {
 async function onAddrCity() {
   addrSel.street = ''; addrSel.building = ''; addrSel.apartment = ''
   addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
+  streetQuery.value = ''; streetDropdownOpen.value = false
   if (!addrSel.city) return
   try {
     addrStreets.value = (await axios.get(route('addresses.hierarchy'), { params: { city: addrSel.city } })).data
