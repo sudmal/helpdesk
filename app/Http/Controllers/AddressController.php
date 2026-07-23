@@ -230,6 +230,7 @@ class AddressController extends Controller
             'building_from'   => 'nullable|integer|min:1',
             'building_to'     => 'nullable|integer|min:1',
             'building_step'   => 'nullable|integer|min:1',
+            'confirm_duplicate' => 'nullable|boolean',
         ]);
 
         $buildingFrom = $request->input('building_from');
@@ -262,6 +263,32 @@ class AddressController extends Controller
                 }
             });
             return back()->with('success', "Создано {$created} записей");
+        }
+
+        // Компания образована слиянием ~10 провайдеров — один и тот же дом мог
+        // уже попасть в addresses под другим написанием улицы (см. память проекта
+        // и Address::normalizeStreet). Перед созданием одиночного адреса ищем
+        // похожий в том же городе+доме+квартире и просим оператора подтвердить,
+        // а не молча плодим дубли (или молча блокируем — вдруг это правда другой
+        // дом с тем же номером на другой улице с похожим названием).
+        if (!$request->boolean('confirm_duplicate')) {
+            $streetNorm   = Address::normalizeStreet($data['street']);
+            $buildingNorm = mb_strtolower(trim((string) ($data['building'] ?? '')));
+            $aptNorm      = mb_strtolower(trim((string) ($data['apartment'] ?? '')));
+
+            $dup = Address::where('city', $data['city'])
+                ->where('building', trim((string) ($data['building'] ?? '')))
+                ->get(['id', 'street', 'apartment', 'subscriber_name'])
+                ->first(fn($a) => Address::normalizeStreet($a->street) === $streetNorm
+                    && mb_strtolower(trim((string) $a->apartment)) === $aptNorm);
+
+            if ($dup) {
+                return back()->withErrors([
+                    'duplicate' => "Похоже на дубль: уже есть адрес «{$dup->full_address}»"
+                        . ($dup->subscriber_name ? " ({$dup->subscriber_name})" : '')
+                        . ". Если это другой адрес — нажмите «Всё равно создать».",
+                ])->withInput();
+            }
         }
 
         Address::create($data);

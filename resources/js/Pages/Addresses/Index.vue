@@ -281,7 +281,7 @@
 
     <!-- Добавление адреса -->
     <Modal v-if="showAddModal" :title="editingAddr ? 'Редактировать адрес' : 'Новый адрес'" @close="closeAddModal">
-      <form @submit.prevent="submitAddress" class="space-y-4">
+      <form @submit.prevent="submitAddress()" class="space-y-4">
 
         <!-- Режим (только при создании) -->
         <div v-if="!editingAddr" class="flex gap-2">
@@ -393,6 +393,10 @@
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" @click="closeAddModal" class="btn-outline text-sm">Отмена</button>
+          <button v-if="addrForm.errors && addrForm.errors.duplicate" type="button"
+                  @click="submitAddress(true)" class="btn-outline text-sm text-amber-700 border-amber-300">
+            Всё равно создать
+          </button>
           <button class="btn-primary text-sm">{{ editingAddr ? 'Сохранить' : 'Создать' }}</button>
         </div>
       </form>
@@ -646,6 +650,7 @@ const addrForm = useForm({
   street_type: 'ул.', street_name: selected.value.street ?? '',
   building: selected.value.building ?? '', apartment: '', entrance: '',
   subscriber_name: '', phone: '', contract_no: '',
+  confirm_duplicate: false,
 })
 
 function openAddModal() {
@@ -675,13 +680,13 @@ function editAddress(a) {
 
 function closeAddModal() { showAddModal.value = false; editingAddr.value = null }
 
-function submitAddress() {
+function submitAddress(confirmDuplicate = false) {
   if (!addrForm.territory_id) {
     addrForm.errors.territory_id = 'Выберите территорию'
     return
   }
   const street = addrForm.street_type + ' ' + addrForm.street_name
-  const base   = { ...addrForm.data(), street }
+  const base   = { ...addrForm.data(), street, confirm_duplicate: confirmDuplicate }
 
   if (addrMode.value === 'private') {
     base.building_from = genFrom.value; base.building_to = genTo.value; base.building_step = genStep.value
