@@ -304,14 +304,11 @@
         </div>
         <div v-if="addrSel.city">
           <label class="field-label">Улица</label>
-          <div class="flex gap-2">
-            <select v-model="addrSel.street" @change="onAddrStreet" class="field-input flex-1">
-              <option value="">— Выбрать улицу —</option>
-              <option v-for="s in filteredAddrStreets" :key="s" :value="s">{{ s }}</option>
-            </select>
-            <input v-model="streetFilter" type="text" placeholder="Поиск..."
-                   class="field-input flex-1" />
-          </div>
+          <input v-model="addrSel.street" @change="onAddrStreet" list="addrStreetList"
+                 class="field-input" placeholder="Начните вводить название..." autocomplete="off" />
+          <datalist id="addrStreetList">
+            <option v-for="s in addrStreets" :key="s" :value="s" />
+          </datalist>
         </div>
         <div v-if="addrSel.street">
           <label class="field-label">Дом</label>
@@ -673,17 +670,9 @@ const addrBuildings    = ref([])
 const addrApartments   = ref([])
 const addrModalLoading = ref(false)
 const addrSel          = reactive({ city: '', street: '', building: '', apartment: '' })
-const streetFilter     = ref('')
-const filteredAddrStreets = computed(() => {
-  const q = streetFilter.value.trim().toLowerCase()
-  if (!q) return addrStreets.value
-  return addrStreets.value.filter(s => s.toLowerCase().includes(q))
-})
-
 async function openAddrModal() {
   Object.assign(addrSel, { city: '', street: '', building: '', apartment: '' })
   addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
-  streetFilter.value = ''
   showAddrModal.value = true
   try {
     addrCities.value = (await axios.get(route('addresses.hierarchy'))).data
@@ -693,7 +682,6 @@ async function openAddrModal() {
 async function onAddrCity() {
   addrSel.street = ''; addrSel.building = ''; addrSel.apartment = ''
   addrStreets.value = []; addrBuildings.value = []; addrApartments.value = []
-  streetFilter.value = ''
   if (!addrSel.city) return
   try {
     addrStreets.value = (await axios.get(route('addresses.hierarchy'), { params: { city: addrSel.city } })).data
