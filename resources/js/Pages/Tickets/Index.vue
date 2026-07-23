@@ -464,8 +464,9 @@ function fullAddress(t) {
   const a = t.address
   if (!a) return '—'
   const apt = t.apartment || a.apartment
-  return [a.city, a.street, a.building ? 'д.'+a.building : null, (apt && apt !== '0') ? 'кв.'+apt : null]
+  const rest = [a.street, a.building ? 'д.'+a.building : null, (apt && apt !== '0') ? 'кв.'+apt : null]
     .filter(Boolean).join(' ')
+  return a.city ? `${a.city}, ${rest}` : rest
 }
 
 function rowStyle(t) {
