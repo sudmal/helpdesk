@@ -302,14 +302,17 @@
             <option v-for="c in addrCities" :key="c" :value="c">{{ c }}</option>
           </select>
         </div>
-        <div v-if="addrSel.city" class="relative">
+        <div v-if="addrSel.city">
           <label class="field-label">Улица</label>
           <input v-model="streetQuery" @focus="streetDropdownOpen = true"
                  @input="streetDropdownOpen = true"
                  @blur="onStreetBlur"
                  class="field-input" placeholder="Начните вводить название..." autocomplete="off" />
+          <!-- Не position:absolute — модалка сама скроллится (overflow-y-auto) и
+               обрезала бы плавающий список. Раздвигаем содержимое модалки вниз,
+               список скроллится внутри себя, если вариантов много. -->
           <div v-if="streetDropdownOpen && filteredAddrStreets.length"
-               class="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+               class="mt-1 bg-white border border-gray-200 rounded-lg shadow max-h-56 overflow-y-auto">
             <div v-for="s in filteredAddrStreets" :key="s" @mousedown.prevent="selectStreet(s)"
                  class="px-3 py-1.5 text-sm hover:bg-amber-50 cursor-pointer">
               {{ s }}
