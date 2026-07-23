@@ -110,13 +110,26 @@ class TicketController extends Controller
     {
         $this->authorize('create', Ticket::class);
 
-        // Если передан address_id — подгружаем адрес и историю заявок по нему
+        // Если передан address_id — подгружаем адрес и историю заявок по нему.
+        // Ищем не только по этому address_id, а по всему дому (город+дом строго,
+        // улица — с нормализацией префикса, см. Address::normalizeStreet) — тот
+        // же дом мог попасть в addresses несколькими записями из разных исходных
+        // учётных систем (см. TicketController::show).
         $address = null;
         $addressHistory = [];
         if ($request->address_id) {
             $address = Address::with('territory')->find($request->address_id);
+            $sameBuildingAddressIds = [$request->address_id];
+            if ($address) {
+                $streetNorm = Address::normalizeStreet($address->street);
+                $sameBuildingAddressIds = Address::where('city', $address->city)
+                    ->where('building', $address->building)
+                    ->get(['id', 'street'])
+                    ->filter(fn($a) => Address::normalizeStreet($a->street) === $streetNorm)
+                    ->pluck('id');
+            }
             $addressHistory = Ticket::with(['type', 'status', 'creator'])
-                ->where('address_id', $request->address_id)
+                ->whereIn('address_id', $sameBuildingAddressIds)
                 ->when($request->apartment, fn($q) => $q->where('apartment', $request->apartment))
                 ->latest()
                 ->take(50)
@@ -199,17 +212,28 @@ class TicketController extends Controller
         ]);
         $ticket->append('days_overdue');
 
-        // История заявок по этому же абоненту (кроме текущей). address_id один на
-        // подъезд/дом для части адресов (см. память проекта) — квартира не всегда
-        // заполнена на старых заявках, поэтому раньше "заявка без квартиры" считалась
-        // совпадением с ЛЮБОЙ квартирой этого адреса (orWhereNull/orWhere('apartment',''))
-        // и в историю подмешивались чужие абоненты того же дома. Теперь совпадение
-        // либо по точной квартире, либо по телефону — оба сигнала абонента, не адреса
-        // целиком. Если на текущей заявке нет ни квартиры, ни телефона — абонента
-        // надёжно не определить, историю не показываем вообще (пусто лучше, чем чужое).
-        $addressHistory = $ticket->address_id
-            ? Ticket::with(['type', 'status', 'act'])
-                ->where('address_id', $ticket->address_id)
+        // История заявок по этому же абоненту (кроме текущей). Раньше искали строго
+        // по address_id — но компания образована слиянием ~10 провайдеров, у каждого
+        // была своя учётная система, и один и тот же дом мог попасть в addresses
+        // несколькими записями с разными address_id (одна "ул. Чапаева", другая
+        // просто "Чапаева" — тот же дом, другой формат, см. память проекта). Из-за
+        // этого настоящая история терялась. Теперь ищем среди ВСЕХ address_id этого
+        // же дома (город + дом строго, улица — с нормализацией префикса ул./пр./пер.
+        // и т.п., см. Address::normalizeStreet) — а совпадение либо по точной квартире,
+        // либо по телефону, как и раньше (это и не даёт смешать разных абонентов
+        // одного дома). Город НЕ нормализуем и не отбрасываем — одинаковые названия
+        // улиц в разных городах (тоже нередкость) обязаны оставаться разными адресами.
+        $addressHistory = [];
+        if ($ticket->address_id && $ticket->address) {
+            $streetNorm = \App\Models\Address::normalizeStreet($ticket->address->street);
+            $sameBuildingAddressIds = \App\Models\Address::where('city', $ticket->address->city)
+                ->where('building', $ticket->address->building)
+                ->get(['id', 'street'])
+                ->filter(fn($a) => \App\Models\Address::normalizeStreet($a->street) === $streetNorm)
+                ->pluck('id');
+
+            $addressHistory = Ticket::with(['type', 'status', 'act'])
+                ->whereIn('address_id', $sameBuildingAddressIds)
                 ->where('id', '!=', $ticket->id)
                 ->where(function ($q) use ($ticket) {
                     $q->whereRaw('1 = 0');
@@ -223,8 +247,8 @@ class TicketController extends Controller
                 ->latest()
                 ->take(20)
                 ->get(['id', 'number', 'type_id', 'status_id', 'address_id',
-                       'apartment', 'description', 'close_notes', 'created_at'])
-            : [];
+                       'apartment', 'description', 'close_notes', 'created_at']);
+        }
 
         return Inertia::render('Tickets/Show', [
             'ticket'         => $ticket,
