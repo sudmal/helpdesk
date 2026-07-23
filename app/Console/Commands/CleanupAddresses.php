@@ -129,6 +129,8 @@ class CleanupAddresses extends Command
         $this->newLine();
         $this->cleanupStreetVariants($apply);
         $this->newLine();
+        $this->mergeDuplicateStreetSpellings($apply);
+        $this->newLine();
 
         // ── Phase 2: Remove fake apartment records (no ticket ever used them) ──
         $this->info('Phase 2: Buildings with fake apartment records (no real tickets)');
@@ -291,5 +293,101 @@ class CleanupAddresses extends Command
             DB::table('addresses')->where('id', $u['id'])->update(['street' => $u['new']]);
         }
         $this->info('  Updated ' . count($updates) . ' address records.');
+    }
+
+    /**
+     * Phase 4: в пределах одного города одна и та же улица иногда встречается
+     * под двумя написаниями (с префиксом "ул./пер./бул." и без) — как правило
+     * потому, что массовый импорт когда-то создал её без префикса, а позже
+     * кто-то вручную добавил несколько адресов через форму (там префикс по
+     * умолчанию "ул."). Сливаем такие пары к более частому написанию —
+     * НО только когда:
+     *  - ровно 2 варианта написания (3+ варианта пропускаем: почти всегда это
+     *    разные типы — квартал/посёлок/улица/бульвар с одним именем это разные
+     *    физические объекты, не опечатка — см. пример "Ленина"/"пос. Ленина");
+     *  - соотношение большинства к меньшинству не меньше 2:1 (иначе слишком
+     *    похоже на две реально разные маленькие улицы с совпавшим именем —
+     *    см. пример "Артема"/"ул. Артема", 6 против 5, не трогаем).
+     * Название типа "Шахтерский" (квартал) и "Шахтерская" (улица) — это не
+     * вариант написания одного и того же, а разные слова (род/окончание),
+     * normalizeStreet() их и не группирует вместе.
+     */
+    private function mergeDuplicateStreetSpellings(bool $apply): void
+    {
+        $this->info('Phase 4: same street under 2 spellings within one city (merge to majority)');
+
+        $cities = DB::table('addresses')->select('city')->distinct()->pluck('city');
+        $merges = [];
+        $skipped = [];
+
+        foreach ($cities as $city) {
+            $streets = DB::table('addresses')->where('city', $city)->select('street')->distinct()->pluck('street');
+            $groups = [];
+            foreach ($streets as $s) {
+                $groups[\App\Models\Address::normalizeStreet($s)][] = $s;
+            }
+            foreach ($groups as $norm => $variants) {
+                $variants = array_values(array_unique($variants));
+                if (count($variants) < 2) continue;
+
+                $counts = [];
+                foreach ($variants as $v) {
+                    $counts[$v] = DB::table('addresses')->where('city', $city)->where('street', $v)->count();
+                }
+                arsort($counts);
+
+                if (count($counts) > 2) {
+                    $skipped[] = [$city, $norm, $counts, '3+ вариантов — вероятно разные типы'];
+                    continue;
+                }
+
+                $keys = array_keys($counts);
+                $vals = array_values($counts);
+                $ratio = $vals[1] > 0 ? $vals[0] / $vals[1] : INF;
+                if ($ratio < 2) {
+                    $skipped[] = [$city, $norm, $counts, 'неоднозначно (соотношение ' . round($ratio, 2) . ')'];
+                    continue;
+                }
+
+                $merges[] = ['city' => $city, 'from' => $keys[1], 'to' => $keys[0], 'count' => $vals[1]];
+            }
+        }
+
+        if (!empty($skipped)) {
+            $this->line('  Пропущено (нужна ручная проверка, не тронуто):');
+            foreach ($skipped as [$city, $norm, $counts, $reason]) {
+                $this->line("    [{$city}] {$norm}: " . json_encode($counts, JSON_UNESCAPED_UNICODE) . " — {$reason}");
+            }
+        }
+
+        if (empty($merges)) {
+            $this->line('  Nothing to merge.');
+            return;
+        }
+
+        $this->table(['Город', 'Из', 'В', 'Записей'],
+            collect($merges)->map(fn($m) => [$m['city'], $m['from'], $m['to'], $m['count']])->toArray());
+        $totalRows = array_sum(array_column($merges, 'count'));
+        $this->info("  {$totalRows} address records to update across " . count($merges) . ' groups.');
+
+        if (!$apply) {
+            $this->comment('  [dry-run] Run with --apply to execute.');
+            return;
+        }
+
+        if (!$this->option('force') && !$this->confirm("Merge {$totalRows} records into majority spelling?")) {
+            $this->info('Phase 4 skipped.');
+            return;
+        }
+
+        $backupP4 = 'addresses_bak_p4_' . date('YmdHis');
+        DB::statement("CREATE TABLE `{$backupP4}` SELECT * FROM `addresses`");
+        $this->info("  Backup: {$backupP4}");
+
+        foreach ($merges as $m) {
+            DB::table('addresses')->where('city', $m['city'])->where('street', $m['from'])
+                ->update(['street' => $m['to']]);
+        }
+        $this->info("  Merged {$totalRows} records.");
     }
 }

@@ -39,13 +39,18 @@ class AddressController extends Controller
                 ->toArray();
 
         } elseif (!$street) {
-            // Уровень 1 — улицы города
+            // Уровень 1 — улицы города. Сортируем по названию БЕЗ префикса
+            // (ул./пер./пр./бул. и т.п.) — иначе "ул. Х" и "Y" вперемешку
+            // скачут по алфавиту вместо логичной сортировки по имени улицы,
+            // по которому реально ищут (см. память проекта, normalizeStreet).
             $streetList = Address::selectRaw('street, COUNT(*) as count')
                 ->where('city', $city)
                 ->whereNotNull('street')
-                ->groupBy('street')->orderBy('street')
+                ->groupBy('street')
                 ->get()
                 ->map(fn($r) => ['name' => $r->street, 'count' => $r->count])
+                ->sortBy(fn($r) => Address::normalizeStreet($r['name']))
+                ->values()
                 ->toArray();
 
         } elseif (!$building) {
