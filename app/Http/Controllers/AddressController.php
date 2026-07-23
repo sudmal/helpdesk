@@ -364,11 +364,16 @@ class AddressController extends Controller
             );
         }
         if (!$street) {
+            // Сортируем по названию без префикса (ул./пер./пр./бул. и т.п.) —
+            // иначе в выпадающем списке улицы вперемешку скачут по алфавиту
+            // вместо сортировки по тому, по чему реально ищут (см. такой же
+            // фикс в index() и Address::normalizeStreet).
+            $streets = Address::selectRaw('DISTINCT street')
+                ->where('city', $city)->whereNotNull('street')
+                ->when($territoryIds, fn($q) => $q->whereIn('territory_id', $territoryIds))
+                ->pluck('street');
             return response()->json(
-                Address::selectRaw('DISTINCT street')
-                    ->where('city', $city)->whereNotNull('street')
-                    ->when($territoryIds, fn($q) => $q->whereIn('territory_id', $territoryIds))
-                    ->orderBy('street')->pluck('street')
+                $streets->sortBy(fn($s) => Address::normalizeStreet($s))->values()
             );
         }
         if (!$building) {
