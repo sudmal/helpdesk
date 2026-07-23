@@ -126,6 +126,10 @@ class CleanupAddresses extends Command
 
         $this->newLine();
 
+        $this->newLine();
+        $this->cleanupStreetVariants($apply);
+        $this->newLine();
+
         // ── Phase 2: Remove fake apartment records (no ticket ever used them) ──
         $this->info('Phase 2: Buildings with fake apartment records (no real tickets)');
 
@@ -231,6 +235,61 @@ class CleanupAddresses extends Command
 
         $this->info("Deleted {$deleted} apartment records.");
         $this->info("Done! Backup table: {$backupP2}");
+
         return 0;
+    }
+
+    /**
+     * Phase 3: причесать известные варианты написания одного и того же типа
+     * улицы ("ул," опечатка вместо "ул.", "блв." vs "бул.", "кв-л" vs "квартал").
+     * Компания слита из ~10 провайдеров с разными учётными системами — но, в
+     * отличие от общего разнобоя (например, Макеевка вообще без префикса —
+     * это осознанный формат целого города, его НЕ трогаем), эти три пары —
+     * штучные опечатки/дубли одной и той же улицы под одним и тем же типом,
+     * подтверждено вручную (см. память проекта). Меняется только ведущий
+     * токен, остаток названия улицы не трогается.
+     */
+    private function cleanupStreetVariants(bool $apply): void
+    {
+        $this->info('Phase 3: known street-prefix spelling variants (ул,→ул. / блв.→бул. / кв-л→квартал)');
+
+        $variantMap = ['ул,' => 'ул.', 'блв.' => 'бул.', 'кв-л' => 'квартал'];
+
+        $updates = [];
+        foreach ($variantMap as $from => $to) {
+            $rows = DB::table('addresses')->where('street', 'like', $from . '%')->get(['id', 'street']);
+            foreach ($rows as $r) {
+                $rest = trim(mb_substr($r->street, mb_strlen($from)));
+                $updates[] = ['id' => $r->id, 'old' => $r->street, 'new' => trim($to . ' ' . $rest)];
+            }
+        }
+
+        if (empty($updates)) {
+            $this->line('  Nothing to fix.');
+            return;
+        }
+
+        $this->table(['id', 'было', 'станет'],
+            collect($updates)->take(10)->map(fn($u) => [$u['id'], $u['old'], $u['new']])->toArray());
+        $this->info('  ' . count($updates) . ' address records to update.');
+
+        if (!$apply) {
+            $this->comment('  [dry-run] Run with --apply to execute.');
+            return;
+        }
+
+        if (!$this->option('force') && !$this->confirm('Apply street-prefix fixes to ' . count($updates) . ' records?')) {
+            $this->info('Phase 3 skipped.');
+            return;
+        }
+
+        $backupP3 = 'addresses_bak_p3_' . date('YmdHis');
+        DB::statement("CREATE TABLE `{$backupP3}` SELECT * FROM `addresses`");
+        $this->info("  Backup: {$backupP3}");
+
+        foreach ($updates as $u) {
+            DB::table('addresses')->where('id', $u['id'])->update(['street' => $u['new']]);
+        }
+        $this->info('  Updated ' . count($updates) . ' address records.');
     }
 }
