@@ -290,6 +290,13 @@ POST /tickets/{id}/close   multipart/form-data
 
 ## Подключения
 
+> **Изменения от 2026-07-24**: добавлен обязательный шаг подтверждения
+> технической возможности монтажником (`feasibility`) между созданием
+> заявки и назначением даты. Новые поля в объекте `ConnectionRequest`,
+> новый эндпоинт `POST /connection-requests/{id}/feasibility`, изменено
+> поведение `PUT .../{id}` (гейт на `scheduled`) и `POST .../mark-called`
+> (авто-отклонение). Подробности — в соответствующих разделах ниже.
+
 ### GET /connection-requests
 
 Список заявок на подключение для текущего пользователя (территории определяются по токену).
@@ -341,6 +348,9 @@ POST /tickets/{id}/close   multipart/form-data
   "act_number": null,
   "act": null,
   "needs_callback": true,
+  "feasibility": "possible",
+  "feasibility_comment": "Нужна лестница до 3 этажа",
+  "feasibility_at": "2026-07-24T09:15:00+03:00",
   "territory": { "id": 1, "name": "Северный район" },
   "service_type": { "id": 1, "name": "Интернет", "color": "#3b82f6" },
   "creator": "Диспетчер Сидорова А.П.",
@@ -381,7 +391,22 @@ POST /tickets/{id}/close   multipart/form-data
 | `rejected` | Отклонено | ✓ |
 | `closed` | Выполнено | ✓ |
 
-**Флаг `needs_callback`:** `true` — клиента нужно прозвонить (подтвердить визит или сообщить об отклонении). Устанавливается автоматически при смене статуса на `scheduled`/`rejected`. Сбрасывается через `/mark-called` или при закрытии (`/close`).
+**Флаг `needs_callback`:** `true` — клиента нужно прозвонить (подтвердить визит,
+сообщить об отклонении, либо сообщить, что подключение невозможно). Устанавливается
+автоматически при смене статуса на `scheduled`/`rejected`, а также когда монтажник
+отвечает `impossible` через `/feasibility` (см. ниже). Сбрасывается через
+`/mark-called` или при закрытии (`/close`).
+
+**Поля `feasibility` / `feasibility_comment` / `feasibility_by` / `feasibility_at`:**
+Ответ монтажника на вопрос "возможно ли подключение" — новый обязательный шаг
+между созданием заявки (`status: pending`) и назначением даты. `feasibility` —
+`null` (ещё не отвечали), `possible` или `impossible`. `feasibility_comment` —
+опциональный комментарий монтажника (например, причина невозможности). Ставятся
+через `POST /connection-requests/{id}/feasibility` (см. ниже) — **не** через `PUT`.
+
+**Важно для UI**: пока `feasibility` не `possible`, `PUT .../{id}` со `status: scheduled`
+вернёт `422` (см. ниже) — не показывайте кнопку "Назначить дату" (или показывайте
+задизейбленной) для заявок в статусе `pending` без `feasibility: "possible"`.
 
 ---
 
@@ -441,6 +466,16 @@ POST /tickets/{id}/close   multipart/form-data
 
 > При смене статуса на `scheduled` или `rejected` сервер автоматически ставит `needs_callback = true`.  
 > Закрытие через PUT **недоступно** — используй `/close`.
+> **Новое**: попытка поставить `status: scheduled`, когда `feasibility !== "possible"`,
+> вернёт `422`:
+> ```json
+> {
+>   "message": "Сначала нужен ответ монтажника: возможно ли подключение.",
+>   "errors": { "status": ["Сначала нужен ответ монтажника: возможно ли подключение."] }
+> }
+> ```
+> Отклонение (`status: rejected`) этим гейтом не ограничено — оператор может
+> отклонить заявку напрямую в любой момент, минуя монтажника.
 
 **200:** полный объект `ConnectionRequest` (включая `materials`)
 
@@ -498,9 +533,39 @@ POST /tickets/{id}/close   multipart/form-data
 
 Отметить, что клиент прозвонен — сбрасывает `needs_callback`. Тело пустое.
 
-**200:**
+**Новое**: если `feasibility === "impossible"` и `status === "pending"` — сервер
+дополнительно переводит заявку в `status: "rejected"` (звонок клиенту с отказом
+подтверждён, отдельно жать "Отклонить" не нужно).
+
+**200:** полный объект `ConnectionRequest` (раньше возвращалось только `{ "message": ... }` —
+если приложение проверяет форму ответа, обновите разбор).
+
+---
+
+### POST /connection-requests/{id}/feasibility
+
+Ответ монтажника на вопрос "возможно ли техническое подключение". Доступно только
+для роли `technician` (а также `admin`/`head_support`) — иначе `403`.
+
 ```json
-{ "message": "Отмечено: прозвонили" }
+{
+  "answer":  "impossible",
+  "comment": "Нет технической возможности, кабель не проложен"
+}
+```
+
+- `answer` — обязателен, `possible` или `impossible`.
+- `comment` — опционален, макс. 2000 символов.
+- Если `answer: "impossible"` — сервер дополнительно ставит `needs_callback = true`
+  (оператору нужно позвонить клиенту с отказом; после `/mark-called` заявка сама
+  перейдёт в `rejected`, см. выше).
+
+**200:** полный объект `ConnectionRequest` (с обновлёнными `feasibility`/
+`feasibility_comment`/`feasibility_at`).
+
+**403 (не монтажник):**
+```json
+{ "message": "Ответить может только монтажник." }
 ```
 
 ---
