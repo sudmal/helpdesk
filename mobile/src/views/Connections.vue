@@ -81,7 +81,7 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const hasLoadedOnce = ref(false)
 const lastSyncLabel = ref('Ещё не синхронизировано')
-const activeTab = ref('waiting')
+const activeTab = ref('approved')
 const page = ref(1)
 const lastPage = ref(1)
 
@@ -120,8 +120,8 @@ const approvedList = computed(() =>
 )
 
 const tabs = computed(() => [
-  { key: 'waiting', label: 'Ожидающие', count: waitingList.value.length },
   { key: 'approved', label: 'Утверждённые', count: approvedList.value.length },
+  { key: 'waiting', label: 'Ожидающие', count: waitingList.value.length },
 ])
 
 const currentList = computed(() => activeTab.value === 'waiting' ? waitingList.value : approvedList.value)
