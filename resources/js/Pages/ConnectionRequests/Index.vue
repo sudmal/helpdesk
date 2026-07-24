@@ -508,26 +508,17 @@
             <div class="text-xs font-medium text-gray-500 mb-2">История</div>
             <div v-if="!detailData.logs || !detailData.logs.length"
                  class="text-xs text-gray-400">История не записана (заявка создана до включения логирования)</div>
-            <div v-else class="space-y-2">
+            <div v-else class="space-y-0.5">
               <div v-for="log in detailData.logs" :key="log.id"
-                   class="flex gap-3 text-xs">
-                <div class="flex flex-col items-center">
-                  <div :class="logDotClass(log.action)" class="w-2 h-2 rounded-full mt-0.5 shrink-0"></div>
-                  <div class="w-px flex-1 bg-gray-200 mt-1"></div>
-                </div>
-                <div class="pb-3 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-medium text-gray-800">{{ logActionLabel(log.action) }}</span>
-                    <span class="text-gray-400">{{ fmtDateTime(log.created_at) }}</span>
-                    <span v-if="log.user" class="text-gray-500">— {{ log.user.name }}</span>
-                  </div>
-                  <div v-if="log.notes" class="mt-0.5 text-gray-600 whitespace-pre-wrap">{{ log.notes }}</div>
-                  <div v-if="log.meta && log.meta.act_number" class="mt-0.5 text-gray-500">
-                    Акт: {{ log.meta.act_number }}
-                  </div>
-                  <div v-if="log.meta && log.meta.scheduled_at" class="mt-0.5 text-gray-500">
-                    Дата: {{ fmtDateTime(log.meta.scheduled_at) }}
-                  </div>
+                   class="flex items-baseline gap-1.5 text-xs leading-tight py-0.5">
+                <span :class="logDotClass(log.action)" class="w-1.5 h-1.5 rounded-full shrink-0"></span>
+                <div class="min-w-0 flex flex-wrap items-baseline gap-x-1.5">
+                  <span class="font-medium text-gray-800">{{ logActionLabel(log.action) }}</span>
+                  <span class="text-gray-400">{{ fmtDateTime(log.created_at) }}</span>
+                  <span v-if="log.user" class="text-gray-500">— {{ log.user.name }}</span>
+                  <span v-if="log.notes" class="text-gray-600">· {{ log.notes }}</span>
+                  <span v-if="log.meta && log.meta.act_number" class="text-gray-500">· Акт: {{ log.meta.act_number }}</span>
+                  <span v-if="log.meta && log.meta.scheduled_at" class="text-gray-500">· Дата: {{ fmtDateTime(log.meta.scheduled_at) }}</span>
                 </div>
               </div>
             </div>

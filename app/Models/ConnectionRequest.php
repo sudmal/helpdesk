@@ -27,6 +27,11 @@ class ConnectionRequest extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function feasibilityByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'feasibility_by');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

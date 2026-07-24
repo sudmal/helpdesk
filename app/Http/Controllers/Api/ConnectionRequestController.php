@@ -22,7 +22,7 @@ class ConnectionRequestController extends Controller
         $territories  = $this->getUserTerritories($user);
         $territoryIds = $territories->pluck('id');
 
-        $query = ConnectionRequest::with(['territory', 'serviceType', 'creator', 'assignee', 'act'])
+        $query = ConnectionRequest::with(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'act'])
             ->whereIn('territory_id', $territoryIds)
             ->where(function ($q) {
                 $q->whereIn('status', ['pending', 'scheduled', 'rejected'])
@@ -63,7 +63,7 @@ class ConnectionRequestController extends Controller
 
     public function show(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'materials', 'act']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'materials', 'act']);
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
 
@@ -83,7 +83,7 @@ class ConnectionRequestController extends Controller
 
         $cr = ConnectionRequest::create($data);
         $this->logEvent($cr, $request->user()->id, 'created');
-        $cr->load(['territory', 'serviceType', 'creator', 'assignee']);
+        $cr->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser']);
 
         return response()->json($this->formatOne($cr), 201);
     }
@@ -149,7 +149,7 @@ class ConnectionRequestController extends Controller
             })->afterResponse();
         }
 
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'materials']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'materials']);
 
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
@@ -239,7 +239,7 @@ class ConnectionRequestController extends Controller
             $request->notes,
             $actNumber ? ['act_number' => $actNumber] : null);
 
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'act']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'act']);
 
         return response()->json($this->formatOne($connectionRequest));
     }
@@ -261,7 +261,7 @@ class ConnectionRequestController extends Controller
             $this->logEvent($connectionRequest, $request->user()->id, 'rejected', 'Автоматически отклонено после прозвона (монтажник: невозможно)');
         }
 
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser']);
         return response()->json($this->formatOne($connectionRequest));
     }
 
@@ -297,7 +297,7 @@ class ConnectionRequestController extends Controller
             $data['answer'] === 'possible' ? 'feasibility_possible' : 'feasibility_impossible',
             $data['comment'] ?? null
         );
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser']);
 
         return response()->json($this->formatOne($connectionRequest));
     }
@@ -345,6 +345,9 @@ class ConnectionRequestController extends Controller
             'needs_callback' => (bool) $r->needs_callback,
             'feasibility'         => $r->feasibility,
             'feasibility_comment' => $r->feasibility_comment,
+            'feasibility_by'      => $r->feasibility_by,
+            'feasibility_by_user' => $r->relationLoaded('feasibilityByUser') && $r->feasibilityByUser
+                ? ['id' => $r->feasibilityByUser->id, 'name' => $r->feasibilityByUser->name] : null,
             'feasibility_at'      => $r->feasibility_at?->toIso8601String(),
             'territory'      => $r->territory ? ['id' => $r->territory->id, 'name' => $r->territory->name] : null,
             'service_type'   => $r->serviceType ? [
@@ -371,6 +374,18 @@ class ConnectionRequestController extends Controller
                     'quantity'      => (float) $m->quantity,
                     'total'         => round((float)$m->price_at_time * (float)$m->quantity, 2),
                 ])->values()->all();
+
+            // История изменений заявки -- по аналогии с history у Актов
+            // (GET /acts/{id}), см. память проекта. Только в детальном ответе,
+            // не в списке (как и materials).
+            $data['logs'] = $r->logs()->with('user')->latest()->get()->map(fn($l) => [
+                'id'         => $l->id,
+                'user'       => $l->user?->name,
+                'action'     => $l->action,
+                'notes'      => $l->notes,
+                'meta'       => $l->meta,
+                'created_at' => $l->created_at->toIso8601String(),
+            ])->values()->all();
         }
 
         return $data;
