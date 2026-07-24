@@ -108,30 +108,30 @@
     <!-- Таблица -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full table-fixed">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/80 text-xs text-gray-500 font-medium">
               <th class="w-8 px-1.5 py-0.5 text-center">
                 <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded border-gray-300 cursor-pointer" />
               </th>
               <th class="w-5 px-1 py-0.5"></th>
-              <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-20 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
                 Добавлена <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 w-20 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-16 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('number')">
                 № <span class="text-gray-400">{{ sortIcon('number') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-16">Автор</th>
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-14">Автор</th>
               <th class="text-left px-2 py-0.5">Адрес / Описание</th>
-              <th class="text-left px-2 py-0.5 hidden md:table-cell w-32">Тип</th>
-              <th class="text-left px-2 py-0.5 hidden lg:table-cell w-24">Бригада</th>
-              <th class="text-left px-2 py-0.5 w-24 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden md:table-cell w-24">Тип</th>
+              <th class="text-left px-2 py-0.5 hidden lg:table-cell w-20">Бригада</th>
+              <th class="text-left px-2 py-0.5 w-20 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('status_id')">
                 Статус <span class="text-gray-400">{{ sortIcon('status_id') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-24 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-20 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('scheduled_at')">
                 Выезд <span class="text-gray-400">{{ sortIcon('scheduled_at') }}</span>
               </th>
@@ -185,18 +185,18 @@
               </td>
 
               <!-- Тип -->
-              <td class="px-2 py-px hidden md:table-cell">
-                <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
+              <td class="px-2 py-px hidden md:table-cell overflow-hidden">
+                <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
               </td>
 
               <!-- Бригада -->
-              <td class="px-2 py-px hidden lg:table-cell text-xs text-gray-500 whitespace-nowrap">
+              <td class="px-2 py-px hidden lg:table-cell text-xs text-gray-500 truncate">
                 {{ t.brigade?.name ?? '—' }}
               </td>
 
               <!-- Статус -->
-              <td class="px-2 py-px">
-                <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
+              <td class="px-2 py-px overflow-hidden">
+                <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
               </td>
 
               <!-- Выезд -->

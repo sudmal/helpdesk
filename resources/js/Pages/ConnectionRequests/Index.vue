@@ -76,20 +76,20 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
-              <th class="px-3 py-3 text-left w-8"></th>
-              <th class="px-4 py-3 text-left">Дата</th>
-              <th class="px-4 py-3 text-left">Имя</th>
-              <th class="px-4 py-3 text-left">Телефон</th>
-              <th class="px-4 py-3 text-left">Адрес</th>
-              <th class="px-4 py-3 text-left">Описание</th>
-              <th class="px-4 py-3 text-left">Статус</th>
-              <th class="px-4 py-3 text-left">Дата подкл.</th>
-              <th class="px-4 py-3 text-left">Примечания / Акт</th>
+              <th class="px-2 py-1 text-left w-8"></th>
+              <th class="px-2 py-1 text-left">Дата</th>
+              <th class="px-2 py-1 text-left">Имя</th>
+              <th class="px-2 py-1 text-left">Телефон</th>
+              <th class="px-2 py-1 text-left">Адрес</th>
+              <th class="px-2 py-1 text-left">Описание</th>
+              <th class="px-2 py-1 text-left">Статус</th>
+              <th class="px-2 py-1 text-left">Дата подкл.</th>
+              <th class="px-2 py-1 text-left">Примечания / Акт</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50">
-              <td class="px-2 py-1.5 text-center whitespace-nowrap">
+              <td class="px-1.5 py-px text-center whitespace-nowrap">
                 <button @click="openEdit(r)" title="Редактировать"
                         class="text-gray-400 hover:text-blue-600 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -104,13 +104,13 @@
                   </svg>
                 </button>
               </td>
-              <td class="px-3 py-1.5 whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
-              <td class="px-3 py-1.5 font-medium">{{ r.name }}</td>
-              <td class="px-3 py-1.5 font-mono whitespace-nowrap">{{ r.phone }}</td>
-              <td class="px-3 py-1.5 text-blue-600 hover:underline cursor-pointer"
+              <td class="px-2 py-px whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
+              <td class="px-2 py-px font-medium truncate max-w-32">{{ r.name }}</td>
+              <td class="px-2 py-px font-mono whitespace-nowrap">{{ r.phone }}</td>
+              <td class="px-2 py-px text-blue-600 hover:underline cursor-pointer truncate max-w-48"
                   @click="openDetail(r)">{{ r.address_string }}</td>
-              <td class="px-3 py-1.5 text-gray-500 max-w-48 truncate" :title="r.description">{{ r.description || '—' }}</td>
-              <td class="px-3 py-1.5">
+              <td class="px-2 py-px text-gray-500 max-w-48 truncate" :title="r.description">{{ r.description || '—' }}</td>
+              <td class="px-2 py-px">
                 <div class="flex items-center gap-1.5">
                   <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ statusLabel(r.status) }}
@@ -127,14 +127,14 @@
                         :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
                 </div>
               </td>
-              <td class="px-3 py-1.5 whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
-              <td class="px-3 py-1.5 text-gray-600 max-w-48 truncate" :title="r.notes">
+              <td class="px-2 py-px whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
+              <td class="px-2 py-px text-gray-600 max-w-48 truncate" :title="r.notes">
                 <button v-if="r.act"
                         @click="router.get(route('acts.show', r.act.id))"
                         class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act.number }}]</button>
                 {{ r.notes || '—' }}
               </td>
-              <td class="px-3 py-1.5 whitespace-nowrap">
+              <td class="px-2 py-px whitespace-nowrap">
                 <div class="flex gap-1 flex-wrap">
                   <template v-if="r.status === 'pending' && !r.feasibility">
                     <button @click="openFeasibility(r, 'possible')"
