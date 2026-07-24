@@ -23,8 +23,20 @@ class ConnectionRequestController extends Controller
 
         $territory = $request->get('territory') ?: null;
 
+        // Сортировка "по важности": требующие прозвона (needs_callback) --
+        // наверх независимо от статуса (это горящее действие), закрытые
+        // (выполнено, либо отклонено и прозвон уже не нужен) -- вниз, как
+        // полностью завершённые. Остальное (ожидает/назначено) -- посередине,
+        // внутри каждой группы сначала новые.
         $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act'])
             ->when($territory, fn($q) => $q->where('territory_id', $territory))
+            ->orderByRaw("
+                CASE
+                    WHEN needs_callback = 1 THEN 0
+                    WHEN status IN ('closed', 'rejected') THEN 2
+                    ELSE 1
+                END
+            ")
             ->latest();
 
         if ($request->filled('status')) {

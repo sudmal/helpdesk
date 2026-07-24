@@ -12,7 +12,13 @@ class ServiceRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ServiceRequest::with(['creator', 'processor'])->latest();
+        // Тот же принцип сортировки, что и в ConnectionRequestController:
+        // завершённые (выполнено/отклонено) -- вниз, как полностью
+        // завершённые. Своего needs_callback тут нет (в отличие от
+        // ConnectionRequest), поэтому только два яруса.
+        $query = ServiceRequest::with(['creator', 'processor'])
+            ->orderByRaw("CASE WHEN status IN ('accepted', 'rejected') THEN 1 ELSE 0 END")
+            ->latest();
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
