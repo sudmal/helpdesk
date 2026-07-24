@@ -120,7 +120,11 @@ class ConnectionRequestController extends Controller
         ]);
 
         if (isset($data['status'])) {
-            $data['needs_callback'] = in_array($data['status'], ['scheduled', 'rejected']);
+            // Дата назначается только ПОСЛЕ того, как оператор уже созвонился с
+            // клиентом и согласовал время (иначе откуда бы взялась дата?) --
+            // поэтому назначение само по себе прозвон не требует. А вот отказ
+            // клиенту ещё нужно сообщить отдельным звонком.
+            $data['needs_callback'] = $data['status'] === 'rejected';
         }
 
         // Дату можно назначать только после того, как монтажник подтвердил
@@ -151,6 +155,17 @@ class ConnectionRequestController extends Controller
                 $data['notes'] ?? null, ['scheduled_at' => $data['scheduled_at']]);
         } else {
             $this->logEvent($connectionRequest, $request->user()->id, 'edited');
+        }
+
+        // Монтажнику бригады -- уведомление (Telegram/MAX/push), когда дату
+        // назначили впервые или перенесли (не при каждом редактировании).
+        if ($connectionRequest->status === 'scheduled'
+            && (($data['status'] ?? null) === 'scheduled' || $scheduledAtChanged)) {
+            dispatch(function () use ($connectionRequest) {
+                \App\Notifications\ConnectionScheduledNotification::dispatch(
+                    $connectionRequest->fresh(['brigade.members.role'])
+                );
+            })->afterResponse();
         }
 
         return back()->with('success', 'Заявка обновлена');
@@ -286,15 +301,16 @@ class ConnectionRequestController extends Controller
             'comment' => 'nullable|string|max:2000',
         ]);
 
+        // Оба ответа монтажника требуют звонка клиенту -- либо согласовать
+        // дату (possible), либо сообщить об отказе (impossible) -- поэтому
+        // needs_callback (телефон в меню) загорается в любом случае.
         $update = [
             'feasibility'         => $data['answer'],
             'feasibility_comment' => $data['comment'] ?? null,
             'feasibility_by'      => $request->user()->id,
             'feasibility_at'      => now(),
+            'needs_callback'      => true,
         ];
-        if ($data['answer'] === 'impossible') {
-            $update['needs_callback'] = true;
-        }
 
         $connectionRequest->update($update);
         $this->logEvent(

@@ -127,7 +127,7 @@
                         :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
                 </div>
               </td>
-              <td class="px-3 py-1.5 whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDate(r.scheduled_at) : '—' }}</td>
+              <td class="px-3 py-1.5 whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
               <td class="px-3 py-1.5 text-gray-600 max-w-48 truncate" :title="r.notes">
                 <button v-if="r.act"
                         @click="router.get(route('acts.show', r.act.id))"
@@ -311,7 +311,7 @@
           </div>
           <div v-if="scheduleForm.status === 'scheduled'" class="field-row">
             <label class="field-label">Дата подкл.</label>
-            <input v-model="scheduleForm.scheduled_at" type="datetime-local" class="field-input" />
+            <TimePicker v-model="scheduleForm.scheduled_at" />
           </div>
           <div>
             <label class="field-label">Примечания</label>
@@ -549,6 +549,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
+import TimePicker from '@/Components/UI/TimePicker.vue'
 
 const props = defineProps({
   requests:          Object,
@@ -851,6 +852,8 @@ function logActionLabel(action) {
     rejected:   'Отклонено',
     closed:     'Выполнено',
     called_back:'Прозвонили клиенту',
+    feasibility_possible:   'Монтажник: возможно',
+    feasibility_impossible: 'Монтажник: невозможно',
   }[action] ?? action
 }
 
@@ -863,6 +866,8 @@ function logDotClass(action) {
     rejected:   'bg-red-400',
     closed:     'bg-emerald-500',
     called_back:'bg-amber-400',
+    feasibility_possible:   'bg-green-500',
+    feasibility_impossible: 'bg-red-500',
   }[action] ?? 'bg-gray-300'
 }
 </script>

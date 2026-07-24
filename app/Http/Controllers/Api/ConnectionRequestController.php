@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Act;
 use App\Models\Brigade;
 use App\Models\ConnectionRequest;
+use App\Models\ConnectionRequestLog;
 use App\Models\Material;
 use App\Models\Promotion;
 use App\Models\Territory;
@@ -101,7 +102,10 @@ class ConnectionRequestController extends Controller
         ]);
 
         if (isset($data['status'])) {
-            $data['needs_callback'] = in_array($data['status'], ['scheduled', 'rejected']);
+            // Дата назначается только ПОСЛЕ того, как оператор уже созвонился с
+            // клиентом и согласовал время -- назначение само по себе прозвон
+            // не требует. Отказ клиенту ещё нужно сообщить отдельным звонком.
+            $data['needs_callback'] = $data['status'] === 'rejected';
         }
 
         // Тот же гейт, что и в веб-версии (ConnectionRequestController::update):
@@ -114,7 +118,25 @@ class ConnectionRequestController extends Controller
             ], 422);
         }
 
+        $oldStatus      = $connectionRequest->status;
+        $oldScheduledAt = $connectionRequest->scheduled_at;
+
         $connectionRequest->update($data);
+
+        $scheduledAtChanged = isset($data['scheduled_at'])
+            && optional($oldScheduledAt)->format('Y-m-d H:i:s') !== \Carbon\Carbon::parse($data['scheduled_at'])->format('Y-m-d H:i:s');
+
+        // Монтажнику бригады -- уведомление (Telegram/MAX/push), когда дату
+        // назначили впервые или перенесли.
+        if ($connectionRequest->status === 'scheduled'
+            && (($data['status'] ?? null) === 'scheduled' || $scheduledAtChanged)) {
+            dispatch(function () use ($connectionRequest) {
+                \App\Notifications\ConnectionScheduledNotification::dispatch(
+                    $connectionRequest->fresh(['brigade.members.role'])
+                );
+            })->afterResponse();
+        }
+
         $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'materials']);
 
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
@@ -203,17 +225,23 @@ class ConnectionRequestController extends Controller
         return response()->json($this->formatOne($connectionRequest));
     }
 
-    public function markCalled(ConnectionRequest $connectionRequest): JsonResponse
+    public function markCalled(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
         $data = ['needs_callback' => false];
 
         // Тот же принцип, что и в веб-версии: прозвон после "Невозможно" от
         // монтажника -- это звонок с отказом, сразу закрываем rejected.
-        if ($connectionRequest->feasibility === 'impossible' && $connectionRequest->status === 'pending') {
+        $autoRejected = $connectionRequest->feasibility === 'impossible' && $connectionRequest->status === 'pending';
+        if ($autoRejected) {
             $data['status'] = 'rejected';
         }
 
         $connectionRequest->update($data);
+        $this->logEvent($connectionRequest, $request->user()->id, 'called_back');
+        if ($autoRejected) {
+            $this->logEvent($connectionRequest, $request->user()->id, 'rejected', 'Автоматически отклонено после прозвона (монтажник: невозможно)');
+        }
+
         $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee']);
         return response()->json($this->formatOne($connectionRequest));
     }
@@ -234,20 +262,36 @@ class ConnectionRequestController extends Controller
             'comment' => 'nullable|string|max:2000',
         ]);
 
+        // Оба ответа монтажника требуют звонка клиенту -- согласовать дату
+        // (possible) либо сообщить об отказе (impossible).
         $update = [
             'feasibility'         => $data['answer'],
             'feasibility_comment' => $data['comment'] ?? null,
             'feasibility_by'      => $user->id,
             'feasibility_at'      => now(),
+            'needs_callback'      => true,
         ];
-        if ($data['answer'] === 'impossible') {
-            $update['needs_callback'] = true;
-        }
 
         $connectionRequest->update($update);
+        $this->logEvent(
+            $connectionRequest, $user->id,
+            $data['answer'] === 'possible' ? 'feasibility_possible' : 'feasibility_impossible',
+            $data['comment'] ?? null
+        );
         $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee']);
 
         return response()->json($this->formatOne($connectionRequest));
+    }
+
+    private function logEvent(ConnectionRequest $req, ?int $userId, string $action, ?string $notes = null, ?array $meta = null): void
+    {
+        ConnectionRequestLog::create([
+            'connection_request_id' => $req->id,
+            'user_id' => $userId,
+            'action'  => $action,
+            'notes'   => $notes,
+            'meta'    => $meta,
+        ]);
     }
 
     public function destroy(ConnectionRequest $connectionRequest): JsonResponse
