@@ -82,6 +82,7 @@ class ConnectionRequestController extends Controller
         $data['status']     = 'pending';
 
         $cr = ConnectionRequest::create($data);
+        $this->logEvent($cr, $request->user()->id, 'created');
         $cr->load(['territory', 'serviceType', 'creator', 'assignee']);
 
         return response()->json($this->formatOne($cr), 201);
@@ -125,6 +126,17 @@ class ConnectionRequestController extends Controller
 
         $scheduledAtChanged = isset($data['scheduled_at'])
             && optional($oldScheduledAt)->format('Y-m-d H:i:s') !== \Carbon\Carbon::parse($data['scheduled_at'])->format('Y-m-d H:i:s');
+
+        if (isset($data['status']) && $data['status'] !== $oldStatus) {
+            $notes = $data['notes'] ?? null;
+            $meta  = isset($data['scheduled_at']) ? ['scheduled_at' => $data['scheduled_at']] : null;
+            $this->logEvent($connectionRequest, $request->user()->id, $data['status'], $notes, $meta);
+        } elseif ($scheduledAtChanged) {
+            $this->logEvent($connectionRequest, $request->user()->id, 'scheduled',
+                $data['notes'] ?? null, ['scheduled_at' => $data['scheduled_at']]);
+        } else {
+            $this->logEvent($connectionRequest, $request->user()->id, 'edited');
+        }
 
         // Монтажнику бригады -- уведомление (Telegram/MAX/push), когда дату
         // назначили впервые или перенесли.
@@ -181,7 +193,9 @@ class ConnectionRequestController extends Controller
         // attempts=3: см. Act::createWithGeneratedNumber() — конкурентное закрытие
         // с тем же префиксом номера акта может словить deadlock на lockForUpdate(),
         // Laravel в этом случае полностью переиграет транзакцию.
-        DB::transaction(function () use ($connectionRequest, $request, $promotion) {
+        $actNumber = null;
+
+        DB::transaction(function () use ($connectionRequest, $request, $promotion, &$actNumber) {
             $connectionRequest->update([
                 'status'         => 'closed',
                 'notes'          => $request->notes,
@@ -198,6 +212,7 @@ class ConnectionRequestController extends Controller
                     'promotion_name'  => $promotion?->name,
                     'promotion_price' => $promotion?->price,
                 ], fn() => Act::generateNumberForConnectionRequest($connectionRequest));
+                $actNumber = $act->number;
 
                 foreach ($request->materials as $item) {
                     $material = Material::find($item['material_id']);
@@ -219,6 +234,10 @@ class ConnectionRequestController extends Controller
                 ]);
             }
         }, 3);
+
+        $this->logEvent($connectionRequest, $request->user()->id, 'closed',
+            $request->notes,
+            $actNumber ? ['act_number' => $actNumber] : null);
 
         $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'act']);
 
