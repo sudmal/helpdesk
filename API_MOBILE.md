@@ -350,6 +350,8 @@ POST /tickets/{id}/close   multipart/form-data
   "needs_callback": true,
   "feasibility": "possible",
   "feasibility_comment": "Нужна лестница до 3 этажа",
+  "feasibility_by": 5,
+  "feasibility_by_user": { "id": 5, "name": "Монтажник Петров И.В." },
   "feasibility_at": "2026-07-24T09:15:00+03:00",
   "territory": { "id": 1, "name": "Северный район" },
   "service_type": { "id": 1, "name": "Интернет", "color": "#3b82f6" },
@@ -416,6 +418,31 @@ POST /tickets/{id}/close   multipart/form-data
 **Важно для UI**: пока `feasibility` не `possible`, `PUT .../{id}` со `status: scheduled`
 вернёт `422` (см. ниже) — не показывайте кнопку "Назначить дату" (или показывайте
 задизейбленной) для заявок в статусе `pending` без `feasibility: "possible"`.
+
+**Исправлено (2026-07-24)**: `feasibility_by` раньше сохранялся на сервере, но
+не отдавался в ответе вообще (не просто пропуск в примере JSON — поля не было
+в реальном ответе API). Теперь есть, вместе с резолвленным `feasibility_by_user`
+(`{ id, name }`, `null` если не отвечали) — по аналогии с `assigned_to`/`assignee`.
+
+**Новое поле `logs`** — только в `GET /connection-requests/{id}` (как и `materials`,
+в списке `GET /connection-requests` отсутствует): полная история изменений заявки —
+создание, ответ монтажника, назначение/перенос даты, отклонение, завершение.
+```json
+"logs": [
+  {
+    "id": 501,
+    "user": "Монтажник Петров И.В.",
+    "action": "feasibility_possible",
+    "notes": "Нужна лестница до 3 этажа",
+    "meta": null,
+    "created_at": "2026-07-24T09:15:00+03:00"
+  }
+]
+```
+`action`: `created`, `edited`, `scheduled`, `rejected`, `closed`, `called_back`,
+`feasibility_possible`, `feasibility_impossible`. `user` — `null`, если действие
+выполнено системой/без привязки к пользователю. `meta` — доп. данные по действию
+(`scheduled_at` у `scheduled`, `act_number` у `closed`), может быть `null`.
 
 ---
 
