@@ -43,7 +43,7 @@ class HandleInertiaRequests extends Middleware
             },
             'connectionAlerts'  => function () use ($request) {
                 $user = $request->user();
-                if (!$user) return ['pending' => 0, 'needs_callback' => 0];
+                if (!$user) return ['pending' => 0, 'needs_callback' => 0, 'needs_completion' => 0];
 
                 $base = ConnectionRequest::query();
 
@@ -62,8 +62,12 @@ class HandleInertiaRequests extends Middleware
                 }
 
                 return [
-                    'pending'        => (clone $base)->where('status', 'pending')->count(),
-                    'needs_callback' => (clone $base)->where('needs_callback', true)->count(),
+                    'pending'          => (clone $base)->where('status', 'pending')->count(),
+                    'needs_callback'   => (clone $base)->where('needs_callback', true)->count(),
+                    // Назначенные подключения ждут выезда монтажника -- см.
+                    // память проекта, project-connection-feasibility. Тот же
+                    // скоуп по территории/бригаде, что и выше.
+                    'needs_completion' => (clone $base)->where('status', 'scheduled')->count(),
                 ];
             },
             'actsAlerts' => function () use ($request) {

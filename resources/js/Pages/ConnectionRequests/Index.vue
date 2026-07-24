@@ -89,12 +89,18 @@
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50">
-              <td class="px-2 py-1.5 text-center">
+              <td class="px-2 py-1.5 text-center whitespace-nowrap">
                 <button @click="openEdit(r)" title="Редактировать"
                         class="text-gray-400 hover:text-blue-600 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button v-if="r.status === 'pending'" @click="openReject(r)" title="Отклонить"
+                        class="text-gray-400 hover:text-red-600 transition-colors ml-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6L6 18M6 6l12 12"/>
                   </svg>
                 </button>
               </td>
@@ -116,6 +122,9 @@
                       <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                     </svg>
                   </span>
+                  <span v-if="r.feasibility === 'possible'" class="text-green-600" title="Монтажник: возможно">✅</span>
+                  <span v-else-if="r.feasibility === 'impossible'" class="text-red-600"
+                        :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
                 </div>
               </td>
               <td class="px-3 py-1.5 whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDate(r.scheduled_at) : '—' }}</td>
@@ -126,16 +135,24 @@
                 {{ r.notes || '—' }}
               </td>
               <td class="px-3 py-1.5 whitespace-nowrap">
-                <div class="flex gap-1">
-                  <button v-if="r.status === 'pending'"
+                <div class="flex gap-1 flex-wrap">
+                  <template v-if="r.status === 'pending' && !r.feasibility">
+                    <button @click="openFeasibility(r, 'possible')"
+                            class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
+                      Возможно
+                    </button>
+                    <button @click="openFeasibility(r, 'impossible')"
+                            class="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
+                      Невозможно
+                    </button>
+                  </template>
+                  <span v-if="r.status === 'pending' && !r.feasibility" class="text-[11px] text-gray-400 self-center">
+                    ждём ответ монтажника
+                  </span>
+                  <button v-if="r.status === 'pending' && r.feasibility === 'possible'"
                           @click="openSchedule(r)"
                           class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium">
                     Назначить
-                  </button>
-                  <button v-if="r.status === 'pending'"
-                          @click="openReject(r)"
-                          class="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
-                    Отклонить
                   </button>
                   <button v-if="r.status === 'scheduled'"
                           @click="openClose(r)"
@@ -322,6 +339,28 @@
           <button @click="submitReject" :disabled="submitting"
                   class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
             Отклонить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модал: Ответ монтажника (Возможно/Невозможно) -->
+    <div v-if="modals.feasibility" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-3">
+          {{ feasibilityForm.answer === 'possible' ? 'Подключение возможно' : 'Подключение невозможно' }}
+        </h3>
+        <div>
+          <label class="field-label">Комментарий (необязательно)</label>
+          <textarea v-model="feasibilityForm.comment" class="field-input resize-none" rows="3"
+                    :placeholder="feasibilityForm.answer === 'possible' ? 'Например: нужна лестница до 3 этажа' : 'Например: нет технической возможности, кабель не проложен'"></textarea>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button @click="modals.feasibility = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="submitFeasibility" :disabled="submitting"
+                  :class="feasibilityForm.answer === 'possible' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'"
+                  class="px-3.5 py-1.5 rounded-lg text-sm font-medium text-white transition-colors">
+            Подтвердить
           </button>
         </div>
       </div>
@@ -551,7 +590,7 @@ function reset() {
 }
 
 // Модалы
-const modals      = reactive({ create: false, edit: false, schedule: false, reject: false, close: false, detail: false })
+const modals      = reactive({ create: false, edit: false, schedule: false, reject: false, close: false, detail: false, feasibility: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')
@@ -588,6 +627,7 @@ watch(() => editForm.territory_id, (territoryId) => {
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const rejectForm   = reactive({ notes: '' })
+const feasibilityForm = reactive({ answer: '', comment: '' })
 const closeForm    = reactive({ notes: '', materials: [], promotion_id: null })
 
 function openCreate() {
@@ -629,6 +669,13 @@ function openReject(r) {
   activeRecord.value = r
   rejectForm.notes = ''
   modals.reject = true
+}
+
+function openFeasibility(r, answer) {
+  activeRecord.value = r
+  feasibilityForm.answer  = answer
+  feasibilityForm.comment = ''
+  modals.feasibility = true
 }
 
 function openClose(r) {
@@ -734,6 +781,17 @@ function submitClose() {
 
 function submitMarkCalled(r) {
   router.post(route('connection-requests.mark-called', r.id))
+}
+
+function submitFeasibility() {
+  submitting.value = true
+  router.post(route('connection-requests.feasibility', activeRecord.value.id), {
+    answer:  feasibilityForm.answer,
+    comment: feasibilityForm.comment,
+  }, {
+    onSuccess: () => { modals.feasibility = false },
+    onFinish:  () => { submitting.value = false },
+  })
 }
 
 function statusLabel(s) {

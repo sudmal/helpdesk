@@ -15,12 +15,12 @@
       <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" />
       <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" />
       <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения">
-        <span v-if="connectionAlerts.pending > 0 || connectionAlerts.needs_callback > 0"
+        <span v-if="connectionAlerts.pending > 0 || connectionAlerts.needs_callback > 0 || connectionAlerts.needs_completion > 0"
               class="ml-auto flex items-center gap-1">
-          <!-- Пульсирующий ! — есть необработанные -->
-          <span v-if="connectionAlerts.pending > 0"
+          <!-- Пульсирующий ! — есть необработанные (ждут монтажника) или назначенные (ждут выезда) -->
+          <span v-if="connectionAlerts.pending > 0 || connectionAlerts.needs_completion > 0"
                 class="animate-pulse flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none"
-                title="Есть ожидающие заявки">!</span>
+                :title="connectionAlerts.pending > 0 ? 'Есть ожидающие заявки' : 'Есть назначенные подключения, ждут выезда'">!</span>
           <!-- Прыгающий телефон — нужно прозвонить -->
           <span v-if="connectionAlerts.needs_callback > 0"
                 class="animate-bounce"
