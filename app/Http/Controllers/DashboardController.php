@@ -108,9 +108,22 @@ class DashboardController extends Controller
             'has_open' => ($serviceTypeHasOpen[$s->id] ?? 0) > 0,
         ]);
 
+        // Подключения, назначенные на выбранную дату -- отдельный блок "Подключения
+        // на сегодня" (не смешиваем с тикетной таблицей выше: у Ticket статус --
+        // FK на ticket_statuses с is_final/счётчиками по территориям, у
+        // ConnectionRequest статус -- простая строка, другая модель, см. память
+        // проекта, project-connection-feasibility).
+        $scheduledConnections = ConnectionRequest::with(['territory', 'serviceType'])
+            ->where('status', 'scheduled')
+            ->whereDate('scheduled_at', $date)
+            ->when($territory, fn($q) => $q->where('territory_id', $territory))
+            ->orderBy('scheduled_at')
+            ->get(['id', 'name', 'phone', 'address_string', 'scheduled_at', 'territory_id', 'service_type_id']);
+
         return Inertia::render('Dashboard/Index', [
             'todayTickets'      => $todayTickets,
             'overdue'           => $overdue,
+            'scheduledConnections' => $scheduledConnections,
             'territories'       => $territoriesWithCounts,
             'serviceTypes'      => $serviceTypesWithCounts,
             'materialsCatalog'  => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','code','name','unit','price']),

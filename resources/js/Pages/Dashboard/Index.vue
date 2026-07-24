@@ -76,6 +76,34 @@
       </div>
     </div>
 
+    <!-- ── Подключения на сегодня ── -->
+    <div v-if="scheduledConnections?.length" class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
+      <div class="px-3 py-1.5 border-b border-gray-100 bg-blue-50/50 text-xs font-medium text-blue-800 flex items-center gap-1.5">
+        🔌 Подключения на сегодня ({{ scheduledConnections.length }})
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <tbody class="divide-y divide-gray-100">
+            <tr v-for="c in scheduledConnections" :key="c.id"
+                class="hover:bg-gray-50 cursor-pointer"
+                @click="router.get(route('connection-requests.index', { search: c.phone }))">
+              <td class="px-3 py-1.5 whitespace-nowrap text-gray-600 w-16">
+                {{ new Date(c.scheduled_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
+              </td>
+              <td class="px-2 py-1.5 font-medium">{{ c.name }}</td>
+              <td class="px-2 py-1.5 font-mono whitespace-nowrap hidden lg:table-cell">{{ c.phone }}</td>
+              <td class="px-2 py-1.5 text-gray-500">{{ c.address_string }}</td>
+              <td class="px-2 py-1.5 hidden md:table-cell">
+                <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">
+                  {{ c.service_type.name }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ── Основная таблица заявок ── -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
       <!-- Вкладки территорий -->
@@ -436,6 +464,7 @@ const props = defineProps({
   sortDir:           { type: String, default: 'asc' },
   onlyOpen:          { type: Boolean, default: false },
   pendingConnectionsCount: { type: Number, default: 0 },
+  scheduledConnections:    { type: Array,  default: () => [] },
   pendingServiceRequestsCount: { type: Number, default: 0 },
 })
 
