@@ -28,6 +28,8 @@
                 class="text-black text-xs px-2 py-1 rounded font-medium disabled:opacity-50" style="background:#FBBF24">
           {{ markingCalled ? '...' : '📞 Прозвонил' }}
         </button>
+        <span v-if="request.feasibility === 'possible'" class="text-xs px-2 py-1 rounded text-white" style="background:#16A34A">✅ Возможно</span>
+        <span v-else-if="request.feasibility === 'impossible'" class="text-xs px-2 py-1 rounded text-white" style="background:#DC2626">❌ Невозможно</span>
       </div>
 
       <!-- Контакты / адрес -->
@@ -63,6 +65,10 @@
         <div class="text-[#9E9E9E] text-xs mb-1">Заметки</div>
         <div class="text-[#E0E0E0] text-sm whitespace-pre-wrap">{{ request.notes }}</div>
       </div>
+      <div v-if="request.feasibility_comment" class="bg-[#1E1E1E] rounded-lg p-3">
+        <div class="text-[#9E9E9E] text-xs mb-1">Комментарий монтажника</div>
+        <div class="text-[#E0E0E0] text-sm whitespace-pre-wrap">{{ request.feasibility_comment }}</div>
+      </div>
 
       <!-- Акт -->
       <button v-if="request.act" @click="$router.push({ name: 'act-detail', params: { id: request.act.id } })"
@@ -78,8 +84,20 @@
 
       <!-- Действия -->
       <div v-if="!isFinal" class="space-y-2">
+        <div v-if="request.status === 'pending' && !request.feasibility" class="flex gap-2">
+          <button @click="openFeasibilityModal('possible')" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#16A34A">
+            Возможно
+          </button>
+          <button @click="openFeasibilityModal('impossible')" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#DC2626">
+            Невозможно
+          </button>
+        </div>
+        <div v-if="request.status === 'pending' && !request.feasibility" class="text-[#9E9E9E] text-xs text-center">
+          Сначала подтвердите возможность подключения
+        </div>
         <div class="flex gap-2">
-          <button @click="openScheduleModal" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#3B82F6">
+          <button v-if="!(request.status === 'pending' && request.feasibility !== 'possible')"
+                  @click="openScheduleModal" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#3B82F6">
             {{ request.status === 'scheduled' ? 'Изменить дату' : 'Назначить дату' }}
           </button>
           <button @click="rejectModal = true" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#DC2626">
@@ -89,6 +107,25 @@
         <button @click="openCloseModal" class="w-full h-11 rounded-lg text-white text-sm font-medium" style="background:#10B981">
           Выполнено
         </button>
+      </div>
+    </div>
+
+    <!-- Модалка ответа монтажника -->
+    <div v-if="feasibilityModal" class="fixed inset-0 bg-black/60 flex items-end z-50" @click.self="feasibilityModal = false">
+      <div class="bg-[#1E1E1E] w-full rounded-t-2xl p-4 space-y-3">
+        <div class="text-white font-medium">
+          {{ feasibilityAnswer === 'possible' ? 'Подключение возможно' : 'Подключение невозможно' }}
+        </div>
+        <textarea v-model="feasibilityComment" placeholder="Комментарий (необязательно)" rows="3"
+                  class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10"></textarea>
+        <div class="flex gap-2">
+          <button @click="feasibilityModal = false" class="flex-1 h-11 rounded-lg text-white text-sm" style="background:#374151">Отмена</button>
+          <button @click="submitFeasibility" :disabled="submittingFeasibility"
+                  class="flex-1 h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50"
+                  :style="{ background: feasibilityAnswer === 'possible' ? '#16A34A' : '#DC2626' }">
+            {{ submittingFeasibility ? '...' : 'Подтвердить' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -213,6 +250,11 @@ const loading = ref(true)
 const copiedField = ref('')
 const markingCalled = ref(false)
 
+const feasibilityModal = ref(false)
+const feasibilityAnswer = ref('')
+const feasibilityComment = ref('')
+const submittingFeasibility = ref(false)
+
 const scheduleModal = ref(false)
 const scheduleAt = ref('')
 const scheduleNotes = ref('')
@@ -287,10 +329,30 @@ async function load() {
 async function markCalled() {
   markingCalled.value = true
   try {
-    await api.post(`/connection-requests/${route.params.id}/mark-called`)
-    request.value.needs_callback = false
+    const { data } = await api.post(`/connection-requests/${route.params.id}/mark-called`)
+    request.value = data
   } finally {
     markingCalled.value = false
+  }
+}
+
+function openFeasibilityModal(answer) {
+  feasibilityAnswer.value = answer
+  feasibilityComment.value = ''
+  feasibilityModal.value = true
+}
+
+async function submitFeasibility() {
+  submittingFeasibility.value = true
+  try {
+    const { data } = await api.post(`/connection-requests/${route.params.id}/feasibility`, {
+      answer: feasibilityAnswer.value,
+      comment: feasibilityComment.value || undefined,
+    })
+    request.value = data
+    feasibilityModal.value = false
+  } finally {
+    submittingFeasibility.value = false
   }
 }
 

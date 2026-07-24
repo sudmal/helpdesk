@@ -83,7 +83,18 @@ const tabs = computed(() => [
   { key: 'closed', label: 'Выполнено', count: items.value.filter((r) => r.status === 'closed').length },
 ])
 
-const currentList = computed(() => items.value.filter((r) => r.status === activeTab.value))
+// Внутри вкладки "Ожидает" -- то, что реально требует действия монтажника
+// (нет ответа о возможности подключения, либо нужен прозвон), наверх.
+// closed/rejected сюда не попадают -- они уже в своих отдельных вкладках.
+const currentList = computed(() =>
+  items.value
+    .filter((r) => r.status === activeTab.value)
+    .slice()
+    .sort((a, b) => {
+      const score = (r) => (r.needs_callback || (r.status === 'pending' && !r.feasibility)) ? 0 : 1
+      return score(a) - score(b)
+    })
+)
 const canLoadMore = computed(() => page.value < lastPage.value)
 
 async function load() {
