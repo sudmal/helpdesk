@@ -244,13 +244,14 @@
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">MAX ID</th>
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Бригада</th>
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Территории</th>
+              <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Активность</th>
               <th class="text-left px-3 py-0.5 text-xs text-gray-500 font-medium">Статус</th>
               <th class="px-3 py-0.5"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="!users.length">
-              <td colspan="9" class="text-center py-10 text-gray-400">Нет пользователей</td>
+              <td colspan="10" class="text-center py-10 text-gray-400">Нет пользователей</td>
             </tr>
             <tr v-for="u in users" :key="u.id" class="hover:bg-gray-50">
               <td class="px-3 py-0.5">
@@ -266,6 +267,18 @@
               <td class="px-3 py-0.5 text-xs text-gray-500">{{ u.brigades?.[0]?.name ?? '—' }}</td>
               <td class="px-3 py-0.5 text-xs text-gray-500">
                 {{ u.territories?.map(t => t.name).join(', ') || '—' }}
+              </td>
+              <td class="px-3 py-0.5">
+                <div class="flex flex-col gap-0.5">
+                  <span v-for="ch in activityChannels" :key="ch.key"
+                        class="inline-flex items-center gap-1 text-xs whitespace-nowrap"
+                        :class="u.activity?.[ch.key]?.online ? 'text-green-700 font-medium' : 'text-gray-400'">
+                    <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                          :class="u.activity?.[ch.key]?.online ? 'bg-green-500' : 'bg-gray-300'"></span>
+                    {{ ch.label }}:
+                    {{ u.activity?.[ch.key]?.online ? 'сейчас' : (formatLastSeen(u.activity?.[ch.key]?.last) ?? '—') }}
+                  </span>
+                </div>
               </td>
               <td class="px-3 py-0.5">
                 <span :class="['text-xs px-2 py-0.5 rounded-full',
@@ -1051,6 +1064,7 @@
 
 <script setup>
 import { ref, computed , watch } from 'vue'
+import dayjs from 'dayjs'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -1174,6 +1188,23 @@ function deleteStatus(s) {
 }
 
 // ── Пользователи ─────────────────────────────────────────────────────
+const activityChannels = [
+  { key: 'web',    label: 'Веб' },
+  { key: 'webapp', label: 'Прил.' },
+  { key: 'api',    label: 'API' },
+]
+
+function formatLastSeen(dt) {
+  if (!dt) return null
+  const d = dayjs(dt)
+  const diffMin = dayjs().diff(d, 'minute')
+  if (diffMin < 1)  return 'только что'
+  if (diffMin < 60) return `${diffMin} мин назад`
+  const diffHours = dayjs().diff(d, 'hour')
+  if (diffHours < 24) return `${diffHours} ч назад`
+  return d.format('DD.MM.YY HH:mm')
+}
+
 const showUserModal = ref(false)
 const editingUser        = ref(null)
 const testNotifyLoading  = ref(null)

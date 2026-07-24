@@ -31,6 +31,7 @@ class User extends Authenticatable
         'notify_max'         => 'boolean',
         'notify_on_days_off' => 'boolean',
         'is_active'          => 'boolean',
+        'last_web_seen_at'   => 'datetime',
     ];
 
     // === Relations ===

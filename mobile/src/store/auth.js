@@ -27,7 +27,7 @@ if (typeof window !== 'undefined') {
 }
 
 async function login(login, password) {
-  const { data } = await api.post('/auth/login', { login, password })
+  const { data } = await api.post('/auth/login', { login, password, client: 'pwa' })
   state.token = data.token
   state.user = data.user
   localStorage.setItem('token', data.token)

@@ -11,6 +11,42 @@ use Inertia\Inertia;
 
 class SettingsController extends Controller
 {
+    /**
+     * Пользователи + активность по трём каналам: веб (сессия, троттлится в
+     * EnsureUserIsActive), веб-приложение (PWA app.vega8.ru, токен Sanctum
+     * с именем "pwa") и API (Android-приложение и всё остальное, токен
+     * с любым другим именем -- сейчас "mobile"). "Онлайн" -- активность
+     * в последние 5 минут; если канал вообще не использовался, просто
+     * последняя активность = null, фронт покажет "не использовалось".
+     */
+    private function usersWithActivity()
+    {
+        $threshold = now()->subMinutes(5);
+
+        return User::with(['role', 'territories', 'brigades', 'tokens'])
+            ->orderBy('name')->get()
+            ->each(function (User $u) use ($threshold) {
+                $pwaToken = $u->tokens->where('name', 'pwa')->sortByDesc('last_used_at')->first();
+                $apiToken = $u->tokens->where('name', '!=', 'pwa')->sortByDesc('last_used_at')->first();
+
+                $u->setAttribute('activity', [
+                    'web'    => [
+                        'last'   => $u->last_web_seen_at,
+                        'online' => $u->last_web_seen_at?->gt($threshold) ?? false,
+                    ],
+                    'webapp' => [
+                        'last'   => $pwaToken?->last_used_at,
+                        'online' => $pwaToken?->last_used_at?->gt($threshold) ?? false,
+                    ],
+                    'api'    => [
+                        'last'   => $apiToken?->last_used_at,
+                        'online' => $apiToken?->last_used_at?->gt($threshold) ?? false,
+                    ],
+                ]);
+                $u->makeHidden('tokens');
+            });
+    }
+
     public function index()
     {
         $this->authorize('manage-settings');
@@ -25,7 +61,7 @@ class SettingsController extends Controller
             'ticketStatuses'   => TicketStatus::orderBy('sort_order')->get(),
             'serviceTypes'     => ServiceType::orderBy('sort_order')->get(),
             'promotions'       => Promotion::orderBy('sort_order')->orderBy('name')->get(),
-            'users'            => User::with(['role', 'territories', 'brigades'])->orderBy('name')->get(),
+            'users'            => $this->usersWithActivity(),
             'roles'            => Role::orderBy('name')->get(),
             'territories'      => $territoriesQuery->get(['id', 'name']),
             'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),

@@ -45,8 +45,13 @@ class AuthController extends Controller
         $this->throttle->handleSuccess($ip);
         $this->throttle->recordAttempt($ip, $request->login, null, 'api', true);
 
-        $user->tokens()->where('name', 'mobile')->delete();
-        $token = $user->createToken('mobile')->plainTextToken;
+        // Токен именуем по клиенту -- нужно различать канал "веб-приложение"
+        // (PWA app.vega8.ru, шлёт client=pwa) от "API" (Android-приложение и
+        // всё остальное, чего явно не назвалось) в Настройки -> Пользователи.
+        // Раньше все токены назывались одинаково "mobile" без различия.
+        $tokenName = $request->input('client') === 'pwa' ? 'pwa' : 'mobile';
+        $user->tokens()->where('name', $tokenName)->delete();
+        $token = $user->createToken($tokenName)->plainTextToken;
 
         return response()->json([
             'token' => $token,

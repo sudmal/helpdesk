@@ -1,0 +1,1 @@
+import{D as s,i as a}from"./index-CWDRUG8g.js";const e="mobile_settings",t={syncIntervalMinutes:15,sortOrder:"time",serviceTypeFilter:""};function o(){try{return{...t,...JSON.parse(localStorage.getItem(e)||"{}")}}catch{return{...t}}}const i=s(o());a(()=>({...i}),r=>localStorage.setItem(e,JSON.stringify(r)),{deep:!0});export{i as s};
