@@ -102,10 +102,10 @@ class ConnectionRequestController extends Controller
         ]);
 
         if (isset($data['status'])) {
-            // Дата назначается только ПОСЛЕ того, как оператор уже созвонился с
-            // клиентом и согласовал время -- назначение само по себе прозвон
-            // не требует. Отказ клиенту ещё нужно сообщить отдельным звонком.
-            $data['needs_callback'] = $data['status'] === 'rejected';
+            // needs_callback/"Прозвонил" -- целиком история про ответ монтажника
+            // "Невозможно" (см. feasibility() ниже). Прямое отклонение оператором
+            // (минуя монтажника) этот флаг не трогает.
+            $data['needs_callback'] = false;
         }
 
         // Тот же гейт, что и в веб-версии (ConnectionRequestController::update):

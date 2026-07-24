@@ -165,7 +165,7 @@
                           class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-medium">
                     Изменить дату
                   </button>
-                  <button v-if="r.needs_callback"
+                  <button v-if="r.status === 'pending' && r.feasibility === 'impossible'"
                           @click="submitMarkCalled(r)"
                           class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-medium"
                           title="Отметить: прозвонили клиенту">
