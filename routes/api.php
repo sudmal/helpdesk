@@ -31,6 +31,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/connection-requests/{connectionRequest}',                    [ConnectionRequestController::class, 'update']);
     Route::post('/connection-requests/{connectionRequest}/close',             [ConnectionRequestController::class, 'close']);
     Route::post('/connection-requests/{connectionRequest}/mark-called',       [ConnectionRequestController::class, 'markCalled']);
+    Route::post('/connection-requests/{connectionRequest}/feasibility',       [ConnectionRequestController::class, 'feasibility']);
     Route::delete('/connection-requests/{connectionRequest}',                 [ConnectionRequestController::class, 'destroy']);
 
     // Полевая часть workflow "Акты" — утверждение бригадиром, правка состава

@@ -123,6 +123,18 @@ class ConnectionRequestController extends Controller
             $data['needs_callback'] = in_array($data['status'], ['scheduled', 'rejected']);
         }
 
+        // Дату можно назначать только после того, как монтажник подтвердил
+        // техническую возможность подключения -- иначе оператор рискует
+        // пообещать клиенту дату раньше, чем известно, возможно ли вообще
+        // подключить (см. память проекта, project-connection-feasibility).
+        // Прямое отклонение (Отклонить) оператором -- по-прежнему без гейта,
+        // это отдельный, независимый путь.
+        if (($data['status'] ?? null) === 'scheduled' && $connectionRequest->feasibility !== 'possible') {
+            return back()->withErrors([
+                'status' => 'Сначала нужен ответ монтажника: возможно ли подключение.',
+            ])->withInput();
+        }
+
         $oldStatus      = $connectionRequest->status;
         $oldScheduledAt = $connectionRequest->scheduled_at;
         $connectionRequest->update($data);
@@ -238,9 +250,60 @@ class ConnectionRequestController extends Controller
 
     public function markCalled(ConnectionRequest $connectionRequest)
     {
-        $connectionRequest->update(['needs_callback' => false]);
+        $data = ['needs_callback' => false];
+
+        // Прозвон после ответа монтажника "Невозможно" -- это звонок клиенту
+        // с отказом, поэтому сразу переводим заявку в rejected (без отдельного
+        // клика "Отклонить"). Если needs_callback был выставлен по другой
+        // причине (например при назначении даты) -- просто сбрасываем флаг.
+        if ($connectionRequest->feasibility === 'impossible' && $connectionRequest->status === 'pending') {
+            $data['status'] = 'rejected';
+        }
+
+        $connectionRequest->update($data);
         $this->logEvent($connectionRequest, request()->user()->id, 'called_back');
+        if (($data['status'] ?? null) === 'rejected') {
+            $this->logEvent($connectionRequest, request()->user()->id, 'rejected', 'Автоматически отклонено после прозвона (монтажник: невозможно)');
+        }
         return back()->with('success', 'Отмечено: прозвонили');
+    }
+
+    /**
+     * Ответ монтажника на вопрос "возможно ли подключение" -- новый
+     * обязательный шаг между созданием заявки и назначением даты
+     * (см. память проекта, project-connection-feasibility).
+     */
+    public function feasibility(Request $request, ConnectionRequest $connectionRequest)
+    {
+        abort_unless(
+            $request->user()->isTechnician() || $request->user()->isAdmin() || $request->user()->isHeadSupport(),
+            403,
+            'Ответить может только монтажник.'
+        );
+
+        $data = $request->validate([
+            'answer'  => 'required|in:possible,impossible',
+            'comment' => 'nullable|string|max:2000',
+        ]);
+
+        $update = [
+            'feasibility'         => $data['answer'],
+            'feasibility_comment' => $data['comment'] ?? null,
+            'feasibility_by'      => $request->user()->id,
+            'feasibility_at'      => now(),
+        ];
+        if ($data['answer'] === 'impossible') {
+            $update['needs_callback'] = true;
+        }
+
+        $connectionRequest->update($update);
+        $this->logEvent(
+            $connectionRequest, $request->user()->id,
+            $data['answer'] === 'possible' ? 'feasibility_possible' : 'feasibility_impossible',
+            $data['comment'] ?? null
+        );
+
+        return back()->with('success', 'Ответ сохранён');
     }
 
     public function destroy(ConnectionRequest $connectionRequest)

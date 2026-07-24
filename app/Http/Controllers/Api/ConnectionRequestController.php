@@ -104,6 +104,16 @@ class ConnectionRequestController extends Controller
             $data['needs_callback'] = in_array($data['status'], ['scheduled', 'rejected']);
         }
 
+        // Тот же гейт, что и в веб-версии (ConnectionRequestController::update):
+        // назначать дату можно только после того, как монтажник ответил
+        // "возможно" -- см. память проекта, project-connection-feasibility.
+        if (($data['status'] ?? null) === 'scheduled' && $connectionRequest->feasibility !== 'possible') {
+            return response()->json([
+                'message' => 'Сначала нужен ответ монтажника: возможно ли подключение.',
+                'errors'  => ['status' => ['Сначала нужен ответ монтажника: возможно ли подключение.']],
+            ], 422);
+        }
+
         $connectionRequest->update($data);
         $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'materials']);
 
@@ -195,8 +205,49 @@ class ConnectionRequestController extends Controller
 
     public function markCalled(ConnectionRequest $connectionRequest): JsonResponse
     {
-        $connectionRequest->update(['needs_callback' => false]);
-        return response()->json(['message' => 'Отмечено: прозвонили']);
+        $data = ['needs_callback' => false];
+
+        // Тот же принцип, что и в веб-версии: прозвон после "Невозможно" от
+        // монтажника -- это звонок с отказом, сразу закрываем rejected.
+        if ($connectionRequest->feasibility === 'impossible' && $connectionRequest->status === 'pending') {
+            $data['status'] = 'rejected';
+        }
+
+        $connectionRequest->update($data);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee']);
+        return response()->json($this->formatOne($connectionRequest));
+    }
+
+    /**
+     * Ответ монтажника на вопрос "возможно ли подключение" -- см. память
+     * проекта, project-connection-feasibility, и веб-версию этого же экшна.
+     */
+    public function feasibility(Request $request, ConnectionRequest $connectionRequest): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user->isTechnician() && !$user->isAdmin() && !$user->isHeadSupport()) {
+            return response()->json(['message' => 'Ответить может только монтажник.'], 403);
+        }
+
+        $data = $request->validate([
+            'answer'  => 'required|in:possible,impossible',
+            'comment' => 'nullable|string|max:2000',
+        ]);
+
+        $update = [
+            'feasibility'         => $data['answer'],
+            'feasibility_comment' => $data['comment'] ?? null,
+            'feasibility_by'      => $user->id,
+            'feasibility_at'      => now(),
+        ];
+        if ($data['answer'] === 'impossible') {
+            $update['needs_callback'] = true;
+        }
+
+        $connectionRequest->update($update);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee']);
+
+        return response()->json($this->formatOne($connectionRequest));
     }
 
     public function destroy(ConnectionRequest $connectionRequest): JsonResponse
@@ -229,6 +280,9 @@ class ConnectionRequestController extends Controller
                 'promotion_price'      => $r->act->promotion_price !== null ? (float) $r->act->promotion_price : null,
             ] : null,
             'needs_callback' => (bool) $r->needs_callback,
+            'feasibility'         => $r->feasibility,
+            'feasibility_comment' => $r->feasibility_comment,
+            'feasibility_at'      => $r->feasibility_at?->toIso8601String(),
             'territory'      => $r->territory ? ['id' => $r->territory->id, 'name' => $r->territory->name] : null,
             'service_type'   => $r->serviceType ? [
                 'id'    => $r->serviceType->id,

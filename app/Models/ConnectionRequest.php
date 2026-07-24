@@ -13,11 +13,13 @@ class ConnectionRequest extends Model
         'name', 'phone', 'address_string', 'description',
         'status', 'scheduled_at', 'notes', 'act_number',
         'assigned_to', 'created_by', 'territory_id', 'brigade_id', 'service_type_id', 'needs_callback',
+        'feasibility', 'feasibility_comment', 'feasibility_by', 'feasibility_at',
     ];
 
     protected $casts = [
         'scheduled_at'   => 'datetime',
         'needs_callback' => 'boolean',
+        'feasibility_at' => 'datetime',
     ];
 
     public function assignee(): BelongsTo
