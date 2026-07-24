@@ -18,7 +18,10 @@
       </select>
     </div>
 
-    <!-- Вкладки -->
+    <!-- Вкладки: строго 2, как в Android (Ожидающие / Утверждённые) --
+         Отклонённые и "невозможные" заявки в приложении не показываются
+         вовсе -- это территория оператора на портале, см. память проекта,
+         project-connection-feasibility. -->
     <div class="shrink-0 flex" style="background:#1D4ED8">
       <button v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key"
               class="flex-1 py-2.5 text-sm font-medium border-b-2 transition-colors"
@@ -46,8 +49,7 @@
           </div>
 
           <ConnectionCard v-for="r in currentList" :key="r.id" :request="r"
-                           @open="$router.push({ name: 'connection-detail', params: { id: r.id } })"
-                           @open-act="$router.push({ name: 'act-detail', params: { id: $event } })" />
+                           @open="$router.push({ name: 'connection-detail', params: { id: r.id } })" />
 
           <button v-if="canLoadMore" @click="loadMore" :disabled="loadingMore"
                   class="w-full h-10 rounded-lg text-[#9E9E9E] text-sm border border-white/10 mt-1 disabled:opacity-50">
@@ -65,6 +67,13 @@ import api from '../api'
 import PullToRefresh from '../components/PullToRefresh.vue'
 import ConnectionCard from '../components/ConnectionCard.vue'
 
+// Столько часов закрытая заявка ещё видна в списке после завершения --
+// совпадает с дефолтом Android (DEFAULT_CLOSED_CONN_RETENTION_HOURS = 24),
+// см. память проекта, project-connection-feasibility. Там это настраиваемая
+// пользователем величина (Prefs), тут — фиксированный дефолт, у PWA нет
+// экрана настроек для этого.
+const CLOSED_RETENTION_HOURS = 24
+
 const items = ref([])
 const territories = ref([])
 const territoryFilter = ref('')
@@ -72,29 +81,50 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const hasLoadedOnce = ref(false)
 const lastSyncLabel = ref('Ещё не синхронизировано')
-const activeTab = ref('pending')
+const activeTab = ref('waiting')
 const page = ref(1)
 const lastPage = ref(1)
 
+// Видимые монтажнику заявки: rejected и feasibility=impossible исчезают
+// сразу (дальше это только портал/оператор), закрытые -- в течение окна
+// хранения, остальное (pending/scheduled) остаётся всегда.
+const visibleItems = computed(() => {
+  const cutoff = Date.now() - CLOSED_RETENTION_HOURS * 3600 * 1000
+  return items.value.filter((r) => {
+    if (r.status === 'rejected') return false
+    if (r.feasibility === 'impossible') return false
+    if (r.status === 'closed') {
+      const t = r.updated_at ? new Date(r.updated_at).getTime() : null
+      return t === null || t >= cutoff
+    }
+    return true
+  })
+})
+
+// Территория уже отфильтрована на сервере (передаётся параметром в load()
+// ниже) -- дополнительный клиентский фильтр тут не нужен.
+// Внутри "Ожидающие" -- уже ответившие "возможно" (на согласовании у
+// оператора) выше тех, кто ещё не ответил. Внутри "Утверждённые" --
+// назначенные выше уже выполненных.
+const waitingList = computed(() =>
+  visibleItems.value
+    .filter((r) => r.status === 'pending')
+    .slice()
+    .sort((a, b) => (a.feasibility !== 'possible') - (b.feasibility !== 'possible'))
+)
+const approvedList = computed(() =>
+  visibleItems.value
+    .filter((r) => r.status === 'scheduled' || r.status === 'closed')
+    .slice()
+    .sort((a, b) => (a.status === 'closed') - (b.status === 'closed'))
+)
+
 const tabs = computed(() => [
-  { key: 'pending', label: 'Ожидает', count: items.value.filter((r) => r.status === 'pending').length },
-  { key: 'scheduled', label: 'Назначено', count: items.value.filter((r) => r.status === 'scheduled').length },
-  { key: 'rejected', label: 'Отклонено', count: items.value.filter((r) => r.status === 'rejected').length },
-  { key: 'closed', label: 'Выполнено', count: items.value.filter((r) => r.status === 'closed').length },
+  { key: 'waiting', label: 'Ожидающие', count: waitingList.value.length },
+  { key: 'approved', label: 'Утверждённые', count: approvedList.value.length },
 ])
 
-// Внутри вкладки "Ожидает" -- то, что реально требует действия монтажника
-// (нет ответа о возможности подключения, либо нужен прозвон), наверх.
-// closed/rejected сюда не попадают -- они уже в своих отдельных вкладках.
-const currentList = computed(() =>
-  items.value
-    .filter((r) => r.status === activeTab.value)
-    .slice()
-    .sort((a, b) => {
-      const score = (r) => (r.needs_callback || (r.status === 'pending' && !r.feasibility)) ? 0 : 1
-      return score(a) - score(b)
-    })
-)
+const currentList = computed(() => activeTab.value === 'waiting' ? waitingList.value : approvedList.value)
 const canLoadMore = computed(() => page.value < lastPage.value)
 
 async function load() {

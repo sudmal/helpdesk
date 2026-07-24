@@ -24,36 +24,25 @@
               :style="{ background: request.service_type?.color || '#6B7280' }">
           {{ request.service_type.name }}
         </span>
-        <button v-if="request.needs_callback" @click="markCalled" :disabled="markingCalled"
-                class="text-black text-xs px-2 py-1 rounded font-medium disabled:opacity-50" style="background:#FBBF24">
-          {{ markingCalled ? '...' : '📞 Прозвонил' }}
-        </button>
-        <span v-if="request.feasibility === 'possible'" class="text-xs px-2 py-1 rounded text-white" style="background:#16A34A">✅ Возможно</span>
-        <span v-else-if="request.feasibility === 'impossible'" class="text-xs px-2 py-1 rounded text-white" style="background:#DC2626">❌ Невозможно</span>
+      </div>
+
+      <!-- Возможность подключения -->
+      <div v-if="request.feasibility === 'possible'" class="rounded-lg p-3" style="background:#0D2B1D">
+        <div class="text-sm font-medium" style="color:#4ADE80">✓ Подключение возможно</div>
+        <div v-if="request.feasibility_comment" class="text-[#9E9E9E] text-sm mt-1 whitespace-pre-wrap">{{ request.feasibility_comment }}</div>
+      </div>
+      <div v-else-if="request.feasibility === 'impossible'" class="rounded-lg p-3" style="background:#2D1414">
+        <div class="text-sm font-medium" style="color:#EF4444">✕ Подключение невозможно</div>
+        <div v-if="request.feasibility_comment" class="text-[#9E9E9E] text-sm mt-1 whitespace-pre-wrap">{{ request.feasibility_comment }}</div>
       </div>
 
       <!-- Контакты / адрес -->
       <div class="bg-[#1E1E1E] rounded-lg p-3 space-y-2">
-        <button @click="copy(request.address_string)" class="flex items-center justify-between w-full text-left">
-          <span class="text-[#E0E0E0] text-sm">{{ request.address_string || 'Адрес не указан' }}</span>
-          <span class="text-[#9E9E9E] text-xs shrink-0 ml-2">{{ copiedField === 'address' ? 'скопировано' : 'копир.' }}</span>
-        </button>
-        <div v-if="request.phone" class="flex items-center justify-between">
-          <a :href="'tel:' + request.phone" class="text-[#3B82F6] text-sm">{{ request.phone }}</a>
-          <div class="flex gap-3 shrink-0 ml-2">
-            <button @click="copy(request.phone, 'phone')" class="text-[#9E9E9E] text-xs">
-              {{ copiedField === 'phone' ? 'скопировано' : 'копир.' }}
-            </button>
-            <a :href="'tel:' + request.phone" class="text-[#4ADE80]">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div v-if="request.scheduled_at" class="text-[#9E9E9E] text-xs">Назначено на: {{ formatDateTime(request.scheduled_at) }}</div>
-        <div v-if="request.territory?.name" class="text-[#9E9E9E] text-xs">Территория: {{ request.territory.name }}</div>
-        <div v-if="request.creator" class="text-[#9E9E9E] text-xs">Создал: {{ request.creator }}</div>
+        <div class="text-[#E0E0E0] text-sm">Адрес: {{ request.address_string || '—' }}</div>
+        <a v-if="request.phone" :href="'tel:' + request.phone" class="text-[#3B82F6] text-sm block">Тел: {{ request.phone }}</a>
+        <div v-if="request.scheduled_at" class="text-[#9E9E9E] text-xs">Дата выезда: {{ formatDate(request.scheduled_at) }}</div>
+        <div class="text-[#9E9E9E] text-xs">Территория: {{ request.territory?.name || '—' }}</div>
+        <div class="text-[#9E9E9E] text-xs">Добавил: {{ request.creator || '—' }}</div>
       </div>
 
       <!-- Описание / заметки -->
@@ -65,26 +54,39 @@
         <div class="text-[#9E9E9E] text-xs mb-1">Заметки</div>
         <div class="text-[#E0E0E0] text-sm whitespace-pre-wrap">{{ request.notes }}</div>
       </div>
-      <div v-if="request.feasibility_comment" class="bg-[#1E1E1E] rounded-lg p-3">
-        <div class="text-[#9E9E9E] text-xs mb-1">Комментарий монтажника</div>
-        <div class="text-[#E0E0E0] text-sm whitespace-pre-wrap">{{ request.feasibility_comment }}</div>
-      </div>
 
-      <!-- Акт -->
-      <button v-if="request.act" @click="$router.push({ name: 'act-detail', params: { id: request.act.id } })"
-              class="w-full bg-[#1E1E1E] rounded-lg p-3 flex items-center justify-between text-left">
-        <div>
-          <div class="text-[#E0E0E0] text-sm">Акт {{ request.act.number }}</div>
-          <div class="text-[#9E9E9E] text-xs">{{ actStatusLabel(request.act.status) }}</div>
+      <!-- Закрытая заявка: акт / акция -->
+      <template v-if="request.status === 'closed'">
+        <div class="bg-[#1E1E1E] rounded-lg p-3 space-y-2">
+          <div class="text-[#E0E0E0] text-sm">Акт: {{ request.act_number || request.act?.number || 'б/а' }}</div>
+          <div v-if="request.act?.promotion_name && request.act?.promotion_price != null"
+               class="text-[#FBBF24] text-sm">
+            🎁 Акция «{{ request.act.promotion_name }}» — к оплате {{ request.act.promotion_price.toFixed(2) }} руб.
+          </div>
+          <div v-if="request.materials && request.materials.length" class="space-y-1 pt-1 border-t border-white/10">
+            <div v-for="m in request.materials" :key="m.id" class="text-[#D1D5DB] text-xs">
+              {{ m.name }} — {{ m.quantity }} {{ m.unit }} × {{ m.price_at_time }} = {{ m.total }} руб.
+            </div>
+            <div class="text-[#E0E0E0] text-sm font-medium pt-1">Итого: {{ materialsTotalClosed.toFixed(2) }} руб.</div>
+          </div>
         </div>
-        <span v-if="request.act.materials_changed_at" class="text-black text-[10px] px-2 py-1 rounded" style="background:#FBBF24">
-          есть правки акта
-        </span>
-      </button>
+        <button v-if="request.act" @click="$router.push({ name: 'act-detail', params: { id: request.act.id } })"
+                class="w-full bg-[#1E1E1E] rounded-lg p-3 flex items-center justify-between text-left">
+          <div>
+            <div class="text-[#E0E0E0] text-sm">Акт {{ request.act.number }}</div>
+            <div class="text-[#9E9E9E] text-xs">{{ actStatusLabel(request.act.status) }}</div>
+          </div>
+          <span v-if="request.act.materials_changed_at" class="text-black text-[10px] px-2 py-1 rounded" style="background:#FBBF24">
+            есть правки акта
+          </span>
+        </button>
+      </template>
 
-      <!-- Действия -->
-      <div v-if="!isFinal" class="space-y-2">
-        <div v-if="request.status === 'pending' && !request.feasibility" class="flex gap-2">
+      <!-- Действия монтажника: только ответ о возможности и завершение --
+           назначение даты и отклонение теперь целиком на портале у оператора,
+           см. память проекта (project-connection-feasibility). -->
+      <div v-if="showFeasibilityAction || showCloseAction" class="space-y-2">
+        <div v-if="showFeasibilityAction" class="flex gap-2">
           <button @click="openFeasibilityModal('possible')" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#16A34A">
             Возможно
           </button>
@@ -92,20 +94,8 @@
             Невозможно
           </button>
         </div>
-        <div v-if="request.status === 'pending' && !request.feasibility" class="text-[#9E9E9E] text-xs text-center">
-          Сначала подтвердите возможность подключения
-        </div>
-        <div class="flex gap-2">
-          <button v-if="!(request.status === 'pending' && request.feasibility !== 'possible')"
-                  @click="openScheduleModal" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#3B82F6">
-            {{ request.status === 'scheduled' ? 'Изменить дату' : 'Назначить дату' }}
-          </button>
-          <button @click="rejectModal = true" class="flex-1 h-11 rounded-lg text-white text-sm font-medium" style="background:#DC2626">
-            Отклонить
-          </button>
-        </div>
-        <button @click="openCloseModal" class="w-full h-11 rounded-lg text-white text-sm font-medium" style="background:#10B981">
-          Выполнено
+        <button v-if="showCloseAction" @click="openCloseModal" class="w-full h-11 rounded-lg text-white text-sm font-medium" style="background:#10B981">
+          Завершить
         </button>
       </div>
     </div>
@@ -118,46 +108,13 @@
         </div>
         <textarea v-model="feasibilityComment" placeholder="Комментарий (необязательно)" rows="3"
                   class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10"></textarea>
+        <div v-if="feasibilityError" class="text-[#EF4444] text-xs">{{ feasibilityError }}</div>
         <div class="flex gap-2">
           <button @click="feasibilityModal = false" class="flex-1 h-11 rounded-lg text-white text-sm" style="background:#374151">Отмена</button>
           <button @click="submitFeasibility" :disabled="submittingFeasibility"
                   class="flex-1 h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50"
                   :style="{ background: feasibilityAnswer === 'possible' ? '#16A34A' : '#DC2626' }">
-            {{ submittingFeasibility ? '...' : 'Подтвердить' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модалка назначения даты -->
-    <div v-if="scheduleModal" class="fixed inset-0 bg-black/60 flex items-end z-50" @click.self="scheduleModal = false">
-      <div class="bg-[#1E1E1E] w-full rounded-t-2xl p-4 space-y-3">
-        <div class="text-white font-medium">Назначить дату визита</div>
-        <input v-model="scheduleAt" type="datetime-local"
-               class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10" />
-        <textarea v-model="scheduleNotes" placeholder="Заметка (необязательно)" rows="2"
-                  class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10"></textarea>
-        <div class="flex gap-2">
-          <button @click="scheduleModal = false" class="flex-1 h-11 rounded-lg text-white text-sm" style="background:#374151">Отмена</button>
-          <button @click="submitSchedule" :disabled="!scheduleAt || scheduling"
-                  class="flex-1 h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50" style="background:#3B82F6">
-            {{ scheduling ? '...' : 'Назначить' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модалка отклонения -->
-    <div v-if="rejectModal" class="fixed inset-0 bg-black/60 flex items-end z-50" @click.self="rejectModal = false">
-      <div class="bg-[#1E1E1E] w-full rounded-t-2xl p-4 space-y-3">
-        <div class="text-white font-medium">Отклонить заявку</div>
-        <textarea v-model="rejectNotes" placeholder="Причина отклонения..." rows="3"
-                  class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10"></textarea>
-        <div class="flex gap-2">
-          <button @click="rejectModal = false" class="flex-1 h-11 rounded-lg text-white text-sm" style="background:#374151">Отмена</button>
-          <button @click="submitReject" :disabled="rejecting"
-                  class="flex-1 h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50" style="background:#DC2626">
-            {{ rejecting ? '...' : 'Отклонить' }}
+            {{ submittingFeasibility ? 'Отправка...' : 'Отправить' }}
           </button>
         </div>
       </div>
@@ -170,25 +127,9 @@
         <textarea v-model="closeNotes" placeholder="Что было сделано..." rows="3"
                   class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10"></textarea>
 
-        <!-- Участок отсутствует -- нужен до материалов -->
-        <div v-if="!request.service_type" class="space-y-1.5 bg-[#2A2A2A] rounded-lg p-2.5">
-          <div class="text-[#FBBF24] text-xs">Не указан участок — нужен перед добавлением материалов</div>
-          <div class="flex gap-2">
-            <select v-model="serviceTypeToSave"
-                    class="flex-1 min-w-0 bg-[#1E1E1E] text-white text-sm rounded-lg px-2 py-2 border border-white/10">
-              <option value="">— Участок —</option>
-              <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
-            </select>
-            <button @click="saveServiceType" :disabled="!serviceTypeToSave || savingServiceType"
-                    class="px-3 rounded-lg text-white text-sm shrink-0 disabled:opacity-50" style="background:#3B82F6">
-              {{ savingServiceType ? '...' : 'Сохранить' }}
-            </button>
-          </div>
-        </div>
-
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" v-model="useMaterials" :disabled="!request.service_type" class="w-4 h-4" />
-          <span class="text-[#E0E0E0] text-sm" :class="{ 'opacity-50': !request.service_type }">📦 Использовались расходные материалы</span>
+          <input type="checkbox" v-model="useMaterials" class="w-4 h-4" />
+          <span class="text-[#E0E0E0] text-sm">📦 Использовались расходные материалы</span>
         </label>
 
         <div v-if="useMaterials" class="space-y-2">
@@ -210,27 +151,29 @@
           <div class="flex items-center justify-between">
             <button @click="addMaterialRow" class="text-[#3B82F6] text-sm">+ Добавить материал</button>
             <div v-if="materialsTotal > 0" class="text-[#E0E0E0] text-sm font-medium">
-              Итого: {{ materialsTotal.toFixed(2) }}₽
+              Материалы: {{ materialsTotal.toFixed(2) }}₽
             </div>
           </div>
 
           <div v-if="materialsTotal > 0">
             <select v-model="promotionId"
                     class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10">
-              <option :value="null">— без акции, по стоимости материалов —</option>
+              <option :value="null">Без акции</option>
               <option v-for="p in promotions" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }}₽</option>
             </select>
             <p v-if="selectedPromotion" class="text-[#9E9E9E] text-xs mt-1">
-              Абонент платит {{ selectedPromotion.price }}₽ вместо {{ materialsTotal.toFixed(2) }}₽ по факту материалов.
+              Абонент платит: {{ selectedPromotion.price.toFixed(2) }}₽
             </p>
           </div>
         </div>
+
+        <div v-if="closeError" class="text-[#EF4444] text-xs">{{ closeError }}</div>
 
         <div class="flex gap-2">
           <button @click="closeModal = false" class="flex-1 h-11 rounded-lg text-white text-sm" style="background:#374151">Отмена</button>
           <button @click="submitClose" :disabled="closing"
                   class="flex-1 h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50" style="background:#10B981">
-            {{ closing ? '...' : 'Завершить' }}
+            {{ closing ? 'Отправка...' : 'Завершить' }}
           </button>
         </div>
       </div>
@@ -247,25 +190,16 @@ const route = useRoute()
 
 const request = ref(null)
 const loading = ref(true)
-const copiedField = ref('')
-const markingCalled = ref(false)
 
 const feasibilityModal = ref(false)
 const feasibilityAnswer = ref('')
 const feasibilityComment = ref('')
+const feasibilityError = ref('')
 const submittingFeasibility = ref(false)
-
-const scheduleModal = ref(false)
-const scheduleAt = ref('')
-const scheduleNotes = ref('')
-const scheduling = ref(false)
-
-const rejectModal = ref(false)
-const rejectNotes = ref('')
-const rejecting = ref(false)
 
 const closeModal = ref(false)
 const closeNotes = ref('')
+const closeError = ref('')
 const closing = ref(false)
 const useMaterials = ref(false)
 const materialItems = ref([{ material_id: '', quantity: 1 }])
@@ -273,17 +207,20 @@ const materialsCatalog = ref([])
 const loadingMaterials = ref(false)
 const promotions = ref([])
 const promotionId = ref(null)
-const serviceTypes = ref([])
-const serviceTypeToSave = ref('')
-const savingServiceType = ref(false)
 
-const statusLabels = { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', closed: 'Выполнено' }
-const statusColors = { pending: '#CA8A04', scheduled: '#2563EB', rejected: '#DC2626', closed: '#16A34A' }
+// Статусы/цвета -- строго по образцу Android (ConnectionAdapter.statusDisplay),
+// см. память проекта, project-connection-feasibility.
+const statusLabels = { pending: 'Ожидает', scheduled: 'Запланировано', rejected: 'Отклонено', closed: 'Выполнено' }
+const statusColors = { pending: '#F59E0B', scheduled: '#3B82F6', rejected: '#EF4444', closed: '#10B981' }
 const actStatusLabels = { pending_foreman: 'Ждёт бригадира', approved: 'Утверждён', processing: 'В обработке', pending_subscriber_dept: 'Ждёт Абонотдел', completed: 'Завершён' }
 
 const statusLabel = computed(() => statusLabels[request.value?.status] || request.value?.status)
 const statusColor = computed(() => statusColors[request.value?.status] || '#6B7280')
-const isFinal = computed(() => ['rejected', 'closed'].includes(request.value?.status))
+
+// Действия монтажника -- строго по образцу Android (applyActionPanel):
+// только ответ о возможности (пока нет ответа) и завершение (пока назначено).
+const showFeasibilityAction = computed(() => request.value?.status === 'pending' && !request.value?.feasibility)
+const showCloseAction = computed(() => request.value?.status === 'scheduled')
 
 const materialsTotal = computed(() => {
   return materialItems.value.reduce((sum, item) => {
@@ -293,27 +230,21 @@ const materialsTotal = computed(() => {
   }, 0)
 })
 
+const materialsTotalClosed = computed(() => {
+  return (request.value?.materials || []).reduce((sum, m) => sum + Number(m.total || 0), 0)
+})
+
 const selectedPromotion = computed(() => promotions.value.find((p) => p.id === promotionId.value) || null)
 
 function actStatusLabel(s) {
   return actStatusLabels[s] || s
 }
 
-function formatDateTime(s) {
+function formatDate(s) {
   if (!s) return '—'
   const d = new Date(s)
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: '2-digit' }) + ' ' +
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' +
          d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-}
-
-async function copy(text, field) {
-  try {
-    await navigator.clipboard.writeText(text)
-    copiedField.value = field || 'address'
-    setTimeout(() => (copiedField.value = ''), 1500)
-  } catch {
-    // буфер обмена недоступен -- тихо игнорируем
-  }
 }
 
 async function load() {
@@ -326,24 +257,16 @@ async function load() {
   }
 }
 
-async function markCalled() {
-  markingCalled.value = true
-  try {
-    const { data } = await api.post(`/connection-requests/${route.params.id}/mark-called`)
-    request.value = data
-  } finally {
-    markingCalled.value = false
-  }
-}
-
 function openFeasibilityModal(answer) {
   feasibilityAnswer.value = answer
   feasibilityComment.value = ''
+  feasibilityError.value = ''
   feasibilityModal.value = true
 }
 
 async function submitFeasibility() {
   submittingFeasibility.value = true
+  feasibilityError.value = ''
   try {
     const { data } = await api.post(`/connection-requests/${route.params.id}/feasibility`, {
       answer: feasibilityAnswer.value,
@@ -351,45 +274,12 @@ async function submitFeasibility() {
     })
     request.value = data
     feasibilityModal.value = false
+  } catch (e) {
+    feasibilityError.value = e.response?.status === 403
+      ? 'Ответить может только монтажник.'
+      : 'Ошибка: ' + (e.response?.data?.message || 'нет соединения')
   } finally {
     submittingFeasibility.value = false
-  }
-}
-
-function openScheduleModal() {
-  scheduleAt.value = request.value.scheduled_at ? request.value.scheduled_at.slice(0, 16) : ''
-  scheduleNotes.value = request.value.notes || ''
-  scheduleModal.value = true
-}
-
-async function submitSchedule() {
-  if (!scheduleAt.value) return
-  scheduling.value = true
-  try {
-    const { data } = await api.put(`/connection-requests/${route.params.id}`, {
-      status: 'scheduled',
-      scheduled_at: scheduleAt.value.replace('T', ' ') + ':00',
-      notes: scheduleNotes.value || undefined,
-    })
-    request.value = data
-    scheduleModal.value = false
-  } finally {
-    scheduling.value = false
-  }
-}
-
-async function submitReject() {
-  rejecting.value = true
-  try {
-    const { data } = await api.put(`/connection-requests/${route.params.id}`, {
-      status: 'rejected',
-      notes: rejectNotes.value || undefined,
-    })
-    request.value = data
-    rejectModal.value = false
-    rejectNotes.value = ''
-  } finally {
-    rejecting.value = false
   }
 }
 
@@ -402,31 +292,19 @@ function removeMaterialRow(idx) {
   if (!materialItems.value.length) addMaterialRow()
 }
 
-async function saveServiceType() {
-  if (!serviceTypeToSave.value) return
-  savingServiceType.value = true
-  try {
-    const { data } = await api.put(`/connection-requests/${route.params.id}`, { service_type_id: serviceTypeToSave.value })
-    request.value = data
-  } finally {
-    savingServiceType.value = false
-  }
-}
-
 async function openCloseModal() {
   closeModal.value = true
   closeNotes.value = request.value.notes || ''
+  closeError.value = ''
   if (!materialsCatalog.value.length && !loadingMaterials.value) {
     loadingMaterials.value = true
     try {
-      const [materialsRes, promotionsRes, serviceTypesRes] = await Promise.all([
+      const [materialsRes, promotionsRes] = await Promise.all([
         api.get('/materials'),
-        api.get('/promotions'),
-        api.get('/service_types'),
+        api.get('/promotions').catch(() => ({ data: [] })),
       ])
       materialsCatalog.value = materialsRes.data
       promotions.value = promotionsRes.data
-      serviceTypes.value = serviceTypesRes.data
     } finally {
       loadingMaterials.value = false
     }
@@ -435,6 +313,7 @@ async function openCloseModal() {
 
 async function submitClose() {
   closing.value = true
+  closeError.value = ''
   try {
     const payload = { notes: closeNotes.value }
     if (useMaterials.value) {
@@ -447,6 +326,11 @@ async function submitClose() {
     const { data } = await api.post(`/connection-requests/${route.params.id}/close`, payload)
     request.value = data
     closeModal.value = false
+  } catch (e) {
+    const fieldError = e.response?.data?.errors?.service_type_id?.[0]
+    closeError.value = fieldError || (e.response?.status === 422
+      ? 'Ошибка: ' + (e.response?.data?.message || 'проверьте поля')
+      : 'Ошибка сервера')
   } finally {
     closing.value = false
   }
