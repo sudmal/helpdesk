@@ -407,7 +407,7 @@
     <!-- Модал: Полная информация -->
     <div v-if="modals.detail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="modals.detail = false">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap shrink-0">
           <div class="flex items-center gap-3">
             <h3 class="text-base font-semibold text-gray-800">Заявка на подключение</h3>
             <span v-if="detailData" :class="statusClass(detailData.status)"
@@ -415,11 +415,48 @@
               {{ statusLabel(detailData.status) }}
             </span>
           </div>
-          <button @click="modals.detail = false" class="text-gray-400 hover:text-gray-600 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <template v-if="detailData && !detailData.deleted_at">
+              <template v-if="detailData.status === 'pending' && !detailData.feasibility">
+                <button @click="modals.detail = false; openFeasibility(detailData, 'possible')"
+                        class="px-2.5 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
+                  Возможно
+                </button>
+                <button @click="modals.detail = false; openFeasibility(detailData, 'impossible')"
+                        class="px-2.5 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
+                  Невозможно
+                </button>
+                <span class="text-[11px] text-gray-400">ждём ответ монтажника</span>
+              </template>
+              <button v-if="detailData.status === 'pending' && detailData.feasibility === 'possible'"
+                      @click="modals.detail = false; openSchedule(detailData)"
+                      class="px-2.5 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium">
+                Назначить
+              </button>
+              <button v-if="detailData.status === 'scheduled'"
+                      @click="modals.detail = false; openClose(detailData)"
+                      class="px-2.5 py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs font-medium">
+                Завершить
+              </button>
+              <button v-if="detailData.status === 'scheduled'"
+                      @click="modals.detail = false; openSchedule(detailData)"
+                      title="Изменить назначенную дату подключения"
+                      class="px-2.5 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-medium">
+                Изменить дату
+              </button>
+              <button v-if="detailData.status === 'pending' && detailData.feasibility === 'impossible'"
+                      @click="submitMarkCalled(detailData)"
+                      class="px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-medium"
+                      title="Отметить: прозвонили клиенту">
+                Прозвонил
+              </button>
+            </template>
+            <button @click="modals.detail = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div v-if="detailLoading" class="flex-1 flex items-center justify-center py-12">
@@ -451,48 +488,8 @@
             </div>
           </div>
 
-          <!-- Действия -->
           <div v-if="detailData.deleted_at" class="border-t border-gray-100 pt-3 text-xs text-gray-400">
             Заявка удалена {{ fmtDateTime(detailData.deleted_at) }}
-          </div>
-          <div v-else class="border-t border-gray-100 pt-3 flex flex-wrap items-center gap-1.5">
-            <template v-if="detailData.status === 'pending' && !detailData.feasibility">
-              <button @click="modals.detail = false; openFeasibility(detailData, 'possible')"
-                      class="px-2.5 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
-                Возможно
-              </button>
-              <button @click="modals.detail = false; openFeasibility(detailData, 'impossible')"
-                      class="px-2.5 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
-                Невозможно
-              </button>
-              <span class="text-[11px] text-gray-400">ждём ответ монтажника</span>
-            </template>
-            <button v-if="detailData.status === 'pending' && detailData.feasibility === 'possible'"
-                    @click="modals.detail = false; openSchedule(detailData)"
-                    class="px-2.5 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium">
-              Назначить
-            </button>
-            <button v-if="detailData.status === 'scheduled'"
-                    @click="modals.detail = false; openClose(detailData)"
-                    class="px-2.5 py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs font-medium">
-              Завершить
-            </button>
-            <button v-if="detailData.status === 'scheduled'"
-                    @click="modals.detail = false; openSchedule(detailData)"
-                    title="Изменить назначенную дату подключения"
-                    class="px-2.5 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-medium">
-              Изменить дату
-            </button>
-            <button v-if="detailData.status === 'pending' && detailData.feasibility === 'impossible'"
-                    @click="submitMarkCalled(detailData)"
-                    class="px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-medium"
-                    title="Отметить: прозвонили клиенту">
-              Прозвонил
-            </button>
-            <button @click="modals.detail = false; openDelete(detailData)"
-                    class="ml-auto px-2.5 py-1 rounded text-red-600 hover:bg-red-50 text-xs font-medium">
-              Удалить
-            </button>
           </div>
 
           <!-- Материалы (теперь на акте, не на самой заявке) -->
@@ -548,7 +545,13 @@
           </div>
         </div>
 
-        <div class="px-4 py-2.5 border-t border-gray-100 flex justify-end shrink-0">
+        <div class="px-4 py-2.5 border-t border-gray-100 flex justify-between items-center shrink-0">
+          <button v-if="detailData && !detailData.deleted_at"
+                  @click="modals.detail = false; openDelete(detailData)"
+                  class="px-2.5 py-1 rounded text-red-600 hover:bg-red-50 text-xs font-medium">
+            Удалить
+          </button>
+          <span v-else></span>
           <button @click="modals.detail = false" class="btn-outline text-sm">Закрыть</button>
         </div>
       </div>
