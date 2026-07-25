@@ -1,6 +1,6 @@
 ﻿<template>
   <Head title="Запросы услуг" />
-  <AppLayout title="Запросы услуг">
+  <AppLayout title="Запросы услуг" help-tab="dispatcher" help-section="service-requests">
 
     <!-- Фильтры -->
     <div class="bg-white rounded-xl border border-gray-200 p-3 mb-3 flex flex-wrap gap-2.5 items-end">

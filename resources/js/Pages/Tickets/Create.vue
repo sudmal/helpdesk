@@ -1,6 +1,6 @@
 <template>
   <Head title="Новая заявка" />
-  <AppLayout title="Новая заявка">
+  <AppLayout title="Новая заявка" help-tab="dispatcher" help-section="ticket-create">
 
     <!-- Двухколоночный layout: форма слева, история справа -->
     <div class="flex gap-3 items-start">

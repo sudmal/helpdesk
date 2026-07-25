@@ -1,6 +1,6 @@
 <template>
   <Head title="Подключения" />
-  <AppLayout title="Подключения">
+  <AppLayout title="Подключения" help-tab="dispatcher" help-section="connections">
 
     <!-- Вкладки территорий + Фильтры -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">

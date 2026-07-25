@@ -1,6 +1,6 @@
 <template>
   <Head :title="`Акт ${act.number}`" />
-  <AppLayout :title="`Акт ${act.number}`">
+  <AppLayout :title="`Акт ${act.number}`" help-tab="overview" help-section="acts">
 
     <template #before-title>
       <button @click="goBack" class="btn-act-outline shrink-0">← К списку актов</button>

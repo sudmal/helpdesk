@@ -1,6 +1,6 @@
 <template>
   <Head title="Календарь заявок" />
-  <AppLayout title="Календарь заявок">
+  <AppLayout title="Календарь заявок" help-tab="dispatcher" help-section="calendar">
 
     <!-- main card -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">

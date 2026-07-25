@@ -1,6 +1,6 @@
 <template>
   <Head title="Расходные материалы" />
-  <AppLayout title="Расходные материалы">
+  <AppLayout title="Расходные материалы" help-tab="admin" help-section="materials">
     <template #actions>
       <button v-if="canManage" @click="openCreate"
               class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700

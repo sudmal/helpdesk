@@ -1,6 +1,6 @@
 <template>
   <Head :title="`Заявка ${ticket.number}`" />
-  <AppLayout :title="ticket.number">
+  <AppLayout :title="ticket.number" help-tab="dispatcher" help-section="ticket-card">
     <template #actions>
       <div class="flex items-center gap-2 flex-wrap">
         <button v-if="canEdit && !ticket.status.is_final"

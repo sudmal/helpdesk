@@ -31,6 +31,13 @@
             </svg>
           </button>
           <slot name="before-title" />
+          <a v-if="helpTab" :href="helpUrl" target="_blank" title="Справка по этой странице"
+             class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 transition-colors shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 015.83 1c0 2-3 2-3 4M12 17h.01" />
+              <circle cx="12" cy="12" r="9" stroke-linecap="round" />
+            </svg>
+          </a>
         </div>
 
         <h1 class="text-sm font-semibold text-gray-800 truncate text-center">{{ title }}</h1>
@@ -69,9 +76,21 @@ import { usePage } from '@inertiajs/vue3'
 import Sidebar from './Sidebar.vue'
 import PushNotifications from '@/Components/PushNotifications.vue'
 
-defineProps({ title: { type: String, default: '' } })
+const props = defineProps({
+  title:       { type: String, default: '' },
+  // Ссылка на справку в шапке страницы — id вкладки (см. tabs в Help/Index.vue)
+  // и, опционально, id конкретного раздела (HelpSection) для прокрутки к нему.
+  helpTab:     { type: String, default: '' },
+  helpSection: { type: String, default: '' },
+})
 
 const sidebarOpen = ref(false)
 const page  = usePage()
 const flash = computed(() => page.props.flash ?? {})
+
+const helpUrl = computed(() => {
+  const params = new URLSearchParams({ tab: props.helpTab })
+  if (props.helpSection) params.set('section', props.helpSection)
+  return route('help') + '?' + params.toString()
+})
 </script>

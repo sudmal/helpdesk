@@ -1,6 +1,6 @@
 <template>
   <Head title="Акты" />
-  <AppLayout title="Акты">
+  <AppLayout title="Акты" help-tab="overview" help-section="acts">
 
     <!-- Вкладки -->
     <div class="flex bg-gray-100 rounded-lg p-1 gap-0.5 w-fit mb-3">

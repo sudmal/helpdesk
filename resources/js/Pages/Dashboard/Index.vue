@@ -1,6 +1,6 @@
 <template>
   <Head title="Дашборд" />
-  <AppLayout title="Дашборд">
+  <AppLayout title="Дашборд" help-tab="dispatcher" help-section="dashboard">
 
     <!-- ── Тосты: новые заявки ── -->
     <Teleport to="body">

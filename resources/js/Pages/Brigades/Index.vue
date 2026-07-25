@@ -1,6 +1,6 @@
 <template>
   <Head title="Бригады" />
-  <AppLayout title="Бригады">
+  <AppLayout title="Бригады" help-tab="admin" help-section="admin-brigades">
     <template #actions>
       <button @click="showModal = true" class="btn-primary text-sm">+ Добавить</button>
     </template>

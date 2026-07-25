@@ -1,6 +1,6 @@
 <template>
   <Head :title="`Бригада — ${brigade.name}`" />
-  <AppLayout :title="`Бригада: ${brigade.name}`">
+  <AppLayout :title="`Бригада: ${brigade.name}`" help-tab="admin" help-section="admin-brigades">
     <div class="max-w-2xl space-y-3">
 
       <div v-if="$page.props.flash?.success"

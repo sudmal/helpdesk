@@ -1,6 +1,6 @@
 ﻿<template>
   <Head title="Журнал IVR" />
-  <AppLayout title="Журнал IVR">
+  <AppLayout title="Журнал IVR" help-tab="dispatcher" help-section="call-queue">
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
 
       <!-- Фильтры -->

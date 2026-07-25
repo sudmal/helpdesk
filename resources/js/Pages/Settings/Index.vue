@@ -1,6 +1,6 @@
 <template>
   <Head title="Настройки" />
-  <AppLayout title="Настройки">
+  <AppLayout title="Настройки" help-tab="admin" help-section="admin-users">
 
     <!-- Табы -->
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">

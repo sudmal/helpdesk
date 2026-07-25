@@ -1,6 +1,6 @@
 <template>
   <Head title="Отчёты" />
-  <AppLayout title="Отчёты">
+  <AppLayout title="Отчёты" help-tab="admin" help-section="reports">
 
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">

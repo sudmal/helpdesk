@@ -1,6 +1,6 @@
 <template>
   <Head title="Заявки" />
-  <AppLayout title="Заявки">
+  <AppLayout title="Заявки" help-tab="dispatcher" help-section="tickets-list">
     <template #actions>
 
       <a :href="route('tickets.map')" target="_blank"

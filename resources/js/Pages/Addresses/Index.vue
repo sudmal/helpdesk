@@ -1,6 +1,6 @@
 <template>
   <Head title="Адреса" />
-  <AppLayout title="Адреса абонентов">
+  <AppLayout title="Адреса абонентов" help-tab="admin" help-section="addresses">
     <template #actions>
       <button @click="showImportModal = true" class="btn-outline text-sm">⬆ Импорт</button>
       <button @click="openAddModal"           class="btn-primary text-sm">+ Добавить</button>
