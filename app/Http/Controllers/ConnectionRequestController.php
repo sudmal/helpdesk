@@ -30,6 +30,7 @@ class ConnectionRequestController extends Controller
         // внутри каждой группы сначала новые.
         $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act'])
             ->when($territory, fn($q) => $q->where('territory_id', $territory))
+            ->when($request->boolean('trashed'), fn($q) => $q->onlyTrashed())
             ->orderByRaw("
                 CASE
                     WHEN needs_callback = 1 THEN 0
@@ -41,6 +42,9 @@ class ConnectionRequestController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+        if ($request->filled('service_type')) {
+            $query->where('service_type_id', $request->service_type);
         }
         if ($request->filled('search')) {
             $s = '%' . $request->search . '%';
@@ -67,7 +71,7 @@ class ConnectionRequestController extends Controller
 
         return Inertia::render('ConnectionRequests/Index', [
             'requests'           => $query->paginate(50)->withQueryString(),
-            'filters'            => $request->only(['status', 'search', 'territory']),
+            'filters'            => $request->only(['status', 'search', 'territory', 'service_type', 'trashed']),
             'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
             'brigades'           => Brigade::with('territories:id,name')->orderBy('name')->get(['id', 'name']),
             'serviceTypes'       => ServiceType::active()->get(['id', 'name', 'color']),
@@ -323,14 +327,24 @@ class ConnectionRequestController extends Controller
         return back()->with('success', 'Ответ сохранён');
     }
 
-    public function destroy(ConnectionRequest $connectionRequest)
+    public function destroy(Request $request, ConnectionRequest $connectionRequest)
     {
+        $data = $request->validate(['reason' => 'nullable|string|max:2000']);
+
+        // Мягкое удаление (SoftDeletes) -- запись остаётся в БД и в логе,
+        // просто пропадает из списка по умолчанию (см. index(), фильтр
+        // trashed). Не путать со статусом rejected -- это отдельный,
+        // независимый механизм административной чистки (дубли, брак),
+        // см. память проекта, project-connection-feasibility.
+        $this->logEvent($connectionRequest, $request->user()->id, 'deleted', $data['reason'] ?? null);
         $connectionRequest->delete();
+
         return back()->with('success', 'Заявка удалена');
     }
 
-    public function detail(ConnectionRequest $connectionRequest)
+    public function detail($id)
     {
+        $connectionRequest = ConnectionRequest::withTrashed()->findOrFail($id);
         $connectionRequest->load(['creator', 'assignee', 'territory', 'brigade', 'serviceType', 'materials', 'logs.user', 'act.materials', 'act.promotion']);
         return response()->json($connectionRequest);
     }

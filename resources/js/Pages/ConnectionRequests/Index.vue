@@ -40,6 +40,20 @@
         </button>
       </div>
 
+      <!-- Фильтр по участку -->
+      <div class="px-3 pt-2.5 flex flex-wrap gap-1.5">
+        <button @click="selectServiceType(null)"
+                :class="['px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                         !f.service_type ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
+          Все
+        </button>
+        <button v-for="st in serviceTypes" :key="st.id" @click="selectServiceType(st.id)"
+                :class="['px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                         f.service_type === st.id ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
+          {{ serviceIcon(st.name) }} {{ st.name }}
+        </button>
+      </div>
+
       <!-- Фильтры -->
       <div class="p-3 flex flex-wrap gap-2.5 items-end">
         <div class="flex-1 min-w-48">
@@ -56,6 +70,10 @@
             <option value="closed">Выполнено</option>
           </select>
         </div>
+        <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+          <input type="checkbox" v-model="f.trashed" @change="apply" class="rounded border-gray-300" />
+          Показать удалённые
+        </label>
         <div class="flex gap-2">
           <button @click="apply" class="btn-primary text-sm">Найти</button>
           <button @click="reset" class="btn-outline text-sm">Сброс</button>
@@ -76,7 +94,8 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
-              <th class="px-2 py-1 text-left w-8"></th>
+              <th class="px-2 py-1 text-center w-7"></th>
+              <th class="px-1 py-1 text-center w-6"></th>
               <th class="px-2 py-1 text-left">Дата</th>
               <th class="px-2 py-1 text-left">Имя</th>
               <th class="px-2 py-1 text-left">Телефон</th>
@@ -88,7 +107,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
-            <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50">
+            <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50" :class="{ 'opacity-50': r.deleted_at }">
               <td class="px-1.5 py-px text-center whitespace-nowrap">
                 <button @click="openEdit(r)" title="Редактировать"
                         class="text-gray-400 hover:text-blue-600 transition-colors">
@@ -97,13 +116,8 @@
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
                 </button>
-                <button v-if="r.status === 'pending'" @click="openReject(r)" title="Отклонить"
-                        class="text-gray-400 hover:text-red-600 transition-colors ml-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                  </svg>
-                </button>
               </td>
+              <td class="px-1 py-px text-center text-sm leading-none" :title="r.service_type?.name">{{ serviceIcon(r.service_type?.name) }}</td>
               <td class="px-2 py-px whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
               <td class="px-2 py-px font-medium truncate max-w-32">{{ r.name }}</td>
               <td class="px-2 py-px font-mono whitespace-nowrap">{{ r.phone }}</td>
@@ -114,6 +128,9 @@
                 <div class="flex items-center gap-1.5">
                   <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ statusLabel(r.status) }}
+                  </span>
+                  <span v-if="r.deleted_at" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                    Удалена
                   </span>
                   <span v-if="r.needs_callback"
                         class="animate-bounce text-amber-500"
@@ -134,48 +151,9 @@
                         class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act.number }}]</button>
                 {{ r.notes || '—' }}
               </td>
-              <td class="px-2 py-px whitespace-nowrap">
-                <div class="flex gap-1 flex-wrap">
-                  <template v-if="r.status === 'pending' && !r.feasibility">
-                    <button @click="openFeasibility(r, 'possible')"
-                            class="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
-                      Возможно
-                    </button>
-                    <button @click="openFeasibility(r, 'impossible')"
-                            class="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
-                      Невозможно
-                    </button>
-                  </template>
-                  <span v-if="r.status === 'pending' && !r.feasibility" class="text-[11px] text-gray-400 self-center">
-                    ждём ответ монтажника
-                  </span>
-                  <button v-if="r.status === 'pending' && r.feasibility === 'possible'"
-                          @click="openSchedule(r)"
-                          class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium">
-                    Назначить
-                  </button>
-                  <button v-if="r.status === 'scheduled'"
-                          @click="openClose(r)"
-                          class="px-2 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs font-medium">
-                    Завершить
-                  </button>
-                  <button v-if="r.status === 'scheduled'"
-                          @click="openSchedule(r)"
-                          title="Изменить назначенную дату подключения"
-                          class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-medium">
-                    Изменить дату
-                  </button>
-                  <button v-if="r.status === 'pending' && r.feasibility === 'impossible'"
-                          @click="submitMarkCalled(r)"
-                          class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-medium"
-                          title="Отметить: прозвонили клиенту">
-                    Прозвонил
-                  </button>
-                </div>
-              </td>
             </tr>
             <tr v-if="!requests.data.length">
-              <td colspan="10" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
+              <td colspan="9" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
             </tr>
           </tbody>
         </table>
@@ -325,20 +303,21 @@
       </div>
     </div>
 
-    <!-- Модал: Отклонить -->
-    <div v-if="modals.reject" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <!-- Модал: Удалить -->
+    <div v-if="modals.delete" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
-        <h3 class="text-sm font-semibold mb-3">Отклонить заявку</h3>
+        <h3 class="text-sm font-semibold mb-3">Удалить заявку</h3>
+        <p class="text-xs text-gray-500 mb-2">Заявка пропадёт из списка, но останется в базе (можно посмотреть через «Показать удалённые»).</p>
         <div>
-          <label class="field-label">Причина отклонения</label>
-          <textarea v-model="rejectForm.notes" class="field-input resize-none" rows="3"
-                    placeholder="Нет технической возможности..."></textarea>
+          <label class="field-label">Причина удаления (необязательно)</label>
+          <textarea v-model="deleteForm.reason" class="field-input resize-none" rows="3"
+                    placeholder="Дубль, ошибочно создана..."></textarea>
         </div>
         <div class="mt-4 flex justify-end gap-2">
-          <button @click="modals.reject = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitReject" :disabled="submitting"
+          <button @click="modals.delete = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="submitDelete" :disabled="submitting"
                   class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">
-            Отклонить
+            Удалить
           </button>
         </div>
       </div>
@@ -472,6 +451,50 @@
             </div>
           </div>
 
+          <!-- Действия -->
+          <div v-if="detailData.deleted_at" class="border-t border-gray-100 pt-3 text-xs text-gray-400">
+            Заявка удалена {{ fmtDateTime(detailData.deleted_at) }}
+          </div>
+          <div v-else class="border-t border-gray-100 pt-3 flex flex-wrap items-center gap-1.5">
+            <template v-if="detailData.status === 'pending' && !detailData.feasibility">
+              <button @click="modals.detail = false; openFeasibility(detailData, 'possible')"
+                      class="px-2.5 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
+                Возможно
+              </button>
+              <button @click="modals.detail = false; openFeasibility(detailData, 'impossible')"
+                      class="px-2.5 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
+                Невозможно
+              </button>
+              <span class="text-[11px] text-gray-400">ждём ответ монтажника</span>
+            </template>
+            <button v-if="detailData.status === 'pending' && detailData.feasibility === 'possible'"
+                    @click="modals.detail = false; openSchedule(detailData)"
+                    class="px-2.5 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium">
+              Назначить
+            </button>
+            <button v-if="detailData.status === 'scheduled'"
+                    @click="modals.detail = false; openClose(detailData)"
+                    class="px-2.5 py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs font-medium">
+              Завершить
+            </button>
+            <button v-if="detailData.status === 'scheduled'"
+                    @click="modals.detail = false; openSchedule(detailData)"
+                    title="Изменить назначенную дату подключения"
+                    class="px-2.5 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-medium">
+              Изменить дату
+            </button>
+            <button v-if="detailData.status === 'pending' && detailData.feasibility === 'impossible'"
+                    @click="submitMarkCalled(detailData)"
+                    class="px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-medium"
+                    title="Отметить: прозвонили клиенту">
+              Прозвонил
+            </button>
+            <button @click="modals.detail = false; openDelete(detailData)"
+                    class="ml-auto px-2.5 py-1 rounded text-red-600 hover:bg-red-50 text-xs font-medium">
+              Удалить
+            </button>
+          </div>
+
           <!-- Материалы (теперь на акте, не на самой заявке) -->
           <div v-if="detailData.act?.materials && detailData.act.materials.length" class="border-t border-gray-100 pt-3">
             <div class="text-xs font-medium text-gray-500 mb-2">Использованные материалы</div>
@@ -561,12 +584,29 @@ const totalOverdue = computed(() =>
 )
 
 const f = ref({
-  search: props.filters?.search ?? '',
-  status: props.filters?.status ?? '',
+  search:       props.filters?.search       ?? '',
+  status:       props.filters?.status       ?? '',
+  service_type: props.filters?.service_type ? Number(props.filters.service_type) : null,
+  trashed:      !!props.filters?.trashed,
 })
+
+const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆', 'подключ': '🟢' }
+function serviceIcon(name) {
+  if (!name) return '📋'
+  const k = name.toLowerCase()
+  for (const [key, icon] of Object.entries(SERVICE_ICONS)) {
+    if (k.includes(key)) return icon
+  }
+  return '📋'
+}
 
 function selectTerritory(id) {
   router.get(route('connection-requests.index'), { ...f.value, territory: id }, { preserveState: true })
+}
+
+function selectServiceType(id) {
+  f.value.service_type = id
+  apply()
 }
 
 function apply() {
@@ -577,12 +617,12 @@ function apply() {
 }
 
 function reset() {
-  f.value = { search: '', status: '' }
+  f.value = { search: '', status: '', service_type: null, trashed: false }
   router.get(route('connection-requests.index'), { territory: props.selectedTerritory }, { preserveState: true })
 }
 
 // Модалы
-const modals      = reactive({ create: false, edit: false, schedule: false, reject: false, close: false, detail: false, feasibility: false })
+const modals      = reactive({ create: false, edit: false, schedule: false, delete: false, close: false, detail: false, feasibility: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')
@@ -618,7 +658,7 @@ watch(() => editForm.territory_id, (territoryId) => {
 })
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
-const rejectForm   = reactive({ notes: '' })
+const deleteForm   = reactive({ reason: '' })
 const feasibilityForm = reactive({ answer: '', comment: '' })
 const closeForm    = reactive({ notes: '', materials: [], promotion_id: null })
 
@@ -657,10 +697,10 @@ function openSchedule(r) {
   modals.schedule = true
 }
 
-function openReject(r) {
+function openDelete(r) {
   activeRecord.value = r
-  rejectForm.notes = ''
-  modals.reject = true
+  deleteForm.reason = ''
+  modals.delete = true
 }
 
 function openFeasibility(r, answer) {
@@ -742,13 +782,11 @@ function submitSchedule() {
   })
 }
 
-function submitReject() {
+function submitDelete() {
   submitting.value = true
-  router.put(route('connection-requests.update', activeRecord.value.id), {
-    status: 'rejected',
-    notes:  rejectForm.notes,
-  }, {
-    onSuccess: () => { modals.reject = false },
+  router.delete(route('connection-requests.destroy', activeRecord.value.id), {
+    data: { reason: deleteForm.reason },
+    onSuccess: () => { modals.delete = false },
     onFinish:  () => { submitting.value = false },
   })
 }
@@ -845,6 +883,7 @@ function logActionLabel(action) {
     called_back:'Прозвонили клиенту',
     feasibility_possible:   'Монтажник: возможно',
     feasibility_impossible: 'Монтажник: невозможно',
+    deleted:    'Заявка удалена',
   }[action] ?? action
 }
 
@@ -859,6 +898,7 @@ function logDotClass(action) {
     called_back:'bg-amber-400',
     feasibility_possible:   'bg-green-500',
     feasibility_impossible: 'bg-red-500',
+    deleted:    'bg-gray-500',
   }[action] ?? 'bg-gray-300'
 }
 </script>
