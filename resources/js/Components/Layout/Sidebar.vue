@@ -62,10 +62,10 @@
     </nav>
     <div class="px-3 py-1.5 border-t border-white/10 shrink-0">
       <div class="flex items-center justify-between gap-2">
-        <div class="min-w-0">
+        <button @click="openProfile" title="Мои данные" class="min-w-0 text-left hover:bg-white/5 rounded-md -mx-1 px-1 py-0.5 transition-colors">
           <div class="text-xs font-medium truncate">{{ user.name }}</div>
           <div class="text-[11px] text-white/40 truncate">{{ user.email }}</div>
-        </div>
+        </button>
         <button @click="logout" title="Выход"
                 class="shrink-0 p-1 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -109,6 +109,60 @@
         <span class="truncate">Веб-версия приложения (PWA)</span>
       </a>
     </div>
+
+    <!-- Модалка: Мои данные -->
+    <teleport to="body">
+      <div v-if="profileOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="profileOpen = false">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4 text-slate-700">
+          <h3 class="text-sm font-semibold mb-3">Мои данные</h3>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">ФИО <span class="text-red-400">*</span></label>
+              <input v-model="profileForm.name"
+                     class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Телефон</label>
+              <input v-model="profileForm.phone"
+                     class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Email</label>
+              <input v-model="profileForm.email" type="email"
+                     class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">
+                Telegram Chat ID
+                <a href="https://t.me/userinfobot" target="_blank" class="text-blue-500 hover:underline">(узнать у @userinfobot)</a>
+              </label>
+              <input v-model="profileForm.telegram_chat_id"
+                     class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">
+                MAX ID
+                <a href="https://max.ru/id380124799522_1_bot" target="_blank" class="text-blue-500 hover:underline">(узнать у бота-определителя)</a>
+              </label>
+              <input v-model="profileForm.max_chat_id"
+                     class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none pt-1">
+              <input type="checkbox" v-model="profileForm.notify_on_days_off" class="rounded border-gray-300" />
+              Получать уведомления в выходные дни
+            </label>
+          </div>
+          <div v-if="profileErrors" class="mt-2 text-xs text-red-600">{{ profileErrors }}</div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button @click="profileOpen = false" class="px-3.5 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Отмена</button>
+            <button @click="submitProfile" :disabled="profileSubmitting"
+                    class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50">
+              {{ profileSubmitting ? 'Сохраняем...' : 'Сохранить' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
 
     <!-- QR-модалка -->
     <teleport to="body">
@@ -174,6 +228,41 @@ function can(permission) {
 
 function logout() {
   router.post(route('logout'))
+}
+
+const profileOpen       = ref(false)
+const profileSubmitting = ref(false)
+const profileErrors     = ref('')
+const profileForm = ref({
+  name: '', phone: '', email: '', telegram_chat_id: '', max_chat_id: '', notify_on_days_off: false,
+})
+
+function openProfile() {
+  profileForm.value = {
+    name:               props.user?.name ?? '',
+    phone:              props.user?.phone ?? '',
+    email:              props.user?.email ?? '',
+    telegram_chat_id:   props.user?.telegram_chat_id ?? '',
+    max_chat_id:        props.user?.max_chat_id ?? '',
+    notify_on_days_off: !!props.user?.notify_on_days_off,
+  }
+  profileErrors.value = ''
+  profileOpen.value = true
+}
+
+function submitProfile() {
+  if (!profileForm.value.name) {
+    profileErrors.value = 'Укажите ФИО'
+    return
+  }
+  profileErrors.value = ''
+  profileSubmitting.value = true
+  router.put(route('profile.update'), profileForm.value, {
+    preserveScroll: true,
+    onSuccess: () => { profileOpen.value = false },
+    onError:   (errors) => { profileErrors.value = Object.values(errors)[0] ?? 'Ошибка сохранения' },
+    onFinish:  () => { profileSubmitting.value = false },
+  })
 }
 
 const qrOpen = ref(false)

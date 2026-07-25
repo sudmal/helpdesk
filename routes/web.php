@@ -15,12 +15,14 @@ use App\Http\Controllers\{
     ConnectionRequestController,
     ServiceRequestController,
     PromotionController,
+    ProfileController,
 };
 use Illuminate\Support\Facades\Route;
 
 require __DIR__ . '/auth.php';
 
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/pbx/lookup', [\App\Http\Controllers\PbxController::class, 'lookup'])->name('pbx.lookup');
     Route::get('/calls', [\App\Http\Controllers\CallLogController::class, 'index'])->name('calls.index');
 

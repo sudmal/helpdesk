@@ -138,6 +138,10 @@
               <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
               <span><b class="text-gray-700">Контекстная справка</b> — значок «?» в шапке каждой страницы ведёт сразу в нужный раздел этой справки</span>
             </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-blue-500 mt-0.5 shrink-0">✓</span>
+              <span><b class="text-gray-700">Свой профиль</b> — клик по имени внизу меню открывает редактирование своих контактов (ФИО, телефон, email, Telegram, MAX, уведомления в выходные) без обращения к администратору</span>
+            </div>
           </div>
         </div>
       </div>
