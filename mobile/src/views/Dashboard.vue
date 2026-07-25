@@ -31,6 +31,10 @@
               class="w-full text-left px-4 py-3 text-[#FBBF24] text-sm active:bg-white/5">
         ⏳ Не отправлено комментариев: {{ commentQueue.state.items.length }}
       </button>
+      <button @click="menuOpen = false; $router.push({ name: 'profile' })"
+              class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
+        👤 Профиль
+      </button>
       <button @click="menuOpen = false; $router.push({ name: 'settings' })"
               class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
         ⚙️ Настройки
