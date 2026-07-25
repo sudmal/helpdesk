@@ -110,6 +110,16 @@ class ConnectionRequestController extends Controller
 
     public function update(Request $request, ConnectionRequest $connectionRequest)
     {
+        // Закрытые/отклонённые заявки — финальное состояние, редактированию
+        // не подлежат (см. память проекта, project-connection-feasibility).
+        // Забытые материалы к уже выполненной заявке добавляются отдельным
+        // путём — addAct() ниже, а не через этот метод.
+        if (in_array($connectionRequest->status, ['closed', 'rejected'])) {
+            return back()->withErrors([
+                'status' => 'Закрытые и отклонённые заявки редактированию не подлежат.',
+            ])->withInput();
+        }
+
         $data = $request->validate([
             'name'           => 'sometimes|required|string|max:100',
             'phone'          => 'sometimes|required|string|max:30',
@@ -266,6 +276,84 @@ class ConnectionRequestController extends Controller
             $actNumber ? ['act_number' => $actNumber] : null);
 
         return back()->with('success', 'Подключение выполнено');
+    }
+
+    /**
+     * Забытые материалы к уже выполненной заявке -- заявку закрыли без акта
+     * (материалы не добавили: забыли, поспешили), а материалы и финансы всё
+     * равно нужно учитывать. Только бригадир этой бригады (или admin как
+     * подстраховка, тот же паттерн, что и ActPolicy::foremanReview) может
+     * задним числом создать акт -- и только если акта у заявки ещё нет
+     * вообще (если акт уже есть, но материалы забыли в нём самом, это
+     * ActPolicy::editMaterials, отдельный, уже существующий путь, пока акт
+     * не утверждён). Созданный акт идёт по обычному циклу согласования
+     * (pending_foreman -> ...), включая самоутверждение тем же бригадиром --
+     * см. память project-connection-feasibility, это осознанно разрешено.
+     */
+    public function addAct(Request $request, ConnectionRequest $connectionRequest)
+    {
+        abort_unless($connectionRequest->status === 'closed', 422, 'Акт можно добавить только к выполненной заявке.');
+        abort_if($connectionRequest->act()->exists(), 422, 'У заявки уже есть акт.');
+        abort_unless(
+            $request->user()->isAdmin()
+                || ($request->user()->isForeman() && $request->user()->brigades->pluck('id')->contains($connectionRequest->brigade_id)),
+            403,
+            'Добавить акт задним числом может только бригадир этой бригады.'
+        );
+
+        $request->validate([
+            'materials'                => 'required|array|min:1',
+            'materials.*.material_id'  => 'required|integer|exists:materials,id',
+            'materials.*.quantity'     => 'required|numeric|min:0.01',
+            'promotion_id'             => 'nullable|integer|exists:promotions,id',
+        ]);
+
+        if (!$connectionRequest->service_type_id) {
+            return back()->withErrors([
+                'service_type_id' => 'У заявки не указан участок (тип услуги) — сначала укажите его.',
+            ])->withInput();
+        }
+
+        $promotion = $request->filled('promotion_id') ? Promotion::find($request->promotion_id) : null;
+        $actNumber = null;
+
+        DB::transaction(function () use ($connectionRequest, $request, $promotion, &$actNumber) {
+            $act = Act::createWithGeneratedNumber([
+                'connection_request_id' => $connectionRequest->id,
+                'type'                  => 'regular',
+                'status'                => 'pending_foreman',
+                'created_by'            => $request->user()->id,
+                'promotion_id'    => $promotion?->id,
+                'promotion_name'  => $promotion?->name,
+                'promotion_price' => $promotion?->price,
+            ], fn() => Act::generateNumberForConnectionRequest($connectionRequest));
+            $actNumber = $act->number;
+
+            foreach ($request->materials as $item) {
+                $material = Material::find($item['material_id']);
+                if (!$material) continue;
+                $act->materials()->create([
+                    'material_id'   => $material->id,
+                    'material_name' => $material->name,
+                    'material_code' => $material->code,
+                    'material_unit' => $material->unit,
+                    'price_at_time' => $material->price,
+                    'quantity'      => $item['quantity'],
+                    'created_by'    => $request->user()->id,
+                ]);
+            }
+
+            $act->history()->create([
+                'user_id' => $request->user()->id,
+                'action'  => 'created',
+            ]);
+        }, 3);
+
+        $this->logEvent($connectionRequest, $request->user()->id, 'act_added_retroactively',
+            'Акт добавлен задним числом (материалы забыли учесть при закрытии)',
+            ['act_number' => $actNumber]);
+
+        return back()->with('success', 'Акт создан');
     }
 
     public function markCalled(ConnectionRequest $connectionRequest)

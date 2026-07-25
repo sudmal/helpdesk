@@ -109,7 +109,8 @@
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50" :class="{ 'opacity-50': r.deleted_at }">
               <td class="px-1.5 py-px text-center whitespace-nowrap">
-                <button @click="openEdit(r)" title="Редактировать"
+                <button v-if="r.status === 'pending' || r.status === 'scheduled'"
+                        @click="openEdit(r)" title="Редактировать"
                         class="text-gray-400 hover:text-blue-600 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -404,6 +405,57 @@
       </div>
     </div>
 
+    <!-- Модал: Создать акт (задним числом, к уже выполненной заявке без акта) -->
+    <div v-if="modals.addAct" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-1">Создать акт задним числом</h3>
+        <p class="text-xs text-gray-500 mb-3">Заявка уже выполнена, но акт с материалами при закрытии не создали. Только для бригадира этой бригады.</p>
+        <div class="space-y-2">
+          <div>
+            <label class="field-label font-medium">Использованные материалы</label>
+            <div v-for="(row, idx) in addActForm.materials" :key="idx"
+                 class="flex gap-2 items-center mb-1.5">
+              <select v-model="row.material_id" class="field-input flex-1 text-xs">
+                <option :value="null">— выберите материал —</option>
+                <option v-for="m in materialsCatalog" :key="m.id" :value="m.id">
+                  {{ m.code ? '[' + m.code + '] ' : '' }}{{ m.name }} — {{ m.price }} ₽/{{ m.unit }}
+                </option>
+              </select>
+              <input v-model="row.quantity" type="number" min="0.01" step="0.01"
+                     class="field-input w-20 text-xs text-center" placeholder="кол-во" />
+              <div class="w-24 text-xs text-gray-500 text-right tabular-nums shrink-0">
+                {{ matRowTotal(row) }} ₽
+              </div>
+              <button @click="removeAddActMaterialRow(idx)" class="text-red-400 hover:text-red-600 px-1 shrink-0">✕</button>
+            </div>
+            <div v-if="!addActForm.materials.length" class="text-xs text-gray-400 mb-1.5">Материалы не добавлены</div>
+            <div class="flex items-center justify-between">
+              <button @click="addAddActMaterialRow" class="text-xs text-blue-600 hover:underline">+ добавить</button>
+              <div v-if="addActMaterialsTotal > 0" class="text-sm font-semibold text-gray-700">
+                Материалы: <span class="text-blue-600">{{ addActMaterialsTotal.toFixed(2) }} ₽</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="addActForm.materials.length">
+            <label class="field-label font-medium">Акция</label>
+            <select v-model="addActForm.promotion_id" class="field-input w-full text-xs">
+              <option :value="null">— без акции, по реальной стоимости материалов —</option>
+              <option v-for="p in promotions" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }} ₽</option>
+            </select>
+          </div>
+        </div>
+        <div v-if="addActErrors" class="text-xs text-red-600 mt-2">{{ addActErrors }}</div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button @click="modals.addAct = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="submitAddAct" :disabled="submitting || !addActForm.materials.length"
+                  class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:opacity-50">
+            Создать акт
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Модал: Полная информация -->
     <div v-if="modals.detail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="modals.detail = false">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -449,6 +501,12 @@
                       class="px-2.5 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-medium"
                       title="Отметить: прозвонили клиенту">
                 Прозвонил
+              </button>
+              <button v-if="detailData.status === 'closed' && !detailData.act"
+                      @click="modals.detail = false; openAddAct(detailData)"
+                      class="px-2.5 py-1 rounded bg-teal-100 text-teal-700 hover:bg-teal-200 text-xs font-medium"
+                      title="Забыли добавить материалы при закрытии — создать акт задним числом (только бригадир этой бригады)">
+                Создать акт
               </button>
             </template>
             <button @click="modals.detail = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -625,7 +683,7 @@ function reset() {
 }
 
 // Модалы
-const modals      = reactive({ create: false, edit: false, schedule: false, delete: false, close: false, detail: false, feasibility: false })
+const modals      = reactive({ create: false, edit: false, schedule: false, delete: false, close: false, detail: false, feasibility: false, addAct: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')
@@ -664,6 +722,8 @@ const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory
 const deleteForm   = reactive({ reason: '' })
 const feasibilityForm = reactive({ answer: '', comment: '' })
 const closeForm    = reactive({ notes: '', materials: [], promotion_id: null })
+const addActForm   = reactive({ materials: [], promotion_id: null })
+const addActErrors = ref('')
 
 function openCreate() {
   Object.assign(createForm, {
@@ -720,6 +780,13 @@ function openClose(r) {
   modals.close = true
 }
 
+function openAddAct(r) {
+  activeRecord.value = r
+  Object.assign(addActForm, { materials: [], promotion_id: null })
+  addActErrors.value = ''
+  modals.addAct = true
+}
+
 const selectedPromotion = computed(() =>
   (props.promotions ?? []).find(p => p.id === closeForm.promotion_id) ?? null
 )
@@ -740,6 +807,17 @@ const closeMaterialsTotal = computed(() =>
 
 function addMaterialRow()       { closeForm.materials.push({ material_id: null, quantity: '' }) }
 function removeMaterialRow(idx) { closeForm.materials.splice(idx, 1) }
+
+const addActMaterialsTotal = computed(() =>
+  addActForm.materials.reduce((sum, row) => {
+    if (!row.material_id || !row.quantity) return sum
+    const m = props.materialsCatalog?.find(m => m.id === row.material_id)
+    return sum + (m ? m.price * parseFloat(row.quantity || 0) : 0)
+  }, 0)
+)
+
+function addAddActMaterialRow()       { addActForm.materials.push({ material_id: null, quantity: '' }) }
+function removeAddActMaterialRow(idx) { addActForm.materials.splice(idx, 1) }
 
 function submitCreate() {
   if (!createForm.name || !createForm.phone || !createForm.address_string) {
@@ -816,6 +894,19 @@ function submitMarkCalled(r) {
   router.post(route('connection-requests.mark-called', r.id))
 }
 
+function submitAddAct() {
+  const materials = addActForm.materials.filter(m => m.material_id && m.quantity)
+  addActErrors.value = ''
+  submitting.value = true
+  router.post(route('connection-requests.add-act', activeRecord.value.id), {
+    materials,
+    promotion_id: materials.length ? addActForm.promotion_id : null,
+  }, {
+    onSuccess: () => { modals.addAct = false },
+    onFinish:  () => { submitting.value = false },
+  })
+}
+
 function submitFeasibility() {
   submitting.value = true
   router.post(route('connection-requests.feasibility', activeRecord.value.id), {
@@ -887,6 +978,7 @@ function logActionLabel(action) {
     feasibility_possible:   'Монтажник: возможно',
     feasibility_impossible: 'Монтажник: невозможно',
     deleted:    'Заявка удалена',
+    act_added_retroactively: 'Акт добавлен задним числом',
   }[action] ?? action
 }
 
@@ -902,6 +994,7 @@ function logDotClass(action) {
     feasibility_possible:   'bg-green-500',
     feasibility_impossible: 'bg-red-500',
     deleted:    'bg-gray-500',
+    act_added_retroactively: 'bg-teal-500',
   }[action] ?? 'bg-gray-300'
 }
 </script>
