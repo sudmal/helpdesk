@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ActController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConnectionRequestController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Models\Material;
@@ -18,6 +19,8 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/auth/logout',                    [AuthController::class,  'logout']);
+    Route::get('/profile',                         [ProfileController::class, 'show']);
+    Route::put('/profile',                         [ProfileController::class, 'update']);
     Route::get('/tickets',                         [TicketController::class, 'index']);
     Route::get('/tickets/{ticket}',                [TicketController::class, 'show']);
     Route::post('/tickets/{ticket}/comments',      [TicketController::class, 'addComment']);
