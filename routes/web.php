@@ -91,7 +91,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // РЎРѕСЃС‚Р°РІ Р±СЂРёРіР°РґС‹ вЂ” РґРѕСЃС‚СѓРїРЅРѕ Р±СЂРёРіР°РґРёСЂСѓ СЃРІРѕРµР№ Р±СЂРёРіР°РґС‹
     Route::put('/brigades/{brigade}/members', [BrigadeController::class, 'updateMembers'])->name('brigades.members.update');
 
-    // Р Р°СЃРїРёСЃР°РЅРёРµ Р±СЂРёРіР°Рґ вЂ” РґРѕСЃС‚СѓРїРЅРѕ Р±СЂРёРіР°РґРёСЂСѓ СЃРІРѕРµР№ Р±СЂРёРіР°РґС‹ (Р°РІС‚РѕСЂРёР·Р°С†РёСЏ РІ РєРѕРЅС‚СЂРѕР»Р»РµСЂРµ)
+    // Р Р°СЃРїРёСЃР°РЅРёРµ Р±СЂРёРіР°Рґ вЂ” РґРѕСЃС‚СѓРїРЅРѕ Р±СЂРёРіР°РґРёСЂСѓ СЃРІРѕРµР№ Р±СЂРёРіР°РґС‹ (Р°РІС‚РѕСЂРёР·Р°С†РёСЏ РІ РєРѕРЅС‚СЂРѕР»Р»РµСЂРµ)
     Route::prefix('brigades/{brigade}/schedule')->name('brigades.schedule.')->group(function () {
         Route::get('/',          [App\Http\Controllers\BrigadeScheduleController::class, 'show'])->name('show');
         Route::get('/export',    [App\Http\Controllers\BrigadeScheduleController::class, 'export'])->name('export');
@@ -156,7 +156,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('/promotions/{promotion}',    [PromotionController::class, 'update'])->name('promotions.update');
         Route::delete('/promotions/{promotion}', [PromotionController::class, 'destroy'])->name('promotions.destroy');
 
-        // Р РѕР»Рё
+        // Р РѕР»Рё
         Route::put('/roles/{role}',  [SettingsController::class, 'updateRole'])->name('roles.update');
 
         // РћР±С‰РёРµ РЅР°СЃС‚СЂРѕР№РєРё
@@ -215,6 +215,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/report/export',         [App\Http\Controllers\MaterialReportController::class, 'exportCsv'])->name('report.export');
     });
 
+    // Интерактивное обучение (onboarding-туры) — фронт отмечает тур пройденным
+    // или скрытым через "больше не показывать", см. resources/js/Composables/useTour.js
+    Route::post('/onboarding/{tour}/seen', [App\Http\Controllers\OnboardingController::class, 'markSeen'])->name('onboarding.seen');
+
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
 
 });
@@ -224,7 +228,7 @@ Route::resource('materials', App\Http\Controllers\MaterialController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware('auth');
 
-// Р Р°СЃС…РѕРґРЅРёРєРё РїРѕ Р·Р°СЏРІРєРµ
+// Р Р°СЃС…РѕРґРЅРёРєРё РїРѕ Р·Р°СЏРІРєРµ
 Route::post('tickets/{ticket}/materials', [App\Http\Controllers\MaterialController::class, 'storeForTicket'])
     ->name('tickets.materials.store')
     ->middleware('auth');
@@ -284,7 +288,6 @@ Route::post('/telegram/webhook', [App\Http\Controllers\TelegramController::class
 Route::get('/telegram/set-webhook', [App\Http\Controllers\TelegramController::class, 'setWebhook'])
     ->middleware('auth')
     ->name('telegram.set-webhook');
-
 
 
 

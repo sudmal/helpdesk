@@ -1,8 +1,8 @@
 <template>
   <Head :title="`Заявка ${ticket.number}`" />
-  <AppLayout :title="ticket.number" help-tab="dispatcher" help-section="ticket-card">
+  <AppLayout :title="ticket.number" help-tab="dispatcher" help-section="ticket-card" tour-key="ticket">
     <template #actions>
-      <div class="flex items-center gap-2 flex-wrap">
+      <div data-tour="tour-ticket-actions" class="flex items-center gap-2 flex-wrap">
         <button v-if="canEdit && !ticket.status.is_final"
                 @click="$inertia.get(route('tickets.edit', ticket.id))"
                 class="btn-outline text-sm" title="Изменить">✏️</button>
@@ -41,7 +41,7 @@
         <!-- Карточка -->
         <div class="bg-white rounded-xl border border-gray-200 p-3.5">
           <!-- Шапка карточки: адрес слева, время справа, бейджи под адресом -->
-          <div class="flex items-start justify-between gap-3 mb-2.5">
+          <div data-tour="tour-ticket-header" class="flex items-start justify-between gap-3 mb-2.5">
             <!-- Левая часть: номер + адрес + бейджи -->
             <div class="flex-1 min-w-0">
               <span class="text-xs text-gray-400 font-mono">{{ ticket.number }}</span>
@@ -93,7 +93,7 @@
             <p v-if="ticket.act?.number"><span class="text-xs text-gray-400">Акт: </span><span class="font-medium text-gray-700 break-words">{{ ticket.act.number }}</span></p>
           </div>
 
-          <div class="mt-2.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+          <div data-tour="tour-ticket-description" class="mt-2.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
             <p class="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">Описание</p>
             <p class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
               {{ ticket.description || '—' }}
@@ -176,7 +176,7 @@
         </div>
 
         <!-- Комментарии -->
-        <div class="bg-white rounded-xl border border-gray-200 p-3.5">
+        <div data-tour="tour-ticket-comments" class="bg-white rounded-xl border border-gray-200 p-3.5">
           <h3 class="font-medium text-sm mb-2 text-gray-700">
             Комментарии <span class="text-gray-400">({{ ticket.comments?.length ?? 0 }})</span>
           </h3>
@@ -240,7 +240,7 @@
         </div>
 
         <!-- История по адресу -->
-        <div v-if="addressHistory?.length"
+        <div v-if="addressHistory?.length" data-tour="tour-ticket-history-address"
              class="bg-white rounded-xl border border-gray-200 p-3.5">
           <h3 class="font-medium text-sm mb-2 text-gray-700">Предыдущие заявки</h3>
           <div class="space-y-1.5">
@@ -270,7 +270,7 @@
         </div>
 
         <!-- История изменений -->
-        <div class="bg-white rounded-xl border border-gray-200 p-3.5">
+        <div data-tour="tour-ticket-history-log" class="bg-white rounded-xl border border-gray-200 p-3.5">
           <h3 class="font-medium text-sm mb-2 text-gray-700">История</h3>
           <div class="space-y-2.5 max-h-80 overflow-y-auto">
             <div v-for="h in ticket.history" :key="h.id" class="text-xs border-l-2 border-gray-100 pl-2">
@@ -358,7 +358,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Head, useForm, router } from '@inertiajs/vue3'
+import { Head, useForm, router, usePage } from '@inertiajs/vue3'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
 dayjs.locale('ru')
@@ -370,6 +370,7 @@ import TimePicker from '@/Components/UI/TimePicker.vue'
 import AttachmentList from '@/Components/Tickets/AttachmentList.vue'
 import MaterialsForm from '@/Components/Tickets/MaterialsForm.vue'
 import AttachmentUpload from '@/Components/Tickets/AttachmentUpload.vue'
+import { useTour, hasSeenTour } from '@/Composables/useTour'
 
 const createdBy = computed(() => {
   // Берём из истории — запись с action=created
@@ -455,6 +456,25 @@ const props = defineProps({
   canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canComment: Boolean, canDelete: Boolean,
   canStart: Boolean, canPause: Boolean, canPostpone: Boolean,
   settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
+})
+
+// ── Обучение при первом открытии карточки заявки ──
+const tour = useTour()
+const ticketTourSteps = [
+  { selector: '[data-tour="tour-ticket-header"]', title: 'Карточка заявки', text: 'Адрес, статус, номер и время выезда — всё видно сразу, без прокрутки.' },
+  { selector: '[data-tour="tour-ticket-description"]', title: 'Описание', text: 'Что нужно сделать — со слов диспетчера или абонента.' },
+  { selector: '[data-tour="tour-ticket-actions"]', title: 'Действия', text: 'Кнопки меняются по статусу заявки: взять в работу, закрыть, перенести, при необходимости — удалить.' },
+  { selector: '[data-tour="tour-ticket-comments"]', title: 'Комментарии', text: 'Переписка по заявке. Комментарий с пометкой «Внутренний» не увидят в других приложениях у абонента.' },
+  { selector: '[data-tour="tour-ticket-history-address"]', title: 'Предыдущие заявки', text: 'Если по этому адресу уже что-то было — увидишь здесь, вместе с актами и итогами.' },
+  { selector: '[data-tour="tour-ticket-history-log"]', title: 'История', text: 'Полная история изменений заявки — кто и когда что поменял.' },
+]
+tour.register('ticket', ticketTourSteps)
+
+const page = usePage()
+onMounted(() => {
+  if (!hasSeenTour(page.props.auth?.user, 'ticket')) {
+    setTimeout(() => tour.start('ticket', ticketTourSteps), 400)
+  }
 })
 
 // State

@@ -1,12 +1,12 @@
 <template>
   <Head title="Подключения" />
-  <AppLayout title="Подключения" help-tab="dispatcher" help-section="connections">
+  <AppLayout title="Подключения" help-tab="dispatcher" help-section="connections" tour-key="connections">
 
     <!-- Вкладки территорий + Фильтры -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
 
       <!-- Вкладки -->
-      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2.5 pt-1.5 flex-wrap">
+      <div data-tour="tour-conn-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2.5 pt-1.5 flex-wrap">
         <button @click="selectTerritory(null)"
                 :class="['px-2.5 py-1.5 text-sm font-medium flex items-center gap-1.5 rounded-t-lg transition-colors relative',
                          selectedTerritory === null
@@ -85,12 +85,12 @@
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm text-gray-500">Всего: {{ requests.total }}</span>
-        <button @click="openCreate"
+        <button @click="openCreate" data-tour="tour-conn-create"
                 class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
           + Новая заявка
         </button>
       </div>
-      <div class="overflow-x-auto">
+      <div data-tour="tour-conn-table" class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
@@ -101,9 +101,9 @@
               <th class="px-2 py-1 text-left">Телефон</th>
               <th class="px-2 py-1 text-left">Адрес</th>
               <th class="px-2 py-1 text-left">Описание</th>
-              <th class="px-2 py-1 text-left">Статус</th>
+              <th class="px-2 py-1 text-left" data-tour="tour-conn-status-col">Статус</th>
               <th class="px-2 py-1 text-left">Дата подкл.</th>
-              <th class="px-2 py-1 text-left">Примечания / Акт</th>
+              <th class="px-2 py-1 text-left" data-tour="tour-conn-act-col">Примечания / Акт</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
@@ -622,9 +622,10 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { Head } from '@inertiajs/vue3'
+import { Head, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import TimePicker from '@/Components/UI/TimePicker.vue'
+import { useTour, hasSeenTour } from '@/Composables/useTour'
 
 const props = defineProps({
   requests:          Object,
@@ -638,6 +639,24 @@ const props = defineProps({
   overdueByTerritory:  { type: Object, default: () => ({}) },
   materialsCatalog:  Array,
   promotions:        { type: Array, default: () => [] },
+})
+
+// ── Обучение: как устроен алгоритм заявки на подключение ──
+const tour = useTour()
+const connectionsTourSteps = [
+  { selector: '[data-tour="tour-conn-create"]', title: 'Шаг 1. Создание', text: 'Диспетчер создаёт заявку на подключение — имя, телефон, адрес, участок и бригада, которая её обслужит.' },
+  { selector: '[data-tour="tour-conn-tabs"]', title: 'Территории', text: 'Оранжевый счётчик — сколько заявок ждут ответа. Красный — сколько уже просрочено. Так видно, где горит.' },
+  { selector: '[data-tour="tour-conn-status-col"]', title: 'Шаг 2. Возможно / Невозможно', text: 'Прежде чем назначать дату, заявка ждёт ответа монтажника: можно ли физически подключить адрес. Кнопки «Возможно» / «Невозможно» — в карточке заявки (клик по адресу в таблице).' },
+  { selector: '[data-tour="tour-conn-table"]', title: 'Шаг 3. Назначение', text: 'Если подключение возможно — диспетчер назначает дату и бригаду, статус меняется на «Назначено». Открыть карточку заявки — клик по адресу.' },
+  { selector: '[data-tour="tour-conn-act-col"]', title: 'Шаг 4. Закрытие', text: 'После визита монтажник закрывает заявку и указывает использованные материалы — статус становится «Выполнено», и здесь появляется ссылка на акт.' },
+]
+tour.register('connections', connectionsTourSteps)
+
+const page = usePage()
+onMounted(() => {
+  if (!hasSeenTour(page.props.auth?.user, 'connections')) {
+    setTimeout(() => tour.start('connections', connectionsTourSteps), 400)
+  }
 })
 
 const totalOverdue = computed(() =>

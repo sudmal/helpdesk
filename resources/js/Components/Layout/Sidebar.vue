@@ -1,20 +1,20 @@
 <template>
   <aside class="flex flex-col w-56 bg-[#141c2b] text-white shrink-0 h-full text-[13px]">
-    <div class="flex items-center gap-2 px-4 py-2 border-b border-white/10 shrink-0">
+    <div data-tour="tour-brand" class="flex items-center gap-2 px-4 py-2 border-b border-white/10 shrink-0">
       <img src="/logo.png" alt="Logo" class="w-6 h-6"/>
       <span class="font-semibold text-sm tracking-tight">HelpDesk</span>
     </div>
     <nav class="flex-1 px-2.5 py-2 space-y-px overflow-y-auto min-h-0">
-      <a v-if="can('tickets.create')" :href="route('tickets.create')"
+      <a v-if="can('tickets.create')" :href="route('tickets.create')" data-tour="tour-new-ticket"
           class="flex items-center gap-2 px-2.5 py-1.5 mb-1 rounded-md
                  bg-green-600 hover:bg-green-700 text-white font-medium text-[13px]
                  transition-colors shadow-sm">
         <span class="text-sm leading-none">+</span>
         <span>Новая заявка</span>
       </a>
-      <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" />
-      <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" />
-      <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения">
+      <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" data-tour="tour-nav-dashboard" />
+      <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" data-tour="tour-nav-tickets" />
+      <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения" data-tour="tour-nav-connections">
         <span v-if="connectionAlerts.pending > 0 || connectionAlerts.needs_callback > 0 || connectionAlerts.needs_completion > 0"
               class="ml-auto flex items-center gap-1">
           <!-- Пульсирующий ! — есть необработанные (ждут монтажника) или назначенные (ждут выезда) -->
@@ -36,7 +36,7 @@
               class="ml-auto animate-pulse flex items-center justify-center w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold leading-none"
               title="Есть необработанные запросы">!</span>
       </NavItem>
-      <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" />
+      <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" data-tour="tour-nav-calendar" />
       <NavItem v-if="isForeman && foremanBrigadeId"
                :href="route('brigades.show', foremanBrigadeId)"
                icon="users" label="Моя бригада" />
@@ -58,7 +58,7 @@
       <NavItem v-if="can('calls.view')" :href="route('calls.index')" icon="phone" label="Звонки" />
       <NavItem v-if="canManageSettings"
                :href="route('settings.index')"      icon="settings" label="Настройки" />
-      <NavItem :href="route('help')" icon="help-circle" label="Справка" />
+      <NavItem :href="route('help')" icon="help-circle" label="Справка" data-tour="tour-nav-help" />
     </nav>
     <div class="px-3 py-1.5 border-t border-white/10 shrink-0">
       <div class="flex items-center justify-between gap-2">
@@ -276,4 +276,3 @@ async function openQr() {
   }
 }
 </script>
-

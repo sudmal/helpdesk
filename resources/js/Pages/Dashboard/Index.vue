@@ -1,6 +1,6 @@
 <template>
   <Head title="Дашборд" />
-  <AppLayout title="Дашборд" help-tab="dispatcher" help-section="dashboard">
+  <AppLayout title="Дашборд" help-tab="dispatcher" help-section="dashboard" tour-key="dashboard">
 
     <!-- ── Тосты: новые заявки ── -->
     <Teleport to="body">
@@ -24,7 +24,7 @@
     <!-- ── Переключатель участков + дата ── -->
     <div class="bg-white rounded-xl border border-gray-200 px-3 py-1.5 mb-1 flex items-center gap-2 flex-wrap">
       <span class="text-xs text-gray-400 font-medium">Участок:</span>
-      <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+      <div data-tour="tour-dash-servicetype" class="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
         <button v-for="st in serviceTypes" :key="st.id"
                 @click="navigate({ service_type: st.id })"
                 :class="['px-2.5 py-0.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1',
@@ -63,7 +63,7 @@
         <span>{{ props.onlyOpen ? '●' : '○' }}</span> Только открытые
       </button>
       <!-- Дата справа -->
-      <div class="flex items-center gap-1 ml-auto">
+      <div data-tour="tour-dash-date" class="flex items-center gap-1 ml-auto">
         <button @click="changeDate(-1)"
                 class="px-1.5 py-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-500">‹</button>
         <input type="date" :value="selectedDate" @change="changeDate(0, $event.target.value)"
@@ -105,9 +105,9 @@
     </div>
 
     <!-- ── Основная таблица заявок ── -->
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
+    <div data-tour="tour-dash-table" class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
       <!-- Вкладки территорий -->
-      <div class="bg-gray-50 border-b border-gray-200 flex items-end px-2 pt-1 flex-wrap">
+      <div data-tour="tour-dash-territory-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end px-2 pt-1 flex-wrap">
         <button v-for="t in territories" :key="t.id"
                 @click="selectTerritory(t.id)"
                 :class="['px-3 py-1 text-xs font-medium flex flex-col items-center gap-0.5 rounded-t-xl transition-colors relative min-w-[80px] border-r border-gray-200 last:border-r-0',
@@ -238,7 +238,7 @@
     </div>
 
     <!-- ── ПРОСРОЧЕННЫЕ ── -->
-    <div v-if="overdue?.length" ref="overdueSection"
+    <div v-if="overdue?.length" ref="overdueSection" data-tour="tour-dash-overdue"
          class="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
       <div class="px-4 py-3 border-b border-red-200 flex items-center justify-between flex-wrap gap-2">
         <h2 class="font-semibold text-red-700 text-sm flex items-center gap-2">
@@ -450,6 +450,8 @@ import Modal from '@/Components/UI/Modal.vue'
 import AttachmentUpload from '@/Components/Tickets/AttachmentUpload.vue'
 import MaterialsForm from '@/Components/Tickets/MaterialsForm.vue'
 import axios from 'axios'
+import { usePage } from '@inertiajs/vue3'
+import { useTour, hasSeenTour } from '@/Composables/useTour'
 
 const props = defineProps({
   todayTickets:      { type: Array,  default: () => [] },
@@ -466,6 +468,31 @@ const props = defineProps({
   pendingConnectionsCount: { type: Number, default: 0 },
   scheduledConnections:    { type: Array,  default: () => [] },
   pendingServiceRequestsCount: { type: Number, default: 0 },
+})
+
+// ── Обучение при первом входе ──
+const tour = useTour()
+const dashboardTourSteps = [
+  { selector: '[data-tour="tour-brand"]', title: 'HelpDesk', text: 'Здесь ведутся все заявки компании — от звонка до закрытого акта. Слева всегда меню разделов.' },
+  { selector: '[data-tour="tour-new-ticket"]', title: 'Новая заявка', text: 'Создать заявку вручную можно в любой момент отсюда.' },
+  { selector: '[data-tour="tour-nav-dashboard"]', title: 'Дашборд', text: 'Ты уже здесь — заявки на выбранный день по одному участку за раз.' },
+  { selector: '[data-tour="tour-nav-tickets"]', title: 'Заявки', text: 'Полный список всех заявок, не только сегодняшних — с поиском и фильтрами.' },
+  { selector: '[data-tour="tour-nav-connections"]', title: 'Подключения', text: 'Отдельный поток для новых абонентов, со своим порядком шагов.' },
+  { selector: '[data-tour="tour-nav-calendar"]', title: 'Календарь', text: 'То же самое, но по времени — удобно смотреть загрузку по дням.' },
+  { selector: '[data-tour="tour-nav-help"]', title: 'Справка', text: 'Если что-то забудешь — здесь есть инструкция по каждому разделу.' },
+  { selector: '[data-tour="tour-dash-servicetype"]', title: 'Переключатель участка', text: 'Интернет, КТВ, ВОЛС — переключаешь направление и видишь заявки только по нему.' },
+  { selector: '[data-tour="tour-dash-date"]', title: 'Дата', text: 'По умолчанию — сегодня. Листай стрелками или выбирай конкретный день.' },
+  { selector: '[data-tour="tour-dash-territory-tabs"]', title: 'Вкладки территорий', text: 'Счётчики на вкладке: красный — просрочено, оранжевый — ожидает, зелёный — выполнено.' },
+  { selector: '[data-tour="tour-dash-table"]', title: 'Список заявок', text: 'Заявки на выбранный день. Клик по строке открывает карточку целиком.' },
+  { selector: '[data-tour="tour-dash-overdue"]', title: 'Просроченные', text: 'Если что-то горит — оно всегда будет здесь, отдельным красным блоком.' },
+]
+tour.register('dashboard', dashboardTourSteps)
+
+const page = usePage()
+onMounted(() => {
+  if (!hasSeenTour(page.props.auth?.user, 'dashboard')) {
+    setTimeout(() => tour.start('dashboard', dashboardTourSteps), 400)
+  }
 })
 
 // ── Тосты ──

@@ -31,6 +31,10 @@
             </svg>
           </button>
           <slot name="before-title" />
+          <button v-if="tourKey" @click="replayTour" title="Показать обучение заново"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 transition-colors shrink-0">
+            <span class="text-sm leading-none">🎓</span>
+          </button>
           <a v-if="helpTab" :href="helpUrl" target="_blank" title="Справка по этой странице"
              class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 transition-colors shrink-0">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -68,6 +72,8 @@
       </main>
     </div>
   </div>
+
+  <TourOverlay />
 </template>
 
 <script setup>
@@ -75,6 +81,8 @@ import { ref, computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import Sidebar from './Sidebar.vue'
 import PushNotifications from '@/Components/PushNotifications.vue'
+import TourOverlay from '@/Components/Onboarding/TourOverlay.vue'
+import { useTour } from '@/Composables/useTour'
 
 const props = defineProps({
   title:       { type: String, default: '' },
@@ -82,15 +90,24 @@ const props = defineProps({
   // и, опционально, id конкретного раздела (HelpSection) для прокрутки к нему.
   helpTab:     { type: String, default: '' },
   helpSection: { type: String, default: '' },
+  // Ключ интерактивного обучения (onboarding-тура), зарегистрированного этой
+  // страницей через useTour().register() — если задан, в шапке появляется
+  // значок "🎓" для повторного запуска уже пройденного тура.
+  tourKey:     { type: String, default: '' },
 })
 
 const sidebarOpen = ref(false)
 const page  = usePage()
 const flash = computed(() => page.props.flash ?? {})
+const tour  = useTour()
 
 const helpUrl = computed(() => {
   const params = new URLSearchParams({ tab: props.helpTab })
   if (props.helpSection) params.set('section', props.helpSection)
   return route('help') + '?' + params.toString()
 })
+
+function replayTour() {
+  tour.replay(props.tourKey)
+}
 </script>

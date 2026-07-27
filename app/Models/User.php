@@ -20,7 +20,7 @@ class User extends Authenticatable
         'role_id', 'name', 'login', 'email', 'phone', 'password',
         'telegram_chat_id', 'max_chat_id',
         'notify_telegram', 'notify_email', 'notify_max', 'notify_on_days_off',
-        'is_active',
+        'is_active', 'onboarding_seen',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -32,6 +32,7 @@ class User extends Authenticatable
         'notify_on_days_off' => 'boolean',
         'is_active'          => 'boolean',
         'last_web_seen_at'   => 'datetime',
+        'onboarding_seen'    => 'array',
     ];
 
     // === Relations ===
@@ -96,5 +97,13 @@ class User extends Authenticatable
     public function canManageSettings(): bool
     {
         return $this->isAdmin() || $this->isHeadSupport();
+    }
+
+    // === Onboarding tours ===
+    // Ключ тура (например "dashboard", "ticket", "connections") попадает сюда,
+    // когда пользователь прошёл его или явно нажал "больше не показывать".
+    public function hasSeenTour(string $key): bool
+    {
+        return in_array($key, $this->onboarding_seen ?? [], true);
     }
 }
