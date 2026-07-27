@@ -63,7 +63,7 @@ class ConnectionRequestController extends Controller
 
     public function show(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'materials', 'act']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'materials', 'act', 'logs.user']);
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
 
@@ -83,7 +83,7 @@ class ConnectionRequestController extends Controller
 
         $cr = ConnectionRequest::create($data);
         $this->logEvent($cr, $request->user()->id, 'created');
-        $cr->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser']);
+        $cr->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'logs.user']);
 
         return response()->json($this->formatOne($cr), 201);
     }
@@ -149,7 +149,7 @@ class ConnectionRequestController extends Controller
             })->afterResponse();
         }
 
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'materials']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'materials', 'logs.user']);
 
         return response()->json($this->formatOne($connectionRequest, withMaterials: true));
     }
@@ -239,7 +239,7 @@ class ConnectionRequestController extends Controller
             $request->notes,
             $actNumber ? ['act_number' => $actNumber] : null);
 
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'act']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'act', 'logs.user']);
 
         return response()->json($this->formatOne($connectionRequest));
     }
@@ -261,7 +261,7 @@ class ConnectionRequestController extends Controller
             $this->logEvent($connectionRequest, $request->user()->id, 'rejected', 'Автоматически отклонено после прозвона (монтажник: невозможно)');
         }
 
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'logs.user']);
         return response()->json($this->formatOne($connectionRequest));
     }
 
@@ -271,9 +271,13 @@ class ConnectionRequestController extends Controller
      */
     public function feasibility(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
+        // Бригадир так же полноценно отвечает за техвозможность своей бригады
+        // (уже утверждает акты/добавляет их задним числом) -- отсутствие
+        // доступа было пробелом, не сознательным ограничением, см. память
+        // проекта, project-connection-feasibility (найдено 2026-07-27).
         $user = $request->user();
-        if (!$user->isTechnician() && !$user->isAdmin() && !$user->isHeadSupport()) {
-            return response()->json(['message' => 'Ответить может только монтажник.'], 403);
+        if (!$user->isTechnician() && !$user->isForeman() && !$user->isAdmin() && !$user->isHeadSupport()) {
+            return response()->json(['message' => 'Ответить может только монтажник или бригадир.'], 403);
         }
 
         $data = $request->validate([
@@ -297,7 +301,7 @@ class ConnectionRequestController extends Controller
             $data['answer'] === 'possible' ? 'feasibility_possible' : 'feasibility_impossible',
             $data['comment'] ?? null
         );
-        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser']);
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'logs.user']);
 
         return response()->json($this->formatOne($connectionRequest));
     }
@@ -375,17 +379,22 @@ class ConnectionRequestController extends Controller
                     'total'         => round((float)$m->price_at_time * (float)$m->quantity, 2),
                 ])->values()->all();
 
-            // История изменений заявки -- по аналогии с history у Актов
-            // (GET /acts/{id}), см. память проекта. Только в детальном ответе,
-            // не в списке (как и materials).
-            $data['logs'] = $r->logs()->with('user')->latest()->get()->map(fn($l) => [
+        }
+
+        // История изменений заявки -- по аналогии с history у Актов (GET /acts/{id}).
+        // Присутствует во всех ответах с одиночным объектом (show/store/update/
+        // close/markCalled/feasibility, см. ->load(['logs.user']) в каждом методе),
+        // но не в списке (GET /connection-requests) -- там 'logs' не eager-loaded,
+        // relationLoaded() возвращает false, лишнего запроса на каждую строку нет.
+        if ($r->relationLoaded('logs')) {
+            $data['logs'] = $r->logs->sortByDesc('created_at')->values()->map(fn($l) => [
                 'id'         => $l->id,
                 'user'       => $l->user?->name,
                 'action'     => $l->action,
                 'notes'      => $l->notes,
                 'meta'       => $l->meta,
                 'created_at' => $l->created_at->toIso8601String(),
-            ])->values()->all();
+            ])->all();
         }
 
         return $data;

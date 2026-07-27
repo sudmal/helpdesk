@@ -383,10 +383,19 @@ class ConnectionRequestController extends Controller
      */
     public function feasibility(Request $request, ConnectionRequest $connectionRequest)
     {
+        // Бригадир исходно не был сюда включён (см. память проекта,
+        // project-connection-feasibility, план был "любой монтажник бригады") --
+        // но бригадир так же полноценно отвечает за техвозможность своей
+        // бригады и уже утверждает акты/добавляет их задним числом, так что
+        // отсутствие доступа у него было пробелом, а не сознательным
+        // ограничением. Обнаружено 2026-07-27: монтажник ошибочно ответил на
+        // чужую заявку, вернул в pending, а бригадир той же бригады не смог
+        // ответить повторно -- "нет доступа".
         abort_unless(
-            $request->user()->isTechnician() || $request->user()->isAdmin() || $request->user()->isHeadSupport(),
+            $request->user()->isTechnician() || $request->user()->isForeman()
+                || $request->user()->isAdmin() || $request->user()->isHeadSupport(),
             403,
-            'Ответить может только монтажник.'
+            'Ответить может только монтажник или бригадир.'
         );
 
         $data = $request->validate([
