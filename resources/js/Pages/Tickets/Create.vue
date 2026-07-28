@@ -477,12 +477,13 @@ function applyLookupAddress(address, apartment) {
   phoneLookup.value = null
 }
 
-async function fetchFreeSlot(brigadeId = null, date = null) {
+async function fetchFreeSlot(brigadeId = null, date = null, strict = false) {
   try {
     const params = {}
     if (brigadeId) params.brigade_id = brigadeId
     if (date) params.date = date
     if (form.service_type_id) params.service_type_id = form.service_type_id
+    if (strict) params.strict_date = 1
     const { data } = await axios.get(route('tickets.free-slot'), { params })
     if (data.datetime) form.scheduled_at = data.datetime
   } catch { /* keep default */ }
@@ -490,7 +491,12 @@ async function fetchFreeSlot(brigadeId = null, date = null) {
 
 onMounted(() => fetchFreeSlot(form.brigade_id || null, todayDate()))
 
-watch(() => form.brigade_id, (id) => { if (id) fetchFreeSlot(id, scheduledDatePart()) })
+// strict=true ниже -- дату/бригаду в обоих случаях меняет уже сам пользователь
+// на открытой форме, поэтому подсказка не должна тайком откатывать выбранный
+// день на другой (например, на сегодня вечером, когда рабочий день формально
+// уже закончился) -- только заполнить время в пределах того же дня, если
+// получится, см. TicketController::freeSlot().
+watch(() => form.brigade_id, (id) => { if (id) fetchFreeSlot(id, scheduledDatePart(), true) })
 
 // Пользователь вручную поменял дату выезда (бригада уже выбрана) — сразу предлагаем
 // первый свободный слот на этот день и подставляем его время, вместо того чтобы
@@ -500,7 +506,7 @@ watch(() => form.scheduled_at, (val) => {
   const datePart = val ? val.split('T')[0] : null
   if (datePart && datePart !== lastFreeSlotDate) {
     lastFreeSlotDate = datePart
-    if (form.brigade_id) fetchFreeSlot(form.brigade_id, datePart)
+    if (form.brigade_id) fetchFreeSlot(form.brigade_id, datePart, true)
   }
 })
 

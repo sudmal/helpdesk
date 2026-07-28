@@ -25,7 +25,12 @@ class StoreTicketRequest extends FormRequest
             'apartment'    => 'nullable|string|max:20',
             'contract_no'  => 'nullable|string|max:50',
             'priority'     => 'required|in:low,normal,high,urgent',
-            'scheduled_at' => 'nullable|date|after:now',
+            // after_or_equal:today -- сравнение по дате, не по точному времени: заявка
+            // на сегодня разрешена в любое время суток (даже вечером, когда рабочий
+            // день формально уже закончился) -- это нужно, например, монтажнику,
+            // который заводит заявку по факту уже выполненной на месте работы.
+            // Строго прошедшие даты (вчера и раньше) по-прежнему запрещены.
+            'scheduled_at' => 'nullable|date|after_or_equal:today',
             // Вложения при создании
             'attachments'        => 'nullable|array|max:10',
             'attachments.*'      => 'file|max:102400|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,mp3,ogg,wav,m4a,pdf,doc,docx,xls,xlsx',
@@ -42,7 +47,7 @@ class StoreTicketRequest extends FormRequest
             'brigade_id.required'   => 'Выберите бригаду',
             'description.required'  => 'Заполните описание',
             'priority.required'     => 'Укажите приоритет',
-            'scheduled_at.after'    => 'Дата выезда должна быть в будущем',
+            'scheduled_at.after_or_equal' => 'Дата выезда не может быть в прошлом',
         ];
     }
 }

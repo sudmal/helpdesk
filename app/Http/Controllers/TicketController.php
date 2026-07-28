@@ -425,6 +425,12 @@ class TicketController extends Controller
         $step          = (int) SystemSetting::get('schedule_step_minutes', 30);
         $brigadeId     = $request->integer('brigade_id') ?: null;
         $serviceTypeId = $request->integer('service_type_id') ?: null;
+        // Строгий режим -- дату выбрал сам пользователь осознанно (например, монтажник
+        // заводит заявку сегодняшним числом вечером, по уже выполненной на месте
+        // работе) -- не откатываем на завтра только из-за того, что рабочий день
+        // формально уже закончился, и не ищем свободный слот на другие дни вообще.
+        // См. память проекта, feedback про "заявка на сегодня не выбирается".
+        $strict = $request->boolean('strict_date');
 
         [$sh, $sm] = array_map('intval', explode(':', $workStart));
         [$eh, $em] = array_map('intval', explode(':', $workEnd));
@@ -435,13 +441,16 @@ class TicketController extends Controller
         $day = $request->filled('date') ? \Carbon\Carbon::parse($request->date)->startOfDay() : today();
         $nowMins = now()->hour * 60 + now()->minute;
 
-        for ($attempt = 0; $attempt < 60; $attempt++, $day->addDay()) {
+        $maxAttempts = $strict ? 1 : 60;
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++, $day->addDay()) {
             // Для сегодняшнего дня начинаем с ближайшего будущего слота, для остальных — с начала дня.
             // Слот обязательно выравниваем по сетке шага от $startMins — иначе "ближайшее будущее
             // время" (текущие часы:минуты + шаг) не совпадёт ни с одним <option> в TimePicker
             // (тот строит список только от рабочего начала дня кратно шагу), и выбор в интерфейсе
             // будет выглядеть пустым, хотя значение технически подставлено.
-            if ($day->isToday()) {
+            // В строгом режиме это ограничение не действует -- время в пределах рабочего
+            // дня допустимо, даже если оно уже прошло по часам (заявка задним числом).
+            if ($day->isToday() && !$strict) {
                 $raw = max($startMins, $nowMins + $step);
                 $fromMins = $startMins + (int) ceil(($raw - $startMins) / $step) * $step;
             } else {
@@ -466,6 +475,12 @@ class TicketController extends Controller
                     return response()->json(['datetime' => $day->format('Y-m-d') . 'T' . $slot]);
                 }
             }
+        }
+
+        // Строгий режим: ничего не подошло на конкретно этот день -- не откатываем
+        // дату, просто не подсказываем время, пользователь выберет сам.
+        if ($strict) {
+            return response()->json(['datetime' => null]);
         }
 
         return response()->json(['datetime' => today()->addDay()->format('Y-m-d') . 'T' . $workStart]);
