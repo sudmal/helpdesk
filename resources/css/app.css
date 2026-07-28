@@ -76,3 +76,15 @@
     @apply px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors;
   }
 }
+
+/* Разделители строк таблиц (divide-y divide-gray-100/50) по всему порталу --
+   стандартный светло-серый Tailwind почти не виден на белом фоне (особенно
+   после того как строки списков стали компактнее). !important нужен, т.к.
+   divide-gray-100/50 -- это утилиты самого Tailwind в слое utilities, который
+   в собранном CSS идёт позже @layer components. Не трогает divide-red-100/
+   divide-blue-100 (окрашенные панели вроде "Просроченные") -- у них разделитель
+   и так виден на цветном фоне. */
+.divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+.divide-gray-50  > :not([hidden]) ~ :not([hidden]) {
+  border-color: #d1d5db !important;
+}
