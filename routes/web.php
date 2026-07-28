@@ -35,6 +35,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/{connectionRequest}/add-act',       [ConnectionRequestController::class, 'addAct'])->name('add-act');
         Route::post('/{connectionRequest}/mark-called',   [ConnectionRequestController::class, 'markCalled'])->name('mark-called');
         Route::post('/{connectionRequest}/feasibility',   [ConnectionRequestController::class, 'feasibility'])->name('feasibility');
+        Route::post('/{connectionRequest}/cancel',        [ConnectionRequestController::class, 'cancel'])->name('cancel');
         Route::get('/{connectionRequest}/detail',          [ConnectionRequestController::class, 'detail'])->name('detail');
         Route::delete('/{connectionRequest}',             [ConnectionRequestController::class, 'destroy'])->name('destroy');
     });

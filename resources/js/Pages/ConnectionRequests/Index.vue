@@ -67,6 +67,7 @@
             <option value="pending">Ожидает</option>
             <option value="scheduled">Назначено</option>
             <option value="rejected">Отклонено</option>
+            <option value="cancelled">Отказ</option>
             <option value="closed">Выполнено</option>
           </select>
         </div>
@@ -107,7 +108,8 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
-            <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50" :class="{ 'opacity-50': r.deleted_at }">
+            <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50"
+                :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at }">
               <td class="px-1.5 py-px text-center whitespace-nowrap">
                 <button v-if="r.status === 'pending' || r.status === 'scheduled'"
                         @click="openEdit(r)" title="Редактировать"
@@ -346,6 +348,26 @@
       </div>
     </div>
 
+    <!-- Модал: Отказ абонента -->
+    <div v-if="modals.cancel" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-1">Отказ абонента</h3>
+        <p class="text-xs text-gray-500 mb-3">Абонент сам отказался после того, как оставил заявку. Заявка станет неактивной (серой) в списке.</p>
+        <div>
+          <label class="field-label">Комментарий (необязательно)</label>
+          <textarea v-model="cancelForm.comment" class="field-input resize-none" rows="3"
+                    placeholder="Например: передумал, нашёл другого провайдера..."></textarea>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button @click="modals.cancel = false" class="btn-outline text-sm">Отмена</button>
+          <button @click="submitCancel" :disabled="submitting"
+                  class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white transition-colors">
+            Подтвердить отказ
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Модал: Выполнено -->
     <div v-if="modals.close" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-4">
@@ -507,6 +529,12 @@
                       class="px-2.5 py-1 rounded bg-teal-100 text-teal-700 hover:bg-teal-200 text-xs font-medium"
                       title="Забыли добавить материалы при закрытии — создать акт задним числом (только бригадир этой бригады)">
                 Создать акт
+              </button>
+              <button v-if="!['closed', 'rejected', 'cancelled'].includes(detailData.status)"
+                      @click="modals.detail = false; openCancel(detailData)"
+                      class="px-2.5 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-medium"
+                      title="Абонент сам отказался после того, как оставил заявку">
+                Отказ
               </button>
             </template>
             <button @click="modals.detail = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -702,7 +730,7 @@ function reset() {
 }
 
 // Модалы
-const modals      = reactive({ create: false, edit: false, schedule: false, delete: false, close: false, detail: false, feasibility: false, addAct: false })
+const modals      = reactive({ create: false, edit: false, schedule: false, delete: false, close: false, detail: false, feasibility: false, addAct: false, cancel: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')
@@ -740,6 +768,7 @@ const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
 const deleteForm   = reactive({ reason: '' })
 const feasibilityForm = reactive({ answer: '', comment: '' })
+const cancelForm      = reactive({ comment: '' })
 const closeForm    = reactive({ notes: '', materials: [], promotion_id: null })
 const addActForm   = reactive({ materials: [], promotion_id: null })
 const addActErrors = ref('')
@@ -790,6 +819,12 @@ function openFeasibility(r, answer) {
   feasibilityForm.answer  = answer
   feasibilityForm.comment = ''
   modals.feasibility = true
+}
+
+function openCancel(r) {
+  activeRecord.value = r
+  cancelForm.comment = ''
+  modals.cancel = true
 }
 
 function openClose(r) {
@@ -937,14 +972,25 @@ function submitFeasibility() {
   })
 }
 
+function submitCancel() {
+  submitting.value = true
+  router.post(route('connection-requests.cancel', activeRecord.value.id), {
+    comment: cancelForm.comment,
+  }, {
+    onSuccess: () => { modals.cancel = false },
+    onFinish:  () => { submitting.value = false },
+  })
+}
+
 function statusLabel(s) {
-  return { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', closed: 'Выполнено' }[s] ?? s
+  return { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', cancelled: 'Отказ', closed: 'Выполнено' }[s] ?? s
 }
 function statusClass(s) {
   return {
     pending:   'bg-yellow-100 text-yellow-800',
     scheduled: 'bg-blue-100 text-blue-800',
     rejected:  'bg-red-100 text-red-700',
+    cancelled: 'bg-gray-200 text-gray-600',
     closed:    'bg-green-100 text-green-800',
   }[s] ?? 'bg-gray-100 text-gray-600'
 }
@@ -992,6 +1038,7 @@ function logActionLabel(action) {
     scheduled:  'Назначено',
     pending:    'Возвращено в ожидание',
     rejected:   'Отклонено',
+    cancelled:  'Абонент отказался',
     closed:     'Выполнено',
     called_back:'Прозвонили клиенту',
     feasibility_possible:   'Монтажник: возможно',
@@ -1008,6 +1055,7 @@ function logDotClass(action) {
     scheduled:  'bg-blue-400',
     pending:    'bg-yellow-400',
     rejected:   'bg-red-400',
+    cancelled:  'bg-gray-400',
     closed:     'bg-emerald-500',
     called_back:'bg-amber-400',
     feasibility_possible:   'bg-green-500',

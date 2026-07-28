@@ -25,7 +25,7 @@ class ConnectionRequestController extends Controller
 
         // Сортировка "по важности": требующие прозвона (needs_callback) --
         // наверх независимо от статуса (это горящее действие), закрытые
-        // (выполнено, либо отклонено и прозвон уже не нужен) -- вниз, как
+        // (выполнено, либо отклонено/отказ и прозвон уже не нужен) -- вниз, как
         // полностью завершённые. Остальное (ожидает/назначено) -- посередине,
         // внутри каждой группы сначала новые.
         $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act'])
@@ -34,7 +34,7 @@ class ConnectionRequestController extends Controller
             ->orderByRaw("
                 CASE
                     WHEN needs_callback = 1 THEN 0
-                    WHEN status IN ('closed', 'rejected') THEN 2
+                    WHEN status IN ('closed', 'rejected', 'cancelled') THEN 2
                     ELSE 1
                 END
             ")
@@ -110,13 +110,13 @@ class ConnectionRequestController extends Controller
 
     public function update(Request $request, ConnectionRequest $connectionRequest)
     {
-        // Закрытые/отклонённые заявки — финальное состояние, редактированию
+        // Закрытые/отклонённые/отказные заявки — финальное состояние, редактированию
         // не подлежат (см. память проекта, project-connection-feasibility).
         // Забытые материалы к уже выполненной заявке добавляются отдельным
         // путём — addAct() ниже, а не через этот метод.
-        if (in_array($connectionRequest->status, ['closed', 'rejected'])) {
+        if (in_array($connectionRequest->status, ['closed', 'rejected', 'cancelled'])) {
             return back()->withErrors([
-                'status' => 'Закрытые и отклонённые заявки редактированию не подлежат.',
+                'status' => 'Закрытые, отклонённые и отказные заявки редактированию не подлежат.',
             ])->withInput();
         }
 
@@ -424,13 +424,42 @@ class ConnectionRequestController extends Controller
         return back()->with('success', 'Ответ сохранён');
     }
 
+    /**
+     * Отказ абонента -- он сам передумал уже после того, как оставил заявку
+     * (в отличие от "rejected", который отражает решение оператора/монтажника,
+     * например техническую невозможность). Отдельный статус и отдельный лог,
+     * чтобы это различие не терялось при разборе истории/отчётах.
+     */
+    public function cancel(Request $request, ConnectionRequest $connectionRequest)
+    {
+        abort_if(
+            in_array($connectionRequest->status, ['closed', 'rejected', 'cancelled']),
+            422,
+            'Заявка уже в финальном статусе.'
+        );
+
+        $data = $request->validate([
+            'comment' => 'nullable|string|max:2000',
+        ]);
+
+        $connectionRequest->update([
+            'status'         => 'cancelled',
+            'notes'          => $data['comment'] ?? $connectionRequest->notes,
+            'needs_callback' => false,
+        ]);
+
+        $this->logEvent($connectionRequest, $request->user()->id, 'cancelled', $data['comment'] ?? null);
+
+        return back()->with('success', 'Заявка отмечена как «Отказ»');
+    }
+
     public function destroy(Request $request, ConnectionRequest $connectionRequest)
     {
         $data = $request->validate(['reason' => 'nullable|string|max:2000']);
 
         // Мягкое удаление (SoftDeletes) -- запись остаётся в БД и в логе,
         // просто пропадает из списка по умолчанию (см. index(), фильтр
-        // trashed). Не путать со статусом rejected -- это отдельный,
+        // trashed). Не путать со статусом rejected/cancelled -- это отдельный,
         // независимый механизм административной чистки (дубли, брак),
         // см. память проекта, project-connection-feasibility.
         $this->logEvent($connectionRequest, $request->user()->id, 'deleted', $data['reason'] ?? null);
