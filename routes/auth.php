@@ -12,4 +12,9 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+    // Выход из системы -- только по POST (кнопка в интерфейсе), это защита от CSRF
+    // через простую ссылку. GET сюда попадает не через приложение, а из закладки
+    // браузера/автодополнения адресной строки -- вместо страшной 405-ошибки просто
+    // уводим на главную, ничего не разлогинивая.
+    Route::get('logout', fn () => redirect('/'));
 });
