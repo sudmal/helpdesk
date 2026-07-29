@@ -662,7 +662,7 @@
           </div>
 
           <div v-else class="relative">
-            <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" preserveAspectRatio="none" class="w-full" style="height:200px"
+            <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="w-full" style="aspect-ratio: 640 / 200; max-height: 260px"
                  @mousemove="onChartMove" @mouseleave="onChartLeave">
               <g v-for="g in chart.gridY" :key="g.label">
                 <line :x1="34" :x2="CHART_W - 12" :y1="g.y" :y2="g.y" stroke="#e5e7eb" stroke-width="1" />
