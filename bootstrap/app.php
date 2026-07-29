@@ -47,7 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->respond(function (Response $response, \Throwable $exception, Request $request) {
             $status = $response->getStatusCode();
 
-            if (!$request->expectsJson() && in_array($status, [403, 404, 419, 429, 500, 503], true)) {
+            if (!$request->expectsJson() && in_array($status, [403, 404, 405, 419, 429, 500, 503], true)) {
                 return Inertia::render('Errors/Show', ['status' => $status])
                     ->toResponse($request)
                     ->setStatusCode($status);
