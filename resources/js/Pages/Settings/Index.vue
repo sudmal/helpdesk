@@ -596,6 +596,57 @@
           </div>
         </div>
 
+        <!-- RAID -- показывается только если на сервере есть аппаратный контроллер (см. raid-snapshot.py) -->
+        <div v-if="health.data.raid" class="bg-white border border-gray-200 rounded-xl p-3.5">
+          <h3 class="font-medium text-sm text-gray-700 mb-2">🗃 RAID</h3>
+          <div v-for="ctrl in health.data.raid.controllers" :key="ctrl.model" class="mb-3 last:mb-0">
+            <p class="text-xs font-medium text-gray-700 mb-1.5">{{ ctrl.model }}</p>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 mb-1.5 text-xs">
+              <span><span class="text-gray-400">Контроллер: </span>
+                <span :class="ctrl.controller_status === 'OK' ? 'text-green-600' : 'text-red-600'" class="font-medium">{{ ctrl.controller_status ?? '—' }}</span>
+              </span>
+              <span><span class="text-gray-400">Кэш: </span>
+                <span :class="ctrl.cache_status === 'Enabled' ? 'text-green-600' : 'text-amber-600'" class="font-medium">{{ ctrl.cache_status ?? '—' }}</span>
+              </span>
+              <span><span class="text-gray-400">Батарея: </span>
+                <span :class="(ctrl.battery_status || '').includes('Fail') ? 'text-red-600' : 'text-green-600'" class="font-medium">{{ ctrl.battery_status ?? '—' }}</span>
+              </span>
+            </div>
+            <p v-if="ctrl.cache_status_details" class="text-[11px] text-gray-400 mb-2">{{ ctrl.cache_status_details }}</p>
+
+            <div v-for="arr in ctrl.arrays" :key="arr.name" class="mb-2 last:mb-0">
+              <p class="text-xs text-gray-500 mb-1">
+                Массив {{ arr.name }} —
+                <span :class="arr.status === 'OK' ? 'text-green-600' : 'text-red-600'" class="font-medium">{{ arr.status ?? '—' }}</span>
+                <span v-if="arr.raid_level" class="text-gray-400">, RAID {{ arr.raid_level }}</span>
+              </p>
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-gray-400">
+                    <th class="text-left font-normal pb-1">Диск</th>
+                    <th class="text-left font-normal pb-1">Модель</th>
+                    <th class="text-right font-normal pb-1">Размер</th>
+                    <th class="text-right font-normal pb-1">Темп.</th>
+                    <th class="text-right font-normal pb-1">Статус</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                  <tr v-for="pd in arr.physical_drives" :key="pd.id">
+                    <td class="py-1 font-mono text-gray-700">{{ pd.id }}</td>
+                    <td class="py-1 text-gray-600">{{ pd.model ?? '—' }}</td>
+                    <td class="py-1 text-right text-gray-500 tabular-nums whitespace-nowrap">{{ pd.size ?? '—' }}</td>
+                    <td class="py-1 text-right text-gray-500 tabular-nums whitespace-nowrap">{{ pd.temp_c ? pd.temp_c + '°C' : '—' }}</td>
+                    <td class="py-1 text-right">
+                      <span :class="pd.status === 'OK' ? 'text-green-600' : 'text-red-600'" class="font-medium">{{ pd.status ?? '—' }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-400 mt-1">Снимок RAID обновляется раз в 15 мин, на {{ fmtSnapshotTime(health.data.raid.snapshot_at) }}</p>
+        </div>
+
         <!-- CPU/RAM -- график за последний час -->
         <div class="bg-white border border-gray-200 rounded-xl p-3.5">
           <div class="flex items-center justify-between mb-2 flex-wrap gap-2">

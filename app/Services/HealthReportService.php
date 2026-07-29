@@ -11,6 +11,7 @@ class HealthReportService
         return [
             'disk'     => $this->disk(),
             'smart'    => $this->smart(),
+            'raid'     => $this->raid(),
             'cpu'      => $this->cpu(),
             'memory'   => $this->memory(),
             'uptime'   => $this->uptime(),
@@ -89,6 +90,33 @@ class HealthReportService
             'temperature_c'       => $data['temperature']['current'] ?? null,
             'snapshot_at'         => filemtime(self::SNAPSHOT_PATH),
         ];
+    }
+
+    // Аппаратный RAID (HP Smart Array/ssacli) есть не на всех серверах (на
+    // текущем проде vega8.ru — обычный SATA-диск без контроллера) — тогда
+    // снимок пишет {"available": false} или файла нет вовсе, и этот блок
+    // просто не показывается. Тот же паттерн, что smart()/history() выше:
+    // root читает контроллер через raid-snapshot.timer, PHP только читает
+    // JSON — см. /usr/local/bin/raid-snapshot.py.
+    private const RAID_SNAPSHOT_PATH = '/var/cache/vega8-raid.json';
+
+    private function raid(): ?array
+    {
+        if (!is_file(self::RAID_SNAPSHOT_PATH)) {
+            return null;
+        }
+
+        $raw = @file_get_contents(self::RAID_SNAPSHOT_PATH);
+        if (!$raw) {
+            return null;
+        }
+
+        $data = json_decode($raw, true);
+        if (!is_array($data) || !($data['available'] ?? false)) {
+            return null;
+        }
+
+        return $data;
     }
 
     private function cpu(): array
@@ -210,6 +238,26 @@ class HealthReportService
             }
             if ($smart['lifetime_remain_pct'] !== null && $smart['lifetime_remain_pct'] < 10) {
                 $issues[] = "SMART: ресурс SSD на исходе — осталось {$smart['lifetime_remain_pct']}%";
+            }
+        }
+
+        foreach (($report['raid']['controllers'] ?? []) as $ctrl) {
+            $model = $ctrl['model'] ?? 'RAID-контроллер';
+            if (($ctrl['controller_status'] ?? 'OK') !== 'OK') {
+                $issues[] = "{$model}: статус контроллера — {$ctrl['controller_status']}";
+            }
+            if (str_contains((string) ($ctrl['battery_status'] ?? ''), 'Fail')) {
+                $issues[] = "{$model}: батарея/конденсатор кэша — {$ctrl['battery_status']}";
+            }
+            foreach (($ctrl['arrays'] ?? []) as $array) {
+                if (($array['status'] ?? 'OK') !== 'OK') {
+                    $issues[] = "{$model}: массив {$array['name']} в статусе {$array['status']}";
+                }
+                foreach (($array['physical_drives'] ?? []) as $pd) {
+                    if (($pd['status'] ?? 'OK') !== 'OK') {
+                        $issues[] = "{$model}: диск {$pd['id']} ({$pd['model']}) в статусе {$pd['status']}";
+                    }
+                }
             }
         }
 
