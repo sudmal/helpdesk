@@ -17,11 +17,11 @@
         <p class="text-sm text-blue-200/80 leading-relaxed mb-7">{{ content.message }}</p>
 
         <div class="flex flex-col gap-2.5">
-          <button v-if="status === 419" @click="reload"
+          <button v-if="autoReloadIn !== null" @click="reload"
                   class="w-full bg-blue-500 hover:bg-blue-400 text-white font-semibold py-3
                          rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/30
                          hover:shadow-blue-400/40 text-sm">
-            Обновить страницу
+            Обновить сейчас <span class="text-blue-200/70 font-normal">(само через {{ autoReloadIn }}с)</span>
           </button>
           <a v-else href="/"
              class="w-full bg-blue-500 hover:bg-blue-400 text-white font-semibold py-3
@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Head } from '@inertiajs/vue3'
 
 const props = defineProps({
@@ -98,4 +98,21 @@ const content = computed(() => texts[props.status] ?? {
 
 function reload() { window.location.reload() }
 function goBack() { window.history.length > 1 ? window.history.back() : (window.location.href = '/') }
+
+// Самовосстанавливающиеся ошибки -- 419 (сессия) чинится обновлением страницы
+// почти всегда, 503 (техработы) обычно тоже сама проходит через какое-то время.
+// Остальные коды (403/404/429/500) требуют реального действия человека, авто-
+// обновление там просто зациклит ту же ошибку.
+const AUTO_RELOAD_SECONDS = { 419: 2, 503: 15 }
+const autoReloadIn = ref(AUTO_RELOAD_SECONDS[props.status] ?? null)
+let timer = null
+
+onMounted(() => {
+  if (autoReloadIn.value === null) return
+  timer = setInterval(() => {
+    autoReloadIn.value--
+    if (autoReloadIn.value <= 0) { clearInterval(timer); reload() }
+  }, 1000)
+})
+onUnmounted(() => clearInterval(timer))
 </script>
