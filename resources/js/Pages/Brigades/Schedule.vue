@@ -92,11 +92,12 @@
                   @click="toggleColumnStatus(day)"
                   :class="['border-b border-r text-center cursor-pointer select-none transition-colors w-9 min-w-[36px] py-1',
                            day.date === todayDate ? 'border-blue-500 bg-blue-300 hover:bg-blue-400'
-                           : day.isWeekend        ? 'border-gray-200 bg-red-100 hover:bg-red-200'
+                           : day.dow === 'Сб'     ? 'border-gray-200 bg-blue-100 hover:bg-blue-200'
+                           : day.dow === 'Вс'     ? 'border-gray-200 bg-red-100 hover:bg-red-200'
                            :                        'border-gray-200 bg-gray-100 hover:bg-gray-200']"
                   title="Клик — выходной/работа для всей бригады">
                 <div :class="['text-xs font-bold', day.date === todayDate ? 'text-blue-700' : 'text-gray-800']">{{ day.day }}</div>
-                <div :class="['text-[10px] font-medium', day.date === todayDate ? 'text-blue-600' : day.isWeekend ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
+                <div :class="['text-[10px] font-medium', day.date === todayDate ? 'text-blue-600' : day.dow === 'Сб' ? 'text-blue-500' : day.dow === 'Вс' ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
               </th>
               <th class="sched-count-col border-b border-gray-200 bg-gray-100 px-3 py-2 text-center text-xs font-semibold text-gray-600 min-w-[64px]">
                 Выходов
