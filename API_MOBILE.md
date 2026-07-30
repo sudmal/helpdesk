@@ -704,6 +704,55 @@ POST /tickets/{id}/close   multipart/form-data
   и монтажнику стоит показать значок «есть изменения — подтвердите» на карточке
   заявки/акта, пока он не вызовет `acknowledge`.
 
+### GET /acts (список)
+
+Список актов, ещё не прошедших полный цикл согласования (`status != completed`),
+видимых текущему пользователю — отдельный экран/пункт меню «Акты», чтобы не
+искать акт через конкретную заявку/подключение. Скоуп — своя бригада
+(фолбэк на территории, если бригады нет), как и у остальных экшенов Актов.
+Пагинации нет — «в работе» одновременно мало актов.
+
+**200:**
+```json
+{
+  "data": [
+    {
+      "id": 77,
+      "number": "ir-26071601",
+      "type": "regular",
+      "status": "pending_foreman",
+      "ticket_id": 123,
+      "ticket_number": "i-021123",
+      "connection_request_id": null,
+      "connection_request_name": null,
+      "address": "Донецк, Киевский, 5",
+      "creator": "Монтажник Петров И.В.",
+      "created_at": "2026-07-16T14:00:00+03:00",
+      "foreman_reviewed_at": null,
+      "materials_changed_at": null,
+      "can": {
+        "foreman_review": true,
+        "edit_materials": false,
+        "acknowledge": false
+      }
+    }
+  ],
+  "synced_at": "2026-07-30T10:00:00+03:00"
+}
+```
+
+Поля — облегчённая версия `Act` (без `materials`/`history`, экран деталей всё
+равно грузит полный объект через `GET /acts/{id}`):
+- `ticket_number` / `connection_request_name` — заполнено то из двух, что
+  соответствует `ticket_id`/`connection_request_id` (ровно один не `null`)
+- `address` — `ticket.address` (город, улица, дом) либо
+  `connection_request.address_string`, в готовом для отображения виде
+- `can` — те же три флага, что и на `GET /acts/{id}` (см. ниже)
+
+Бейдж «есть акты, ожидающие утверждения именно мной» считается на клиенте по
+этому же списку: количество элементов с `status == "pending_foreman" &&
+can.foreman_review == true`. Отдельного счётчика/эндпоинта нет.
+
 ### GET /acts/{id}
 
 **200:**
