@@ -290,5 +290,21 @@ Route::get('/telegram/set-webhook', [App\Http\Controllers\TelegramController::cl
     ->middleware('auth')
     ->name('telegram.set-webhook');
 
+// Постоянная ссылка на актуальную версию APK -- не меняется между релизами
+// (в отличие от apk_url внутри version.json, который меняется на каждый
+// релиз). Публичный маршрут без авторизации -- та же логика доступа, что и
+// у самих статических .apk-файлов в public/apk/. При выкладке новой версии
+// обновляется только version.json, эта ссылка сама подхватит новый файл.
+Route::get('/apk/get', function () {
+    $path = public_path('apk/version.json');
+    abort_unless(is_file($path), 404);
+
+    $data = json_decode(file_get_contents($path), true);
+    $url  = $data['apk_url'] ?? null;
+    abort_unless($url, 404);
+
+    return redirect($url);
+})->name('apk.get');
+
 
 

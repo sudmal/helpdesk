@@ -189,11 +189,10 @@ const props = defineProps({ user: Object })
 const apk = ref(null)
 
 // Стабильная ссылка на APK -- не меняется при выходе новой версии, в отличие
-// от apk.apk_url (там конкретное versioned-имя файла из version.json). Указывает
-// на симлинк public/apk/latest.apk -- при выкладке новой версии его нужно
-// перенаправить на новый файл: `ln -sf SP-Helpdesk-X.Y.Z.apk latest.apk`
-// в public/apk/ (та же папка, где лежит version.json).
-const apkStableUrl = computed(() => window.location.origin + '/apk/latest.apk')
+// от apk.apk_url (там конкретное versioned-имя файла из version.json).
+// /apk/get -- серверный редирект (routes/web.php), читает apk_url из
+// version.json на каждый запрос -- ничего вручную поддерживать не нужно.
+const apkStableUrl = computed(() => window.location.origin + '/apk/get')
 
 onMounted(async () => {
   try {
