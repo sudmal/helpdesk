@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Brigade, BrigadeSchedule, ScheduleHoliday};
+use App\Models\{Brigade, BrigadeSchedule, BrigadeScheduleLog, ScheduleHoliday, SystemSetting};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -14,6 +14,13 @@ class BrigadeScheduleController extends Controller
         1=>'Январь',2=>'Февраль',3=>'Март',4=>'Апрель',5=>'Май',6=>'Июнь',
         7=>'Июль',8=>'Август',9=>'Сентябрь',10=>'Октябрь',11=>'Ноябрь',12=>'Декабрь',
     ];
+
+    /** ISO-номера рабочих дней (1=Пн...7=Вс) из настроек */
+    private function workDaysSet(): array
+    {
+        $csv = SystemSetting::get('work_days', '1,2,3,4,5');
+        return array_map('intval', array_filter(explode(',', $csv), fn($v) => $v !== ''));
+    }
 
     public function show(Brigade $brigade, Request $request)
     {
@@ -27,7 +34,8 @@ class BrigadeScheduleController extends Controller
         $firstDay    = Carbon::create($year, $mon, 1);
         $daysInMonth = $firstDay->daysInMonth;
 
-        $dowMap = [0 => 'Вс', 1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб'];
+        $dowMap   = [0 => 'Вс', 1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб'];
+        $workDays = $this->workDaysSet();
 
         $holidays = ScheduleHoliday::whereYear('date', $year)
             ->whereMonth('date', $mon)
@@ -43,7 +51,7 @@ class BrigadeScheduleController extends Controller
                 'date'        => $dateStr,
                 'day'         => $d,
                 'dow'         => $dowMap[$dow],
-                'isWeekend'   => in_array($dow, [0, 6]),
+                'isWeekend'   => !in_array($date->dayOfWeekIso, $workDays),
                 'isHoliday'   => isset($holidays[$dateStr]),
                 'holidayName' => isset($holidays[$dateStr]) ? $holidays[$dateStr]->name : null,
             ];
@@ -92,7 +100,8 @@ class BrigadeScheduleController extends Controller
         $daysInMonth = $firstDay->daysInMonth;
         $totalCols   = 1 + $daysInMonth + 1;
 
-        $dowMap = [0 => 'Вс', 1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб'];
+        $dowMap   = [0 => 'Вс', 1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб'];
+        $workDays = $this->workDaysSet();
 
         $holidays = ScheduleHoliday::whereYear('date', $year)
             ->whereMonth('date', $mon)
@@ -108,7 +117,7 @@ class BrigadeScheduleController extends Controller
                 'date'       => $dateStr,
                 'day'        => $d,
                 'dow'        => $dowMap[$dow],
-                'isWeekend'  => in_array($dow, [0, 6]),
+                'isWeekend'  => !in_array($date->dayOfWeekIso, $workDays),
                 'isSaturday' => $dow === 6,
                 'isHoliday'  => isset($holidays[$dateStr]),
             ];
@@ -173,9 +182,8 @@ class BrigadeScheduleController extends Controller
                     $row[] = "<center><style bgcolor=\"86EFAC\">1</style></center>";
                 } else {
                     $bg = match ($status) {
-                        'holiday'   => 'EDE9FE',
-                        'requested' => 'FCD34D',
-                        default     => 'F3F4F6',
+                        'holiday' => 'EDE9FE',
+                        default   => 'F3F4F6',
                     };
                     $row[] = "<style bgcolor=\"{$bg}\"></style>";
                 }
@@ -189,7 +197,7 @@ class BrigadeScheduleController extends Controller
         // Footer row
         $footerRow = ['<b><style bgcolor="F9FAFB">На участке</style></b>'];
         foreach ($days as $i => $day) {
-            if ($day['isHoliday']) {
+            if ($day['isHoliday'] || $day['isWeekend']) {
                 $footerRow[] = '<center><style color="9CA3AF" bgcolor="F9FAFB">—</style></center>';
             } else {
                 $footerRow[] = "<b><center><style bgcolor=\"F9FAFB\">{$workersPerDay[$i]}</style></center></b>";
@@ -232,16 +240,26 @@ class BrigadeScheduleController extends Controller
 
         $members = $brigade->members()->pluck('users.id');
 
+        $oldRows = BrigadeSchedule::where('brigade_id', $brigade->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $mon)
+            ->get();
+        $oldSchedule = [];
+        foreach ($oldRows as $row) {
+            $oldSchedule[$row->user_id][$row->date->format('Y-m-d')] = $row->status;
+        }
+
         BrigadeSchedule::where('brigade_id', $brigade->id)
             ->whereYear('date', $year)
             ->whereMonth('date', $mon)
             ->delete();
 
         $rows = [];
+        $newSchedule = [];
         foreach ($request->schedule as $userId => $days) {
             if (!$members->contains((int)$userId)) continue;
             foreach ($days as $date => $status) {
-                if (!in_array($status, ['work', 'off', 'requested'])) continue;
+                if (!in_array($status, ['work', 'off'])) continue;
                 $rows[] = [
                     'brigade_id' => $brigade->id,
                     'user_id'    => (int)$userId,
@@ -250,11 +268,36 @@ class BrigadeScheduleController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
+                $newSchedule[(int)$userId][$date] = $status;
             }
         }
 
         if (!empty($rows)) {
             BrigadeSchedule::insert($rows);
+        }
+
+        $changes = [];
+        foreach (array_unique(array_merge(array_keys($oldSchedule), array_keys($newSchedule))) as $uid) {
+            $oldDays = $oldSchedule[$uid] ?? [];
+            $newDays = $newSchedule[$uid] ?? [];
+            foreach (array_unique(array_merge(array_keys($oldDays), array_keys($newDays))) as $date) {
+                $old = $oldDays[$date] ?? 'work';
+                $new = $newDays[$date] ?? 'work';
+                if ($old !== $new) {
+                    $changes[] = ['user_id' => (int)$uid, 'date' => $date, 'from' => $old, 'to' => $new];
+                }
+            }
+        }
+
+        if (!empty($changes)) {
+            $changedUsers = collect($changes)->pluck('user_id')->unique()->count();
+            BrigadeScheduleLog::create([
+                'brigade_id'  => $brigade->id,
+                'user_id'     => auth()->id(),
+                'action'      => 'save',
+                'description' => "Сохранено расписание за {$this->monthNames[(int)$mon]} {$year}: изменено ячеек — " . count($changes) . ", сотрудников — {$changedUsers}",
+                'changes'     => $changes,
+            ]);
         }
 
         return back()->with('success', 'Расписание сохранено');
@@ -283,6 +326,15 @@ class BrigadeScheduleController extends Controller
             ->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))
             ->flip()
             ->toArray();
+
+        $workDaysSet  = $this->workDaysSet();
+        $weekendDates = [];
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $date = Carbon::create($year, $mon, $d);
+            if (!in_array($date->dayOfWeekIso, $workDaysSet)) {
+                $weekendDates[$date->format('Y-m-d')] = true;
+            }
+        }
 
         // Excluded members do not participate in generation
         $members = $brigade->members()
@@ -323,7 +375,7 @@ class BrigadeScheduleController extends Controller
             $userMark = $preMark[$uid] ?? [];
             foreach ($workingDays as $date) {
                 $s = $userMark[$date] ?? null;
-                if ($s === 'requested' || $s === 'off') {
+                if ($s === 'off') {
                     $requestsByDay[$date][] = $uid;
                 }
             }
@@ -332,7 +384,7 @@ class BrigadeScheduleController extends Controller
 
         foreach ($requestsByDay as $date => $uids) {
             foreach ($uids as $uid) {
-                if (($memberCount - $offPerDay[$date]) - 1 >= $minWorkers) {
+                if (isset($weekendDates[$date]) || ($memberCount - $offPerDay[$date]) - 1 >= $minWorkers) {
                     $schedule[$uid][$date] = 'off';
                     $offPerDay[$date]++;
                 }
@@ -356,7 +408,7 @@ class BrigadeScheduleController extends Controller
 
                 foreach ($workingDays as $idx => $date) {
                     if ($schedule[$uid][$date] === 'off') continue;
-                    if (($memberCount - $offPerDay[$date]) - 1 < $minWorkers) continue;
+                    if (!isset($weekendDates[$date]) && ($memberCount - $offPerDay[$date]) - 1 < $minWorkers) continue;
 
                     $offPrev1 = isset($workingDays[$idx - 1]) && $schedule[$uid][$workingDays[$idx - 1]] === 'off';
                     $offPrev2 = isset($workingDays[$idx - 2]) && $schedule[$uid][$workingDays[$idx - 2]] === 'off';
@@ -413,11 +465,20 @@ class BrigadeScheduleController extends Controller
             'exclude_from_schedule' => $newValue,
         ]);
 
+        BrigadeScheduleLog::create([
+            'brigade_id'  => $brigade->id,
+            'user_id'     => auth()->id(),
+            'action'      => 'toggle-exclude',
+            'description' => ($newValue ? 'Исключён из расписания: ' : 'Возвращён в расписание: ') . $member->name,
+            'changes'     => ['user_id' => (int)$request->user_id, 'excluded' => $newValue],
+        ]);
+
         return response()->json(['excluded' => $newValue]);
     }
 
-    public function toggleHoliday(Request $request)
+    public function toggleHoliday(Brigade $brigade, Request $request)
     {
+        $this->authorizeForBrigade($brigade);
         $request->validate(['date' => 'required|date', 'name' => 'nullable|string|max:100']);
 
         $date    = Carbon::parse($request->date)->format('Y-m-d');
@@ -425,11 +486,44 @@ class BrigadeScheduleController extends Controller
 
         if ($holiday) {
             $holiday->delete();
-            return response()->json(['isHoliday' => false]);
+            $isHoliday = false;
+        } else {
+            ScheduleHoliday::create(['date' => $date, 'name' => $request->name]);
+            $isHoliday = true;
         }
 
-        ScheduleHoliday::create(['date' => $date, 'name' => $request->name]);
-        return response()->json(['isHoliday' => true]);
+        // Праздники общие для всех бригад — лог не привязан к конкретной бригаде
+        BrigadeScheduleLog::create([
+            'brigade_id'  => null,
+            'user_id'     => auth()->id(),
+            'action'      => 'toggle-holiday',
+            'description' => ($isHoliday ? 'Отмечен праздник ' : 'Снят праздник ') . $date . (!empty($request->name) ? " ({$request->name})" : ''),
+            'changes'     => ['date' => $date, 'isHoliday' => $isHoliday],
+        ]);
+
+        return response()->json(['isHoliday' => $isHoliday]);
+    }
+
+    public function logs(Brigade $brigade)
+    {
+        $this->authorizeForBrigade($brigade);
+
+        $entries = BrigadeScheduleLog::where(function ($q) use ($brigade) {
+                $q->where('brigade_id', $brigade->id)->orWhereNull('brigade_id');
+            })
+            ->with('user:id,name')
+            ->latest()
+            ->limit(200)
+            ->get()
+            ->map(fn($l) => [
+                'id'          => $l->id,
+                'action'      => $l->action,
+                'description' => $l->description,
+                'user'        => $l->user?->name ?? '—',
+                'created_at'  => $l->created_at->format('d.m.Y H:i'),
+            ]);
+
+        return response()->json(['logs' => $entries]);
     }
 
     private function authorizeForBrigade(Brigade $brigade): void

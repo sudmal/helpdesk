@@ -14,19 +14,6 @@
         </button>
       </div>
 
-      <div class="flex gap-1 bg-gray-100 rounded-xl p-1 text-xs">
-        <button @click="mode = 'mark'"
-                :class="['px-3 py-1 rounded-lg font-medium transition-colors',
-                         mode === 'mark' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-          Отметить пожелания
-        </button>
-        <button @click="mode = 'edit'"
-                :class="['px-3 py-1 rounded-lg font-medium transition-colors',
-                         mode === 'edit' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-          Редактировать итог
-        </button>
-      </div>
-
       <div class="flex items-center gap-1.5">
         <label class="text-xs text-gray-500 whitespace-nowrap">Выходов макс.</label>
         <input type="number" v-model.number="targetDays" min="1" :max="days.length"
@@ -41,18 +28,6 @@
                class="w-16 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <span class="text-xs text-gray-400">чел.</span>
       </div>
-
-      <button @click="runGenerate" :disabled="generating || scheduleIsSaved"
-              :title="scheduleIsSaved ? 'Расписание сохранено — измените ячейку для разблокировки' : ''"
-              class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
-        <svg v-if="!scheduleIsSaved" class="w-4 h-4" :class="generating && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-        </svg>
-        {{ generating ? 'Генерация...' : (scheduleIsSaved ? 'Сохранено' : 'Сгенерировать') }}
-      </button>
 
       <button @click="saveSchedule" :disabled="saving"
               class="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
@@ -75,6 +50,14 @@
         Excel
       </a>
 
+      <button @click="openLogs"
+              class="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Журнал изменений
+      </button>
+
       <span v-if="savedMsg" class="text-sm text-green-600 font-medium">✓ Сохранено</span>
     </div>
 
@@ -82,11 +65,10 @@
     <div class="flex flex-wrap gap-3 mb-3 text-xs text-gray-600 print:hidden">
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-green-200 border border-green-300"></span>Рабочий день</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-400"></span>Выходной</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-amber-300 border border-amber-400"></span>Пожелание</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-purple-200 border border-purple-300"></span>Праздник</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-blue-100 border border-blue-200"></span>Сб (заголовок)</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-red-100 border border-red-200"></span>Вс (заголовок)</span>
-      <span v-if="mode === 'edit'" class="flex items-center gap-1.5 text-gray-400">
+      <span class="flex items-center gap-1.5 text-gray-400">
         <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
         — не участвует в расписании
       </span>
@@ -169,12 +151,12 @@
               <td v-for="day in days" :key="day.date"
                   :class="['border-r border-t text-center w-9 py-1',
                            day.date === todayDate ? 'border-l border-blue-300' : 'border-gray-200',
-                           !localHolidays[day.date]?.isHoliday && workerCountOnDay(day.date) < minWorkers ? 'bg-red-200' : '']">
+                           !skipHeadcount(day) && workerCountOnDay(day.date) < minWorkers ? 'bg-red-200' : '']">
                 <span :class="['text-[11px] font-bold',
-                               localHolidays[day.date]?.isHoliday ? 'text-gray-300'
+                               skipHeadcount(day) ? 'text-gray-300'
                                : workerCountOnDay(day.date) < minWorkers ? 'text-red-700'
                                : 'text-gray-600']">
-                  {{ localHolidays[day.date]?.isHoliday ? '—' : workerCountOnDay(day.date) }}
+                  {{ skipHeadcount(day) ? '—' : workerCountOnDay(day.date) }}
                 </span>
               </td>
               <td class="sched-count-col border-t border-gray-200 px-3 text-center text-xs text-gray-400 font-medium">
@@ -189,6 +171,31 @@
     <!-- Предупреждение (скрыто при печати) -->
     <div v-if="hasConflicts" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium print:hidden">
       ⚠ Есть дни с нарушением минимума ({{ minWorkers }} чел.) — выделены красным.
+    </div>
+
+    <!-- Модалка "Журнал изменений" -->
+    <div v-if="showLogs" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 print:hidden" @click.self="showLogs = false">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <h2 class="text-sm font-semibold text-gray-800">Журнал изменений расписания</h2>
+          <button @click="showLogs = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="overflow-y-auto px-5 py-3">
+          <div v-if="loadingLogs" class="text-sm text-gray-400 py-6 text-center">Загрузка...</div>
+          <div v-else-if="logEntries.length === 0" class="text-sm text-gray-400 py-6 text-center">Изменений пока нет</div>
+          <table v-else class="w-full text-sm">
+            <tbody>
+              <tr v-for="entry in logEntries" :key="entry.id" class="border-b border-gray-100 last:border-0">
+                <td class="py-2 pr-3 text-xs text-gray-400 whitespace-nowrap align-top">{{ entry.created_at }}</td>
+                <td class="py-2 pr-3 font-medium text-gray-700 whitespace-nowrap align-top">{{ entry.user }}</td>
+                <td class="py-2 text-gray-600 align-top">{{ entry.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
   </AppLayout>
@@ -211,15 +218,10 @@ const props = defineProps({
 const scrollRef = ref(null)
 const todayDate = new Date().toISOString().slice(0, 10)
 
-const mode            = ref('mark')
 const targetDays      = ref(24)
 const minWorkers      = ref(props.brigade.min_workers ?? 2)
-const generating      = ref(false)
 const saving          = ref(false)
 const savingMinWorkers = ref(false)
-const scheduleIsSaved = ref(
-  props.members.some(m => Object.keys(props.schedule[m.id] ?? {}).length > 0)
-)
 const savedMsg   = ref(false)
 
 const cells = reactive({})
@@ -231,9 +233,15 @@ for (const m of props.members) {
 }
 
 const localHolidays = reactive({})
+const localWeekend  = {}
 for (const day of props.days) {
   localHolidays[day.date] = { isHoliday: day.isHoliday, name: day.holidayName }
+  localWeekend[day.date]  = day.isWeekend
 }
+
+const showLogs   = ref(false)
+const loadingLogs = ref(false)
+const logEntries = ref([])
 
 const localExcluded = reactive({})
 for (const m of props.members) {
@@ -257,17 +265,15 @@ function cellStatus(userId, date) {
 
 function cellClass(userId, day) {
   const s = cellStatus(userId, day.date)
-  if (s === 'holiday')   return 'bg-purple-200 cursor-default'
-  if (s === 'off')       return 'bg-gray-300 hover:bg-gray-400'
-  if (s === 'requested') return 'bg-amber-300 hover:bg-amber-400'
+  if (s === 'holiday') return 'bg-purple-200 cursor-default'
+  if (s === 'off')     return 'bg-gray-300 hover:bg-gray-400'
   return 'bg-green-200 hover:bg-green-300'
 }
 
 function cellLabel(userId, day) {
   const s = cellStatus(userId, day.date)
-  if (s === 'holiday')   return 'П'
-  if (s === 'off')       return 'В'
-  if (s === 'requested') return '?'
+  if (s === 'holiday') return 'П'
+  if (s === 'off')     return 'В'
   return 'Р'
 }
 
@@ -275,12 +281,11 @@ function toggleCell(userId, day) {
   if (localHolidays[day.date]?.isHoliday) return
   if (localExcluded[userId]) return
   const current = cells[userId][day.date] ?? 'work'
-  if (mode.value === 'mark') {
-    cells[userId][day.date] = current === 'requested' ? 'work' : 'requested'
-  } else {
-    cells[userId][day.date] = current === 'off' ? 'work' : 'off'
-  }
-  scheduleIsSaved.value = false
+  cells[userId][day.date] = current === 'off' ? 'work' : 'off'
+}
+
+function skipHeadcount(day) {
+  return !!(localHolidays[day.date]?.isHoliday || localWeekend[day.date])
 }
 
 async function toggleHoliday(day) {
@@ -289,7 +294,7 @@ async function toggleHoliday(day) {
   let name = null
   if (!wasHoliday) name = prompt('Название праздника (необязательно):') ?? ''
   try {
-    const res = await axios.post(route('brigades.schedule.holiday', props.brigade.id), { date, name })
+    const res = await axios.post(route('brigades.schedule.toggle-holiday', props.brigade.id), { date, name })
     localHolidays[date] = { isHoliday: res.data.isHoliday, name: name || null }
   } catch {}
 }
@@ -303,13 +308,13 @@ function workCount(userId) {
 }
 
 function workerCountOnDay(date) {
-  if (localHolidays[date]?.isHoliday) return props.members.filter(m => !localExcluded[m.id]).length
+  if (localHolidays[date]?.isHoliday || localWeekend[date]) return props.members.filter(m => !localExcluded[m.id]).length
   return props.members.filter(m => !localExcluded[m.id] && (cells[m.id]?.[date] ?? 'work') === 'work').length
 }
 
 const hasConflicts = computed(() =>
   props.days.some(day => {
-    if (localHolidays[day.date]?.isHoliday) return false
+    if (skipHeadcount(day)) return false
     return workerCountOnDay(day.date) < minWorkers.value
   })
 )
@@ -335,37 +340,6 @@ async function toggleExclude(memberId) {
   }
 }
 
-async function runGenerate() {
-  generating.value = true
-  try {
-    const preMark = {}
-    for (const m of props.members) {
-      if (localExcluded[m.id]) continue
-      preMark[m.id] = {}
-      for (const day of props.days) {
-        const s = cells[m.id][day.date]
-        if (s === 'requested' || s === 'off') preMark[m.id][day.date] = s
-      }
-    }
-    const res = await axios.post(
-      route('brigades.schedule.generate', props.brigade.id),
-      { month: props.month, pre_marks: preMark, target_days: targetDays.value, min_workers: minWorkers.value }
-    )
-    for (const m of props.members) {
-      if (localExcluded[m.id]) continue
-      for (const day of props.days) {
-        cells[m.id][day.date] = res.data.schedule[m.id]?.[day.date] ?? 'work'
-      }
-    }
-    mode.value = 'edit'
-    scheduleIsSaved.value = false
-  } catch {
-    alert('Ошибка генерации')
-  } finally {
-    generating.value = false
-  }
-}
-
 async function saveSchedule() {
   saving.value = true
   savedMsg.value = false
@@ -378,12 +352,24 @@ async function saveSchedule() {
     }
     await axios.post(route('brigades.schedule.save', props.brigade.id), { month: props.month, schedule: s })
     savedMsg.value = true
-    scheduleIsSaved.value = true
     setTimeout(() => { savedMsg.value = false }, 3000)
   } catch {
     alert('Ошибка сохранения')
   } finally {
     saving.value = false
+  }
+}
+
+async function openLogs() {
+  showLogs.value = true
+  loadingLogs.value = true
+  try {
+    const res = await axios.get(route('brigades.schedule.logs', props.brigade.id))
+    logEntries.value = res.data.logs
+  } catch {
+    logEntries.value = []
+  } finally {
+    loadingLogs.value = false
   }
 }
 
@@ -477,9 +463,5 @@ onMounted(() => {
   /* Праздник — П */
   .sched-cell[data-status="holiday"]   { background: #fff !important; }
   .sched-cell[data-status="holiday"]   .cell-label::after { content: "П"; font-size: 8pt; font-weight: bold; color: #000; }
-
-  /* Пожелание — ? */
-  .sched-cell[data-status="requested"] { background: #fff !important; }
-  .sched-cell[data-status="requested"] .cell-label::after { content: "?"; font-size: 9pt; font-weight: bold; color: #666; }
 }
 </style>

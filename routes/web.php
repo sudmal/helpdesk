@@ -99,8 +99,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/save',     [App\Http\Controllers\BrigadeScheduleController::class, 'save'])->name('save');
         Route::post('/generate',       [App\Http\Controllers\BrigadeScheduleController::class, 'generate'])->name('generate');
         Route::post('/toggle-exclude', [App\Http\Controllers\BrigadeScheduleController::class, 'toggleExclude'])->name('toggle-exclude');
+        Route::post('/toggle-holiday', [App\Http\Controllers\BrigadeScheduleController::class, 'toggleHoliday'])->name('toggle-holiday');
+        Route::get('/logs',            [App\Http\Controllers\BrigadeScheduleController::class, 'logs'])->name('logs');
     });
-    Route::post('/schedule/holiday', [App\Http\Controllers\BrigadeScheduleController::class, 'toggleHoliday'])->name('brigades.schedule.holiday');
     Route::patch('/brigades/{brigade}/min-workers', [BrigadeController::class, 'updateMinWorkers'])->name('brigades.min-workers');
 
     // Р‘СЂРёРіР°РґС‹ вЂ” С‚РѕР»СЊРєРѕ СѓРїСЂР°РІР»СЏСЋС‰РёРµ РЅР°СЃС‚СЂРѕР№РєР°РјРё
