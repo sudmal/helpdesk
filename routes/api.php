@@ -40,6 +40,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Полевая часть workflow "Акты" — утверждение бригадиром, правка состава
     // материалов, подтверждение монтажником. Звенья ПЭО/Логистика/Абонотдел
     // намеренно не выведены в API — это офисные роли, работают только через веб.
+    Route::get('/acts',                                 [ActController::class, 'index']);
     Route::get('/acts/{act}',                          [ActController::class, 'show']);
     Route::post('/acts/{act}/approve',                  [ActController::class, 'approve']);
     Route::post('/acts/{act}/materials',                [ActController::class, 'addMaterial']);
