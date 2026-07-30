@@ -134,14 +134,12 @@
       <!-- Обычный режим: подсказка + кнопка -->
       <div v-if="!editTypeMode" class="flex items-center gap-3 mb-4">
         <p class="text-xs text-gray-400">{{ selected.city }}, {{ selected.street }} — выберите дом</p>
-        <button @click="toggleEditTypeMode"
-                class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border border-gray-200
-                       text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
-          </svg>
-          Изменить тип
+        <button @click="toggleEditTypeMode" title="Изменить тип"
+                class="flex items-center gap-1 px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-700
+                       text-white shadow-sm transition-colors shrink-0">
+          <span class="text-base leading-none">🏢</span>
+          <span class="text-sm leading-none opacity-90 px-0.5">⇄</span>
+          <span class="text-base leading-none">🏠</span>
         </button>
       </div>
       <!-- Режим выбора: инструкция-баннер + действия в одной строке -->
