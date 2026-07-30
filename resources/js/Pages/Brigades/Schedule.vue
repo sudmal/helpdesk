@@ -65,14 +65,11 @@
     <div class="flex flex-wrap gap-3 mb-3 text-xs text-gray-600 print:hidden">
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-green-200 border border-green-300"></span>Рабочий день</span>
       <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-400"></span>Выходной</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-purple-200 border border-purple-300"></span>Праздник</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-blue-100 border border-blue-200"></span>Сб (заголовок)</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-4 rounded bg-red-100 border border-red-200"></span>Вс (заголовок)</span>
       <span class="flex items-center gap-1.5 text-gray-400">
         <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
         — не участвует в расписании
       </span>
-      <span class="flex items-center gap-1.5 ml-4 text-gray-400">Клик по ячейке — статус · Клик по числу — праздник</span>
+      <span class="flex items-center gap-1.5 ml-4 text-gray-400">Клик по ячейке — Работа/Выходной, клик по числу — выходной/работа для всей бригады</span>
     </div>
 
     <!-- Заголовок для печати -->
@@ -92,16 +89,14 @@
               </th>
               <th v-for="day in days" :key="day.date"
                   :data-date="day.date"
-                  @click="toggleHoliday(day)"
+                  @click="toggleColumnStatus(day)"
                   :class="['border-b border-r text-center cursor-pointer select-none transition-colors w-9 min-w-[36px] py-1',
-                           day.date === todayDate             ? 'border-blue-500 bg-blue-300 hover:bg-blue-400'
-                           : localHolidays[day.date]?.isHoliday ? 'border-gray-200 bg-purple-200 hover:bg-purple-300'
-                           : day.dow === 'Сб'                 ? 'border-gray-200 bg-blue-100 hover:bg-blue-200'
-                           : day.isWeekend                    ? 'border-gray-200 bg-red-100 hover:bg-red-200'
-                           :                                    'border-gray-200 bg-gray-100 hover:bg-gray-200']"
-                  :title="localHolidays[day.date]?.isHoliday ? (localHolidays[day.date]?.name || 'Праздник — клик чтобы снять') : 'Клик — отметить праздник'">
+                           day.date === todayDate ? 'border-blue-500 bg-blue-300 hover:bg-blue-400'
+                           : day.isWeekend        ? 'border-gray-200 bg-red-100 hover:bg-red-200'
+                           :                        'border-gray-200 bg-gray-100 hover:bg-gray-200']"
+                  title="Клик — выходной/работа для всей бригады">
                 <div :class="['text-xs font-bold', day.date === todayDate ? 'text-blue-700' : 'text-gray-800']">{{ day.day }}</div>
-                <div :class="['text-[10px] font-medium', day.date === todayDate ? 'text-blue-600' : day.dow === 'Сб' ? 'text-blue-500' : day.isWeekend ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
+                <div :class="['text-[10px] font-medium', day.date === todayDate ? 'text-blue-600' : day.isWeekend ? 'text-red-500' : 'text-gray-500']">{{ day.dow }}</div>
               </th>
               <th class="sched-count-col border-b border-gray-200 bg-gray-100 px-3 py-2 text-center text-xs font-semibold text-gray-600 min-w-[64px]">
                 Выходов
@@ -232,11 +227,9 @@ for (const m of props.members) {
   }
 }
 
-const localHolidays = reactive({})
-const localWeekend  = {}
+const localWeekend = {}
 for (const day of props.days) {
-  localHolidays[day.date] = { isHoliday: day.isHoliday, name: day.holidayName }
-  localWeekend[day.date]  = day.isWeekend
+  localWeekend[day.date] = day.isWeekend
 }
 
 const showLogs   = ref(false)
@@ -259,56 +252,48 @@ const exportUrl = computed(() =>
 )
 
 function cellStatus(userId, date) {
-  if (localHolidays[date]?.isHoliday) return 'holiday'
   return cells[userId]?.[date] ?? 'work'
 }
 
 function cellClass(userId, day) {
   const s = cellStatus(userId, day.date)
-  if (s === 'holiday') return 'bg-purple-200 cursor-default'
-  if (s === 'off')     return 'bg-gray-300 hover:bg-gray-400'
+  if (s === 'off') return 'bg-gray-300 hover:bg-gray-400'
   return 'bg-green-200 hover:bg-green-300'
 }
 
 function cellLabel(userId, day) {
   const s = cellStatus(userId, day.date)
-  if (s === 'holiday') return 'П'
-  if (s === 'off')     return 'В'
+  if (s === 'off') return 'В'
   return 'Р'
 }
 
 function toggleCell(userId, day) {
-  if (localHolidays[day.date]?.isHoliday) return
   if (localExcluded[userId]) return
   const current = cells[userId][day.date] ?? 'work'
   cells[userId][day.date] = current === 'off' ? 'work' : 'off'
 }
 
 function skipHeadcount(day) {
-  return !!(localHolidays[day.date]?.isHoliday || localWeekend[day.date])
+  return !!localWeekend[day.date]
 }
 
-async function toggleHoliday(day) {
-  const date = day.date
-  const wasHoliday = localHolidays[date]?.isHoliday
-  let name = null
-  if (!wasHoliday) name = prompt('Название праздника (необязательно):') ?? ''
-  try {
-    const res = await axios.post(route('brigades.schedule.toggle-holiday', props.brigade.id), { date, name })
-    localHolidays[date] = { isHoliday: res.data.isHoliday, name: name || null }
-  } catch {}
+function toggleColumnStatus(day) {
+  const activeMembers = props.members.filter(m => !localExcluded[m.id])
+  if (activeMembers.length === 0) return
+  const allOff = activeMembers.every(m => (cells[m.id][day.date] ?? 'work') === 'off')
+  const newStatus = allOff ? 'work' : 'off'
+  for (const m of activeMembers) {
+    cells[m.id][day.date] = newStatus
+  }
 }
 
 function workCount(userId) {
   if (localExcluded[userId]) return null
-  return props.days.filter(day => {
-    if (localHolidays[day.date]?.isHoliday) return false
-    return (cells[userId]?.[day.date] ?? 'work') === 'work'
-  }).length
+  return props.days.filter(day => (cells[userId]?.[day.date] ?? 'work') === 'work').length
 }
 
 function workerCountOnDay(date) {
-  if (localHolidays[date]?.isHoliday || localWeekend[date]) return props.members.filter(m => !localExcluded[m.id]).length
+  if (localWeekend[date]) return props.members.filter(m => !localExcluded[m.id]).length
   return props.members.filter(m => !localExcluded[m.id] && (cells[m.id]?.[date] ?? 'work') === 'work').length
 }
 
@@ -459,9 +444,5 @@ onMounted(() => {
   /* Выходной — жирный крестик */
   .sched-cell[data-status="off"]       { background: #fff !important; }
   .sched-cell[data-status="off"]       .cell-label::after { content: "×"; font-size: 10pt; font-weight: bold; color: #444; }
-
-  /* Праздник — П */
-  .sched-cell[data-status="holiday"]   { background: #fff !important; }
-  .sched-cell[data-status="holiday"]   .cell-label::after { content: "П"; font-size: 8pt; font-weight: bold; color: #000; }
 }
 </style>
