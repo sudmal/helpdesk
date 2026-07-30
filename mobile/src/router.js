@@ -7,7 +7,9 @@ const routes = [
   { path: '/tickets/:id', name: 'ticket-detail', component: () => import('./views/TicketDetail.vue'), meta: { requiresAuth: true }, props: true },
   { path: '/connections', name: 'connections', component: () => import('./views/Connections.vue'), meta: { requiresAuth: true } },
   { path: '/connections/:id', name: 'connection-detail', component: () => import('./views/ConnectionDetail.vue'), meta: { requiresAuth: true }, props: true },
+  { path: '/acts', name: 'acts', component: () => import('./views/ActsList.vue'), meta: { requiresAuth: true } },
   { path: '/acts/:id', name: 'act-detail', component: () => import('./views/ActDetail.vue'), meta: { requiresAuth: true }, props: true },
+  { path: '/schedule', name: 'schedule', component: () => import('./views/Schedule.vue'), meta: { requiresAuth: true } },
   { path: '/settings', name: 'settings', component: () => import('./views/Settings.vue'), meta: { requiresAuth: true } },
   { path: '/profile', name: 'profile', component: () => import('./views/Profile.vue'), meta: { requiresAuth: true } },
 ]

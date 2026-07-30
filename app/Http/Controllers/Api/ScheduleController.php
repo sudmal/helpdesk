@@ -3,13 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Brigade, BrigadeSchedule, ScheduleHoliday};
+use App\Models\{Brigade, BrigadeSchedule, ScheduleHoliday, SystemSetting};
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
 {
+    /** ISO-номера рабочих дней (1=Пн...7=Вс) из настроек -- см. ту же логику в BrigadeScheduleController (веб) */
+    private function workDaysSet(): array
+    {
+        $csv = SystemSetting::get('work_days', '1,2,3,4,5');
+        return array_map('intval', array_filter(explode(',', $csv), fn($v) => $v !== ''));
+    }
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -49,7 +56,8 @@ class ScheduleController extends Controller
 
         $members = $brigade->members()->orderBy('name')->get(['users.id', 'users.name']);
 
-        $dowMap = [0 => 'Вс', 1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб'];
+        $dowMap   = [0 => 'Вс', 1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб'];
+        $workDays = $this->workDaysSet();
 
         $result = [];
         foreach ($months as $month) {
@@ -74,7 +82,7 @@ class ScheduleController extends Controller
                     'date'        => $dateStr,
                     'day'         => $d,
                     'dow'         => $dowMap[$dow],
-                    'isWeekend'   => in_array($dow, [0, 6]),
+                    'isWeekend'   => !in_array($date->dayOfWeekIso, $workDays),
                     'isHoliday'   => isset($holidays[$dateStr]),
                     'holidayName' => $holidays[$dateStr]?->name ?? null,
                 ];

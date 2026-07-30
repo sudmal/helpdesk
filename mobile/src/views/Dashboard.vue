@@ -31,6 +31,15 @@
               class="w-full text-left px-4 py-3 text-[#FBBF24] text-sm active:bg-white/5">
         ⏳ Не отправлено комментариев: {{ commentQueue.state.items.length }}
       </button>
+      <button @click="menuOpen = false; $router.push({ name: 'schedule' })"
+              class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
+        📅 Расписание выходов
+      </button>
+      <button @click="menuOpen = false; $router.push({ name: 'acts' })"
+              class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5 flex items-center justify-between">
+        <span>📋 Акты</span>
+        <span v-if="actsPendingCount > 0" class="bg-[#DC2626] text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">{{ actsPendingCount }}</span>
+      </button>
       <button @click="menuOpen = false; $router.push({ name: 'profile' })"
               class="w-full text-left px-4 py-3 text-white text-sm active:bg-white/5">
         👤 Профиль
@@ -105,6 +114,7 @@ const hasLoadedOnce = ref(false)
 const lastSyncLabel = ref('Ещё не синхронизировано')
 const activeTab = ref('today')
 const menuOpen = ref(false)
+const actsPendingCount = ref(0)
 
 const todayLabel = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })
 
@@ -168,6 +178,16 @@ async function load() {
     loading.value = false
     hasLoadedOnce.value = true
   }
+  loadActsBadge()
+}
+
+// Отдельный, не блокирующий основную загрузку запрос -- бейдж на пункте
+// меню "Акты" (акты, ожидающие утверждения именно текущим пользователем).
+async function loadActsBadge() {
+  try {
+    const { data } = await api.get('/acts')
+    actsPendingCount.value = data.data.filter((a) => a.status === 'pending_foreman' && a.can.foreman_review).length
+  } catch { /* тихо -- это не критичный запрос */ }
 }
 
 function doLogout() {
