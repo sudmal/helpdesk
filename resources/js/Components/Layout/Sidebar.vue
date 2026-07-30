@@ -75,7 +75,7 @@
       </div>
     </div>
     <div v-if="apk" class="px-3 py-1.5 border-t border-white/10 shrink-0 flex items-center justify-between gap-2">
-      <a :href="apk.apk_url" target="_blank"
+      <a :href="apkStableUrl" target="_blank"
          title="Приложение для выездных сотрудников (Android 11+)"
          class="flex items-center gap-1.5 min-w-0 text-[12px] text-green-400 hover:text-green-300 transition-colors font-medium">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -170,7 +170,7 @@
         <div class="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center gap-4 min-w-[220px]">
           <div class="text-sm font-semibold text-slate-700">Скачать SP-Helpdesk {{ apk?.version_name }}</div>
           <canvas ref="qrCanvas" class="rounded-lg"></canvas>
-          <a :href="apk?.apk_url" target="_blank" class="text-xs text-blue-600 hover:underline">Прямая ссылка</a>
+          <a :href="apkStableUrl" target="_blank" class="text-xs text-blue-600 hover:underline">Прямая ссылка</a>
           <button @click="qrOpen = false" class="text-xs text-slate-400 hover:text-slate-600">Закрыть</button>
         </div>
       </div>
@@ -187,6 +187,13 @@ import QRCode from 'qrcode'
 const props = defineProps({ user: Object })
 
 const apk = ref(null)
+
+// Стабильная ссылка на APK -- не меняется при выходе новой версии, в отличие
+// от apk.apk_url (там конкретное versioned-имя файла из version.json). Указывает
+// на симлинк public/apk/latest.apk -- при выкладке новой версии его нужно
+// перенаправить на новый файл: `ln -sf SP-Helpdesk-X.Y.Z.apk latest.apk`
+// в public/apk/ (та же папка, где лежит version.json).
+const apkStableUrl = computed(() => window.location.origin + '/apk/latest.apk')
 
 onMounted(async () => {
   try {
@@ -272,7 +279,7 @@ async function openQr() {
   qrOpen.value = true
   await nextTick()
   if (qrCanvas.value && apk.value?.apk_url) {
-    QRCode.toCanvas(qrCanvas.value, apk.value.apk_url, { width: 200, margin: 2 })
+    QRCode.toCanvas(qrCanvas.value, apkStableUrl.value, { width: 200, margin: 2 })
   }
 }
 </script>
