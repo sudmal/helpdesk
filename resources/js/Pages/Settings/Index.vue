@@ -230,8 +230,15 @@
     <!-- ── Пользователи ── -->
     <div v-if="activeTab === 'users'">
       <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="font-semibold">Пользователи ({{ users.length }})</h2>
+        <h2 class="font-semibold">Пользователи ({{ filteredUsers.length }}{{ filteredUsers.length !== users.length ? " из " + users.length : "" }})</h2>
         <button @click="openUserModal()" class="btn-primary text-sm">+ Добавить</button>
+      </div>
+      <div class="px-4 py-2 border-b border-gray-100 flex items-center gap-3 flex-wrap">
+        <input v-model="userNameFilter" type="text" placeholder="Поиск по имени…" class="field-input text-sm max-w-xs" />
+        <select v-model="userRoleFilter" class="field-input text-sm max-w-xs">
+          <option value="">Все отделы</option>
+          <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+        </select>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -250,10 +257,10 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-if="!users.length">
+            <tr v-if="!filteredUsers.length">
               <td colspan="10" class="text-center py-10 text-gray-400">Нет пользователей</td>
             </tr>
-            <tr v-for="u in users" :key="u.id" class="hover:bg-gray-50">
+            <tr v-for="u in filteredUsers" :key="u.id" class="hover:bg-gray-50">
               <td class="px-3 py-0.5">
                 <p class="font-medium">{{ u.name }}</p>
                 <p class="text-xs text-gray-400">{{ u.email }}</p>
@@ -1260,6 +1267,17 @@ const showUserModal = ref(false)
 const editingUser        = ref(null)
 const testNotifyLoading  = ref(null)
 const testNotifyResult   = ref(null)
+
+const userNameFilter = ref('')
+const userRoleFilter = ref('')
+const filteredUsers = computed(() => {
+  const q = userNameFilter.value.trim().toLowerCase()
+  return props.users.filter(u => {
+    if (q && !u.name.toLowerCase().includes(q)) return false
+    if (userRoleFilter.value && String(u.role_id) !== String(userRoleFilter.value)) return false
+    return true
+  })
+})
 const userForm = useForm({
   name: '', login: '', email: '', phone: '', role_id: '',
   telegram_chat_id: '', max_chat_id: '',
