@@ -370,6 +370,18 @@ class TicketController extends Controller
             return back()->withErrors(['act_type' => 'При использовании материалов обязателен тип акта.'])->withInput();
         }
 
+        // Заявку могли переоткрыть и закрыть повторно — у неё уже есть акт
+        // (acts.ticket_id уникален, второй Act::createWithGeneratedNumber() ниже
+        // упадёт с ошибкой БД). Повторной отправкой материалов через форму
+        // закрытия акт больше не пересоздаём — состав уже созданного акта
+        // правится на его собственной странице (ActController::addMaterial и
+        // т.д., см. ActPolicy::editMaterials — админ и бригадир).
+        if (!empty($materialsData) && $ticket->act) {
+            return back()->withErrors([
+                'materials' => "У заявки уже есть акт №{$ticket->act->number}. Изменить список материалов можно на странице акта.",
+            ])->withInput();
+        }
+
         // attempts=3: см. Act::createWithGeneratedNumber() — конкурентное закрытие
         // с тем же префиксом номера акта может словить deadlock на lockForUpdate(),
         // Laravel в этом случае полностью переиграет транзакцию.
