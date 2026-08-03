@@ -194,9 +194,14 @@
         <p class="text-xs text-gray-400">
           {{ selected.city }}, {{ selected.street }} д.{{ selected.building }} — квартиры
         </p>
-        <button @click="openAddApartmentModal" class="btn-outline text-xs shrink-0">
-          + Добавить квартиру
-        </button>
+        <div class="flex gap-2 shrink-0">
+          <button @click="openTerritoryChangeModal" class="btn-outline text-xs">
+            🏷 Территория
+          </button>
+          <button @click="openAddApartmentModal" class="btn-outline text-xs">
+            + Добавить квартиру
+          </button>
+        </div>
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
@@ -267,6 +272,7 @@
             </p>
           </div>
           <div class="flex gap-1">
+            <button @click="openTerritoryChangeModal" class="btn-outline text-xs">🏷 Территория</button>
             <button @click="editAddress(buildingInfo)" class="btn-outline text-xs">✏️ Изменить</button>
           </div>
         </div>
@@ -400,6 +406,33 @@
             Всё равно создать
           </button>
           <button class="btn-primary text-sm">{{ editingAddr ? 'Сохранить' : 'Создать' }}</button>
+        </div>
+      </form>
+    </Modal>
+
+    <!-- Смена территории дома целиком -->
+    <Modal v-if="showTerritoryChangeModal" title="Территория дома" @close="showTerritoryChangeModal = false">
+      <form @submit.prevent="submitTerritoryChange" class="space-y-4">
+        <p class="text-sm text-gray-500">
+          {{ selected.city }}, {{ selected.street }}, д.{{ selected.building }}
+          — территория изменится сразу для всех {{ items.length }} записей этого дома (все квартиры переедут вместе с домом).
+        </p>
+        <div class="border border-gray-200 rounded-xl p-2 space-y-1 max-h-52 overflow-y-auto">
+          <label v-for="t in territories" :key="t.id"
+                 class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
+            <input type="radio" :value="t.id" v-model="territoryChangeForm.territory_id" />
+            {{ t.name }}
+          </label>
+        </div>
+        <div v-if="territoryChangeForm.errors.territory_id"
+             class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
+          {{ territoryChangeForm.errors.territory_id }}
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showTerritoryChangeModal = false" class="btn-outline text-sm">Отмена</button>
+          <button :disabled="territoryChangeForm.processing" class="btn-primary text-sm disabled:opacity-50">
+            {{ territoryChangeForm.processing ? 'Сохраняю…' : 'Сохранить' }}
+          </button>
         </div>
       </form>
     </Modal>
@@ -731,6 +764,29 @@ function submitAddress(confirmDuplicate = false) {
 
 function deleteAddr(a) {
   if (confirm('Удалить адрес?')) router.delete(route('addresses.destroy', a.id), { onSuccess: () => router.reload() })
+}
+
+// ── Смена территории дома целиком (квартиры переезжают вместе с домом) ──
+const showTerritoryChangeModal = ref(false)
+const territoryChangeForm = useForm({ territory_id: '' })
+
+function openTerritoryChangeModal() {
+  territoryChangeForm.clearErrors()
+  territoryChangeForm.territory_id = items.value[0]?.territory_id ?? props.buildingInfo?.territory_id ?? ''
+  showTerritoryChangeModal.value = true
+}
+
+function submitTerritoryChange() {
+  territoryChangeForm
+    .transform(data => ({
+      ...data,
+      city: selected.value.city,
+      street: selected.value.street,
+      building: selected.value.building,
+    }))
+    .post(route('addresses.set-territory'), {
+      onSuccess: () => { showTerritoryChangeModal.value = false; router.reload() },
+    })
 }
 
 // ── Импорт ─────────────────────────────────────────────────────────

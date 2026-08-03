@@ -166,6 +166,10 @@
           </div>
         </div>
 
+        <div v-if="closeError" class="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-3 py-2">
+          {{ closeError }}
+        </div>
+
         <div class="flex gap-2">
           <button @click="closeModal = false" class="flex-1 h-11 rounded-lg text-white text-sm" style="background:#374151">Отмена</button>
           <button @click="closeTicket" :disabled="closing || (useMaterials && !closeActType)"
@@ -214,6 +218,7 @@ const copiedField = ref('')
 const closeModal = ref(false)
 const closeNotes = ref('')
 const closing = ref(false)
+const closeError = ref('')
 const useMaterials = ref(false)
 const closeActType = ref('')
 const materialItems = ref([{ material_id: '', quantity: 1 }])
@@ -345,6 +350,7 @@ async function openCloseModal() {
 
 async function closeTicket() {
   closing.value = true
+  closeError.value = ''
   try {
     const payload = { close_notes: closeNotes.value }
     if (useMaterials.value) {
@@ -359,6 +365,13 @@ async function closeTicket() {
     useMaterials.value = false
     closeActType.value = ''
     materialItems.value = [{ material_id: '', quantity: 1 }]
+  } catch (e) {
+    // Заявку могли переоткрыть и закрыть повторно — у неё уже есть акт
+    // (см. фикс в TicketController::close() и Api/TicketController::close()).
+    // Раньше эта и любая другая ошибка тут падала молча (не было catch вовсе).
+    closeError.value = e.response?.data?.errors?.materials?.[0]
+      ?? e.response?.data?.message
+      ?? 'Не удалось закрыть заявку. Попробуйте ещё раз.'
   } finally {
     closing.value = false
   }

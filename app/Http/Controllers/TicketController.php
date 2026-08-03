@@ -23,14 +23,19 @@ class TicketController extends Controller
         $user = auth()->user();
 
         // Операторы, диспетчеры, руководство видят все заявки.
-        // Бригадиры и монтажники — только по территориям своей бригады.
+        // Бригадиры и монтажники — по территориям своей бригады И по личным
+        // территориям, назначенным напрямую (Настройки → Пользователи —
+        // это ДОБАВКА к бригадным, а не замена; раньше при непустом списке
+        // бригад личные территории пользователя игнорировались целиком —
+        // чекбоксы для монтажника/бригадира с бригадой были декоративны,
+        // найдено 2026-08-03 на живом случае).
         if ($user->isTechnician() || $user->isForeman()) {
             $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            if ($brigadeIds->isNotEmpty()) {
-                $userTerritories = \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id');
-            } else {
-                $userTerritories = $user->territories()->pluck('territories.id');
-            }
+            $brigadeTerritories = $brigadeIds->isNotEmpty()
+                ? \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+                : collect();
+            $directTerritories = $user->territories()->pluck('territories.id');
+            $userTerritories = $brigadeTerritories->merge($directTerritories)->unique();
         } else {
             $userTerritories = collect(); // нет фильтра — видят всё
         }

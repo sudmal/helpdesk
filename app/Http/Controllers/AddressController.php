@@ -179,6 +179,30 @@ class AddressController extends Controller
         ]);
     }
 
+    /**
+     * Смена территории для ВСЕХ адресных записей дома разом (город+улица+дом)
+     * — квартиры переезжают вместе с домом, а не по одной. Дом определяется
+     * тем же триплетом (city, street, building), что и весь драм-даун в
+     * index()/hierarchy() — нет отдельного "id дома", это виртуальная
+     * группировка записей Address.
+     */
+    public function setBuildingTerritory(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'city'         => 'required|string',
+            'street'       => 'required|string',
+            'building'     => 'required|string',
+            'territory_id' => 'required|exists:territories,id',
+        ]);
+
+        $count = Address::where('city', $data['city'])
+            ->where('street', $data['street'])
+            ->where('building', $data['building'])
+            ->update(['territory_id' => $data['territory_id']]);
+
+        return response()->json(['updated' => $count]);
+    }
+
     public function bulkSetType(Request $request): \Illuminate\Http\JsonResponse
     {
         $data = $request->validate([

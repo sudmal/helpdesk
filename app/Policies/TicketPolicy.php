@@ -24,15 +24,15 @@ class TicketPolicy
         if ($user->isTechnician() || $user->isForeman()) {
             if ($ticket->assigned_to === $user->id) return true;
             if ($ticket->brigade_id && $user->brigades->contains('id', $ticket->brigade_id)) return true;
-            // Также видят заявки по своим территориям
+            // Также видят заявки по территориям бригады И по личным территориям
+            // (объединение, не взаимоисключающий выбор — см. тот же фикс в
+            // TicketController::index(), 2026-08-03).
             $brigadeIds = $user->brigades->pluck('id');
-            if ($brigadeIds->isNotEmpty()) {
-                $territoryIds = \App\Models\Territory::whereHas('brigades',
-                    fn($q) => $q->whereIn('brigades.id', $brigadeIds)
-                )->pluck('id');
-                return $ticket->address && $territoryIds->contains($ticket->address->territory_id);
-            }
-            return false;
+            $territoryIds = \App\Models\Territory::whereHas('brigades',
+                fn($q) => $q->whereIn('brigades.id', $brigadeIds)
+            )->pluck('id')->merge($user->territories->pluck('id'))->unique();
+
+            return $ticket->address && $territoryIds->contains($ticket->address->territory_id);
         }
 
         return $user->hasPermission('tickets.view');

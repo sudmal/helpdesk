@@ -120,6 +120,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::patch('/{address}/geocode', [AddressController::class, 'storeGeocode'])->name('geocode');
         Route::post('/import',      [AddressController::class, 'import'])->name('import');
         Route::post('/bulk-set-type', [AddressController::class, 'bulkSetType'])->name('bulk-set-type');
+        Route::post('/set-territory', [AddressController::class, 'setBuildingTerritory'])->name('set-territory');
         Route::get('/search',       [AddressController::class, 'search'])->name('search');
         Route::get('/hierarchy',    [AddressController::class, 'hierarchy'])->name('hierarchy');
     });
