@@ -117,14 +117,17 @@
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
         </svg>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-        <button v-for="st in filteredStreets" :key="st.name"
-                @click="selectStreet(st.name)"
-                class="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200
-                       rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm text-left">
-          <span class="font-medium truncate">{{ st.name }}</span>
-          <span class="text-xs text-gray-400 ml-2 shrink-0">{{ st.count }}</span>
-        </button>
+      <div v-for="group in groupedStreets" :key="group.letter" class="mb-4">
+        <div class="text-sm font-bold text-gray-400 px-1 mb-1.5">{{ group.letter }}</div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          <button v-for="st in group.streets" :key="st.name"
+                  @click="selectStreet(st.name)"
+                  class="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200
+                         rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm text-left">
+            <span class="font-medium truncate">{{ st.name }}</span>
+            <span class="text-xs text-gray-400 ml-2 shrink-0">{{ st.count }}</span>
+          </button>
+        </div>
       </div>
       <p v-if="!filteredStreets.length" class="text-gray-400 text-sm py-6 text-center">Улицы не найдены</p>
     </div>
@@ -596,6 +599,42 @@ const filteredStreets = computed(() => {
   if (!streetSearch.value) return props.streetList
   const q = streetSearch.value.toLowerCase()
   return props.streetList.filter(s => s.name.toLowerCase().includes(q))
+})
+
+// Буквенные группы улиц (как в адресном справочнике) — буква вычисляется
+// от названия БЕЗ префикса (ул./пер./пр. и т.п.), той же логикой, что и
+// backend Address::normalizeStreet() (которым уже отсортирован streetList) —
+// иначе "Ленина" и "ул. Ленина" попали бы в разные группы Л/У.
+const STREET_PREFIXES = [
+  'ул\\.?,?', 'улица',
+  'пр-т', 'пр\\.?', 'проспект',
+  'пер\\.?', 'переулок',
+  'бул\\.?', 'блв\\.?', 'б-р', 'бульвар',
+  'мкрн\\.?', 'микрорайон',
+  'кв-л', 'квартал',
+  'пос\\.?', 'поселок',
+  'с\\.?', 'село',
+]
+const STREET_PREFIX_RE = new RegExp('^(' + STREET_PREFIXES.join('|') + ')\\s+', 'iu')
+
+function streetGroupLetter(name) {
+  let s = (name ?? '').toLowerCase().trim().replace(/\s+/g, ' ').replace(/ё/g, 'е')
+  s = s.replace(STREET_PREFIX_RE, '').trim()
+  return s.charAt(0).toUpperCase() || '#'
+}
+
+const groupedStreets = computed(() => {
+  const groups = []
+  let currentLetter = null
+  for (const st of filteredStreets.value) {
+    const letter = streetGroupLetter(st.name)
+    if (letter !== currentLetter) {
+      currentLetter = letter
+      groups.push({ letter, streets: [] })
+    }
+    groups[groups.length - 1].streets.push(st)
+  }
+  return groups
 })
 
 // Списки для datalist
