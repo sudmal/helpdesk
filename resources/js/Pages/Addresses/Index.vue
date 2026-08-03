@@ -190,9 +190,14 @@
 
     <!-- ── Уровень 3а: Квартиры (МКД) ── -->
     <div v-if="level === 3 && props.isMkd">
-      <p class="text-xs text-gray-400 mb-3">
-        {{ selected.city }}, {{ selected.street }} д.{{ selected.building }} — квартиры
-      </p>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs text-gray-400">
+          {{ selected.city }}, {{ selected.street }} д.{{ selected.building }} — квартиры
+        </p>
+        <button @click="openAddApartmentModal" class="btn-outline text-xs shrink-0">
+          + Добавить квартиру
+        </button>
+      </div>
       <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
           <thead>
@@ -371,7 +376,6 @@
 
         <!-- МКД -->
         <template v-if="!editingAddr && addrMode === 'mkd'">
-          PLACEHOLDER
           <div class="grid grid-cols-2 gap-3">
             <div><label class="field-label">Дом с *</label>
               <input v-model.number="genFrom" type="number" min="1" required class="field-input" /></div>
@@ -657,6 +661,30 @@ function openAddModal() {
   addrForm.street_name  = selected.value.street?.replace(/^[а-яё]+\.\s*/i, '') ?? ''
   addrForm.building     = ''
   showAddModal.value    = true
+}
+
+// Единичная/именная квартира прямо из списка квартир конкретного дома МКД —
+// в отличие от общей кнопки "+ Добавить" (открывается пустой, режим "МКД" даёт
+// только массовую генерацию диапазона apt_from/apt_to, оба числовые), тут дом
+// и улица уже известны из контекста драм-дауна, и режим сразу "Один" — можно
+// сразу вписать любой текст в номер квартиры (например "маг. Ромашка").
+function openAddApartmentModal() {
+  editingAddr.value    = null
+  addrMode.value       = 'single'
+  addrForm.city        = selected.value.city ?? ''
+  const parts = (selected.value.street ?? '').split('. ')
+  addrForm.street_type = parts.length > 1 ? parts[0] + '.' : 'ул.'
+  addrForm.street_name = parts.length > 1 ? parts.slice(1).join('. ') : (selected.value.street ?? '')
+  addrForm.building    = selected.value.building ?? ''
+  addrForm.apartment   = ''
+  addrForm.entrance    = ''
+  addrForm.subscriber_name = ''
+  addrForm.phone       = ''
+  addrForm.contract_no = ''
+  // Территория обязательна — подхватываем у любой уже существующей квартиры
+  // этого же дома, если она есть; иначе оператор выбирает вручную в форме.
+  addrForm.territory_id = items.value[0]?.territory_id ?? ''
+  showAddModal.value   = true
 }
 
 function editAddress(a) {
