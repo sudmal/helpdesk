@@ -49,7 +49,7 @@ class TicketPolicy
     {
         if ($user->isAdmin() || $user->isHeadSupport() || $user->isOperator()) return true;
         if ($user->isForeman()) return true;
-        return false;
+        return $user->hasPermission('tickets.update');
     }
 
     /** Удаление — только Админ */
@@ -71,7 +71,8 @@ class TicketPolicy
         return $user->isAdmin()
             || $user->isHeadSupport()
             || $user->isOperator()
-            || $user->isForeman();
+            || $user->isForeman()
+            || $user->hasPermission('tickets.assign');
     }
 
     /** Перенос даты */
@@ -91,7 +92,8 @@ class TicketPolicy
 
         return $user->isForeman()
             || $user->isTechnician()
-            || $user->isAdmin();
+            || $user->isAdmin()
+            || $user->hasPermission('tickets.start');
     }
 
     /** Приостановить */
@@ -101,7 +103,8 @@ class TicketPolicy
 
         return $user->isForeman()
             || $user->isTechnician()
-            || $user->isAdmin();
+            || $user->isAdmin()
+            || $user->hasPermission('tickets.pause');
     }
 
     /** Закрыть */
