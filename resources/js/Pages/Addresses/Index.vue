@@ -472,6 +472,7 @@ import { Head, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
+import Pagination from '@/Components/UI/Pagination.vue'
 
 const props = defineProps({
   territories: { type: Array, default: () => [] },
@@ -777,25 +778,6 @@ async function submitImport() {
       importError.value = `Ошибка ${e.response?.status ?? ''}: ${e.message}`
     }
   } finally { importLoading.value = false }
-}
-
-// Пагинация — компонент
-const Pagination = {
-  props: { total: Number, perPage: Number, modelValue: Number },
-  emits: ['update:modelValue'],
-  computed: {
-    pages() { return Math.ceil(this.total / this.perPage) }
-  },
-  template: `
-    <div v-if="pages > 1" class="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
-      <span>Стр. {{ modelValue }} из {{ pages }} ({{ total }} записей)</span>
-      <div class="flex gap-1">
-        <button @click="$emit('update:modelValue', Math.max(1, modelValue-1))"
-                :disabled="modelValue===1" class="px-2.5 py-1 border rounded-lg disabled:opacity-30 hover:bg-gray-50">‹</button>
-        <button @click="$emit('update:modelValue', Math.min(pages, modelValue+1))"
-                :disabled="modelValue===pages" class="px-2.5 py-1 border rounded-lg disabled:opacity-30 hover:bg-gray-50">›</button>
-      </div>
-    </div>`
 }
 
 // ── Модал выбора адреса ─────────────────────────────────────────────

@@ -149,6 +149,17 @@ class TicketController extends Controller
             'attachments.*' => 'file|mimes:jpeg,jpg,png,gif,pdf|max:20480',
         ]);
 
+        // Заявку могли переоткрыть и закрыть повторно — у неё уже есть акт
+        // (acts.ticket_id уникален). Повторной отправкой материалов акт больше
+        // не пересоздаём — состав уже созданного акта правится на его странице
+        // (см. тот же фикс в веб-TicketController::close()).
+        if (!empty($request->materials) && $ticket->act) {
+            return response()->json([
+                'message' => "У заявки уже есть акт №{$ticket->act->number}. Изменить список материалов можно в разделе Акты.",
+                'errors'  => ['materials' => ["У заявки уже есть акт №{$ticket->act->number}."]],
+            ], 422);
+        }
+
         // attempts=3: если материалы формируют Акт с автогенерируемым номером,
         // конкурентное закрытие другой заявки с тем же префиксом может словить
         // deadlock на lockForUpdate() внутри Act::createWithGeneratedNumber()

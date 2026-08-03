@@ -324,9 +324,17 @@
           </div>
         </div>
 
+        <div v-if="Object.keys(closeForm.errors).length"
+             class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
+          <p v-for="(err, field) in closeForm.errors" :key="field">{{ err }}</p>
+        </div>
+
         <div class="flex justify-end gap-2 pt-1">
           <button type="button" @click="showCloseModal = false" class="btn-outline text-sm">Отмена</button>
-          <button class="btn-sm bg-green-600 hover:bg-green-700 text-white">Закрыть заявку</button>
+          <button :disabled="closeForm.processing"
+                  class="btn-sm bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
+            {{ closeForm.processing ? 'Закрываю…' : 'Закрыть заявку' }}
+          </button>
         </div>
       </form>
     </Modal>
@@ -547,19 +555,26 @@ function submitComment() {
   })
 }
 
+const closeForm = useForm({
+  comment: '',
+  act_type: '',
+  materials: '',
+  attachments: [],
+})
+
 function submitClose() {
-  const data = new FormData()
-  data.append('comment', closeComment.value)
-  closeFiles.value.forEach(f => data.append('attachments[]', f))
-  // Добавляем расходники
+  closeForm.comment = closeComment.value
+  closeForm.attachments = closeFiles.value
+  closeForm.act_type = ''
+  closeForm.materials = ''
   if (useMaterials.value) {
-    data.append('act_type', closeActType.value)
+    closeForm.act_type = closeActType.value
     const validItems = materialItems.value.filter(i => i.material_id && i.quantity > 0)
     if (validItems.length) {
-      data.append('materials', JSON.stringify(validItems))
+      closeForm.materials = JSON.stringify(validItems)
     }
   }
-  router.post(route('tickets.close', props.ticket.id), data, {
+  closeForm.post(route('tickets.close', props.ticket.id), {
     onSuccess: () => {
       showCloseModal.value = false
       closeFiles.value = []
@@ -567,6 +582,7 @@ function submitClose() {
       closeActType.value = ''
       useMaterials.value = false
       materialItems.value = [{ material_id: '', quantity: 1 }]
+      closeForm.reset()
     }
   })
 }
