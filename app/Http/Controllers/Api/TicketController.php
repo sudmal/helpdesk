@@ -35,7 +35,7 @@ class TicketController extends Controller
         $territoryIds     = $scopeToTerritory ? $user->territoryScopeIds() : collect();
 
         $base = fn(): Builder => Ticket::with([
-                'address', 'type', 'serviceType', 'status', 'brigade', 'assignee',
+                'address.territory', 'type', 'serviceType', 'status', 'brigade', 'assignee',
                 'comments.author', 'comments.attachments', 'attachments', 'act',
             ])
             ->when($scopeToTerritory, fn($q) =>
@@ -67,7 +67,7 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments', 'act']);
+        $ticket->load(['address.territory', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments', 'act']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -215,7 +215,7 @@ class TicketController extends Controller
             }
         }
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'attachments', 'act']);
+        $ticket->load(['address.territory', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'attachments', 'act']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -232,7 +232,7 @@ class TicketController extends Controller
         $ticket->update(['scheduled_at' => $request->scheduled_at]);
         $this->ticketService->updateStatus($ticket, 'postponed', $request->user(), $request->comment);
 
-        $ticket->load(['address', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments', 'act']);
+        $ticket->load(['address.territory', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments', 'act']);
 
         return response()->json($this->formatOne($ticket));
     }
@@ -268,6 +268,15 @@ class TicketController extends Controller
                 ])->filter()->implode(', '),
                 'street'   => $t->address->street,
                 'building' => $t->address->building,
+            ] : null,
+            // territory заявки берётся от address.territory_id (2026-08-04, по
+            // запросу Android-агента — quick-фильтр по территории на вкладках
+            // заявок, по аналогии с ConnectionRequest.territory). Не через
+            // бригаду — бригада заявки и территория адреса могут расходиться
+            // (см. память project-territory-visibility-system), адрес надёжнее.
+            'territory' => $t->address?->territory ? [
+                'id'   => $t->address->territory->id,
+                'name' => $t->address->territory->name,
             ] : null,
             'type'    => $t->type?->name,
             'service_type' => $t->serviceType ? [
