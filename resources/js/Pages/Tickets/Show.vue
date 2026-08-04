@@ -90,7 +90,13 @@
             <p><span class="text-xs text-gray-400">Создана: </span><span class="font-medium text-gray-700 break-words">{{ formatDate(ticket.created_at) ?? '—' }}</span></p>
             <p><span class="text-xs text-gray-400">Запланирован: </span><span class="font-medium text-gray-700 break-words">{{ ticket.scheduled_at ? formatDateTime(ticket.scheduled_at) : '—' ?? '—' }}</span></p>
             <p v-if="ticket.closed_at"><span class="text-xs text-gray-400">Закрыта: </span><span class="font-medium text-gray-700 break-words">{{ formatDate(ticket.closed_at) ?? '—' }}</span></p>
-            <p v-if="ticket.act?.number"><span class="text-xs text-gray-400">Акт: </span><span class="font-medium text-gray-700 break-words">{{ ticket.act.number }}</span></p>
+            <p v-if="ticket.act?.number">
+              <span class="text-xs text-gray-400">Акт: </span>
+              <button type="button" class="font-medium text-blue-600 hover:underline break-words"
+                      @click="router.get(route('acts.show', ticket.act.id))">
+                {{ ticket.act.number }}
+              </button>
+            </p>
           </div>
 
           <div data-tour="tour-ticket-description" class="mt-2.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
