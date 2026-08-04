@@ -23,13 +23,36 @@ class TicketController extends Controller
         $today    = now()->toDateString();
         $tomorrow = now()->addDay()->toDateString();
 
-        $brigadeId = $user->brigades()->first()?->id;
+        // Видимость заявок должна 1:1 совпадать со списком на веб-портале
+        // (TicketController::index()) — раньше здесь фильтровали только по
+        // ticket.brigade_id, игнорируя и территории бригады, и личные
+        // территории пользователя. Найдено 2026-08-04 на живом кейсе:
+        // бригадир видел в приложении только заявки, буквально назначенные
+        // (brigade_id) его бригаде, хотя по чекбоксам территорий в
+        // Настройках должен был видеть больше. Формула — ровно та же, что
+        // и в веб-версии (union: территории бригады + личные территории),
+        // без доп. условий по assigned_to/brigade_id, которых в веб-списке
+        // нет (иначе списки на портале и в приложении снова разойдутся бы).
+        // Фильтр применяется ВСЕГДА для бригадира/монтажника, даже если
+        // territoryIds пуст — пустой whereIn() корректно даёт 0 заявок.
+        // Раньше (и в вебе, и здесь) пустой список территорий снимал
+        // фильтр целиком — у бригадира/монтажника без бригады и территорий
+        // получалось видно вообще всё, это отдельно исправлено 2026-08-04.
+        $isFieldRole = $user->isTechnician() || $user->isForeman();
+        $territoryIds = collect();
+        if ($isFieldRole) {
+            $brigadeIds = $user->brigades->pluck('id');
+            $territoryIds = \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))
+                ->pluck('id')->merge($user->territories->pluck('id'))->unique();
+        }
 
         $base = fn(): Builder => Ticket::with([
                 'address', 'type', 'serviceType', 'status', 'brigade', 'assignee',
                 'comments.author', 'comments.attachments', 'attachments', 'act',
             ])
-            ->when($brigadeId && !$user->hasPermission('*'), fn($q) => $q->where('brigade_id', $brigadeId));
+            ->when($isFieldRole && !$user->hasPermission('*'), fn($q) =>
+                $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $territoryIds))
+            );
 
         $overdue  = $base()->whereDate('scheduled_at', '<', $today)
                            ->whereHas('status', fn($s) => $s->where('is_final', false))

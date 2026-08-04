@@ -29,7 +29,15 @@ class TicketController extends Controller
         // бригад личные территории пользователя игнорировались целиком —
         // чекбоксы для монтажника/бригадира с бригадой были декоративны,
         // найдено 2026-08-03 на живом случае).
-        if ($user->isTechnician() || $user->isForeman()) {
+        // $scopeToTerritory — сам факт, что фильтр по территории нужен
+        // применить вообще (роль бригадир/монтажник), независимо от того,
+        // пуст ли итоговый список территорий. Если у бригадира/монтажника
+        // нет ни бригады, ни личных территорий — он должен видеть НОЛЬ
+        // заявок, а не все подряд (раньше пустой $userTerritories снимал
+        // фильтр целиком через when(isNotEmpty()) — баг, найден 2026-08-04
+        // на живом случае вместе с тем же багом в мобильном API).
+        $scopeToTerritory = $user->isTechnician() || $user->isForeman();
+        if ($scopeToTerritory) {
             $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
             $brigadeTerritories = $brigadeIds->isNotEmpty()
                 ? \App\Models\Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
@@ -47,7 +55,7 @@ class TicketController extends Controller
 
         $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade', 'creator', 'assignee'])
             ->withCount('comments')
-            ->when($userTerritories->isNotEmpty(), fn($q) =>
+            ->when($scopeToTerritory, fn($q) =>
                 $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories))
             )
             ->when($request->search, fn($q) => $q->search($request->search))
