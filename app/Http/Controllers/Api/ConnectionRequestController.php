@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Act;
-use App\Models\Brigade;
 use App\Models\ConnectionRequest;
 use App\Models\ConnectionRequestLog;
 use App\Models\Material;
@@ -400,22 +399,16 @@ class ConnectionRequestController extends Controller
         return $data;
     }
 
+    // Единая формула видимости по территориям (2026-08-04) — та же, что и
+    // в веб-версии ConnectionRequestController::getUserTerritories(). Раньше
+    // пустой итоговый список территорий откатывался на "показать все" (та
+    // же дыра, что и везде) — теперь пустой список так и остаётся пустым.
     private function getUserTerritories($user)
     {
-        if ($user->hasPermission('*') || $user->hasPermission('settings.*')) {
+        if ($user->isAdmin()) {
             return Territory::orderBy('sort_order')->orderBy('name')->get();
         }
-        $ids = collect();
-        $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-        if ($brigadeIds->isNotEmpty()) {
-            $ids = $ids->merge(
-                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-            );
-        }
-        $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
-        if ($ids->isNotEmpty()) {
-            return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
-        }
-        return Territory::orderBy('sort_order')->orderBy('name')->get();
+        $ids = $user->territoryScopeIds();
+        return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
     }
 }

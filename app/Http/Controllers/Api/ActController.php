@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Act;
 use App\Models\ActMaterial;
-use App\Models\Brigade;
 use App\Services\ActService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,23 +31,20 @@ class ActController extends Controller
         $this->authorize('viewAny', Act::class);
         $user = auth()->user();
 
-        $brigadeScopeIds = collect();
-        $territoryIds    = collect();
-        if ($user->isTechnician() || $user->isForeman()) {
-            $brigadeScopeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            if ($brigadeScopeIds->isEmpty()) {
-                $territoryIds = $user->territories()->pluck('territories.id');
-            }
-        }
+        // Единая формула видимости по территориям (2026-08-04) — та же, что
+        // и в веб-версии ActController::index(): territoryScopeIds() вместо
+        // отдельного скоупа по ticket.brigade_id с territory-фолбэком только
+        // при отсутствии бригады. Этот экран всё ещё только для бригадира/
+        // монтажника (см. класс-докблок) — admin сюда тоже не заходит в
+        // реальности, но хардкод-байпас оставлен для единообразия с
+        // остальными местами.
+        $scopeToTerritory = !$user->isAdmin();
+        $territoryIds     = $scopeToTerritory ? $user->territoryScopeIds() : collect();
 
         $acts = Act::query()
             ->where('acts.status', '!=', 'completed')
             ->with(['ticket.address', 'connectionRequest', 'creator'])
-            ->when($brigadeScopeIds->isNotEmpty(), fn($q) => $q->where(function ($qq) use ($brigadeScopeIds) {
-                $qq->whereHas('ticket', fn($t) => $t->whereIn('brigade_id', $brigadeScopeIds))
-                   ->orWhereHas('connectionRequest', fn($c) => $c->whereIn('brigade_id', $brigadeScopeIds));
-            }))
-            ->when($territoryIds->isNotEmpty(), fn($q) => $q->where(function ($qq) use ($territoryIds) {
+            ->when($scopeToTerritory, fn($q) => $q->where(function ($qq) use ($territoryIds) {
                 $qq->whereHas('ticket.address', fn($a) => $a->whereIn('territory_id', $territoryIds))
                    ->orWhereHas('connectionRequest', fn($c) => $c->whereIn('territory_id', $territoryIds));
             }))
