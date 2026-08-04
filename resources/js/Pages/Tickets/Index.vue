@@ -181,6 +181,7 @@
                     {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
                   </button>
                   <span v-if="t.comments_count" class="ml-1 text-blue-400">💬{{ t.comments_count }}</span>
+                  <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
                 </p>
               </td>
 

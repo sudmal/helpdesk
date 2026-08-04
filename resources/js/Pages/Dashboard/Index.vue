@@ -198,6 +198,7 @@
                           class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
                     {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
                   </button>
+                  <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
                 </p>
               </td>
               <td class="px-2 py-0.5 hidden md:table-cell">
@@ -287,6 +288,7 @@
                         class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
                   {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
                 </button>
+                <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
               </p>
             </td>
             <td class="px-3 py-px hidden sm:table-cell">

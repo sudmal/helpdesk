@@ -52,6 +52,7 @@ class DashboardController extends Controller
 
         $todayTickets = (clone $scoped)
             ->with(['address', 'type', 'serviceType', 'status', 'brigade', 'act.materials'])
+            ->withCount('attachments')
             ->whereDate('scheduled_at', $date)
             ->when($onlyOpen, fn($q) => $q->whereIn('status_id', $openIds))
             ->orderBy($sort, $sortDir)
@@ -60,6 +61,7 @@ class DashboardController extends Controller
 
         $overdue = (clone $scoped)
             ->with(['address', 'type', 'serviceType', 'status'])
+            ->withCount('attachments')
             ->whereIn('status_id', $openIds)
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<', $overdueThreshold)

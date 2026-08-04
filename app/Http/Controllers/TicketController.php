@@ -43,8 +43,8 @@ class TicketController extends Controller
         $closedStatusId = Cache::remember('ts_closed_id', 3600,
             fn() => \App\Models\TicketStatus::where('slug', 'closed')->value('id'));
 
-        $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade', 'creator', 'assignee'])
-            ->withCount('comments')
+        $tickets = Ticket::with(['address', 'type', 'serviceType', 'status', 'brigade', 'creator', 'assignee', 'act:id,ticket_id,number'])
+            ->withCount(['comments', 'attachments'])
             ->when($scopeToTerritory, fn($q) =>
                 $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories))
             )
