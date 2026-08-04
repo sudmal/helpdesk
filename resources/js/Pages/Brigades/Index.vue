@@ -74,12 +74,14 @@
             <div>
               <label class="field-label flex items-center gap-1">
                 Бригадир
-                <Tip>Выбирается только из состава бригады. Сначала добавьте участников выше.</Tip>
+                <Tip>Выбирается только из состава бригады и только среди пользователей с ролью «Бригадир». Сначала добавьте участников выше.</Tip>
               </label>
               <select v-model="form.foreman_id" class="field-input" :disabled="form.member_ids.length === 0">
                 <option value="">{{ form.member_ids.length ? '— Выбрать —' : '— Сначала добавьте участников —' }}</option>
                 <option v-for="u in foremanCandidates" :key="u.id" :value="u.id">{{ u.name }}</option>
               </select>
+              <p v-if="form.member_ids.length > 0 && !foremanCandidates.length"
+                 class="mt-1 text-xs text-amber-600">⚠ Среди участников нет пользователя с ролью «Бригадир»</p>
               <p v-if="editing?.foreman_id && !form.foreman_id && form.member_ids.length > 0"
                  class="mt-1 text-xs text-amber-600">⚠ Нельзя убрать бригадира без назначения нового</p>
             </div>
@@ -133,7 +135,7 @@ function isInOtherBrigade(u) {
 }
 
 const foremanCandidates = computed(() =>
-  props.technicians.filter(u => form.member_ids.includes(u.id))
+  props.technicians.filter(u => form.member_ids.includes(u.id) && u.role === 'foreman')
 )
 
 watch(() => [...form.member_ids], (ids) => {

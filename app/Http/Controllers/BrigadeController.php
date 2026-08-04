@@ -23,9 +23,9 @@ class BrigadeController extends Controller
                         ->select('brigade_user.user_id', 'brigades.id as brigade_id', 'brigades.name as brigade_name')
                         ->get()->keyBy('user_id');
                     return User::whereHas('role', fn($q) => $q->whereIn('slug', ['technician', 'foreman', 'admin']))
-                        ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
+                        ->where('is_active', true)->with('role:id,slug')->orderBy('name')->get(['id', 'name', 'role_id'])
                         ->map(fn($u) => [
-                            'id' => $u->id, 'name' => $u->name,
+                            'id' => $u->id, 'name' => $u->name, 'role' => $u->role?->slug,
                             'in_brigade_id'   => $bmap[$u->id]->brigade_id ?? null,
                             'in_brigade_name' => $bmap[$u->id]->brigade_name ?? null,
                         ]);
@@ -37,7 +37,7 @@ class BrigadeController extends Controller
     {
         $data = $request->validate([
             'name'          => 'required|string|max:100|unique:brigades,name',
-            'foreman_id'    => 'nullable|exists:users,id',
+            'foreman_id'    => ['nullable', 'exists:users,id', $this->foremanRoleRule()],
             'territory_ids' => 'array',
             'territory_ids.*' => 'exists:territories,id',
             'member_ids'    => 'array',
@@ -77,7 +77,7 @@ class BrigadeController extends Controller
     {
         $data = $request->validate([
             'name'            => 'required|string|max:100|unique:brigades,name,' . $brigade->id,
-            'foreman_id'      => 'nullable|exists:users,id',
+            'foreman_id'      => ['nullable', 'exists:users,id', $this->foremanRoleRule()],
             'territory_ids'   => 'array',
             'territory_ids.*' => 'exists:territories,id',
             'member_ids'      => 'array',
@@ -188,5 +188,21 @@ class BrigadeController extends Controller
         $brigade->members()->detach();
         $brigade->delete();
         return back()->with('success', 'Бригада удалена');
+    }
+
+    // Бригадиром можно назначить только пользователя с ролью «бригадир» —
+    // раньше в select можно было выбрать любого участника бригады, включая
+    // монтажников, что расходилось с реальной ролью пользователя в системе
+    // (найдено 2026-08-04). Фронтенд уже фильтрует список, это — защита от
+    // прямого POST в обход формы.
+    private function foremanRoleRule(): \Closure
+    {
+        return function (string $attribute, $value, \Closure $fail) {
+            if (!$value) return;
+            $role = User::find($value)?->role?->slug;
+            if ($role !== 'foreman') {
+                $fail('Бригадиром может быть только пользователь с ролью «Бригадир».');
+            }
+        };
     }
 }
