@@ -144,7 +144,10 @@
           <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100">
             <h3 class="font-medium text-sm text-gray-700 flex items-center gap-2">
               📦 Расходные материалы
-              <span class="text-xs font-mono text-gray-400">{{ ticket.act.number }}</span>
+              <button type="button" class="text-xs font-mono text-blue-600 hover:underline"
+                      @click="router.get(route('acts.show', ticket.act.id))">
+                {{ ticket.act.number }}
+              </button>
             </h3>
             <span class="text-sm font-semibold text-blue-600">
               Итого: {{ totalMaterials }} ₽
