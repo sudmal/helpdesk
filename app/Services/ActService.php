@@ -43,6 +43,7 @@ class ActService
         ]);
 
         $this->flagMaterialsChanged($act, $user->id);
+        $this->flagMaterialsCorrected($act);
         $this->logHistory(
             $act, $user->id, 'material_added', null, null,
             "{$actMaterial->material_name} — {$actMaterial->quantity} {$actMaterial->material_unit}",
@@ -59,6 +60,7 @@ class ActService
         $new = "{$material->material_name} — {$material->quantity} {$material->material_unit}";
 
         $this->flagMaterialsChanged($act, $user->id);
+        $this->flagMaterialsCorrected($act);
         $this->logHistory($act, $user->id, 'material_changed', 'quantity', $old, $new, $material->id);
 
         return $material;
@@ -70,6 +72,7 @@ class ActService
         $material->delete();
 
         $this->flagMaterialsChanged($act, $user->id);
+        $this->flagMaterialsCorrected($act);
         $this->logHistory($act, $user->id, 'material_removed', null, $old, null);
     }
 
@@ -87,6 +90,22 @@ class ActService
     {
         if ($act->created_by !== $editorId) {
             $act->materials_changed_at = now();
+            $act->save();
+        }
+    }
+
+    /**
+     * Постоянная, НЕ снимаемая пометка "акт правили уже после утверждения
+     * бригадиром" (2026-08-04) — в отличие от materials_changed_at (гасится
+     * через acknowledge(), это просто уведомление монтажнику), эта
+     * проставляется один раз и остаётся навсегда как факт истории акта.
+     * Пока акт ещё в pending_foreman — это обычная, ожидаемая правка перед
+     * утверждением, не "исправление задним числом", поэтому не отмечаем.
+     */
+    private function flagMaterialsCorrected(Act $act): void
+    {
+        if ($act->status !== 'pending_foreman' && $act->materials_corrected_at === null) {
+            $act->materials_corrected_at = now();
             $act->save();
         }
     }

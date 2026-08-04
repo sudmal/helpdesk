@@ -151,6 +151,10 @@ class ActController extends Controller
             'created_at'              => $act->created_at->toIso8601String(),
             'foreman_reviewed_at'     => $act->foreman_reviewed_at?->toIso8601String(),
             'materials_changed_at'    => $act->materials_changed_at?->toIso8601String(),
+            // Постоянная пометка "правили уже после утверждения" (2026-08-04,
+            // НЕ снимается через acknowledge, в отличие от materials_changed_at) —
+            // см. API_MOBILE.md, раздел "Акты".
+            'materials_corrected_at'  => $act->materials_corrected_at?->toIso8601String(),
             'can' => [
                 'foreman_review' => $user->can('foremanReview', $act),
                 'edit_materials' => $user->can('editMaterials', $act),
@@ -173,6 +177,7 @@ class ActController extends Controller
             'foreman_reviewed_at'   => $act->foreman_reviewed_at?->toIso8601String(),
             'foreman_reviewed_by'   => $act->foremanReviewer?->name,
             'materials_changed_at'  => $act->materials_changed_at?->toIso8601String(),
+            'materials_corrected_at' => $act->materials_corrected_at?->toIso8601String(),
             // Акция — только у актов заявок на подключение (connection_request_id
             // не null), у тикетных всегда null. См. память project-acts-feature,
             // "Акции по подключениям".

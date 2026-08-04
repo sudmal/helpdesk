@@ -220,6 +220,9 @@ class ActController extends Controller
             'markPeo'            => $act->type === 'regular' ? $mark($act->peo_processed_at) : 'не требуется',
             'markLogistics'      => $mark($act->logistics_processed_at),
             'markSubscriberDept' => $mark($act->subscriber_dept_completed_at),
+            'materialsCorrectedAt' => $act->materials_corrected_at
+                ? \Carbon\Carbon::parse($act->materials_corrected_at)->format('d.m.Y H:i')
+                : null,
         ]);
 
         return $pdf->stream("act-{$act->number}.pdf");

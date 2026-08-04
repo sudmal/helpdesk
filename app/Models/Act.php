@@ -48,7 +48,7 @@ class Act extends Model
         'peo_processed_by', 'peo_processed_at',
         'logistics_processed_by', 'logistics_processed_at',
         'subscriber_dept_completed_by', 'subscriber_dept_completed_at',
-        'materials_changed_at',
+        'materials_changed_at', 'materials_corrected_at',
         'promotion_id', 'promotion_name', 'promotion_price',
     ];
 
@@ -58,6 +58,7 @@ class Act extends Model
         'logistics_processed_at'       => 'datetime',
         'subscriber_dept_completed_at' => 'datetime',
         'materials_changed_at'         => 'datetime',
+        'materials_corrected_at'       => 'datetime',
         'promotion_price'              => 'float',
     ];
 

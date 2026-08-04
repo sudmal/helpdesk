@@ -21,6 +21,9 @@
       <div class="flex items-center gap-2 flex-wrap">
         <span class="text-white text-xs px-2 py-1 rounded" :style="{ background: statusColor }">{{ statusLabel }}</span>
         <span class="text-[#9E9E9E] text-xs">{{ typeLabel }}</span>
+        <span v-if="act.materials_corrected_at" class="text-[#CA8A04] text-xs px-2 py-1 rounded border border-[#CA8A04]/40">
+          ✏️ Исправлено после утверждения
+        </span>
       </div>
 
       <div v-if="act.materials_changed_at" class="bg-[#3F2D0A] border border-[#FBBF24]/40 rounded-lg p-3 text-[#FBBF24] text-sm">

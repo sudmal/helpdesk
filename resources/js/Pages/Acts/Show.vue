@@ -46,6 +46,11 @@
           <div class="flex items-center gap-2 flex-wrap justify-end">
             <span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-medium">{{ typeLabel(act.type) }}</span>
             <span :class="statusClass(act.status)" class="px-2 py-1 rounded-lg text-xs font-medium">{{ statusLabels[act.status] || act.status }}</span>
+            <span v-if="act.materials_corrected_at"
+                  :title="`Исправлен ${fmtDateTime(act.materials_corrected_at)}`"
+                  class="px-2 py-1 rounded-lg bg-amber-100 text-amber-700 text-xs font-medium">
+              ✏️ Исправлено после утверждения
+            </span>
           </div>
         </div>
 
@@ -295,7 +300,9 @@ function acknowledge() {
   post('acts.acknowledge')
 }
 
-// ── Режим редактирования состава (только бригадир, пока pending_foreman) ──
+// ── Режим редактирования состава — окно определяется can.editMaterials с
+// бэкенда (2026-08-04: бригадир — до первого подтверждения ПЭО/Логистики/
+// Абонотдела, admin — до архива, см. ActPolicy::editMaterials()) ──
 const editMode = ref(false)
 
 function finishEditing() {

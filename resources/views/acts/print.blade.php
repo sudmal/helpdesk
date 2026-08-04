@@ -23,12 +23,16 @@
     .marks td { width: 25%; vertical-align: top; padding-right: 10px; }
     .marks .m-label { font-weight: bold; margin-bottom: 14px; }
     .marks .m-value { border-top: 1px solid #444; padding-top: 3px; font-size: 10px; color: #333; }
+    .corrected-note { text-align: center; font-size: 10px; color: #a15c00; margin: -12px 0 14px; }
 </style>
 </head>
 <body>
 
 <h1>АКТ ВЫПОЛНЕННЫХ РАБОТ</h1>
 <div class="number-line">№ {{ $act->number }} от {{ $createdAt }}</div>
+@if ($materialsCorrectedAt)
+<div class="corrected-note">⚠ Состав акта был исправлен после утверждения {{ $materialsCorrectedAt }}</div>
+@endif
 
 <table class="meta">
     <tr>
