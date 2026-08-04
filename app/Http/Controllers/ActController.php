@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Act, ActMaterial, Brigade, Material, Territory};
+use App\Models\{Act, ActMaterial, Material};
 use App\Services\ActService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -35,19 +35,19 @@ class ActController extends Controller
             ]);
         }
 
-        // Бригадир/монтажник — строго по бригаде заявки (ticket.brigade_id), а не по
-        // пересечению территорий бригад (сузили 2026-07-15, см. память project-acts-feature).
-        $brigadeScopeIds = collect();
-        $userTerritories = collect();
-        if ($user->isTechnician() || $user->isForeman()) {
-            $brigadeScopeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            if ($brigadeScopeIds->isEmpty()) {
-                $userTerritories = $user->territories()->pluck('territories.id');
-            }
-        } elseif ($user->isPeo() || $user->isLogistics() || $user->isSubscriberDept()) {
-            $userTerritories = $user->territories()->pluck('territories.id');
-        }
-        // admin/head_support/operator — без ограничений (обе коллекции остаются пустыми).
+        // Единая формула видимости по территориям (2026-08-04) — та же, что и
+        // в Заявках: User::territoryScopeIds() (территории бригад ∪ личные
+        // территории) для всех, кроме admin (хардкод-байпас). Раньше здесь
+        // был отдельный, более узкий скоуп специально для Актов — строго по
+        // ticket.brigade_id (сужение от 2026-07-15) — теперь скоуп Актов
+        // приведён к тому же принципу, что и остальные сущности: бригадир/
+        // монтажник видит акт, если территория заявки/заявки на подключение
+        // входит в его территории, а не только если акт от заявки буквально
+        // назначенной его бригаде. ПЭО/Логистика теперь формально проходят
+        // через ту же формулу, но у них все территории в данных (бэкфилл
+        // 2026-08-04) — на практике как и раньше видят все акты.
+        $scopeToTerritory = !$user->isAdmin();
+        $userTerritories  = $scopeToTerritory ? $user->territoryScopeIds() : collect();
 
         // Джойны нужны для сортировки/группировки по территории и бригаде —
         // задел под будущие отчёты по актам (см. память project-acts-feature).
@@ -80,10 +80,7 @@ class ActController extends Controller
                 'logisticsProcessor:id,name',
                 'subscriberDeptCompleter:id,name',
             ])
-            ->when($brigadeScopeIds->isNotEmpty(), fn($q) =>
-                $q->whereIn(DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'), $brigadeScopeIds)
-            )
-            ->when($userTerritories->isNotEmpty(), fn($q) =>
+            ->when($scopeToTerritory, fn($q) =>
                 $q->whereIn(DB::raw('COALESCE(addresses.territory_id, connection_requests.territory_id)'), $userTerritories)
             )
             ->when($request->type, fn($q) => $q->where('acts.type', $request->type));

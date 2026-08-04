@@ -21,14 +21,25 @@ class ConnectionRequestController extends Controller
         $user            = $request->user();
         $userTerritories = $this->getUserTerritories($user);
 
+        // ?territory= из URL проверяется на принадлежность зоне видимости
+        // пользователя — раньше принимался как есть, вкладки самого
+        // интерфейса такое значение не предложили бы, но URL можно
+        // подменить вручную (2026-08-04).
         $territory = $request->get('territory') ?: null;
+        if ($territory && !$userTerritories->pluck('id')->contains((int) $territory)) {
+            $territory = null;
+        }
 
         // Сортировка "по важности": требующие прозвона (needs_callback) --
         // наверх независимо от статуса (это горящее действие), закрытые
         // (выполнено, либо отклонено/отказ и прозвон уже не нужен) -- вниз, как
         // полностью завершённые. Остальное (ожидает/назначено) -- посередине,
         // внутри каждой группы сначала новые.
+        // Основной список тоже скоупится по территориям (2026-08-04) — раньше
+        // фильтровались только счётчики/выпадающий список, сам список заявок
+        // на подключение был виден целиком любому пользователю.
         $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act'])
+            ->when(!$user->isAdmin(), fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
             ->when($territory, fn($q) => $q->where('territory_id', $territory))
             ->when($request->boolean('trashed'), fn($q) => $q->onlyTrashed())
             ->orderByRaw("
@@ -486,22 +497,17 @@ class ConnectionRequestController extends Controller
         ]);
     }
 
+    // Единая формула видимости по территориям (2026-08-04) — territoryScopeIds()
+    // для всех, кроме admin. Раньше при пустом итоговом списке территорий
+    // код молча откатывался на "показать вообще все территории" (та же
+    // дыра, что уже находили и чинили в Заявках/Актах/Адресах/Дашборде
+    // 2026-08-04) — теперь пустой список так и остаётся пустым.
     private function getUserTerritories($user)
     {
-        if ($user->hasPermission('*') || $user->hasPermission('settings.*')) {
+        if ($user->isAdmin()) {
             return Territory::orderBy('sort_order')->orderBy('name')->get();
         }
-        $ids = collect();
-        $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-        if ($brigadeIds->isNotEmpty()) {
-            $ids = $ids->merge(
-                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-            );
-        }
-        $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
-        if ($ids->isNotEmpty()) {
-            return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
-        }
-        return Territory::orderBy('sort_order')->orderBy('name')->get();
+        $ids = $user->territoryScopeIds();
+        return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
     }
 }

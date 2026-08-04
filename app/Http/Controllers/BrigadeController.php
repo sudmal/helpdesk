@@ -37,7 +37,7 @@ class BrigadeController extends Controller
     {
         $data = $request->validate([
             'name'          => 'required|string|max:100|unique:brigades,name',
-            'foreman_id'    => ['nullable', 'exists:users,id', $this->foremanRoleRule()],
+            'foreman_id'    => ['nullable', 'exists:users,id', $this->foremanRoleRule($request)],
             'territory_ids' => 'array',
             'territory_ids.*' => 'exists:territories,id',
             'member_ids'    => 'array',
@@ -77,7 +77,7 @@ class BrigadeController extends Controller
     {
         $data = $request->validate([
             'name'            => 'required|string|max:100|unique:brigades,name,' . $brigade->id,
-            'foreman_id'      => ['nullable', 'exists:users,id', $this->foremanRoleRule()],
+            'foreman_id'      => ['nullable', 'exists:users,id', $this->foremanRoleRule($request)],
             'territory_ids'   => 'array',
             'territory_ids.*' => 'exists:territories,id',
             'member_ids'      => 'array',
@@ -190,18 +190,27 @@ class BrigadeController extends Controller
         return back()->with('success', 'Бригада удалена');
     }
 
-    // Бригадиром можно назначить только пользователя с ролью «бригадир» —
-    // раньше в select можно было выбрать любого участника бригады, включая
-    // монтажников, что расходилось с реальной ролью пользователя в системе
-    // (найдено 2026-08-04). Фронтенд уже фильтрует список, это — защита от
-    // прямого POST в обход формы.
-    private function foremanRoleRule(): \Closure
+    // Бригадиром можно назначить пользователя с ролью «бригадир», либо
+    // admin — но ТОЛЬКО если он уже входит в состав этой бригады (2026-08-04,
+    // прямая просьба пользователя: "админ тоже может быть в списке выбора
+    // бригадира, но только если он входит в бригаду"). Раньше в select можно
+    // было выбрать любого участника бригады, включая монтажников — это и
+    // было первично найдено и исправлено; сейчас же admin легитимен, но
+    // именно как «участник, а не посторонний». Фронтенд уже фильтрует
+    // список так же (foremanCandidates: role ∈ {foreman, admin} AND уже
+    // отмечен в member_ids) — это защита от прямого POST в обход формы.
+    private function foremanRoleRule(Request $request): \Closure
     {
-        return function (string $attribute, $value, \Closure $fail) {
+        return function (string $attribute, $value, \Closure $fail) use ($request) {
             if (!$value) return;
             $role = User::find($value)?->role?->slug;
-            if ($role !== 'foreman') {
-                $fail('Бригадиром может быть только пользователь с ролью «Бригадир».');
+            if (!in_array($role, ['foreman', 'admin'], true)) {
+                $fail('Бригадиром может быть только пользователь с ролью «Бригадир» (или admin — участник бригады).');
+                return;
+            }
+            $memberIds = $request->input('member_ids', []);
+            if (!in_array((int) $value, array_map('intval', $memberIds), true)) {
+                $fail('Бригадир должен быть в составе бригады.');
             }
         };
     }

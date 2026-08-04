@@ -29,10 +29,20 @@ class AddressController extends Controller
         $buildingList= [];
         $aptList     = [];
 
+        // Единая формула видимости по территориям (2026-08-04) — та же, что
+        // в Заявках/Актах/быстром поиске адресов: territoryScopeIds() для
+        // всех, кроме admin. Раньше эта иерархия (Города→Улицы→Дома→Квартиры)
+        // вообще не скопилась — любой монтажник мог листать любой город/
+        // улицу/дом в системе, не только свои.
+        $user = auth()->user();
+        $scopeToTerritory = !$user->isAdmin();
+        $territoryIds     = $scopeToTerritory ? $user->territoryScopeIds() : collect();
+
         if (!$city) {
             // Уровень 0 — список городов
             $cityList = Address::selectRaw('city, COUNT(*) as count')
                 ->whereNotNull('city')->where('city', '!=', '')
+                ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $territoryIds))
                 ->groupBy('city')->orderBy('city')
                 ->get()
                 ->map(fn($r) => ['name' => $r->city, 'count' => $r->count])
@@ -46,6 +56,7 @@ class AddressController extends Controller
             $streetList = Address::selectRaw('street, COUNT(*) as count')
                 ->where('city', $city)
                 ->whereNotNull('street')
+                ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $territoryIds))
                 ->groupBy('street')
                 ->get()
                 ->map(fn($r) => ['name' => $r->street, 'count' => $r->count])
@@ -55,9 +66,14 @@ class AddressController extends Controller
 
         } elseif (!$building) {
             // Уровень 2 — дома на улице
-            // Запрос 1: список домов с количеством адресных записей
+            // Запрос 1: список домов с количеством адресных записей (единственный
+            // запрос уровня, который нужно скопить по территории — запросы 2-4
+            // ниже лишь досчитывают данные ПО УЖЕ отфильтрованному здесь списку
+            // домов через pluck-lookup по имени дома, сами по себе видимость не
+            // расширяют).
             $buildingsRaw = Address::selectRaw('building, COUNT(*) as cnt, MAX(id) as id')
                 ->where('city', $city)->where('street', $street)->whereNotNull('building')
+                ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $territoryIds))
                 ->groupBy('building')
                 ->orderByRaw('CAST(building AS UNSIGNED), building')
                 ->get();
@@ -115,6 +131,7 @@ class AddressController extends Controller
                 ->where('city', $city)
                 ->where('street', $street)
                 ->where('building', $building)
+                ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $territoryIds))
                 ->orderByRaw('CAST(apartment AS UNSIGNED), apartment')
                 ->get();
 
@@ -465,14 +482,13 @@ class AddressController extends Controller
         $q    = trim($request->get('q', ''));
         $user = auth()->user();
 
-        if ($user->isTechnician() || $user->isForeman()) {
-            $brigadeIds = \App\Models\Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-            $userTerritories = $brigadeIds->isNotEmpty()
-                ? Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-                : $user->territories()->pluck('territories.id');
-        } else {
-            $userTerritories = collect();
-        }
+        // Единая формула видимости по территориям (2026-08-04) — та же, что
+        // и в Заявках/Актах: territoryScopeIds() для всех, кроме admin.
+        // Раньше здесь была своя формула "территории бригады, ЕСЛИ есть
+        // бригада, ИНАЧЕ личные" (взаимоисключающе, не union) — теперь как
+        // везде: объединение.
+        $scopeToTerritory = !$user->isAdmin();
+        $userTerritories  = $scopeToTerritory ? $user->territoryScopeIds() : collect();
 
         // Точный резолв из модалки "Выбор адреса" -- city/street/building
         // там УЖЕ известны из иерархии (dropdown'ы), поэтому вместо
@@ -493,7 +509,7 @@ class AddressController extends Controller
             $apartmentHint = ($exactApartment !== '' && $exactApartment !== '-') ? $exactApartment : null;
 
             $addresses = Address::with('territory')
-                ->when($userTerritories->isNotEmpty(), fn($q) => $q->whereIn('territory_id', $userTerritories))
+                ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $userTerritories))
                 ->where('city', $exactCity)->where('street', $exactStreet)
                 ->whereIn('building', $this->buildingVariants($exactBuilding))
                 ->orderByRaw('CAST(building AS UNSIGNED)')
@@ -525,7 +541,7 @@ class AddressController extends Controller
             $searchQuery = implode(' ', $textWords);
 
             $addresses = Address::with('territory')
-                ->when($userTerritories->isNotEmpty(), fn($q) => $q->whereIn('territory_id', $userTerritories))
+                ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $userTerritories))
                 ->when($searchQuery, fn($q) => $q->search($searchQuery))
                 ->when($buildingHint, fn($q) => $q->whereIn('building', $this->buildingVariants($buildingHint)))
                 ->orderByRaw('CAST(building AS UNSIGNED)')

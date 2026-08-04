@@ -108,20 +108,15 @@ class CalendarController extends Controller
         return $icon . $type . ($street . $building . $aptStr ?: $ticket->number);
     }
 
+    // Единая формула видимости по территориям (2026-08-04) — territoryScopeIds()
+    // для всех, кроме admin (null = без фильтра вообще). Раньше сюда же
+    // пускали любого с hasPermission('settings.*') (сейчас это только
+    // head_support) — теперь head_support "видит всё" через данные (все
+    // территории проставлены бэкфиллом), как и остальные подобные роли.
     private function getUserTerritoryIds($user): ?array
     {
-        if ($user->hasPermission('*') || $user->hasPermission('settings.*')) {
-            return null;
-        }
-        $ids = collect();
-        $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-        if ($brigadeIds->isNotEmpty()) {
-            $ids = $ids->merge(
-                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-            );
-        }
-        $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
-        return $ids->values()->all();
+        if ($user->isAdmin()) return null;
+        return $user->territoryScopeIds()->values()->all();
     }
     private function serviceIcon(?string $name): string
     {

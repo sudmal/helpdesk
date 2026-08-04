@@ -172,6 +172,24 @@ class SettingsController extends Controller
 
     // ── Пользователи ─────────────────────────────────────────────────
 
+    // Оператор ТП/Начальник ТП/ПЭО/Логистика по бизнес-правилам всегда
+    // видят все сущности (заявки/акты/адреса/...) — реализовано через
+    // данные (все территории проставлены в user_territory), а не через
+    // хардкод в коде видимости, см. User::territoryScopeIds() и бэкфилл
+    // 2026-08-04. Форма может присылать любой список чекбоксов (в т.ч.
+    // неполный, если фронт вдруг не задизейблил их) — здесь принудительно
+    // подменяем на ВСЕ территории, чтобы инвариант не мог случайно
+    // разъехаться через эту форму. Admin не трогаем — у него отдельный
+    // хардкод-байпас, который вообще не смотрит в user_territory.
+    private function forceAllTerritoriesIfSeesEverything(int $roleId, array $territoryIds): array
+    {
+        $slug = Role::find($roleId)?->slug;
+        if (in_array($slug, ['operator', 'head_support', 'peo', 'logistics'], true)) {
+            return Territory::pluck('id')->all();
+        }
+        return $territoryIds;
+    }
+
     public function storeUser(Request $request)
     {
         $this->authorize('manage-settings');
@@ -195,6 +213,7 @@ class SettingsController extends Controller
         $territoryIds = $data['territory_ids'] ?? [];
         $brigadeId    = $request->input('brigade_id') ?: null;
         unset($data['territory_ids']);
+        $territoryIds = $this->forceAllTerritoriesIfSeesEverything($data['role_id'], $territoryIds);
 
         $user = User::create($data);
         if ($territoryIds) {
@@ -234,6 +253,7 @@ class SettingsController extends Controller
         $territoryIds = $data['territory_ids'] ?? [];
         $brigadeId    = $request->input('brigade_id') ?: null;
         unset($data['territory_ids']);
+        $territoryIds = $this->forceAllTerritoriesIfSeesEverything($data['role_id'], $territoryIds);
 
         $user->update($data);
         $user->territories()->sync($territoryIds);

@@ -135,7 +135,7 @@ function isInOtherBrigade(u) {
 }
 
 const foremanCandidates = computed(() =>
-  props.technicians.filter(u => form.member_ids.includes(u.id) && u.role === 'foreman')
+  props.technicians.filter(u => form.member_ids.includes(u.id) && (u.role === 'foreman' || u.role === 'admin'))
 )
 
 watch(() => [...form.member_ids], (ids) => {

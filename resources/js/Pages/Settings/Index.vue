@@ -925,7 +925,11 @@
           <!-- Правая колонка: территории -->
           <div class="flex flex-col">
             <label class="field-label">Территории</label>
-            <div class="border border-gray-200 rounded-xl p-3 overflow-y-auto space-y-1 flex-1 min-h-48">
+            <div v-if="roleSeesEverything"
+                 class="border border-gray-200 rounded-xl p-3 flex-1 min-h-48 flex items-center justify-center text-center">
+              <p class="text-sm text-gray-500">🌐 Эта роль всегда видит все территории<br />(заявки, акты, адреса) — выбор недоступен</p>
+            </div>
+            <div v-else class="border border-gray-200 rounded-xl p-3 overflow-y-auto space-y-1 flex-1 min-h-48">
               <label v-for="t in territories" :key="t.id"
                      class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
                 <input type="checkbox" :value="t.id" v-model="userForm.territory_ids" class="rounded" />
@@ -1284,6 +1288,18 @@ const userForm = useForm({
   password: '', password_confirmation: '',
   notify_email: true, notify_telegram: false, notify_max: false, notify_on_days_off: true,
   is_active: true, territory_ids: [], brigade_id: '',
+})
+
+// Admin + Оператор ТП/Начальник ТП/ПЭО/Логистика по бизнес-правилам всегда
+// видят все территории. У admin это отдельный хардкод-байпас в коде (не
+// смотрит в user_territory вообще), у остальных четырёх — бэкенд сам форсит
+// все территории при сохранении (см.
+// SettingsController::forceAllTerritoriesIfSeesEverything()). Здесь просто
+// визуально отражаем это для всех пяти, чтобы не создавать иллюзию выбора.
+const ROLE_SLUGS_SEE_EVERYTHING = ['admin', 'operator', 'head_support', 'peo', 'logistics']
+const roleSeesEverything = computed(() => {
+  const role = props.roles.find(r => r.id === userForm.role_id)
+  return ROLE_SLUGS_SEE_EVERYTHING.includes(role?.slug)
 })
 
 function openUserModal(u = null) {

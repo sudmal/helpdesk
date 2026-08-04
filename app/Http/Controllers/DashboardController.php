@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Ticket, TicketStatus, Territory, Brigade, ServiceType, Material, ConnectionRequest, ServiceRequest};
+use App\Models\{Ticket, TicketStatus, Territory, ServiceType, Material, ConnectionRequest, ServiceRequest};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,12 +26,23 @@ class DashboardController extends Controller
         if (!$request->has('service_type') && $serviceTypes->isNotEmpty()) {
             $serviceType = $serviceTypes->first()->id;
         }
+        // ?territory= из URL проверяется на принадлежность зоне видимости —
+        // раньше принимался как есть (2026-08-04).
+        if ($territory && !$userTerritories->pluck('id')->contains((int) $territory)) {
+            $territory = null;
+        }
         if (!$territory && $userTerritories->isNotEmpty()) {
             $territory = $userTerritories->first()->id;
         }
 
+        // Если $territory не выбран (userTerritories пуст — у пользователя
+        // нет ни одной территории), раньше when() просто пропускал фильтр —
+        // показывались заявки со всех территорий подряд. Теперь в этом
+        // случае явно фильтруем по (пустому) userTerritories -> 0 заявок
+        // (тот же принцип, что и везде: 2026-08-04).
         $scoped = Ticket::query()
-            ->when($territory,   fn($q) => $q->whereHas('address', fn($a) => $a->where('territory_id', $territory)))
+            ->when($territory,  fn($q) => $q->whereHas('address', fn($a) => $a->where('territory_id', $territory)))
+            ->when(!$territory, fn($q) => $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories->pluck('id'))))
             ->when($serviceType, fn($q) => $q->where('service_type_id', $serviceType));
 
         $openIds          = TicketStatus::where('is_final', false)->pluck('id');
@@ -116,7 +127,8 @@ class DashboardController extends Controller
         $scheduledConnections = ConnectionRequest::with(['territory', 'serviceType'])
             ->where('status', 'scheduled')
             ->whereDate('scheduled_at', $date)
-            ->when($territory, fn($q) => $q->where('territory_id', $territory))
+            ->when($territory,  fn($q) => $q->where('territory_id', $territory))
+            ->when(!$territory, fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
             ->orderBy('scheduled_at')
             ->get(['id', 'name', 'phone', 'address_string', 'scheduled_at', 'territory_id', 'service_type_id']);
 
@@ -133,7 +145,12 @@ class DashboardController extends Controller
             'sort'              => $sort,
             'sortDir'           => $sortDir,
             'onlyOpen'          => $onlyOpen,
-            'pendingConnectionsCount'        => ConnectionRequest::where('status', 'pending')->count(),
+            // Бейдж тоже скоупится по территории (2026-08-04) — раньше показывал
+            // общее число заявок на подключение по всей компании, не по своим
+            // территориям, расходясь с уже отфильтрованным списком подключений.
+            'pendingConnectionsCount'        => ConnectionRequest::where('status', 'pending')
+                ->when(!$user->isAdmin(), fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
+                ->count(),
             'pendingServiceRequestsCount' => ServiceRequest::where('status', 'pending')->count(),
         ]);
     }
@@ -148,7 +165,7 @@ class DashboardController extends Controller
         $userTerritories = $this->getUserTerritories($user);
 
         $tickets = Ticket::with(['address', 'type'])
-            ->when($userTerritories->isNotEmpty(), fn($q) =>
+            ->when(!$user->isAdmin(), fn($q) =>
                 $q->whereHas('address', fn($a) => $a->whereIn('territory_id', $userTerritories->pluck('id'))))
             ->when($territory,   fn($q) => $q->whereHas('address', fn($a) => $a->where('territory_id', $territory)))
             ->when($serviceType, fn($q) => $q->where('service_type_id', $serviceType))
@@ -167,22 +184,17 @@ class DashboardController extends Controller
         ]));
     }
 
+    // Единая формула видимости по территориям (2026-08-04) — territoryScopeIds()
+    // для всех, кроме admin. Раньше при пустом итоговом списке территорий
+    // код молча откатывался на "показать вообще все территории" (та же
+    // дыра, что уже находили и чинили в Заявках/Актах/Адресах 2026-08-04) —
+    // теперь пустой список так и остаётся пустым (0 территорий = 0 данных).
     private function getUserTerritories($user)
     {
-        if ($user->hasPermission('*') || $user->hasPermission('settings.*')) {
+        if ($user->isAdmin()) {
             return Territory::orderBy('sort_order')->orderBy('name')->get();
         }
-        $ids = collect();
-        $brigadeIds = Brigade::whereHas('members', fn($q) => $q->where('user_id', $user->id))->pluck('id');
-        if ($brigadeIds->isNotEmpty()) {
-            $ids = $ids->merge(
-                Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
-            );
-        }
-        $ids = $ids->merge($user->territories()->pluck('territories.id'))->unique();
-        if ($ids->isNotEmpty()) {
-            return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
-        }
-        return Territory::orderBy('sort_order')->orderBy('name')->get();
+        $ids = $user->territoryScopeIds();
+        return Territory::whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
     }
 }

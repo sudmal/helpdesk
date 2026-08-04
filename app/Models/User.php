@@ -99,6 +99,24 @@ class User extends Authenticatable
         return $this->isAdmin() || $this->isHeadSupport();
     }
 
+    // Единая формула видимости сущностей (заявки/акты/адреса/заявки на
+    // подключение/дашборд/календарь) по территориям — объединение террито-
+    // рий бригад пользователя и территорий, назначенных ему лично напрямую
+    // (Настройки → Пользователи). Не учитывает admin — тот всегда видит всё
+    // хардкодом на уровне вызывающего кода, а не через эту формулу.
+    // Роли, которым по бизнес-правилам положено «видеть всё» (Оператор ТП,
+    // Начальник ТП, ПЭО, Логистика), реализуют это через данные — у них в
+    // user_territory должны быть проставлены ВСЕ территории (см. бэкфилл
+    // 2026-08-04), а не через дополнительный код здесь.
+    public function territoryScopeIds(): \Illuminate\Support\Collection
+    {
+        $brigadeIds = $this->brigades->pluck('id');
+        $brigadeTerritories = $brigadeIds->isNotEmpty()
+            ? Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
+            : collect();
+        return $brigadeTerritories->merge($this->territories->pluck('id'))->unique();
+    }
+
     // === Onboarding tours ===
     // Ключ тура (например "dashboard", "ticket", "connections") попадает сюда,
     // когда пользователь прошёл его или явно нажал "больше не показывать".
