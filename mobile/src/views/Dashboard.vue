@@ -8,17 +8,31 @@
         <div class="text-white/55 text-[10px] leading-tight">{{ lastSyncLabel }}</div>
       </div>
 
-      <select v-model="settings.serviceTypeFilter"
-              class="bg-[#1E1E1E] text-white text-sm rounded-lg px-2 py-1.5 max-w-[40%] border-none">
-        <option value="">Все участки</option>
-        <option v-for="st in serviceTypes" :key="st" :value="st">{{ st }}</option>
-      </select>
-
       <button @click="menuOpen = !menuOpen" class="text-white shrink-0 w-8 h-8 flex items-center justify-center">
         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path d="M10 6a2 2 0 100-4 2 2 0 000 4zM10 12a2 2 0 100-4 2 2 0 000 4zM10 18a2 2 0 100-4 2 2 0 000 4z"/>
         </svg>
       </button>
+    </div>
+
+    <!-- Фильтры: участок (тип услуги) + территория -- вынесены из шапки в
+         отдельную строку (2026-08-04, вместе с добавлением territory в
+         API), чтобы не тесниться с заголовком/синком на узких экранах.
+         Оба клиентские -- список заявок и так весь целиком грузится одним
+         запросом /tickets, отдельного round-trip на сервер не нужно (в
+         отличие от Подключений, где фильтр по территории серверный из-за
+         пагинации). -->
+    <div class="shrink-0 px-2 py-1.5 flex gap-2" style="background:#1D4ED8;border-top:1px solid rgba(255,255,255,0.1)">
+      <select v-model="settings.serviceTypeFilter"
+              class="flex-1 min-w-0 bg-[#1E1E1E] text-white text-sm rounded-lg px-2 py-1.5 border-none">
+        <option value="">Все участки</option>
+        <option v-for="st in serviceTypes" :key="st" :value="st">{{ st }}</option>
+      </select>
+      <select v-model="settings.territoryFilter"
+              class="flex-1 min-w-0 bg-[#1E1E1E] text-white text-sm rounded-lg px-2 py-1.5 border-none">
+        <option value="">Все территории</option>
+        <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
+      </select>
     </div>
 
     <!-- Выпадающее меню -->
@@ -139,6 +153,9 @@ function applyFilterSort(list) {
   if (settings.serviceTypeFilter) {
     out = out.filter((t) => t.service_type?.name === settings.serviceTypeFilter)
   }
+  if (settings.territoryFilter) {
+    out = out.filter((t) => t.territory?.id === settings.territoryFilter)
+  }
   out = [...out]
   if (settings.sortOrder === 'address') {
     out.sort((a, b) => (a.address?.full || '').localeCompare(b.address?.full || ''))
@@ -161,9 +178,19 @@ const currentList = computed(() => {
   return applyFilterSort(list)
 })
 
-const serviceTypes = computed(() => {
-  const all = [...raw.value.overdue, ...raw.value.today, ...raw.value.new_today, ...raw.value.tomorrow]
-  return [...new Set(all.map((t) => t.service_type?.name).filter(Boolean))].sort()
+const allTickets = computed(() => [...raw.value.overdue, ...raw.value.today, ...raw.value.new_today, ...raw.value.tomorrow])
+
+const serviceTypes = computed(() =>
+  [...new Set(allTickets.value.map((t) => t.service_type?.name).filter(Boolean))].sort()
+)
+
+// Список территорий для фильтра -- считается на клиенте из уже загруженных
+// заявок (свой territory есть у каждой заявки, см. API_MOBILE.md), а не
+// отдельным запросом -- тот же подход, что и у serviceTypes выше.
+const territories = computed(() => {
+  const map = new Map()
+  allTickets.value.forEach((t) => { if (t.territory) map.set(t.territory.id, t.territory) })
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
 })
 
 async function load() {
