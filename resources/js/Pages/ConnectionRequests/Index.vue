@@ -134,7 +134,7 @@
                     <span v-else-if="r.feasibility === 'impossible'" class="text-red-600"
                           :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
                   </span>
-                  <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                  <span :class="statusClass(r.status, r.feasibility)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
                     {{ statusLabel(r.status, r.feasibility) }}
                   </span>
                   <span v-if="r.deleted_at" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
@@ -486,7 +486,7 @@
         <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap shrink-0">
           <div class="flex items-center gap-3">
             <h3 class="text-base font-semibold text-gray-800">Заявка на подключение</h3>
-            <span v-if="detailData" :class="statusClass(detailData.status)"
+            <span v-if="detailData" :class="statusClass(detailData.status, detailData.feasibility)"
                   class="px-2 py-0.5 rounded-full text-xs font-medium">
               {{ statusLabel(detailData.status, detailData.feasibility) }}
             </span>
@@ -995,7 +995,8 @@ function statusLabel(s, feasibility) {
   if (s === 'pending') return feasibility ? 'Ожидает прозвон' : 'Ожидает техвозм.'
   return { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', cancelled: 'Отказ', closed: 'Выполнено' }[s] ?? s
 }
-function statusClass(s) {
+function statusClass(s, feasibility) {
+  if (s === 'pending') return feasibility ? 'bg-amber-100 text-amber-800' : 'bg-yellow-100 text-yellow-800'
   return {
     pending:   'bg-yellow-100 text-yellow-800',
     scheduled: 'bg-blue-100 text-blue-800',
