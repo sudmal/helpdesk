@@ -482,7 +482,7 @@
 
     <!-- Модал: Полная информация -->
     <div v-if="modals.detail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="modals.detail = false">
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap shrink-0">
           <div class="flex items-center gap-3">
             <h3 class="text-base font-semibold text-gray-800">Заявка на подключение</h3>
@@ -616,20 +616,27 @@
             <div class="text-xs font-medium text-gray-500 mb-2">История</div>
             <div v-if="!detailData.logs || !detailData.logs.length"
                  class="text-xs text-gray-400">История не записана (заявка создана до включения логирования)</div>
-            <div v-else class="space-y-0.5">
-              <div v-for="log in detailData.logs" :key="log.id"
-                   class="flex items-baseline gap-1.5 text-xs leading-tight py-0.5">
-                <span :class="logDotClass(log.action)" class="w-1.5 h-1.5 rounded-full shrink-0"></span>
-                <div class="min-w-0 flex flex-wrap items-baseline gap-x-1.5">
-                  <span class="font-medium text-gray-800">{{ logActionLabel(log.action) }}</span>
-                  <span class="text-gray-400">{{ fmtDateTime(log.created_at) }}</span>
-                  <span v-if="log.user" class="text-gray-500">— {{ log.user.name }}</span>
-                  <span v-if="log.notes" class="text-gray-600">· {{ log.notes }}</span>
-                  <span v-if="log.meta && log.meta.act_number" class="text-gray-500">· Акт: {{ log.meta.act_number }}</span>
-                  <span v-if="log.meta && log.meta.scheduled_at" class="text-gray-500">· Дата: {{ fmtDateTime(log.meta.scheduled_at) }}</span>
-                </div>
-              </div>
-            </div>
+            <table v-else class="w-full text-xs">
+              <thead>
+                <tr class="text-gray-400">
+                  <th class="text-left pb-1 pr-2">Действие</th>
+                  <th class="text-left pb-1 pr-2 whitespace-nowrap">Дата</th>
+                  <th class="text-left pb-1 pr-2">Автор</th>
+                  <th class="text-left pb-1">Комментарий</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr v-for="log in sortedLogs" :key="log.id" class="align-top">
+                  <td class="py-1 pr-2 whitespace-nowrap">
+                    <span :class="logDotClass(log.action)" class="inline-block w-1.5 h-1.5 rounded-full mr-1"></span>
+                    <span class="font-medium text-gray-800">{{ logActionLabel(log.action) }}</span>
+                  </td>
+                  <td class="py-1 pr-2 whitespace-nowrap text-gray-400">{{ fmtDateTime(log.created_at) }}</td>
+                  <td class="py-1 pr-2 text-gray-600 whitespace-nowrap">{{ log.user?.name || '—' }}</td>
+                  <td class="py-1 text-gray-600">{{ logComment(log) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -1066,5 +1073,15 @@ function logDotClass(action) {
     deleted:    'bg-gray-500',
     act_added_retroactively: 'bg-teal-500',
   }[action] ?? 'bg-gray-300'
+}
+
+const sortedLogs = computed(() => detailData.value?.logs ? [...detailData.value.logs].reverse() : [])
+
+function logComment(log) {
+  const parts = []
+  if (log.notes) parts.push(log.notes)
+  if (log.meta?.act_number) parts.push('Акт: ' + log.meta.act_number)
+  if (log.meta?.scheduled_at) parts.push('Дата: ' + fmtDateTime(log.meta.scheduled_at))
+  return parts.length ? parts.join(' · ') : '—'
 }
 </script>
