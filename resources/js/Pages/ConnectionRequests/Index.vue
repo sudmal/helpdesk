@@ -134,8 +134,8 @@
                     <span v-else-if="r.feasibility === 'impossible'" class="text-red-600"
                           :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
                   </span>
-                  <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium">
-                    {{ statusLabel(r.status) }}
+                  <span :class="statusClass(r.status)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                    {{ statusLabel(r.status, r.feasibility) }}
                   </span>
                   <span v-if="r.deleted_at" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
                     Удалена
@@ -488,7 +488,7 @@
             <h3 class="text-base font-semibold text-gray-800">Заявка на подключение</h3>
             <span v-if="detailData" :class="statusClass(detailData.status)"
                   class="px-2 py-0.5 rounded-full text-xs font-medium">
-              {{ statusLabel(detailData.status) }}
+              {{ statusLabel(detailData.status, detailData.feasibility) }}
             </span>
           </div>
           <div class="flex items-center gap-1.5 flex-wrap">
@@ -984,7 +984,8 @@ function submitCancel() {
   })
 }
 
-function statusLabel(s) {
+function statusLabel(s, feasibility) {
+  if (s === 'pending') return feasibility ? 'Ожидает прозвон' : 'Ожидает техвозм.'
   return { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', cancelled: 'Отказ', closed: 'Выполнено' }[s] ?? s
 }
 function statusClass(s) {
