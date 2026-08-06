@@ -120,13 +120,23 @@
       <div v-for="group in groupedStreets" :key="group.letter" class="mb-4">
         <div class="text-sm font-bold text-gray-400 px-1 mb-1.5">{{ group.letter }}</div>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          <button v-for="st in group.streets" :key="st.name"
-                  @click="selectStreet(st.name)"
-                  class="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200
-                         rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm text-left">
-            <span class="font-medium truncate">{{ st.name }}</span>
-            <span class="text-xs text-gray-400 ml-2 shrink-0">{{ st.count }}</span>
-          </button>
+          <div v-for="st in group.streets" :key="st.name"
+               class="flex items-center px-3 py-2.5 bg-white border border-gray-200
+                      rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm">
+            <button @click="selectStreet(st.name)"
+                    class="flex-1 min-w-0 flex items-center justify-between text-left">
+              <span class="font-medium truncate">{{ st.name }}</span>
+              <span class="text-xs text-gray-400 ml-2 shrink-0">{{ st.count }}</span>
+            </button>
+            <button @click.stop="openRenameStreet(st.name)" title="Переименовать улицу"
+                    class="ml-1.5 shrink-0 text-gray-300 hover:text-blue-600 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
       <p v-if="!filteredStreets.length" class="text-gray-400 text-sm py-6 text-center">Улицы не найдены</p>
@@ -438,6 +448,39 @@
           </button>
         </div>
       </form>
+    </Modal>
+
+    <!-- Переименование улицы -->
+    <Modal v-if="showRenameStreetModal" title="Переименовать улицу" @close="closeRenameStreetModal">
+      <div class="space-y-4">
+        <div v-if="!renameStreetConfirm">
+          <label class="field-label">Название улицы</label>
+          <input v-model="renameStreetForm.new" type="text"
+                 class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                 @keyup.enter="submitRenameStreet" />
+          <p class="text-xs text-gray-400 mt-1">
+            Было: «{{ renameStreetForm.old }}». Если новое название совпадёт с уже существующей
+            улицей — адреса объединятся в неё.
+          </p>
+        </div>
+        <div v-else class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-amber-800">
+          Улица «{{ renameStreetForm.new }}» уже существует
+          ({{ renameStreetConfirm.target_count }} адресов). Все {{ renameStreetConfirm.source_count }}
+          адресов с «{{ renameStreetForm.old }}» будут перенесены туда, дубликаты домов/квартир объединятся.
+          Продолжить?
+        </div>
+        <div v-if="renameStreetError" class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
+          {{ renameStreetError }}
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="closeRenameStreetModal" class="btn-outline text-sm">Отмена</button>
+          <button @click="submitRenameStreet" :disabled="renameStreetLoading"
+                  :class="['text-sm disabled:opacity-50', renameStreetConfirm ? 'btn-primary bg-amber-600 hover:bg-amber-700 border-amber-600' : 'btn-primary']">
+            {{ renameStreetLoading ? 'Сохраняю…' : (renameStreetConfirm ? 'Объединить' : 'Сохранить') }}
+          </button>
+        </div>
+      </div>
     </Modal>
 
     <!-- Импорт -->
@@ -826,6 +869,59 @@ function submitTerritoryChange() {
     .post(route('addresses.set-territory'), {
       onSuccess: () => { showTerritoryChangeModal.value = false; router.reload() },
     })
+}
+
+// ── Переименование/слияние улицы ───────────────────────────────────
+const showRenameStreetModal = ref(false)
+const renameStreetForm      = reactive({ old: '', new: '' })
+const renameStreetConfirm   = ref(null)
+const renameStreetError     = ref('')
+const renameStreetLoading   = ref(false)
+
+function openRenameStreet(streetName) {
+  renameStreetForm.old = streetName
+  renameStreetForm.new = streetName
+  renameStreetConfirm.value = null
+  renameStreetError.value = ''
+  showRenameStreetModal.value = true
+}
+
+function closeRenameStreetModal() {
+  showRenameStreetModal.value = false
+  renameStreetConfirm.value = null
+  renameStreetError.value = ''
+}
+
+async function submitRenameStreet() {
+  const newName = renameStreetForm.new.trim()
+  if (!newName) { renameStreetError.value = 'Название не может быть пустым'; return }
+
+  renameStreetLoading.value = true
+  renameStreetError.value = ''
+  try {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+    const { data } = await axios.patch(route('addresses.rename-street'), {
+      city: selected.value.city,
+      street: renameStreetForm.old,
+      new_street: newName,
+      confirm_merge: !!renameStreetConfirm.value,
+    }, { headers: { 'X-CSRF-TOKEN': csrf } })
+
+    if (data.needs_confirm) {
+      renameStreetConfirm.value = data
+      return
+    }
+
+    showRenameStreetModal.value = false
+    if (data.merged) {
+      alert(`Готово. Перенесено адресов: ${data.moved}, объединено дублей: ${data.merged}.`)
+    }
+    router.reload()
+  } catch (e) {
+    renameStreetError.value = e.response?.data?.message ?? e.message
+  } finally {
+    renameStreetLoading.value = false
+  }
 }
 
 // ── Импорт ─────────────────────────────────────────────────────────

@@ -220,6 +220,85 @@ class AddressController extends Controller
         return response()->json(['updated' => $count]);
     }
 
+    /**
+     * Переименование улицы (город+название). Если исправленное название
+     * совпадает с уже существующей улицей — это слияние: для каждого
+     * адреса со старым названием ищем "двойника" на целевой улице по
+     * (building, apartment); если двойник есть — переносим на него ссылки
+     * заявок/звонков и удаляем старую запись (пробелы в данных двойника
+     * донаполняем из удаляемой записи), иначе просто переписываем street.
+     * Без совпадения — обычное переименование, все записи одной командой.
+     * Сначала (без confirm_merge) только считаем и просим подтверждение —
+     * это необратимая операция, слияние не должно происходить по опечатке.
+     */
+    public function renameStreet(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'city'          => 'required|string|max:100',
+            'street'        => 'required|string|max:200',
+            'new_street'    => 'required|string|max:200',
+            'confirm_merge' => 'nullable|boolean',
+        ]);
+
+        $city = $data['city'];
+        $from = $data['street'];
+        $to   = trim($data['new_street']);
+
+        if ($to === '') {
+            return response()->json(['message' => 'Название улицы не может быть пустым'], 422);
+        }
+        if ($to === $from) {
+            return response()->json(['ok' => true, 'moved' => 0, 'merged' => 0]);
+        }
+
+        $targetExists = Address::where('city', $city)->where('street', $to)->exists();
+
+        if ($targetExists && !$request->boolean('confirm_merge')) {
+            return response()->json([
+                'needs_confirm' => true,
+                'target_count'  => Address::where('city', $city)->where('street', $to)->count(),
+                'source_count'  => Address::where('city', $city)->where('street', $from)->count(),
+            ]);
+        }
+
+        $moved  = 0;
+        $merged = 0;
+
+        DB::transaction(function () use ($city, $from, $to, &$moved, &$merged) {
+            // Пробелы донаполняем данными переносимой записи, только если у
+            // двойника это поле пустое -- значения двойника имеют приоритет.
+            $fillableGaps = ['subscriber_name', 'phone', 'contract_no', 'lanbilling_id',
+                              'lanbilling_data', 'notes', 'lat', 'lng', 'is_private', 'entrance', 'floor'];
+
+            foreach (Address::where('city', $city)->where('street', $from)->get() as $row) {
+                $twin = Address::where('city', $city)->where('street', $to)
+                    ->where('building', $row->building)
+                    ->when($row->apartment === null, fn($q) => $q->whereNull('apartment'),
+                                                      fn($q) => $q->where('apartment', $row->apartment))
+                    ->first();
+
+                if ($twin) {
+                    $fill = [];
+                    foreach ($fillableGaps as $f) {
+                        if (blank($twin->$f) && !blank($row->$f)) $fill[$f] = $row->$f;
+                    }
+                    if ($fill) $twin->update($fill);
+
+                    \App\Models\Ticket::where('address_id', $row->id)->update(['address_id' => $twin->id]);
+                    DB::table('calls')->where('address_id', $row->id)->update(['address_id' => $twin->id]);
+
+                    $row->delete();
+                    $merged++;
+                } else {
+                    $row->update(['street' => $to]);
+                    $moved++;
+                }
+            }
+        });
+
+        return response()->json(['ok' => true, 'moved' => $moved, 'merged' => $merged]);
+    }
+
     public function bulkSetType(Request $request): \Illuminate\Http\JsonResponse
     {
         $data = $request->validate([
