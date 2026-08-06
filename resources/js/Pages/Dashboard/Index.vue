@@ -150,13 +150,13 @@
               </th>
               <th class="px-2 py-1.5 text-left">Адрес / Описание</th>
               <th class="px-2 py-1.5 text-left hidden md:table-cell w-24">Тип</th>
-              <th class="px-2 py-1.5 text-left hidden lg:table-cell w-28">Телефон</th>
+              <th class="px-2 py-1.5 text-left hidden lg:table-cell w-40">Телефон</th>
               <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100 w-32"
                   @click="sortBy('status_id')">
                 Статус {{ sortIcon('status_id') }}
               </th>
-              <th class="px-2 py-1.5 text-left text-gray-500 w-20">Акт</th>
-              <th class="px-2 py-1.5 text-left text-gray-500 w-40">Комментарий</th>
+              <th class="px-2 py-1.5 text-left text-gray-500 w-16">Акт</th>
+              <th class="px-2 py-1.5 text-left text-gray-500 w-32">Комментарий</th>
               <th class="px-2 py-1.5 w-16"></th>
             </tr>
           </thead>
@@ -204,7 +204,7 @@
               <td class="px-2 py-0.5 hidden md:table-cell overflow-hidden">
                 <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
               </td>
-              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap overflow-hidden truncate">{{ t.phone ?? '—' }}</td>
+              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap">{{ t.phone ?? '—' }}</td>
               <td class="px-2 py-0.5 overflow-hidden">
                 <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
                 <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap align-middle">
@@ -291,14 +291,14 @@
                 <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
               </p>
             </td>
-            <td class="px-3 py-px hidden sm:table-cell w-24 overflow-hidden">
+            <td class="px-3 py-px hidden sm:table-cell w-20 overflow-hidden">
               <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px w-32 overflow-hidden">
+            <td class="px-3 py-px w-28 overflow-hidden">
               <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-28 overflow-hidden truncate whitespace-nowrap">{{ t.phone ?? '—' }}</td>
-            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-36 overflow-hidden">
+            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-40 whitespace-nowrap">{{ t.phone ?? '—' }}</td>
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-32 overflow-hidden">
               {{ formatDateTime(t.scheduled_at) }}
               <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full align-middle">
                 {{ t.days_overdue }} дн.
