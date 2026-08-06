@@ -4,7 +4,7 @@
                  isActive
                    ? 'bg-blue-600 text-white'
                    : 'text-white/70 hover:bg-white/10 hover:text-white']">
-    <Icon :name="icon" class="w-3.5 h-3.5 shrink-0" />
+    <Icon :name="icon" :class="['w-3.5 h-3.5 shrink-0', iconClass]" />
     <span class="truncate">{{ label }}</span>
     <slot />
   </InertiaLink>
@@ -16,9 +16,10 @@ import { Link as InertiaLink, usePage } from '@inertiajs/vue3'
 import Icon from '@/Components/UI/Icon.vue'
 
 const props = defineProps({
-  href:  { type: String, required: true },
-  icon:  { type: String, required: true },
-  label: { type: String, required: true },
+  href:      { type: String, required: true },
+  icon:      { type: String, required: true },
+  label:     { type: String, required: true },
+  iconClass: { type: [String, Array, Object], default: '' },
 })
 
 const page = usePage()

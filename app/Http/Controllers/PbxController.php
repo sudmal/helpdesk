@@ -238,6 +238,23 @@ class PbxController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
+    /**
+     * Лёгкий снимок очереди для поллинга из сайдбара (иконка "Звонки"
+     * перекрашивается по состоянию) — без истории/детализации операторов,
+     * которые тянет queueHistory(), чтобы не нагружать БД частым опросом
+     * с каждой открытой вкладки.
+     */
+    public function queueLatest(): JsonResponse
+    {
+        $latest = QueueStat::orderByDesc('recorded_at')->first(['waiting', 'talking', 'recorded_at']);
+
+        return response()->json([
+            'waiting'      => $latest->waiting ?? 0,
+            'talking'      => $latest->talking ?? 0,
+            'recorded_at'  => $latest->recorded_at,
+        ]);
+    }
+
     public function queueHistory(Request $request): JsonResponse
     {
         $queue = $request->input('queue');

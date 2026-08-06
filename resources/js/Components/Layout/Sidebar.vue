@@ -55,7 +55,8 @@
       </NavItem>
       <NavItem v-if="canManageSettings"
                :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" />
-      <NavItem v-if="can('calls.view')" :href="route('calls.index')" icon="phone" label="Звонки" />
+      <NavItem v-if="can('calls.view')" :href="route('calls.index')" icon="phone" label="Звонки"
+               :icon-class="phoneIconClass" :title="phoneIconTitle" />
       <NavItem v-if="canManageSettings"
                :href="route('settings.index')"      icon="settings" label="Настройки" />
       <NavItem :href="route('help')" icon="help-circle" label="Справка" data-tour="tour-nav-help" />
@@ -179,7 +180,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch, nextTick } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import NavItem from './NavItem.vue'
 import QRCode from 'qrcode'
@@ -214,6 +215,59 @@ const serviceRequestAlerts = computed(() =>
 const actsAlerts = computed(() =>
   page.props.actsAlerts ?? { pending: 0 }
 )
+
+// ── Иконка "Звонки" перекрашивается по текущему состоянию очереди АТС ──
+// (waiting/talking из QueueStat, тот же источник, что и на живом графике
+// Calls/Index.vue) — 0/0 синяя, 1-2 в очереди ИЛИ есть разговор зелёная,
+// 3-6 жёлтая, 7-10 красная, 11+ красная мигающая ("горит").
+const queueWaiting = ref(0)
+const queueTalking = ref(0)
+let queuePollTimer = null
+
+async function pollQueue() {
+  try {
+    const res = await fetch(route('pbx.queue-latest'))
+    if (!res.ok) return
+    const data = await res.json()
+    queueWaiting.value = data.waiting ?? 0
+    queueTalking.value = data.talking ?? 0
+  } catch {}
+}
+
+const phoneTier = computed(() => {
+  const w = queueWaiting.value
+  const t = queueTalking.value
+  if (w === 0 && t === 0) return 'idle'
+  if (w <= 2) return 'active'
+  if (w <= 6) return 'busy'
+  if (w <= 10) return 'high'
+  return 'fire'
+})
+
+const phoneIconClass = computed(() => ({
+  idle:   'text-blue-400',
+  active: 'text-green-400',
+  busy:   'text-yellow-400',
+  high:   'text-red-500',
+  fire:   'text-red-500 animate-pulse',
+}[phoneTier.value]))
+
+const phoneIconTitle = computed(() => {
+  const parts = []
+  if (queueWaiting.value > 0) parts.push(`В очереди: ${queueWaiting.value}`)
+  if (queueTalking.value > 0) parts.push(`Разговаривают: ${queueTalking.value}`)
+  return parts.length ? parts.join(', ') : 'Очередь пуста'
+})
+
+onMounted(() => {
+  if (can('calls.view')) {
+    pollQueue()
+    queuePollTimer = setInterval(pollQueue, 20000)
+  }
+})
+onUnmounted(() => {
+  if (queuePollTimer) clearInterval(queuePollTimer)
+})
 
 const canManageSettings = computed(() =>
   ['admin', 'head_support'].includes(props.user?.role?.slug)

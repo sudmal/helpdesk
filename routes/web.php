@@ -262,6 +262,7 @@ Route::post('/sync/legacy-ticket', [SyncController::class, 'storeLegacy'])->name
 // АТС — состояние очереди (без CSRF, защищено токеном)
 Route::post('/pbx/queue-status', [\App\Http\Controllers\PbxController::class, 'queueStatus'])->name('pbx.queue-status');
 Route::middleware(['auth', 'active'])->get('/pbx/queue-history', [\App\Http\Controllers\PbxController::class, 'queueHistory'])->name('pbx.queue-history');
+Route::middleware(['auth', 'active'])->get('/pbx/queue-latest', [\App\Http\Controllers\PbxController::class, 'queueLatest'])->name('pbx.queue-latest');
 Route::middleware(['auth', 'active'])->post('/pbx/trigger-cmd', [\App\Http\Controllers\PbxController::class, 'triggerCmd'])->name('pbx.trigger-cmd');
 Route::post('/pbx/ivr-log', [\App\Http\Controllers\PbxController::class, 'ivrLog'])->name('pbx.ivr-log');
 Route::post('/pbx/alert', [\App\Http\Controllers\PbxController::class, 'alert'])->name('pbx.alert');
