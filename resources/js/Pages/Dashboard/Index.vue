@@ -135,12 +135,12 @@
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-xs">
+        <table class="w-full text-xs table-fixed">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50 text-gray-500 font-medium">
               <th class="w-5 px-1 py-2.5"></th>
               <th class="w-6 px-2 py-2.5"></th>
-              <th class="px-3 py-2.5 text-left cursor-pointer hover:bg-gray-100 w-20"
+              <th class="px-3 py-2.5 text-left cursor-pointer hover:bg-gray-100 w-16"
                   @click="sortBy('scheduled_at')">
                 Время {{ sortIcon('scheduled_at') }}
               </th>
@@ -149,14 +149,14 @@
                 № {{ sortIcon('number') }}
               </th>
               <th class="px-2 py-1.5 text-left">Адрес / Описание</th>
-              <th class="px-2 py-1.5 text-left hidden md:table-cell">Тип</th>
-              <th class="px-2 py-1.5 text-left hidden lg:table-cell">Телефон</th>
-              <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100"
+              <th class="px-2 py-1.5 text-left hidden md:table-cell w-24">Тип</th>
+              <th class="px-2 py-1.5 text-left hidden lg:table-cell w-28">Телефон</th>
+              <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100 w-32"
                   @click="sortBy('status_id')">
                 Статус {{ sortIcon('status_id') }}
               </th>
-              <th class="px-2 py-1.5 text-left text-gray-500 w-14">Акт</th>
-              <th class="px-2 py-1.5 text-left text-gray-500">Комментарий</th>
+              <th class="px-2 py-1.5 text-left text-gray-500 w-20">Акт</th>
+              <th class="px-2 py-1.5 text-left text-gray-500 w-40">Комментарий</th>
               <th class="px-2 py-1.5 w-16"></th>
             </tr>
           </thead>
@@ -190,7 +190,7 @@
               <td class="px-2 py-0.5">
                 <span class="font-mono text-blue-600 font-medium text-xs">{{ t.number }}</span>
               </td>
-              <td class="px-2 py-0.5 max-w-xs w-64">
+              <td class="px-2 py-0.5">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
                 <p class="text-gray-600 text-xs leading-tight" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
                   <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 90) }}</span>
@@ -204,20 +204,20 @@
               <td class="px-2 py-0.5 hidden md:table-cell">
                 <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
               </td>
-              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap">{{ t.phone ?? '—' }}</td>
+              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap truncate">{{ t.phone ?? '—' }}</td>
               <td class="px-2 py-0.5">
                 <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
                 <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap align-middle">
                   +{{ t.days_overdue }} дн.
                 </span>
               </td>
-              <td class="px-2 py-0.5 w-14">
+              <td class="px-2 py-0.5">
                 <span v-if="t.status?.is_final"
                       class="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded whitespace-nowrap">
                   {{ t.act?.number || 'б/а' }}
                 </span>
               </td>
-              <td class="px-2 pr-1 py-0.5 min-w-[120px] max-w-[200px]">
+              <td class="px-2 pr-1 py-0.5">
                 <p v-if="t.status?.is_final && t.close_notes"
                    class="text-xs text-gray-400 truncate leading-tight" :title="t.close_notes">
                   {{ t.close_notes }}
