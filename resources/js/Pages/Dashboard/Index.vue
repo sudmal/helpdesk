@@ -201,19 +201,19 @@
                   <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
                 </p>
               </td>
-              <td class="px-2 py-0.5 hidden md:table-cell">
-                <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
+              <td class="px-2 py-0.5 hidden md:table-cell overflow-hidden">
+                <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
               </td>
-              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap truncate">{{ t.phone ?? '—' }}</td>
-              <td class="px-2 py-0.5">
-                <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
+              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap overflow-hidden truncate">{{ t.phone ?? '—' }}</td>
+              <td class="px-2 py-0.5 overflow-hidden">
+                <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
                 <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap align-middle">
                   +{{ t.days_overdue }} дн.
                 </span>
               </td>
-              <td class="px-2 py-0.5">
+              <td class="px-2 py-0.5 overflow-hidden">
                 <span v-if="t.status?.is_final"
-                      class="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded whitespace-nowrap">
+                      class="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded whitespace-nowrap truncate inline-block max-w-full align-middle">
                   {{ t.act?.number || 'б/а' }}
                 </span>
               </td>
@@ -291,14 +291,14 @@
                 <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
               </p>
             </td>
-            <td class="px-3 py-px hidden sm:table-cell w-24">
-              <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
+            <td class="px-3 py-px hidden sm:table-cell w-24 overflow-hidden">
+              <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px w-32">
-              <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
+            <td class="px-3 py-px w-32 overflow-hidden">
+              <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-28 truncate">{{ t.phone ?? '—' }}</td>
-            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-32">
+            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-28 overflow-hidden truncate whitespace-nowrap">{{ t.phone ?? '—' }}</td>
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-36 overflow-hidden">
               {{ formatDateTime(t.scheduled_at) }}
               <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full align-middle">
                 {{ t.days_overdue }} дн.
