@@ -266,7 +266,7 @@
         </div>
       </div>
       <div>
-      <table class="w-full text-xs">
+      <table class="w-full text-xs table-fixed">
         <tbody class="divide-y divide-red-100">
           <tr v-for="t in (overdue ?? [])" :key="t.id"
               class="hover:bg-red-100/50 cursor-pointer transition-colors"
@@ -281,8 +281,8 @@
               <span class="font-mono text-red-700 font-medium">{{ t.number }}</span>
             </td>
             <td class="px-3 py-px">
-              <p class="font-medium text-gray-800 truncate max-w-[180px]">{{ fullAddress(t) }}</p>
-              <p class="text-gray-500 text-xs" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate max-w-[180px]'">
+              <p class="font-medium text-gray-800 truncate">{{ fullAddress(t) }}</p>
+              <p class="text-gray-500 text-xs" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
                 <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 90) }}</span>
                 <button v-if="(t.description?.length ?? 0) > 90" @click.stop="toggleDesc(t.id)"
                         class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
@@ -291,14 +291,14 @@
                 <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
               </p>
             </td>
-            <td class="px-3 py-px hidden sm:table-cell">
+            <td class="px-3 py-px hidden sm:table-cell w-24">
               <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
             </td>
-            <td class="px-3 py-px">
+            <td class="px-3 py-px w-32">
               <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
             </td>
-            <td class="px-3 py-px hidden md:table-cell text-gray-500">{{ t.phone ?? '—' }}</td>
-            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4">
+            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-28 truncate">{{ t.phone ?? '—' }}</td>
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-32">
               {{ formatDateTime(t.scheduled_at) }}
               <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full align-middle">
                 {{ t.days_overdue }} дн.
