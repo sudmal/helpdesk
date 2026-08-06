@@ -149,14 +149,14 @@
                 № {{ sortIcon('number') }}
               </th>
               <th class="px-2 py-1.5 text-left">Адрес / Описание</th>
-              <th class="px-2 py-1.5 text-left hidden md:table-cell w-24">Тип</th>
+              <th class="px-2 py-1.5 text-left hidden md:table-cell w-32">Тип</th>
               <th class="px-2 py-1.5 text-left hidden lg:table-cell w-40">Телефон</th>
               <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100 w-32"
                   @click="sortBy('status_id')">
                 Статус {{ sortIcon('status_id') }}
               </th>
               <th class="px-2 py-1.5 text-left text-gray-500 w-16">Акт</th>
-              <th class="px-2 py-1.5 text-left text-gray-500 w-32">Комментарий</th>
+              <th class="px-2 py-1.5 text-left text-gray-500 w-24">Комментарий</th>
               <th class="px-2 py-1.5 w-16"></th>
             </tr>
           </thead>
@@ -291,10 +291,10 @@
                 <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
               </p>
             </td>
-            <td class="px-3 py-px hidden sm:table-cell w-16 overflow-hidden">
+            <td class="px-3 py-px hidden sm:table-cell w-32 overflow-hidden">
               <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px w-24 overflow-hidden">
+            <td class="px-3 py-px w-28 overflow-hidden">
               <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
             </td>
             <td class="px-3 py-px hidden md:table-cell text-gray-500 w-40 whitespace-nowrap">{{ t.phone ?? '—' }}</td>
