@@ -262,7 +262,7 @@
             <button @click="selectedOverdue = new Set()" class="text-xs text-red-400 hover:text-red-700">✕</button>
           </template>
           <a :href="route('tickets.index', { overdue: 1, service_type: serviceType, territory: selectedTerritory })"
-             class="text-xs text-red-600 hover:text-red-800 font-medium">Открыть список →</a>
+             class="text-xs text-red-600 hover:text-red-800 font-medium whitespace-nowrap shrink-0">Открыть список →</a>
         </div>
       </div>
       <div>
@@ -291,14 +291,14 @@
                 <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
               </p>
             </td>
-            <td class="px-3 py-px hidden sm:table-cell w-20 overflow-hidden">
+            <td class="px-3 py-px hidden sm:table-cell w-16 overflow-hidden">
               <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px w-28 overflow-hidden">
+            <td class="px-3 py-px w-24 overflow-hidden">
               <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
             </td>
             <td class="px-3 py-px hidden md:table-cell text-gray-500 w-40 whitespace-nowrap">{{ t.phone ?? '—' }}</td>
-            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-32 overflow-hidden">
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-44">
               {{ formatDateTime(t.scheduled_at) }}
               <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full align-middle">
                 {{ t.days_overdue }} дн.

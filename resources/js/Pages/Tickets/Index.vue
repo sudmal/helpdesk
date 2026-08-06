@@ -115,7 +115,7 @@
                 <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded border-gray-300 cursor-pointer" />
               </th>
               <th class="w-5 px-1 py-0.5"></th>
-              <th class="text-left px-2 py-0.5 w-20 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
                 Добавлена <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
               </th>
@@ -125,13 +125,13 @@
               </th>
               <th class="text-left px-2 py-0.5 hidden sm:table-cell w-14">Автор</th>
               <th class="text-left px-2 py-0.5">Адрес / Описание</th>
-              <th class="text-left px-2 py-0.5 hidden md:table-cell w-24">Тип</th>
-              <th class="text-left px-2 py-0.5 hidden lg:table-cell w-20">Бригада</th>
-              <th class="text-left px-2 py-0.5 w-20 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden md:table-cell w-20">Тип</th>
+              <th class="text-left px-2 py-0.5 hidden lg:table-cell w-16">Бригада</th>
+              <th class="text-left px-2 py-0.5 w-16 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('status_id')">
                 Статус <span class="text-gray-400">{{ sortIcon('status_id') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-20 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-28 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('scheduled_at')">
                 Выезд <span class="text-gray-400">{{ sortIcon('scheduled_at') }}</span>
               </th>
