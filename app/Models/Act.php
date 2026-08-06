@@ -33,10 +33,11 @@ class Act extends Model
 
             $logisticsDone = $act->logistics_processed_at !== null;
             $peoDone       = $act->type !== 'regular' || $act->peo_processed_at !== null;
+            $aoDone        = $act->subscriber_dept_processed_at !== null;
 
-            if (!$logisticsDone || !$peoDone) {
+            if (!$logisticsDone || !$peoDone || !$aoDone) {
                 throw new \RuntimeException(
-                    "Акт {$act->number} нельзя завершить: не проведены все требуемые отделы (ПЭО/Логистика)."
+                    "Акт {$act->number} нельзя завершить: не проведены все требуемые отделы (ПЭО/Логистика/Абонотдел)."
                 );
             }
         });
@@ -47,6 +48,7 @@ class Act extends Model
         'foreman_reviewed_by', 'foreman_reviewed_at', 'foreman_return_comment',
         'peo_processed_by', 'peo_processed_at',
         'logistics_processed_by', 'logistics_processed_at',
+        'subscriber_dept_processed_by', 'subscriber_dept_processed_at',
         'subscriber_dept_completed_by', 'subscriber_dept_completed_at',
         'materials_changed_at', 'materials_corrected_at',
         'promotion_id', 'promotion_name', 'promotion_price',
@@ -56,6 +58,7 @@ class Act extends Model
         'foreman_reviewed_at'          => 'datetime',
         'peo_processed_at'             => 'datetime',
         'logistics_processed_at'       => 'datetime',
+        'subscriber_dept_processed_at' => 'datetime',
         'subscriber_dept_completed_at' => 'datetime',
         'materials_changed_at'         => 'datetime',
         'materials_corrected_at'       => 'datetime',
@@ -71,6 +74,7 @@ class Act extends Model
     public function foremanReviewer(): BelongsTo         { return $this->belongsTo(User::class, 'foreman_reviewed_by'); }
     public function peoProcessor(): BelongsTo            { return $this->belongsTo(User::class, 'peo_processed_by'); }
     public function logisticsProcessor(): BelongsTo      { return $this->belongsTo(User::class, 'logistics_processed_by'); }
+    public function subscriberDeptProcessor(): BelongsTo { return $this->belongsTo(User::class, 'subscriber_dept_processed_by'); }
     public function subscriberDeptCompleter(): BelongsTo { return $this->belongsTo(User::class, 'subscriber_dept_completed_by'); }
 
     /**

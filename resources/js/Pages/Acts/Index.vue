@@ -133,7 +133,7 @@
                     <span v-else class="text-gray-400">—</span>
                   </td>
                   <td class="px-2 py-1 whitespace-nowrap">
-                    <span v-if="row.act.subscriber_dept_completed_at" class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">✓</span>
+                    <span v-if="row.act.subscriber_dept_processed_at" class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">✓</span>
                     <span v-else class="text-gray-400">—</span>
                   </td>
                 </tr>

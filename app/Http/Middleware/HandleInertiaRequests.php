@@ -110,12 +110,16 @@ class HandleInertiaRequests extends Middleware
                         $user->isForeman()       => (clone $base)->where('status', 'pending_foreman')->count(),
                         $user->isPeo()           => (clone $base)->whereIn('status', ['approved', 'processing'])->where('type', 'regular')->whereNull('peo_processed_at')->count(),
                         $user->isLogistics()     => (clone $base)->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at')->count(),
-                        $user->isSubscriberDept() => (clone $base)->where('status', 'pending_subscriber_dept')->count(),
+                        $user->isSubscriberDept() => (clone $base)->where(function ($q) {
+                            $q->where('status', 'pending_subscriber_dept')
+                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('subscriber_dept_processed_at'); });
+                        })->count(),
                         default => (clone $base)->where(function ($q) {
                             $q->where('status', 'pending_foreman')
                               ->orWhere('status', 'pending_subscriber_dept')
                               ->orWhere(function ($q2) { $q2->where('type', 'regular')->whereIn('status', ['approved', 'processing'])->whereNull('peo_processed_at'); })
-                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at'); });
+                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at'); })
+                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('subscriber_dept_processed_at'); });
                         })->count(),
                     };
                 }

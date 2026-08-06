@@ -23,7 +23,8 @@
 
         <button v-if="can.processPeo" @click="post('acts.process-peo')" class="btn-act-primary">Отметить проведённым (ПЭО)</button>
         <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-act-primary">Отметить проведённым (Логистика)</button>
-        <button v-if="can.complete" @click="post('acts.complete')" class="btn-act-primary">Завершить акт</button>
+        <button v-if="can.processSubscriberDept" @click="post('acts.process-subscriber-dept')" class="btn-act-primary">Отметить проведённым (Абонотдел)</button>
+        <button v-if="can.complete" @click="post('acts.complete')" class="btn-act-primary">Отправить в архив</button>
       </div>
     </template>
 
@@ -79,7 +80,7 @@
       <!-- Прогресс по этапам -->
       <div class="bg-white rounded-xl border border-gray-200 p-3.5">
         <h3 class="font-medium text-sm text-gray-700 mb-2.5">Прогресс согласования</h3>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div class="rounded-xl border border-gray-100 p-3">
             <p class="text-xs text-gray-400 mb-1">Бригадир</p>
             <p class="text-sm font-medium" :class="act.foreman_reviewed_at ? 'text-green-600' : 'text-gray-400'">
@@ -103,8 +104,15 @@
           </div>
           <div class="rounded-xl border border-gray-100 p-3">
             <p class="text-xs text-gray-400 mb-1">Абонотдел</p>
+            <p class="text-sm font-medium" :class="act.subscriber_dept_processed_at ? 'text-green-600' : 'text-gray-400'">
+              {{ act.subscriber_dept_processed_at ? 'Проведён' : 'Ожидает' }}
+            </p>
+            <p v-if="act.subscriber_dept_processor" class="text-[11px] text-gray-400 mt-0.5">{{ act.subscriber_dept_processor.name }}</p>
+          </div>
+          <div class="rounded-xl border border-gray-100 p-3">
+            <p class="text-xs text-gray-400 mb-1">Архив</p>
             <p class="text-sm font-medium" :class="act.subscriber_dept_completed_at ? 'text-green-600' : 'text-gray-400'">
-              {{ act.subscriber_dept_completed_at ? 'Завершён' : 'Ожидает' }}
+              {{ act.subscriber_dept_completed_at ? 'Отправлен' : 'Ожидает' }}
             </p>
             <p v-if="act.subscriber_dept_completer" class="text-[11px] text-gray-400 mt-0.5">{{ act.subscriber_dept_completer.name }}</p>
           </div>
@@ -263,7 +271,8 @@ function actionLabel(action) {
     approved:             'Утверждён бригадиром',
     peo_processed:        'Проведён ПЭО',
     logistics_processed:  'Проведён Логистикой',
-    completed:            'Завершён Абонотделом',
+    subscriber_dept_processed: 'Проведён Абонотделом',
+    completed:            'Отправлен в архив Абонотделом',
     material_added:       'Бригадир добавил материал',
     material_changed:     'Бригадир изменил количество',
     material_removed:     'Бригадир удалил материал',

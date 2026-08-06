@@ -71,7 +71,27 @@ class ActPolicy
         return $this->scopeMatch($user, $act);
     }
 
-    /** Абонотдел: только работники Абонотдела (роль subscriber_dept) */
+    /**
+     * Абонотдел: собственная "виза", независимая от ПЭО/Логистики и от
+     * финальной отправки в архив (complete ниже) — ставится в любом порядке
+     * относительно них, как и processPeo/processLogistics.
+     */
+    public function processSubscriberDept(User $user, Act $act): bool
+    {
+        if (!in_array($act->status, ['approved', 'processing'])) return false;
+        if ($act->subscriber_dept_processed_at !== null) return false;
+        if (!$user->isSubscriberDept()) return false;
+        if (!$user->hasPermission('acts.process_subscriber_dept')) return false;
+
+        return $this->scopeMatch($user, $act);
+    }
+
+    /**
+     * Абонотдел: отправка в архив — только когда проведены все требуемые для
+     * этого типа стороны, включая собственную визу Абонотдела выше
+     * (status уходит в pending_subscriber_dept только после этого,
+     * см. ActController::recomputeAfterProcessing()).
+     */
     public function complete(User $user, Act $act): bool
     {
         if ($act->status !== 'pending_subscriber_dept') return false;

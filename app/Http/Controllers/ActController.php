@@ -78,6 +78,7 @@ class ActController extends Controller
                 'foremanReviewer:id,name',
                 'peoProcessor:id,name',
                 'logisticsProcessor:id,name',
+                'subscriberDeptProcessor:id,name',
                 'subscriberDeptCompleter:id,name',
             ])
             ->when($scopeToTerritory, fn($q) =>
@@ -151,7 +152,8 @@ class ActController extends Controller
             'connectionRequest.territory', 'connectionRequest.brigade',
             'materials.material',
             'history.user',
-            'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor', 'subscriberDeptCompleter',
+            'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor',
+            'subscriberDeptProcessor', 'subscriberDeptCompleter',
         ]);
 
         $user = auth()->user();
@@ -159,10 +161,11 @@ class ActController extends Controller
         return Inertia::render('Acts/Show', [
             'act' => $act,
             'can' => [
-                'foremanReview'    => $user->can('foremanReview', $act),
-                'processPeo'       => $user->can('processPeo', $act),
-                'processLogistics' => $user->can('processLogistics', $act),
-                'complete'         => $user->can('complete', $act),
+                'foremanReview'         => $user->can('foremanReview', $act),
+                'processPeo'            => $user->can('processPeo', $act),
+                'processLogistics'      => $user->can('processLogistics', $act),
+                'processSubscriberDept' => $user->can('processSubscriberDept', $act),
+                'complete'              => $user->can('complete', $act),
                 'editMaterials'    => $user->can('editMaterials', $act),
                 'acknowledge'      => $user->can('acknowledge', $act),
             ],
@@ -219,7 +222,7 @@ class ActController extends Controller
             'markForeman'        => $mark($act->foreman_reviewed_at),
             'markPeo'            => $act->type === 'regular' ? $mark($act->peo_processed_at) : 'не требуется',
             'markLogistics'      => $mark($act->logistics_processed_at),
-            'markSubscriberDept' => $mark($act->subscriber_dept_completed_at),
+            'markSubscriberDept' => $mark($act->subscriber_dept_processed_at),
             'materialsCorrectedAt' => $act->materials_corrected_at
                 ? \Carbon\Carbon::parse($act->materials_corrected_at)->format('d.m.Y H:i')
                 : null,
@@ -264,6 +267,21 @@ class ActController extends Controller
         $this->logHistory($act, $user->id, 'logistics_processed');
 
         return back()->with('success', 'Отмечено как обработано Логистикой');
+    }
+
+    public function processSubscriberDept(Act $act): RedirectResponse
+    {
+        $this->authorize('processSubscriberDept', $act);
+        $user = auth()->user();
+
+        $act->subscriber_dept_processed_by = $user->id;
+        $act->subscriber_dept_processed_at = now();
+        $this->recomputeAfterProcessing($act);
+        $act->save();
+
+        $this->logHistory($act, $user->id, 'subscriber_dept_processed');
+
+        return back()->with('success', 'Отмечено как обработано Абонотделом');
     }
 
     public function complete(Act $act): RedirectResponse
@@ -328,19 +346,27 @@ class ActController extends Controller
     }
 
     /**
-     * Требуемые для гейта Абонотдела стороны зависят от типа акта:
-     * regular — ПЭО + Логистика, repair — только Логистика (см. память project-acts-feature).
-     * Статус становится pending_subscriber_dept, как только обработаны ВСЕ требуемые
-     * стороны — для repair это происходит сразу после Логистики, минуя processing.
+     * Требуемые для гейта "отправить в архив" стороны зависят от типа акта:
+     * regular — ПЭО + Логистика + виза Абонотдела, repair — Логистика + виза
+     * Абонотдела (ПЭО не участвует, см. память project-acts-feature). Каждая
+     * из трёх сторон отмечается независимо, в любом порядке — статус
+     * становится pending_subscriber_dept, как только обработаны ВСЕ
+     * требуемые стороны (включая саму визу Абонотдела), и только тогда у
+     * Абонотдела появляется кнопка "Отправить в архив" (complete).
      */
     private function recomputeAfterProcessing(Act $act): void
     {
-        $required = $act->type === 'regular' ? ['peo', 'logistics'] : ['logistics'];
+        $required = $act->type === 'regular'
+            ? ['peo', 'logistics', 'subscriber_dept']
+            : ['logistics', 'subscriber_dept'];
 
-        $done = collect($required)->every(function (string $side) use ($act) {
-            $field = $side === 'peo' ? 'peo_processed_at' : 'logistics_processed_at';
-            return $act->$field !== null;
-        });
+        $fields = [
+            'peo'             => 'peo_processed_at',
+            'logistics'       => 'logistics_processed_at',
+            'subscriber_dept' => 'subscriber_dept_processed_at',
+        ];
+
+        $done = collect($required)->every(fn(string $side) => $act->{$fields[$side]} !== null);
 
         $act->status = $done ? 'pending_subscriber_dept' : 'processing';
     }
