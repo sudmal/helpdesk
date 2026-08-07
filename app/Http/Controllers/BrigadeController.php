@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Brigade, Territory, User};
+use App\Models\{Brigade, ConnectionRequest, Territory, User};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,6 +14,7 @@ class BrigadeController extends Controller
         return Inertia::render('Brigades/Index', [
             'brigades'    => Brigade::with(['foreman', 'territories', 'members'])
                                 ->withCount('members')
+                                ->orderByDesc('is_active')
                                 ->orderBy('name')
                                 ->get(),
             'territories' => Territory::orderBy('name')->get(['id', 'name']),
@@ -84,8 +85,13 @@ class BrigadeController extends Controller
             'member_ids.*'    => 'exists:users,id',
         ]);
 
-        // Нельзя убрать бригадира без назначения нового
-        if ($brigade->foreman_id && empty($data['foreman_id'])) {
+        // Нельзя убрать бригадира без назначения нового — только для активной
+        // бригады. Неактивную (расформированную, см. toggleActive) можно
+        // полностью опустошить: старые заявки хранят brigade_id напрямую и
+        // не зависят от текущего состава, а расформировать бригаду без этого
+        // послабления было невозможно (запрос пользователя 2026-08-07 —
+        // перевод сотрудников распущенной бригады "Спутник - ХБ" в другую).
+        if ($brigade->is_active && $brigade->foreman_id && empty($data['foreman_id'])) {
             return back()->withErrors(['foreman_id' => 'Нельзя убрать бригадира — сначала назначьте нового']);
         }
 
@@ -159,9 +165,10 @@ class BrigadeController extends Controller
                 return back()->withErrors(['member_ids' => "Уже в другой бригаде: {$msg}"]);
             }
         }
-        // Бригадир всегда остаётся в составе
+        // Бригадир всегда остаётся в составе — но только пока бригада активна,
+        // иначе распустить неактивную бригаду до конца было бы невозможно.
         $ids = $data['member_ids'] ?? [];
-        if ($brigade->foreman_id && !in_array($brigade->foreman_id, $ids)) {
+        if ($brigade->is_active && $brigade->foreman_id && !in_array($brigade->foreman_id, $ids)) {
             $ids[] = $brigade->foreman_id;
         }
         $brigade->members()->sync($ids);
@@ -179,10 +186,33 @@ class BrigadeController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    // Деактивация — основной способ расформировать бригаду, не теряя историю:
+    // у tickets.brigade_id стоит nullOnDelete(), т.е. физическое удаление
+    // бригады молча обнулило бы brigade_id у ВСЕХ старых заявок (включая уже
+    // закрытые). Деактивированная бригада остаётся строкой в БД и продолжает
+    // корректно отображаться в истории, но пропадает из списков назначения
+    // новых заявок (см. TicketController::create/edit/show,
+    // ConnectionRequestController::index) и из формы Расписания. У неактивной
+    // бригады также снимается ограничение "нельзя убрать бригадира без
+    // замены" (см. update()/updateMembers()) — так её можно полностью
+    // опустошить и перевести сотрудников в другую бригаду.
+    public function toggleActive(Brigade $brigade)
+    {
+        $brigade->update(['is_active' => !$brigade->is_active]);
+        return back()->with('success', $brigade->is_active ? 'Бригада активирована' : 'Бригада деактивирована');
+    }
+
     public function destroy(Brigade $brigade)
     {
-        if ($brigade->tickets()->whereHas('status', fn($q) => $q->where('is_final', false))->exists()) {
-            return back()->withErrors(['brigade' => 'Нельзя удалить — есть открытые заявки']);
+        // Полное удаление осмысленно только для бригады без какой-либо
+        // истории — у tickets/connection_requests brigade_id стоит
+        // nullOnDelete(), т.е. удаление бригады с историей молча обнулило бы
+        // связь у всех её старых заявок. Для расформирования бригады с
+        // историей — toggleActive(), не destroy().
+        $hasHistory = $brigade->tickets()->exists()
+            || ConnectionRequest::where('brigade_id', $brigade->id)->exists();
+        if ($hasHistory) {
+            return back()->with('error', 'Нельзя удалить бригаду — на неё ссылаются заявки. Деактивируйте бригаду вместо удаления, чтобы сохранить историю.');
         }
         $brigade->territories()->detach();
         $brigade->members()->detach();

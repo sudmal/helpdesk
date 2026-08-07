@@ -143,7 +143,7 @@ class TicketController extends Controller
             'types'        => TicketType::active()->get(['id', 'name', 'color']),
             'serviceTypes' => ServiceType::active()->get(['id', 'name', 'color']),
             'statuses'     => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
-            'brigades'     => Brigade::with('territories')->orderBy('name')->get(),
+            'brigades'     => Brigade::with('territories')->where('is_active', true)->orderBy('name')->get(),
             'address'      => $address,
             'addressHistory' => $addressHistory,
             'initialPhone'    => $request->input('phone', ''),
@@ -258,7 +258,7 @@ class TicketController extends Controller
             'addressHistory' => $addressHistory,
             'materialsCatalog' => \App\Models\Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','code','name','unit','price']),
             'statuses'       => TicketStatus::active()->get(['id', 'name', 'color', 'slug', 'is_final']),
-            'brigades'       => Brigade::with('members')->orderBy('name')->get(),
+            'brigades'       => Brigade::with('members')->where(fn($q) => $q->where('is_active', true)->orWhere('id', $ticket->brigade_id))->orderBy('name')->get(),
             'canEdit'        => auth()->user()->can('update', $ticket),
             'canAssign'      => auth()->user()->can('assign', $ticket),
             'canClose'       => auth()->user()->can('close', $ticket),
@@ -298,7 +298,7 @@ class TicketController extends Controller
             // форме редактирования — см. UpdateTicketRequest, та же граница
             // продублирована в валидации на случай прямого запроса в обход UI.
             'statuses'     => TicketStatus::active()->where('is_final', false)->get(['id', 'name', 'color', 'slug']),
-            'brigades'     => Brigade::with('members')->orderBy('name')->get(),
+            'brigades'     => Brigade::with('members')->where(fn($q) => $q->where('is_active', true)->orWhere('id', $ticket->brigade_id))->orderBy('name')->get(),
             'serviceTypes' => ServiceType::active()->get(['id', 'name', 'color']),
             'settings' => [
                 'lanbillingEnabled'    => (bool) \App\Models\SystemSetting::get('lanbilling_enabled', true),

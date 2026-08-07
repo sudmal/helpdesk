@@ -5,7 +5,9 @@ use Illuminate\Database\Eloquent\Relations\{BelongsTo, BelongsToMany, HasMany};
 
 class Brigade extends Model
 {
-    protected $fillable = ['name', 'foreman_id'];
+    protected $fillable = ['name', 'foreman_id', 'is_active'];
+
+    protected $casts = ['is_active' => 'boolean'];
 
     public function foreman(): BelongsTo
     {
