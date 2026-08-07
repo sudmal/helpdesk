@@ -103,7 +103,8 @@
             <div class="flex-1 border-r border-gray-100 p-1.5 flex flex-col gap-0.5 self-stretch">
               <p v-if="!sortedOverdue.length" class="text-xs text-gray-400 px-2 py-2">Нет просроченных</p>
               <div v-for="ev in sortedOverdue" :key="ev.id"
-                   class="rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none flex-shrink-0"
+                   :class="['rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none flex-shrink-0',
+                            ev.extendedProps.isFinal ? 'opacity-55' : '']"
                    :style="{
                      height:          EVENT_H + 'px',
                      backgroundColor: ev.backgroundColor,
@@ -113,8 +114,10 @@
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
+                  <span v-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
-                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1">{{ titleParts(ev).address }}</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1"
+                        :class="ev.extendedProps.isFinal ? 'line-through text-gray-400' : ''">{{ titleParts(ev).address }}</span>
                   <span v-if="titleParts(ev).type" class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
                 </div>
               </div>
@@ -127,7 +130,8 @@
                    class="absolute w-full border-b border-gray-100"
                    :style="{ top: slotTops[i] + 'px', height: slotHeights[i] + 'px' }"></div>
               <div v-for="ev in positionedEvents.today" :key="ev.id"
-                   class="absolute rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none"
+                   :class="['absolute rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none',
+                            ev.extendedProps.isFinal ? 'opacity-55' : '']"
                    :style="{
                      top:             ev.top + 'px',
                      left:            '2px',
@@ -140,8 +144,10 @@
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
+                  <span v-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
-                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1">{{ titleParts(ev).address }}</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1"
+                        :class="ev.extendedProps.isFinal ? 'line-through text-gray-400' : ''">{{ titleParts(ev).address }}</span>
                   <span v-if="titleParts(ev).type" class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
                 </div>
               </div>
@@ -154,7 +160,8 @@
                    class="absolute w-full border-b border-gray-100"
                    :style="{ top: slotTops[i] + 'px', height: slotHeights[i] + 'px' }"></div>
               <div v-for="ev in positionedEvents.tomorrow" :key="ev.id"
-                   class="absolute rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none"
+                   :class="['absolute rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity select-none',
+                            ev.extendedProps.isFinal ? 'opacity-55' : '']"
                    :style="{
                      top:             ev.top + 'px',
                      left:            '2px',
@@ -167,8 +174,10 @@
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
+                  <span v-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
-                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1">{{ titleParts(ev).address }}</span>
+                  <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1"
+                        :class="ev.extendedProps.isFinal ? 'line-through text-gray-400' : ''">{{ titleParts(ev).address }}</span>
                   <span v-if="titleParts(ev).type" class="text-gray-400 font-normal lowercase whitespace-nowrap flex-shrink-0" style="font-size: 10px">{{ titleParts(ev).type }}</span>
                 </div>
               </div>
