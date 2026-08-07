@@ -204,8 +204,8 @@
                 Статус {{ sortIcon('status_id') }}
               </th>
               <th class="px-2 py-1.5 text-left text-gray-500 w-16">Акт</th>
-              <th class="px-2 py-1.5 text-left text-gray-500 w-24">Комментарий</th>
-              <th class="px-2 py-1.5 w-16"></th>
+              <th class="px-2 py-1.5 text-left text-gray-500 w-20">Комментарий</th>
+              <th class="px-2 py-1.5 w-20"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
