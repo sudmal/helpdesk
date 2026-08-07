@@ -134,7 +134,55 @@
         </button>
       </div>
 
-      <div class="overflow-x-auto">
+      <!-- Мобильные карточки (узкий экран) — на table-fixed адресу не хватает места, см. память project_helpdesk -->
+      <div class="sm:hidden divide-y divide-gray-100">
+        <p v-if="!todayTickets?.length" class="text-center py-10 text-gray-400 text-sm">
+          Заявок на {{ formatDateLabel(selectedDate) }} нет
+        </p>
+        <div v-for="t in (todayTickets ?? [])" :key="t.id"
+             class="p-3 relative cursor-pointer"
+             :class="t.status?.is_final ? 'opacity-60' : ''"
+             :style="{ backgroundColor: (t.status?.color ?? '#6b7280') + '14' }"
+             @click="router.visit(route('tickets.show', t.id))">
+          <div v-if="!t.status?.is_final" class="absolute inset-y-0 left-0 w-[3px]"
+               :style="{ backgroundColor: t.type?.color ?? '#9ca3af' }"></div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <span v-if="t.status?.is_final" class="text-green-500 font-bold leading-none">✓</span>
+            <span class="leading-none">{{ serviceIcon(t.service_type?.name) }}</span>
+            <span class="font-medium tabular-nums text-gray-700">{{ formatTime(t.scheduled_at) }}</span>
+            <span class="font-mono text-blue-600 font-medium">{{ t.number }}</span>
+            <span class="flex-1"></span>
+            <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
+          </div>
+          <p class="font-medium text-gray-800 text-sm mt-1 leading-snug">{{ fullAddress(t) }}</p>
+          <p v-if="t.description" class="text-gray-600 text-xs mt-0.5 leading-snug">
+            {{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 140) }}
+            <button v-if="(t.description?.length ?? 0) > 140" @click.stop="toggleDesc(t.id)"
+                    class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[11px] align-middle">
+              {{ expandedDesc.has(t.id) ? '[свернуть]' : '[ещё]' }}
+            </button>
+            <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
+          </p>
+          <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
+            <a v-if="t.phone" :href="'tel:' + t.phone" @click.stop class="text-xs text-gray-600 hover:text-blue-600">{{ t.phone }}</a>
+            <span v-if="t.status?.is_final"
+                  class="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+              {{ t.act?.number || 'б/а' }}
+            </span>
+            <span v-if="t.days_overdue" class="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full">
+              +{{ t.days_overdue }} дн.
+            </span>
+            <button v-if="!t.status?.is_final" @click.stop="openCloseModal(t)"
+                    class="ml-auto text-xs text-green-600 hover:text-green-800 border border-green-200
+                           hover:border-green-400 rounded-lg px-2 py-0.5 transition-colors whitespace-nowrap">
+              Закрыть
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto hidden sm:block">
         <table class="w-full text-xs table-fixed">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50 text-gray-500 font-medium">
@@ -265,7 +313,43 @@
              class="text-xs text-red-600 hover:text-red-800 font-medium whitespace-nowrap shrink-0">Открыть список →</a>
         </div>
       </div>
-      <div>
+      <!-- Мобильные карточки (узкий экран) -->
+      <div class="sm:hidden divide-y divide-red-100">
+        <div v-for="t in (overdue ?? [])" :key="t.id"
+             class="p-3 flex gap-2 cursor-pointer"
+             @click="router.visit(route('tickets.show', t.id))">
+          <input type="checkbox" :checked="selectedOverdue.has(t.id)"
+                 @change="toggleOverdueSelect(t.id)" @click.stop
+                 class="mt-1 rounded border-red-300 cursor-pointer shrink-0" />
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 text-xs">
+              <span class="leading-none">{{ serviceIcon(t.service_type?.name) }}</span>
+              <span class="font-mono text-red-700 font-medium">{{ t.number }}</span>
+              <span class="flex-1"></span>
+              <span class="text-red-600 font-medium whitespace-nowrap">{{ formatDateTime(t.scheduled_at) }}</span>
+            </div>
+            <p class="font-medium text-gray-800 text-sm mt-1 leading-snug">{{ fullAddress(t) }}</p>
+            <p v-if="t.description" class="text-gray-500 text-xs mt-0.5 leading-snug">
+              {{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 140) }}
+              <button v-if="(t.description?.length ?? 0) > 140" @click.stop="toggleDesc(t.id)"
+                      class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[11px] align-middle">
+                {{ expandedDesc.has(t.id) ? '[свернуть]' : '[ещё]' }}
+              </button>
+              <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
+            </p>
+            <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small />
+              <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small />
+              <a v-if="t.phone" :href="'tel:' + t.phone" @click.stop class="text-xs text-gray-600 hover:text-blue-600">{{ t.phone }}</a>
+              <span v-if="t.days_overdue" class="ml-auto text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full">
+                {{ t.days_overdue }} дн.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hidden sm:block">
       <table class="w-full text-xs table-fixed">
         <tbody class="divide-y divide-red-100">
           <tr v-for="t in (overdue ?? [])" :key="t.id"
