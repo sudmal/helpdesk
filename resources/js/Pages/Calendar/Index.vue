@@ -42,7 +42,7 @@
         </select>
       </div>
 
-      <!-- Обзор / Месяц connected tabs -->
+      <!-- Обзор / Неделя / Месяц connected tabs -->
       <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2">
         <button @click="view = 'overview'"
                 :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
@@ -50,6 +50,13 @@
                            ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
           Обзор
+        </button>
+        <button @click="view = 'week'"
+                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
+                         view === 'week'
+                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
+                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
+          Неделя
         </button>
         <button @click="view = 'month'"
                 :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
@@ -171,8 +178,8 @@
         </div>
       </template>
 
-      <!-- МЕСЯЦ -->
-      <div v-if="view === 'month'" class="relative overflow-x-auto">
+      <!-- НЕДЕЛЯ / МЕСЯЦ -->
+      <div v-if="view === 'week' || view === 'month'" class="relative overflow-x-auto">
       <!-- Оверлей загрузки -->
       <div v-if="monthLoading"
            class="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center z-20">
@@ -182,7 +189,7 @@
           <span class="text-sm text-gray-500">Загрузка событий…</span>
         </div>
       </div>
-      <FullCalendar :key="calKey" ref="calRef" :options="calOptions" />
+      <FullCalendar :key="calFullKey" ref="calRef" :options="calOptions" />
       </div>
 
     </div><!-- end main card -->
@@ -255,6 +262,7 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import ruLocale from '@fullcalendar/core/locales/ru'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -273,6 +281,11 @@ const COLLAPSED_H = 4
 
 const view                = ref('overview')
 const calKey              = ref(0)
+// Неделя/Месяц используют один и тот же <FullCalendar>-компонент с разными
+// initialView — смена initialView в живом инстансе не подхватывается
+// (FullCalendar считает его одноразовым), поэтому при переключении между
+// week/month форсируем полный remount через смену :key (см. calFullKey).
+const calFullKey           = computed(() => view.value + '-' + calKey.value)
 const calRef              = ref(null)
 const selectedBrigade     = ref(null)
 const selectedTerritory   = ref(null)
@@ -487,10 +500,27 @@ function serviceIcon(name) {
   return '📋'
 }
 
-const calOptions = computed(() => ({
-  plugins:       [dayGridPlugin, interactionPlugin],
+const calOptions = computed(() => {
+  const isWeek = view.value === 'week'
+  return {
+  plugins:       [dayGridPlugin, timeGridPlugin, interactionPlugin],
   locale:        ruLocale,
-  initialView:   'dayGridMonth',
+  initialView:   isWeek ? 'rollingWeek' : 'dayGridMonth',
+  // "Неделя" — не календарная (пн-вс), а плавающие 7 дней от текущей даты:
+  // dateAlignment:'day' убирает автопривязку к началу недели, которую
+  // FullCalendar иначе делает сам для 7-дневной длительности.
+  views: {
+    rollingWeek: {
+      type:          'timeGrid',
+      duration:      { days: 7 },
+      dateAlignment: 'day',
+      buttonText:    'Неделя',
+    },
+  },
+  allDaySlot:   isWeek ? false : undefined,
+  slotMinTime:  isWeek ? props.workSettings.start + ':00' : undefined,
+  slotMaxTime:  isWeek ? props.workSettings.end + ':00'   : undefined,
+  slotDuration: isWeek ? `00:${String(props.workSettings.step).padStart(2, '0')}:00` : undefined,
   timeZone:      'local',
   contentHeight: 'auto',
   dayMaxEvents:   false,
@@ -571,7 +601,8 @@ const calOptions = computed(() => ({
       html: `<div style="display:flex;align-items:center;padding:1px 4px;font-size:0.75rem;cursor:pointer;min-width:0;opacity:${isFinal ? '0.5' : '1'}"><b style="flex-shrink:0;margin-right:2px">${time}</b><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;text-decoration:${isFinal ? 'line-through' : 'none'}">${left}</span>${overdueHtml}${typeHtml}</div>`,
     }
   },
-}))
+  }
+})
 </script>
 
 <style>
