@@ -30,6 +30,11 @@ class Brigade extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    public function connectionRequests(): HasMany
+    {
+        return $this->hasMany(ConnectionRequest::class);
+    }
+
     /** Заявки на конкретную дату */
     public function ticketsForDate(\Carbon\Carbon $date): HasMany
     {

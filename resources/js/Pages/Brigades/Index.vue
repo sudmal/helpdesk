@@ -35,10 +35,11 @@
                 Расписание
               </a>
               <button @click="edit(b)" class="text-xs text-blue-600 hover:text-blue-800 mr-3 transition-colors">Изменить</button>
-              <button @click="toggleActive(b)" class="text-xs text-gray-400 hover:text-amber-600 mr-3 transition-colors">
-                {{ b.is_active ? 'Деактивировать' : 'Активировать' }}
+              <button @click="del(b)" :disabled="hasHistory(b)"
+                      :title="hasHistory(b) ? 'Нельзя удалить — есть история заявок. Деактивируйте бригаду вместо удаления.' : ''"
+                      :class="hasHistory(b) ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-500 transition-colors'">
+                Удалить
               </button>
-              <button @click="del(b)" class="text-xs text-gray-400 hover:text-red-500 transition-colors">Удалить</button>
             </td>
           </tr>
         </tbody>
@@ -53,6 +54,24 @@
         <div>
           <label class="field-label">Название *</label>
           <input v-model="form.name" required class="field-input" />
+        </div>
+
+        <!-- Активность бригады — только для существующей, у новой всегда активна по умолчанию -->
+        <div v-if="editing" class="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
+          <div class="pr-3">
+            <div class="text-sm font-medium text-gray-700">Бригада активна</div>
+            <p class="text-xs text-gray-400">Неактивную можно полностью очистить от участников и бригадира. Она пропадает из списков назначения новых заявок, но старые заявки сохраняют её в истории.</p>
+          </div>
+          <div class="flex items-center gap-2 cursor-pointer select-none shrink-0" @click="toggleActiveInModal">
+            <span class="text-sm" :class="editing.is_active ? 'text-green-600' : 'text-gray-400'">
+              {{ editing.is_active ? 'Активна' : 'Неактивна' }}
+            </span>
+            <div :class="['relative w-11 h-6 rounded-full transition-colors',
+                          editing.is_active ? 'bg-green-500' : 'bg-gray-300']">
+              <div :class="['absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
+                            editing.is_active ? 'translate-x-5' : 'translate-x-0.5']"></div>
+            </div>
+          </div>
         </div>
 
         <!-- Двухколоночный блок -->
@@ -163,11 +182,21 @@ function submit() {
   if (editing.value) form.put(route('brigades.update', editing.value.id), { onSuccess: close })
   else form.post(route('brigades.store'), { onSuccess: close })
 }
-function del(b) { if (confirm(`Удалить бригаду «${b.name}»?`)) router.delete(route('brigades.destroy', b.id)) }
-function toggleActive(b) {
+function hasHistory(b) { return (b.tickets_count ?? 0) > 0 || (b.connection_requests_count ?? 0) > 0 }
+function del(b) {
+  if (hasHistory(b)) return
+  if (confirm(`Удалить бригаду «${b.name}»?`)) router.delete(route('brigades.destroy', b.id))
+}
+function toggleActiveInModal() {
+  const b = editing.value
+  if (!b) return
   const msg = b.is_active
     ? `Деактивировать бригаду «${b.name}»? Она пропадёт из списков назначения новых заявок, но старые заявки сохранят её в истории. Состав можно будет опустошить.`
     : `Активировать бригаду «${b.name}»?`
-  if (confirm(msg)) router.patch(route('brigades.toggle-active', b.id))
+  if (!confirm(msg)) return
+  router.patch(route('brigades.toggle-active', b.id), {}, {
+    preserveScroll: true,
+    onSuccess: () => { editing.value.is_active = !editing.value.is_active },
+  })
 }
 </script>

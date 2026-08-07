@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Brigade, ConnectionRequest, Territory, User};
+use App\Models\{Brigade, Territory, User};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,7 +13,7 @@ class BrigadeController extends Controller
     {
         return Inertia::render('Brigades/Index', [
             'brigades'    => Brigade::with(['foreman', 'territories', 'members'])
-                                ->withCount('members')
+                                ->withCount(['members', 'tickets', 'connectionRequests'])
                                 ->orderByDesc('is_active')
                                 ->orderBy('name')
                                 ->get(),
@@ -210,7 +210,7 @@ class BrigadeController extends Controller
         // связь у всех её старых заявок. Для расформирования бригады с
         // историей — toggleActive(), не destroy().
         $hasHistory = $brigade->tickets()->exists()
-            || ConnectionRequest::where('brigade_id', $brigade->id)->exists();
+            || $brigade->connectionRequests()->exists();
         if ($hasHistory) {
             return back()->with('error', 'Нельзя удалить бригаду — на неё ссылаются заявки. Деактивируйте бригаду вместо удаления, чтобы сохранить историю.');
         }
