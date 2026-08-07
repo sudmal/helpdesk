@@ -115,6 +115,14 @@ class TicketPolicy
         return $user->hasPermission('tickets.close') || $user->isAdmin();
     }
 
+    /** Отменить (та же зона ответственности, что и закрытие) */
+    public function cancel(User $user, Ticket $ticket): bool
+    {
+        if ($ticket->status?->is_final) return false;
+
+        return $user->hasPermission('tickets.close') || $user->isAdmin();
+    }
+
     /** Комментировать */
     public function comment(User $user, Ticket $ticket): bool
     {

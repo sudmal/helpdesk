@@ -262,6 +262,7 @@ class TicketController extends Controller
             'canEdit'        => auth()->user()->can('update', $ticket),
             'canAssign'      => auth()->user()->can('assign', $ticket),
             'canClose'       => auth()->user()->can('close', $ticket),
+            'canCancel'      => auth()->user()->can('cancel', $ticket),
             'canComment'     => auth()->user()->can('comment', $ticket),
             'canDelete'      => auth()->user()->can('delete', $ticket),
             // Раньше "В работу"/"Пауза"/"Перенести" во фронте проверялись через
@@ -292,7 +293,11 @@ class TicketController extends Controller
         return Inertia::render('Tickets/Edit', [
             'ticket'       => $ticket,
             'types'        => TicketType::active()->get(['id', 'name', 'color']),
-            'statuses'     => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
+            // Закрыть/отменить — только через отдельные действия с обязательной
+            // причиной (кнопки в шапке карточки), не свободным дропдауном в
+            // форме редактирования — см. UpdateTicketRequest, та же граница
+            // продублирована в валидации на случай прямого запроса в обход UI.
+            'statuses'     => TicketStatus::active()->where('is_final', false)->get(['id', 'name', 'color', 'slug']),
             'brigades'     => Brigade::with('members')->orderBy('name')->get(),
             'serviceTypes' => ServiceType::active()->get(['id', 'name', 'color']),
             'settings' => [
@@ -431,6 +436,33 @@ class TicketController extends Controller
         }, 3);
 
         return back()->with('success', 'Заявка закрыта');
+    }
+
+    /**
+     * Отмена заявки — отдельное действие от правки/статуса (см. память проекта):
+     * раньше отменяли через форму редактирования, сменой статуса в свободном
+     * дропдауне, без единого обязательного поля под причину. Причина здесь
+     * обязательна и попадает и в close_notes (используется существующей
+     * Telegram-рассылкой об отмене сегодняшних заявок, TicketObserver),
+     * и отдельной строкой в журнал истории — общий "Статус: X → Отменена"
+     * от TicketObserver тоже останется, это ожидаемо, дублирования смысла нет.
+     */
+    public function cancel(Request $request, Ticket $ticket): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorize('cancel', $ticket);
+        $request->validate([
+            'comment' => 'required|string|max:2000',
+        ]);
+
+        $this->ticketService->updateStatus($ticket, 'cancelled', auth()->user(), $request->comment);
+
+        $ticket->history()->create([
+            'user_id'   => auth()->id(),
+            'action'    => 'cancelled',
+            'new_value' => $request->comment,
+        ]);
+
+        return back()->with('success', 'Заявка отменена');
     }
 
     public function freeSlot(Request $request): \Illuminate\Http\JsonResponse

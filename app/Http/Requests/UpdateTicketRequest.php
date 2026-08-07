@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateTicketRequest extends FormRequest
 {
@@ -17,7 +18,11 @@ class UpdateTicketRequest extends FormRequest
             'address_id'   => 'nullable|exists:addresses,id',
             'apartment'    => 'nullable|string|max:20',
             'type_id'      => 'required|exists:ticket_types,id',
-            'status_id'    => 'required|exists:ticket_statuses,id',
+            // Закрыть/отменить — только через отдельные действия с обязательной
+            // причиной (см. TicketController::close()/cancel()), не через
+            // свободный дропдаун в форме редактирования: is_final-статусы
+            // сюда намеренно не проходят, даже если кто-то соберёт запрос вручную.
+            'status_id'    => ['required', Rule::exists('ticket_statuses', 'id')->where('is_final', false)],
             'brigade_id'   => 'nullable|exists:brigades,id',
             'assigned_to'  => 'nullable|exists:users,id',
             'description'  => 'required|string|max:5000',

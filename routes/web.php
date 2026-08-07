@@ -60,6 +60,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/{ticket}/start',   [TicketController::class, 'start'])->name('start');
         Route::post('/{ticket}/pause',   [TicketController::class, 'pause'])->name('pause');
         Route::post('/{ticket}/close',   [TicketController::class, 'close'])->name('close');
+        Route::post('/{ticket}/cancel',  [TicketController::class, 'cancel'])->name('cancel');
         Route::post('/{ticket}/reopen',   [TicketController::class, 'reopen'])->name('reopen');
         Route::post('/{ticket}/postpone', [TicketController::class, 'postpone'])->name('postpone');
         Route::post('/{ticket}/assign',  [TicketController::class, 'assign'])->name('assign');

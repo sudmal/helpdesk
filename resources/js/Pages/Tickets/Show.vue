@@ -23,6 +23,10 @@
                 @click="showCloseModal = true"
                 class="btn-sm bg-green-600 hover:bg-green-700 text-white" title="Закрыть">✓</button>
 
+        <button v-if="canCancel && !ticket.status.is_final"
+                @click="showCancelModal = true"
+                class="btn-sm bg-gray-400 hover:bg-gray-500 text-white" title="Отменить заявку">✕</button>
+
         <button v-if="canEdit && ticket.status.is_final"
                 @click="doAction('reopen')"
                 class="btn-outline text-sm" title="Переоткрыть">↩</button>
@@ -106,14 +110,21 @@
             </p>
           </div>
 
-          <div v-if="ticket.close_notes || ticket.closed_at" class="mt-2.5 bg-green-50 rounded-lg p-2.5">
+          <div v-if="ticket.close_notes || ticket.closed_at"
+               class="mt-2.5 rounded-lg p-2.5"
+               :class="ticket.status?.slug === 'cancelled' ? 'bg-gray-100' : 'bg-green-50'">
             <div class="flex items-center justify-between mb-1">
-              <p class="text-xs text-green-600 font-medium">{{ ticket.status?.slug === 'postponed' ? 'Причина переноса' : 'Итог закрытия' }}</p>
-              <p class="text-xs text-green-500">
+              <p class="text-xs font-medium"
+                 :class="ticket.status?.slug === 'cancelled' ? 'text-gray-500' : 'text-green-600'">
+                {{ ticket.status?.slug === 'postponed' ? 'Причина переноса'
+                   : ticket.status?.slug === 'cancelled' ? 'Причина отмены' : 'Итог закрытия' }}
+              </p>
+              <p class="text-xs" :class="ticket.status?.slug === 'cancelled' ? 'text-gray-400' : 'text-green-500'">
                 <span v-if="ticket.closed_by">{{ ticket.closed_by.name }}</span><span v-if="ticket.closed_by && ticket.closed_at"> &middot; </span><span v-if="ticket.closed_at">{{ formatDateTime(ticket.closed_at) }}</span>
               </p>
             </div>
-            <p v-if="ticket.close_notes" class="text-sm text-green-800">{{ ticket.close_notes }}</p>
+            <p v-if="ticket.close_notes" class="text-sm"
+               :class="ticket.status?.slug === 'cancelled' ? 'text-gray-700' : 'text-green-800'">{{ ticket.close_notes }}</p>
           </div>
         </div>
 
@@ -268,9 +279,12 @@
                 {{ h.description.slice(0, 70) }}{{ h.description.length > 70 ? '…' : '' }}
               </p>
               <div v-if="h.close_notes || h.act?.number"
-                   class="mt-1 bg-green-50 rounded px-2 py-1">
-                <p v-if="h.act?.number" class="text-xs text-green-600 font-medium">Акт: {{ h.act.number }}</p>
-                <p v-if="h.close_notes" class="text-xs text-green-700">
+                   class="mt-1 rounded px-2 py-1"
+                   :class="h.status?.slug === 'cancelled' ? 'bg-gray-100' : 'bg-green-50'">
+                <p v-if="h.act?.number" class="text-xs font-medium"
+                   :class="h.status?.slug === 'cancelled' ? 'text-gray-500' : 'text-green-600'">Акт: {{ h.act.number }}</p>
+                <p v-if="h.close_notes" class="text-xs"
+                   :class="h.status?.slug === 'cancelled' ? 'text-gray-600' : 'text-green-700'">
                   {{ h.close_notes.slice(0, 60) }}{{ h.close_notes.length > 60 ? '…' : '' }}
                 </p>
               </div>
@@ -343,6 +357,28 @@
           <button :disabled="closeForm.processing"
                   class="btn-sm bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
             {{ closeForm.processing ? 'Закрываю…' : 'Закрыть заявку' }}
+          </button>
+        </div>
+      </form>
+    </Modal>
+
+    <!-- Модалка отмены -->
+    <Modal v-if="showCancelModal" title="Отменить заявку" @close="showCancelModal = false">
+      <form @submit.prevent="submitCancel" class="space-y-2">
+        <div>
+          <label class="field-label">Причина отмены *</label>
+          <textarea v-model="cancelComment" rows="3" required class="field-input resize-none"
+                    placeholder="Почему заявка отменяется — обязательно для истории"></textarea>
+        </div>
+        <div v-if="Object.keys(cancelForm.errors).length"
+             class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
+          <p v-for="(err, field) in cancelForm.errors" :key="field">{{ err }}</p>
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" @click="showCancelModal = false" class="btn-outline text-sm">Назад</button>
+          <button :disabled="cancelForm.processing || !cancelComment.trim()"
+                  class="btn-sm bg-gray-500 hover:bg-gray-600 text-white disabled:opacity-40">
+            {{ cancelForm.processing ? 'Отменяю…' : 'Отменить заявку' }}
           </button>
         </div>
       </form>
@@ -470,7 +506,7 @@ async function saveGeocode(addressId, lat, lng) {
 const props = defineProps({
   ticket: Object, addressHistory: Array, statuses: Array, brigades: Array,
   materialsCatalog: { type: Array, default: () => [] },
-  canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canComment: Boolean, canDelete: Boolean,
+  canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canCancel: Boolean, canComment: Boolean, canDelete: Boolean,
   canStart: Boolean, canPause: Boolean, canPostpone: Boolean,
   settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
 })
@@ -496,7 +532,9 @@ onMounted(() => {
 
 // State
 const showCloseModal    = ref(false)
+const showCancelModal   = ref(false)
 const showPostponeModal = ref(false)
+const cancelComment     = ref('')
 const closeActType      = ref('')
 const closeComment      = ref('')
 const closeFiles        = ref([])
@@ -535,7 +573,7 @@ function actionLabel(h) {
   if (h.action === 'field_changed')  return `${h.field ?? 'Поле'}: ${h.old_value ?? '—'} → ${h.new_value ?? '—'}`
   if (h.action === 'postponed')      return `Перенесена: ${h.new_value ?? ''}`
   if (h.action === 'closed')         return 'Заявка закрыта'
-  if (h.action === 'cancelled')      return 'Заявка отменена'
+  if (h.action === 'cancelled')      return 'Заявка отменена' + (h.new_value ? `: ${h.new_value}` : '')
   if (h.action === 'reopened')       return 'Заявка переоткрыта'
   // Статусы на русском из старой системы
   const statusMap = {
@@ -592,6 +630,19 @@ function submitClose() {
       useMaterials.value = false
       materialItems.value = [{ material_id: '', quantity: 1 }]
       closeForm.reset()
+    }
+  })
+}
+
+const cancelForm = useForm({ comment: '' })
+
+function submitCancel() {
+  cancelForm.comment = cancelComment.value
+  cancelForm.post(route('tickets.cancel', props.ticket.id), {
+    onSuccess: () => {
+      showCancelModal.value = false
+      cancelComment.value = ''
+      cancelForm.reset()
     }
   })
 }
