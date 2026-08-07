@@ -114,7 +114,8 @@
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
-                  <span v-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
+                  <span v-if="ev.extendedProps.isCancelled" class="text-gray-400 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✕</span>
+                  <span v-else-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
                   <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1"
                         :class="ev.extendedProps.isFinal ? 'line-through text-gray-400' : ''">{{ titleParts(ev).address }}</span>
@@ -144,7 +145,8 @@
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
-                  <span v-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
+                  <span v-if="ev.extendedProps.isCancelled" class="text-gray-400 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✕</span>
+                  <span v-else-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
                   <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1"
                         :class="ev.extendedProps.isFinal ? 'line-through text-gray-400' : ''">{{ titleParts(ev).address }}</span>
@@ -174,7 +176,8 @@
                    @mouseleave="tooltip.show = false"
                    @click="openPopup(ev.extendedProps)">
                 <div class="px-1.5 flex items-center gap-1 overflow-hidden h-full">
-                  <span v-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
+                  <span v-if="ev.extendedProps.isCancelled" class="text-gray-400 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✕</span>
+                  <span v-else-if="ev.extendedProps.isFinal" class="text-green-600 font-bold flex-shrink-0 leading-none" style="font-size: 11px">✓</span>
                   <span v-if="titleParts(ev).icon" class="flex-shrink-0 leading-none">{{ titleParts(ev).icon }}</span>
                   <span class="truncate text-xs font-medium text-gray-800 min-w-0 flex-1"
                         :class="ev.extendedProps.isFinal ? 'line-through text-gray-400' : ''">{{ titleParts(ev).address }}</span>

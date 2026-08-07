@@ -203,7 +203,7 @@ class AddressController extends Controller
      * index()/hierarchy() — нет отдельного "id дома", это виртуальная
      * группировка записей Address.
      */
-    public function setBuildingTerritory(Request $request): \Illuminate\Http\JsonResponse
+    public function setBuildingTerritory(Request $request): \Illuminate\Http\RedirectResponse
     {
         $data = $request->validate([
             'city'         => 'required|string',
@@ -217,7 +217,7 @@ class AddressController extends Controller
             ->where('building', $data['building'])
             ->update(['territory_id' => $data['territory_id']]);
 
-        return response()->json(['updated' => $count]);
+        return back()->with('success', "Территория обновлена: {$count} записей");
     }
 
     /**
