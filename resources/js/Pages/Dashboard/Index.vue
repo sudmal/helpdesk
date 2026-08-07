@@ -147,7 +147,8 @@
           <div v-if="!t.status?.is_final" class="absolute inset-y-0 left-0 w-[3px]"
                :style="{ backgroundColor: t.type?.color ?? '#9ca3af' }"></div>
           <div class="flex items-center gap-1.5 text-xs">
-            <span v-if="t.status?.is_final" class="text-green-500 font-bold leading-none">✓</span>
+            <span v-if="t.status?.slug === 'cancelled'" class="text-gray-400 font-bold leading-none">✕</span>
+            <span v-else-if="t.status?.is_final" class="text-green-500 font-bold leading-none">✓</span>
             <span class="leading-none">{{ serviceIcon(t.service_type?.name) }}</span>
             <span class="font-medium tabular-nums text-gray-700">{{ formatTime(t.scheduled_at) }}</span>
             <span class="font-mono text-blue-600 font-medium">{{ t.number }}</span>
@@ -226,7 +227,8 @@
                 <div v-if="!t.status?.is_final"
                      class="absolute inset-y-0 left-0 w-[3px] rounded-r"
                      :style="{ backgroundColor: t.type?.color ?? '#9ca3af' }"></div>
-                <span v-if="t.status?.is_final" class="text-green-500 font-bold text-sm pl-2">✓</span>
+                <span v-if="t.status?.slug === 'cancelled'" class="text-gray-400 font-bold text-sm pl-2">✕</span>
+                <span v-else-if="t.status?.is_final" class="text-green-500 font-bold text-sm pl-2">✓</span>
               </td>
               <!-- Иконка участка -->
               <td class="pl-1.5 pr-1 py-0.5 text-center text-sm leading-none">
