@@ -262,7 +262,6 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import ruLocale from '@fullcalendar/core/locales/ru'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -503,24 +502,23 @@ function serviceIcon(name) {
 const calOptions = computed(() => {
   const isWeek = view.value === 'week'
   return {
-  plugins:       [dayGridPlugin, timeGridPlugin, interactionPlugin],
+  plugins:       [dayGridPlugin, interactionPlugin],
   locale:        ruLocale,
   initialView:   isWeek ? 'rollingWeek' : 'dayGridMonth',
   // "Неделя" — не календарная (пн-вс), а плавающие 7 дней от текущей даты:
   // dateAlignment:'day' убирает автопривязку к началу недели, которую
-  // FullCalendar иначе делает сам для 7-дневной длительности.
+  // FullCalendar иначе делает сам для 7-дневной длительности. dayGrid
+  // (не timeGrid) — при плотном расписании timeGrid сжимает одновременные
+  // заявки в узкие нечитаемые колонки, а dayGrid просто список плашек
+  // друг под другом (как уже проверенно работает в Месяце).
   views: {
     rollingWeek: {
-      type:          'timeGrid',
+      type:          'dayGrid',
       duration:      { days: 7 },
       dateAlignment: 'day',
       buttonText:    'Неделя',
     },
   },
-  allDaySlot:   isWeek ? false : undefined,
-  slotMinTime:  isWeek ? props.workSettings.start + ':00' : undefined,
-  slotMaxTime:  isWeek ? props.workSettings.end + ':00'   : undefined,
-  slotDuration: isWeek ? `00:${String(props.workSettings.step).padStart(2, '0')}:00` : undefined,
   timeZone:      'local',
   contentHeight: 'auto',
   dayMaxEvents:   false,
