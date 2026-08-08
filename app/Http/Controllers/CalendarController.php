@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Ticket, Brigade, Territory, ServiceType, SystemSetting, TicketStatus};
+use App\Models\{Ticket, Brigade, Territory, ServiceType, SystemSetting, TicketStatus, ConnectionRequest};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -95,7 +95,53 @@ class CalendarController extends Controller
             ];
         });
 
-        return response()->json($events);
+        // Заявки на подключение с назначенной датой -- показываем в общем
+        // календаре вместе с обычными заявками (в нужном тайм-слоте), но не
+        // заводим под них Ticket. Визуально отличаются постоянным синим
+        // цветом (у обычных заявок цвет из статуса) + иконкой 🔌, ссылка ведёт
+        // в карточку подключения (?open=), а не в Ticket (см. Dashboard —
+        // тот же принцип и тот же цвет, запрос пользователя 2026-08-08).
+        // territory_id у ConnectionRequest лежит прямо на записи (не через
+        // address, как у Ticket), поэтому фильтр территории проще.
+        $connections = ConnectionRequest::with(['brigade', 'serviceType'])
+            ->where('status', 'scheduled')
+            ->whereBetween('scheduled_at', [$request->start, $request->end])
+            ->when($userTerritories !== null, fn($q) => $q->whereIn('territory_id', $userTerritories))
+            ->when($request->filled('brigade_id'), fn($q) => $q->where('brigade_id', $request->brigade_id))
+            ->when($request->filled('territory_id'), fn($q) => $q->where('territory_id', $request->territory_id))
+            ->when($request->filled('service_type_id'), fn($q) => $q->where('service_type_id', $request->service_type_id))
+            ->get();
+
+        $connectionEvents = $connections->map(function ($cr) {
+            $type = $cr->serviceType?->name ?? 'Подключение';
+            return [
+                'id'              => 'cr-' . $cr->id,
+                'title'           => '🔌 ' . $type . ' · ' . $cr->address_string,
+                'start'           => $cr->scheduled_at->format('Y-m-d\TH:i:s'),
+                'backgroundColor' => '#3b82f630',
+                'borderColor'     => '#3b82f6',
+                'textColor'       => '#1f2937',
+                'extendedProps'   => [
+                    'ticketNumber' => null,
+                    'address'      => $cr->address_string,
+                    'type'         => $type,
+                    'typeColor'    => $cr->serviceType?->color ?? '#3b82f6',
+                    'status'       => 'Подключение',
+                    'statusColor'  => '#3b82f6',
+                    'brigade'      => $cr->brigade?->name,
+                    'scheduled'    => $cr->scheduled_at->format('d.m.Y H:i'),
+                    'description'  => $cr->name,
+                    'phone'        => $cr->phone,
+                    'url'          => route('connection-requests.index', ['open' => $cr->id]),
+                    'isFinal'      => false,
+                    'isCancelled'  => false,
+                    'daysOverdue'  => null,
+                    'isConnection' => true,
+                ],
+            ];
+        });
+
+        return response()->json($events->concat($connectionEvents)->values());
     }
 
     private function eventTitle(Ticket $ticket): string

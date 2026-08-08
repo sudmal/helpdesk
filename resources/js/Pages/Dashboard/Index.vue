@@ -76,34 +76,6 @@
       </div>
     </div>
 
-    <!-- ── Подключения на сегодня ── -->
-    <div v-if="scheduledConnections?.length" class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
-      <div class="px-3 py-1.5 border-b border-gray-100 bg-blue-50/50 text-xs font-medium text-blue-800 flex items-center gap-1.5">
-        🔌 Подключения на сегодня ({{ scheduledConnections.length }})
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs">
-          <tbody class="divide-y divide-gray-100">
-            <tr v-for="c in scheduledConnections" :key="c.id"
-                class="hover:bg-gray-50 cursor-pointer"
-                @click="router.get(route('connection-requests.index', { search: c.phone }))">
-              <td class="px-3 py-1.5 whitespace-nowrap text-gray-600 w-16">
-                {{ new Date(c.scheduled_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
-              </td>
-              <td class="px-2 py-1.5 font-medium">{{ c.name }}</td>
-              <td class="px-2 py-1.5 font-mono whitespace-nowrap hidden lg:table-cell">{{ c.phone }}</td>
-              <td class="px-2 py-1.5 text-gray-500">{{ c.address_string }}</td>
-              <td class="px-2 py-1.5 hidden md:table-cell">
-                <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">
-                  {{ c.service_type.name }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <!-- ── Основная таблица заявок ── -->
     <div data-tour="tour-dash-table" class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
       <!-- Вкладки территорий -->
@@ -136,10 +108,14 @@
 
       <!-- Мобильные карточки (узкий экран) — на table-fixed адресу не хватает места, см. память project_helpdesk -->
       <div class="sm:hidden divide-y divide-gray-100">
-        <p v-if="!todayTickets?.length" class="text-center py-10 text-gray-400 text-sm">
+        <p v-if="!mergedTodayItems.length" class="text-center py-10 text-gray-400 text-sm">
           Заявок на {{ formatDateLabel(selectedDate) }} нет
         </p>
-        <div v-for="t in (todayTickets ?? [])" :key="t.id"
+        <template v-for="item in mergedTodayItems" :key="`${item.kind}-${item.id}`">
+        <!-- Обычная заявка -- разметка ниже не тронута, просто обёрнута в
+             однократный v-for-алиас, чтобы дать локальное имя `t` внутри
+             объединённого по времени списка (см. mergedTodayItems). -->
+        <div v-for="t in (item.kind === 'ticket' ? [item.ticket] : [])" :key="t.id"
              class="p-3 relative cursor-pointer"
              :class="t.status?.is_final ? 'opacity-60' : ''"
              :style="{ backgroundColor: (t.status?.color ?? '#6b7280') + '14' }"
@@ -181,6 +157,29 @@
             </button>
           </div>
         </div>
+        <!-- Заявка на подключение -- визуально отдельно от обычных заявок (синий
+             тон, значок 🔌), клик ведёт в карточку подключения (модалка на
+             странице Подключений через ?open=), а не в Ticket -- по просьбе
+             пользователя показывать среди обычных заявок в нужном тайм-слоте,
+             но не плодить отдельную сущность Ticket под неё (2026-08-08). -->
+        <div v-for="c in (item.kind === 'connection' ? [item.conn] : [])" :key="c.id"
+             class="p-3 relative cursor-pointer bg-blue-50/60"
+             @click="router.visit(route('connection-requests.index', { open: c.id }))">
+          <div class="absolute inset-y-0 left-0 w-[3px] bg-blue-500"></div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="leading-none">🔌</span>
+            <span class="font-medium tabular-nums text-gray-700">{{ formatTime(c.scheduled_at) }}</span>
+            <span class="flex-1"></span>
+            <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">Подключение</span>
+          </div>
+          <p class="font-medium text-gray-800 text-sm mt-1 leading-snug">{{ c.address_string }}</p>
+          <p class="text-blue-700 text-xs mt-0.5">{{ c.name }}</p>
+          <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">{{ c.service_type.name }}</span>
+            <a v-if="c.phone" :href="'tel:' + c.phone" @click.stop class="text-xs text-gray-600 hover:text-blue-600">{{ c.phone }}</a>
+          </div>
+        </div>
+        </template>
       </div>
 
       <div class="overflow-x-auto hidden sm:block">
@@ -210,12 +209,15 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-if="!todayTickets?.length">
+            <tr v-if="!mergedTodayItems.length">
               <td colspan="11" class="text-center py-10 text-gray-400">
                 Заявок на {{ formatDateLabel(selectedDate) }} нет
               </td>
             </tr>
-            <tr v-for="t in (todayTickets ?? [])" :key="t.id"
+            <template v-for="item in mergedTodayItems" :key="`${item.kind}-${item.id}`">
+            <!-- Обычная заявка -- разметка ниже не тронута, обёрнута в
+                 однократный v-for-алиас для локального имени `t` -->
+            <tr v-for="t in (item.kind === 'ticket' ? [item.ticket] : [])" :key="t.id"
                 :class="['cursor-pointer transition-all', t.status?.is_final ? 'opacity-60' : '']"
                 :style="{ backgroundColor: (t.status?.color ?? '#6b7280') + '1a' }"
                 @mouseenter="e => { e.currentTarget.style.filter='brightness(0.93)'; showTooltip(e, t) }"
@@ -283,6 +285,39 @@
                 </button>
               </td>
             </tr>
+            <!-- Заявка на подключение -- визуально отдельно (синий тон, 🔌),
+                 клик ведёт в карточку подключения (?open=), не в Ticket -->
+            <tr v-for="c in (item.kind === 'connection' ? [item.conn] : [])" :key="c.id"
+                class="cursor-pointer transition-colors bg-blue-50/50 hover:bg-blue-100/60"
+                @click="router.visit(route('connection-requests.index', { open: c.id }))">
+              <td class="pr-0 py-0 w-5 relative">
+                <div class="absolute inset-y-0 left-0 w-[3px] rounded-r bg-blue-500"></div>
+              </td>
+              <td class="pl-1.5 pr-1 py-0.5 text-center text-sm leading-none">🔌</td>
+              <td class="px-2 py-0.5 font-medium tabular-nums text-gray-700 whitespace-nowrap text-xs">
+                {{ formatTime(c.scheduled_at) }}
+              </td>
+              <td class="px-2 py-0.5">
+                <span class="font-mono text-blue-600 font-medium text-xs">—</span>
+              </td>
+              <td class="px-2 py-0.5">
+                <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ c.address_string }}</p>
+                <p class="text-blue-700 text-xs leading-tight truncate">{{ c.name }}</p>
+              </td>
+              <td class="px-2 py-0.5 hidden md:table-cell overflow-hidden">
+                <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">
+                  {{ c.service_type.name }}
+                </span>
+              </td>
+              <td class="px-2 py-0.5 hidden lg:table-cell text-gray-600 text-xs whitespace-nowrap">{{ c.phone ?? '—' }}</td>
+              <td class="px-2 py-0.5 overflow-hidden">
+                <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded whitespace-nowrap">🔌 Подключение</span>
+              </td>
+              <td class="px-2 py-0.5"></td>
+              <td class="px-2 pr-1 py-0.5"></td>
+              <td class="px-2 py-0.5 text-right"></td>
+            </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -556,6 +591,17 @@ const props = defineProps({
   pendingConnectionsCount: { type: Number, default: 0 },
   scheduledConnections:    { type: Array,  default: () => [] },
   pendingServiceRequestsCount: { type: Number, default: 0 },
+})
+
+// Заявки + назначенные на этот день заявки на подключение в одном списке,
+// отсортированном по времени -- показываем подключение среди обычных
+// заявок "в нужном тайм-слоте" вместо отдельного блока сверху, но не
+// заводим под него Ticket (см. комментарии у самих строк в шаблоне ниже,
+// запрос пользователя 2026-08-08).
+const mergedTodayItems = computed(() => {
+  const tickets = (props.todayTickets ?? []).map(t => ({ kind: 'ticket', id: t.id, time: t.scheduled_at, ticket: t }))
+  const conns   = (props.scheduledConnections ?? []).map(c => ({ kind: 'connection', id: c.id, time: c.scheduled_at, conn: c }))
+  return [...tickets, ...conns].sort((a, b) => new Date(a.time) - new Date(b.time))
 })
 
 // ── Обучение при первом входе ──
