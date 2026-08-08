@@ -106,12 +106,24 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('territory_id');
 
+        // Просроченные заявки на подключение -- назначены (status=scheduled), но
+        // дата подключения уже в прошлом. territory_id лежит прямо на записи (не
+        // через address, как у Ticket), поэтому запрос проще, чем у тикетов выше.
+        $overdueConnectionsByTerritory = ConnectionRequest::where('status', 'scheduled')
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<', $overdueThreshold)
+            ->whereIn('territory_id', $userTerritories->pluck('id'))
+            ->selectRaw('territory_id, COUNT(*) as cnt')
+            ->groupBy('territory_id')
+            ->pluck('cnt', 'territory_id');
+
         $territoriesWithCounts = $userTerritories->map(fn($t) => [
             'id'            => $t->id,
             'name'          => $t->name,
             'open_count'    => (int)($territoryStats[$t->id]->open_count   ?? 0),
             'closed_count'  => (int)($territoryStats[$t->id]->closed_count ?? 0),
-            'overdue_count' => (int)($overdueByTerritory[$t->id]->cnt      ?? 0),
+            'overdue_count' => (int)($overdueByTerritory[$t->id]->cnt ?? 0)
+                             + (int)($overdueConnectionsByTerritory[$t->id] ?? 0),
         ]);
 
         $serviceTypesWithCounts = $serviceTypes->map(fn($s) => [
@@ -121,14 +133,25 @@ class DashboardController extends Controller
             'has_open' => ($serviceTypeHasOpen[$s->id] ?? 0) > 0,
         ]);
 
-        // Подключения, назначенные на выбранную дату -- отдельный блок "Подключения
-        // на сегодня" (не смешиваем с тикетной таблицей выше: у Ticket статус --
-        // FK на ticket_statuses с is_final/счётчиками по территориям, у
-        // ConnectionRequest статус -- простая строка, другая модель, см. память
-        // проекта, project-connection-feasibility).
+        // Подключения, назначенные на выбранную дату -- модель другая (у Ticket
+        // статус это FK на ticket_statuses с is_final, у ConnectionRequest --
+        // простая строка), поэтому запрос отдельный, но на фронте (Dashboard/
+        // Index.vue, mergedTodayItems) сливается в общий список по времени
+        // вместе с todayTickets -- см. память проекта, project-connection-feasibility.
         $scheduledConnections = ConnectionRequest::with(['territory', 'serviceType'])
             ->where('status', 'scheduled')
             ->whereDate('scheduled_at', $date)
+            ->when($territory,  fn($q) => $q->where('territory_id', $territory))
+            ->when(!$territory, fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
+            ->orderBy('scheduled_at')
+            ->get(['id', 'name', 'phone', 'address_string', 'scheduled_at', 'territory_id', 'service_type_id']);
+
+        // То же самое, но для просроченных (дата подключения уже в прошлом,
+        // статус всё ещё scheduled) -- сливается на фронте с overdue.
+        $overdueConnections = ConnectionRequest::with(['territory', 'serviceType'])
+            ->where('status', 'scheduled')
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<', $overdueThreshold)
             ->when($territory,  fn($q) => $q->where('territory_id', $territory))
             ->when(!$territory, fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
             ->orderBy('scheduled_at')
@@ -138,6 +161,7 @@ class DashboardController extends Controller
             'todayTickets'      => $todayTickets,
             'overdue'           => $overdue,
             'scheduledConnections' => $scheduledConnections,
+            'overdueConnections'   => $overdueConnections,
             'territories'       => $territoriesWithCounts,
             'serviceTypes'      => $serviceTypesWithCounts,
             'materialsCatalog'  => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','code','name','unit','price']),

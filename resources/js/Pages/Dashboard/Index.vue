@@ -324,14 +324,14 @@
     </div>
 
     <!-- ── ПРОСРОЧЕННЫЕ ── -->
-    <div v-if="overdue?.length" ref="overdueSection" data-tour="tour-dash-overdue"
+    <div v-if="mergedOverdueItems.length" ref="overdueSection" data-tour="tour-dash-overdue"
          class="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
       <div class="px-4 py-3 border-b border-red-200 flex items-center justify-between flex-wrap gap-2">
         <h2 class="font-semibold text-red-700 text-sm flex items-center gap-2">
           <input type="checkbox" :checked="selectAllOverdue" @change="toggleSelectAllOverdue"
                  class="rounded border-red-300 cursor-pointer" />
           ⚠ Требуют внимания — просроченные
-          <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">{{ overdue?.length }}</span>
+          <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">{{ mergedOverdueItems.length }}</span>
         </h2>
         <div class="flex items-center gap-2">
           <template v-if="selectedOverdue.size > 0">
@@ -352,7 +352,10 @@
       </div>
       <!-- Мобильные карточки (узкий экран) -->
       <div class="sm:hidden divide-y divide-red-100">
-        <div v-for="t in (overdue ?? [])" :key="t.id"
+        <template v-for="item in mergedOverdueItems" :key="`${item.kind}-${item.id}`">
+        <!-- Просроченная заявка -- разметка не тронута, обёрнута в
+             однократный v-for-алиас для локального имени `t` -->
+        <div v-for="t in (item.kind === 'ticket' ? [item.ticket] : [])" :key="t.id"
              class="p-3 flex gap-2 cursor-pointer"
              @click="router.visit(route('tickets.show', t.id))">
           <input type="checkbox" :checked="selectedOverdue.has(t.id)"
@@ -384,12 +387,35 @@
             </div>
           </div>
         </div>
+        <!-- Просроченная заявка на подключение -- без чекбокса (не участвует
+             в массовых действиях), синий тон + дата красным, клик ведёт в
+             карточку подключения (?open=), не в Ticket -->
+        <div v-for="c in (item.kind === 'connection' ? [item.conn] : [])" :key="c.id"
+             class="p-3 flex gap-2 cursor-pointer bg-blue-50/40"
+             @click="router.visit(route('connection-requests.index', { open: c.id }))">
+          <span class="mt-1 shrink-0 leading-none">🔌</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 text-xs">
+              <span class="font-medium text-blue-700">Подключение</span>
+              <span class="flex-1"></span>
+              <span class="text-red-600 font-medium whitespace-nowrap">{{ formatDateTime(c.scheduled_at) }}</span>
+            </div>
+            <p class="font-medium text-gray-800 text-sm mt-1 leading-snug">{{ c.address_string }}</p>
+            <p class="text-blue-700 text-xs mt-0.5">{{ c.name }}</p>
+            <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">{{ c.service_type.name }}</span>
+              <a v-if="c.phone" :href="'tel:' + c.phone" @click.stop class="text-xs text-gray-600 hover:text-blue-600">{{ c.phone }}</a>
+            </div>
+          </div>
+        </div>
+        </template>
       </div>
 
       <div class="hidden sm:block">
       <table class="w-full text-xs table-fixed">
         <tbody class="divide-y divide-red-100">
-          <tr v-for="t in (overdue ?? [])" :key="t.id"
+          <template v-for="item in mergedOverdueItems" :key="`${item.kind}-${item.id}`">
+          <tr v-for="t in (item.kind === 'ticket' ? [item.ticket] : [])" :key="t.id"
               class="hover:bg-red-100/50 cursor-pointer transition-colors"
               @click="router.visit(route('tickets.show', t.id))">
             <td class="pl-2 pr-0 py-px text-center w-7" @click.stop>
@@ -426,6 +452,31 @@
               </span>
             </td>
           </tr>
+          <!-- Просроченная заявка на подключение -->
+          <tr v-for="c in (item.kind === 'connection' ? [item.conn] : [])" :key="c.id"
+              class="hover:bg-red-100/50 cursor-pointer transition-colors bg-blue-50/40"
+              @click="router.visit(route('connection-requests.index', { open: c.id }))">
+            <td class="pl-2 pr-0 py-px text-center w-7"></td>
+            <td class="pl-1 pr-1 py-px text-center w-6">🔌</td>
+            <td class="px-3 py-px w-20">
+              <span class="font-mono text-blue-700 font-medium">—</span>
+            </td>
+            <td class="px-3 py-px">
+              <p class="font-medium text-gray-800 truncate">{{ c.address_string }}</p>
+              <p class="text-blue-700 text-xs truncate">{{ c.name }}</p>
+            </td>
+            <td class="px-3 py-px hidden sm:table-cell w-32 overflow-hidden">
+              <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">{{ c.service_type.name }}</span>
+            </td>
+            <td class="px-3 py-px w-28 overflow-hidden">
+              <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded whitespace-nowrap">🔌 Подключение</span>
+            </td>
+            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-40 whitespace-nowrap">{{ c.phone ?? '—' }}</td>
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-44">
+              {{ formatDateTime(c.scheduled_at) }}
+            </td>
+          </tr>
+          </template>
         </tbody>
       </table>
       </div>
@@ -590,6 +641,7 @@ const props = defineProps({
   onlyOpen:          { type: Boolean, default: false },
   pendingConnectionsCount: { type: Number, default: 0 },
   scheduledConnections:    { type: Array,  default: () => [] },
+  overdueConnections:      { type: Array,  default: () => [] },
   pendingServiceRequestsCount: { type: Number, default: 0 },
 })
 
@@ -601,6 +653,15 @@ const props = defineProps({
 const mergedTodayItems = computed(() => {
   const tickets = (props.todayTickets ?? []).map(t => ({ kind: 'ticket', id: t.id, time: t.scheduled_at, ticket: t }))
   const conns   = (props.scheduledConnections ?? []).map(c => ({ kind: 'connection', id: c.id, time: c.scheduled_at, conn: c }))
+  return [...tickets, ...conns].sort((a, b) => new Date(a.time) - new Date(b.time))
+})
+
+// То же самое для просроченных -- бригадные bulk-действия (закрыть/перенести
+// выделенные) остаются строго тикетными, чекбокс выбора у строк подключения
+// не показываем (см. connection-row markup ниже).
+const mergedOverdueItems = computed(() => {
+  const tickets = (props.overdue ?? []).map(t => ({ kind: 'ticket', id: t.id, time: t.scheduled_at, ticket: t }))
+  const conns   = (props.overdueConnections ?? []).map(c => ({ kind: 'connection', id: c.id, time: c.scheduled_at, conn: c }))
   return [...tickets, ...conns].sort((a, b) => new Date(a.time) - new Date(b.time))
 })
 

@@ -109,7 +109,8 @@
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50"
-                :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at }">
+                :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at,
+                          'ring-2 ring-inset ring-red-400': isOverdue(r) }">
               <td class="px-1.5 py-px text-center whitespace-nowrap">
                 <button v-if="r.status === 'pending' || r.status === 'scheduled'"
                         @click="openEdit(r)" title="Редактировать"
@@ -149,7 +150,7 @@
                   </span>
                 </div>
               </td>
-              <td class="px-2 py-px whitespace-nowrap text-gray-600">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
+              <td class="px-2 py-px whitespace-nowrap" :class="isOverdue(r) ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
               <td class="px-2 py-px text-gray-600 max-w-48 truncate" :title="r.notes">
                 <button v-if="r.act"
                         @click="router.get(route('acts.show', r.act.id))"
@@ -713,6 +714,15 @@ onMounted(() => {
 const totalOverdue = computed(() =>
   Object.values(props.overdueByTerritory ?? {}).reduce((a, b) => a + b, 0)
 )
+
+// Просрочена -- назначена, но дата подключения уже в прошлом (тот же порог
+// "< начала сегодняшнего дня", что и в overdueByTerritory на бэкенде,
+// см. ConnectionRequestController::index()).
+function isOverdue(r) {
+  if (r.status !== 'scheduled' || !r.scheduled_at) return false
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
+  return new Date(r.scheduled_at) < startOfToday
+}
 
 const f = ref({
   search:       props.filters?.search       ?? '',
