@@ -465,6 +465,33 @@ class TicketController extends Controller
         return back()->with('success', 'Заявка отменена');
     }
 
+    // Список уже занятых тайм-слотов бригады на дату — для UI-пикера времени
+    // (например, при назначении даты подключения в разделе Подключений),
+    // который должен показывать/дизейблить занятые слоты, а не только
+    // подсказывать один первый свободный, как freeSlot() ниже. Те же условия
+    // занятости, что и в TicketService::checkSlotConflict()/freeSlot() —
+    // не final-статус + тот же brigade_id (+ service_type_id, если передан).
+    public function occupiedSlots(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $brigadeId     = $request->integer('brigade_id') ?: null;
+        $serviceTypeId = $request->integer('service_type_id') ?: null;
+        $date          = $request->filled('date')
+            ? \Carbon\Carbon::parse($request->date)->toDateString()
+            : today()->toDateString();
+
+        $occupied = Ticket::whereDate('scheduled_at', $date)
+            ->when($brigadeId, fn($q) => $q->where('brigade_id', $brigadeId))
+            ->whereNotNull('scheduled_at')
+            ->whereHas('status', fn($q) => $q->where('is_final', false))
+            ->when($serviceTypeId, fn($q) => $q->where('service_type_id', $serviceTypeId))
+            ->pluck('scheduled_at')
+            ->map(fn($dt) => \Carbon\Carbon::parse($dt)->format('H:i'))
+            ->unique()
+            ->values();
+
+        return response()->json(['occupied' => $occupied]);
+    }
+
     public function freeSlot(Request $request): \Illuminate\Http\JsonResponse
     {
         $workStart     = SystemSetting::get('work_hours_start', '09:00');

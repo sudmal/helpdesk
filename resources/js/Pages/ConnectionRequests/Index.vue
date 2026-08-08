@@ -294,7 +294,19 @@
           </div>
           <div v-if="scheduleForm.status === 'scheduled'" class="field-row">
             <label class="field-label">Дата подкл.</label>
-            <TimePicker v-model="scheduleForm.scheduled_at" />
+            <div class="flex-1">
+              <TimePicker v-model="scheduleForm.scheduled_at"
+                          :work-start="settings.work_hours_start"
+                          :work-end="settings.work_hours_end"
+                          :step-minutes="settings.schedule_step_minutes"
+                          :disabled-slots="occupiedSlots"
+                          @date-change="fetchOccupiedSlots" />
+              <p v-if="!activeRecord?.brigade_id" class="mt-1 text-xs text-amber-600">
+                ⚠ Бригада не назначена — занятость слотов не проверяется
+              </p>
+              <p v-else-if="slotsLoading" class="mt-1 text-xs text-gray-400">Проверка занятости…</p>
+              <p v-else class="mt-1 text-xs text-gray-400">Бригада: {{ activeRecord?.brigade?.name ?? '—' }}</p>
+            </div>
           </div>
           <div>
             <label class="field-label">Примечания</label>
@@ -660,6 +672,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Head, usePage } from '@inertiajs/vue3'
+import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import TimePicker from '@/Components/UI/TimePicker.vue'
 import { useTour, hasSeenTour } from '@/Composables/useTour'
@@ -676,6 +689,7 @@ const props = defineProps({
   overdueByTerritory:  { type: Object, default: () => ({}) },
   materialsCatalog:  Array,
   promotions:        { type: Array, default: () => [] },
+  settings:          { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
 })
 
 // ── Обучение: как устроен алгоритм заявки на подключение ──
@@ -775,6 +789,26 @@ watch(() => editForm.territory_id, (territoryId) => {
 })
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
+const occupiedSlots = ref([])
+const slotsLoading  = ref(false)
+
+// Занятость тайм-слотов бригады на дату — та же логика, что и у обычных
+// заявок (TicketController::occupiedSlots, брат-близнец freeSlot/
+// checkSlotConflict). Без назначенной бригады фильтровать нечего —
+// TimePicker покажет все слоты, оператор увидит предупреждение выше.
+async function fetchOccupiedSlots(date) {
+  const brigadeId = activeRecord.value?.brigade_id
+  if (!date || !brigadeId) { occupiedSlots.value = []; return }
+  slotsLoading.value = true
+  try {
+    const { data } = await axios.get(route('tickets.occupied-slots'), {
+      params: { brigade_id: brigadeId, service_type_id: activeRecord.value?.service_type_id, date },
+    })
+    occupiedSlots.value = data.occupied ?? []
+  } finally {
+    slotsLoading.value = false
+  }
+}
 const deleteForm   = reactive({ reason: '' })
 const feasibilityForm = reactive({ answer: '', comment: '' })
 const cancelForm      = reactive({ comment: '' })
@@ -814,6 +848,9 @@ function openSchedule(r) {
     territory_id: r.territory_id ?? null,
     notes:        r.notes ?? '',
   })
+  occupiedSlots.value = []
+  const initialDate = r.scheduled_at ? r.scheduled_at.slice(0, 10) : ''
+  if (initialDate) fetchOccupiedSlots(initialDate)
   modals.schedule = true
 }
 

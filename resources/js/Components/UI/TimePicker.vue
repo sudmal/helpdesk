@@ -6,7 +6,7 @@
              :min="minDate"
              class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm
                     focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-             @change="emitValue" />
+             @change="onDateChange" />
     </div>
     <div>
       <label class="block text-xs text-gray-500 mb-1">Время *</label>
@@ -15,7 +15,9 @@
                      focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               @change="emitValue">
         <option value="">— Выбрать —</option>
-        <option v-for="slot in timeSlots" :key="slot" :value="slot">{{ slot }}</option>
+        <option v-for="slot in timeSlots" :key="slot" :value="slot" :disabled="disabledSlots.includes(slot)">
+          {{ slot }}{{ disabledSlots.includes(slot) ? ' — занято' : '' }}
+        </option>
       </select>
     </div>
   </div>
@@ -29,9 +31,18 @@ const props = defineProps({
   workStart:    { type: String, default: '09:00' },
   workEnd:      { type: String, default: '17:00' },
   stepMinutes:  { type: Number, default: 30 },
+  // HH:MM слоты, которые нужно показать занятыми (disabled) — например,
+  // уже забронированные для выбранной бригады. Пустой массив по умолчанию,
+  // не влияет на существующие места использования (Tickets/Create.vue).
+  disabledSlots: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'date-change'])
+
+function onDateChange() {
+  emit('date-change', localDate.value)
+  emitValue()
+}
 
 // Парсим входное значение
 const localDate = ref('')

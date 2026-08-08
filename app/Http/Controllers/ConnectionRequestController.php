@@ -9,6 +9,7 @@ use App\Models\ConnectionRequestLog;
 use App\Models\Material;
 use App\Models\Promotion;
 use App\Models\ServiceType;
+use App\Models\SystemSetting;
 use App\Models\Territory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +93,11 @@ class ConnectionRequestController extends Controller
             'overdueByTerritory' => $overdueByTerritory,
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
             'promotions'         => Promotion::active()->get(['id', 'name', 'price']),
+            'settings'           => [
+                'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
+                'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
+                'schedule_step_minutes' => (int) SystemSetting::get('schedule_step_minutes', 30),
+            ],
         ]);
     }
 

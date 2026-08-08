@@ -50,6 +50,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/map',            [TicketController::class, 'map'])->name('map');
         Route::get('/map-data',        [TicketController::class, 'mapData'])->name('map-data');
         Route::get('/free-slot',      [TicketController::class, 'freeSlot'])->name('free-slot');
+        Route::get('/occupied-slots', [TicketController::class, 'occupiedSlots'])->name('occupied-slots');
         Route::post('/',             [TicketController::class, 'store'])->name('store');
         Route::post('/bulk/close',      [TicketController::class, 'bulkClose'])->name('bulk.close');
         Route::post('/bulk/reschedule', [TicketController::class, 'bulkReschedule'])->name('bulk.reschedule');
