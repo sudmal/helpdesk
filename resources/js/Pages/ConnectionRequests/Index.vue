@@ -123,11 +123,11 @@
               </td>
               <td class="px-1 py-px text-center text-sm leading-none" :title="r.service_type?.name">{{ serviceIcon(r.service_type?.name) }}</td>
               <td class="px-2 py-px whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
-              <td class="px-2 py-px font-medium truncate max-w-32">{{ r.name }}</td>
+              <td class="px-2 py-px font-medium truncate max-w-24">{{ r.name }}</td>
               <td class="px-2 py-px font-mono whitespace-nowrap">{{ r.phone }}</td>
-              <td class="px-2 py-px text-blue-600 hover:underline cursor-pointer truncate max-w-48"
+              <td class="px-2 py-px text-blue-600 hover:underline cursor-pointer truncate max-w-36"
                   @click="openDetail(r)">{{ r.address_string }}</td>
-              <td class="px-2 py-px text-gray-500 max-w-48 truncate" :title="r.description">{{ r.description || '—' }}</td>
+              <td class="px-2 py-px text-gray-500 max-w-32 truncate" :title="r.description">{{ r.description || '—' }}</td>
               <td class="px-2 py-px">
                 <div class="flex items-center gap-1.5">
                   <span class="w-4 shrink-0 text-center">
@@ -151,7 +151,7 @@
                 </div>
               </td>
               <td class="px-2 py-px whitespace-nowrap" :class="isOverdue(r) ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
-              <td class="px-2 py-px text-gray-600 max-w-48 truncate" :title="r.notes">
+              <td class="px-2 py-px text-gray-600 max-w-36 truncate" :title="r.notes">
                 <button v-if="r.act"
                         @click="router.get(route('acts.show', r.act.id))"
                         class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act.number }}]</button>
