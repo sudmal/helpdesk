@@ -231,6 +231,52 @@ class AddressController extends Controller
      * Сначала (без confirm_merge) только считаем и просим подтверждение —
      * это необратимая операция, слияние не должно происходить по опечатке.
      */
+    /**
+     * Общая логика переименования/слияния одного уровня иерархии адресов
+     * (город / улица / дом). $scope -- фиксированные родительские поля,
+     * $matchColumns -- дочерние колонки (кроме $column), по которым ищем
+     * "двойника" на новом значении, чтобы слить вместо дублирования.
+     */
+    private function renameHierarchyLevel(string $column, array $scope, string $from, string $to, array $matchColumns): array
+    {
+        $moved  = 0;
+        $merged = 0;
+
+        // Пробелы донаполняем данными переносимой записи, только если у
+        // двойника это поле пустое -- значения двойника имеют приоритет.
+        $fillableGaps = ['subscriber_name', 'phone', 'contract_no', 'lanbilling_id',
+                          'lanbilling_data', 'notes', 'lat', 'lng', 'is_private', 'entrance', 'floor'];
+
+        foreach (Address::where($scope)->where($column, $from)->get() as $row) {
+            $twinQuery = Address::where($scope)->where($column, $to);
+            foreach ($matchColumns as $mc) {
+                $twinQuery->when($row->$mc === null,
+                    fn($q) => $q->whereNull($mc),
+                    fn($q) => $q->where($mc, $row->$mc));
+            }
+            $twin = $twinQuery->first();
+
+            if ($twin) {
+                $fill = [];
+                foreach ($fillableGaps as $f) {
+                    if (blank($twin->$f) && !blank($row->$f)) $fill[$f] = $row->$f;
+                }
+                if ($fill) $twin->update($fill);
+
+                \App\Models\Ticket::where('address_id', $row->id)->update(['address_id' => $twin->id]);
+                DB::table('calls')->where('address_id', $row->id)->update(['address_id' => $twin->id]);
+
+                $row->delete();
+                $merged++;
+            } else {
+                $row->update([$column => $to]);
+                $moved++;
+            }
+        }
+
+        return ['moved' => $moved, 'merged' => $merged];
+    }
+
     public function renameStreet(Request $request): \Illuminate\Http\JsonResponse
     {
         $data = $request->validate([
@@ -261,42 +307,89 @@ class AddressController extends Controller
             ]);
         }
 
-        $moved  = 0;
-        $merged = 0;
-
-        DB::transaction(function () use ($city, $from, $to, &$moved, &$merged) {
-            // Пробелы донаполняем данными переносимой записи, только если у
-            // двойника это поле пустое -- значения двойника имеют приоритет.
-            $fillableGaps = ['subscriber_name', 'phone', 'contract_no', 'lanbilling_id',
-                              'lanbilling_data', 'notes', 'lat', 'lng', 'is_private', 'entrance', 'floor'];
-
-            foreach (Address::where('city', $city)->where('street', $from)->get() as $row) {
-                $twin = Address::where('city', $city)->where('street', $to)
-                    ->where('building', $row->building)
-                    ->when($row->apartment === null, fn($q) => $q->whereNull('apartment'),
-                                                      fn($q) => $q->where('apartment', $row->apartment))
-                    ->first();
-
-                if ($twin) {
-                    $fill = [];
-                    foreach ($fillableGaps as $f) {
-                        if (blank($twin->$f) && !blank($row->$f)) $fill[$f] = $row->$f;
-                    }
-                    if ($fill) $twin->update($fill);
-
-                    \App\Models\Ticket::where('address_id', $row->id)->update(['address_id' => $twin->id]);
-                    DB::table('calls')->where('address_id', $row->id)->update(['address_id' => $twin->id]);
-
-                    $row->delete();
-                    $merged++;
-                } else {
-                    $row->update(['street' => $to]);
-                    $moved++;
-                }
-            }
+        $result = null;
+        DB::transaction(function () use ($city, $from, $to, &$result) {
+            $result = $this->renameHierarchyLevel('street', ['city' => $city], $from, $to, ['building', 'apartment']);
         });
 
-        return response()->json(['ok' => true, 'moved' => $moved, 'merged' => $merged]);
+        return response()->json(['ok' => true, 'moved' => $result['moved'], 'merged' => $result['merged']]);
+    }
+
+    public function renameCity(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'city'          => 'required|string|max:100',
+            'new_city'      => 'required|string|max:100',
+            'confirm_merge' => 'nullable|boolean',
+        ]);
+
+        $from = $data['city'];
+        $to   = trim($data['new_city']);
+
+        if ($to === '') {
+            return response()->json(['message' => 'Название города не может быть пустым'], 422);
+        }
+        if ($to === $from) {
+            return response()->json(['ok' => true, 'moved' => 0, 'merged' => 0]);
+        }
+
+        $targetExists = Address::where('city', $to)->exists();
+
+        if ($targetExists && !$request->boolean('confirm_merge')) {
+            return response()->json([
+                'needs_confirm' => true,
+                'target_count'  => Address::where('city', $to)->count(),
+                'source_count'  => Address::where('city', $from)->count(),
+            ]);
+        }
+
+        $result = null;
+        DB::transaction(function () use ($from, $to, &$result) {
+            $result = $this->renameHierarchyLevel('city', [], $from, $to, ['street', 'building', 'apartment']);
+        });
+
+        return response()->json(['ok' => true, 'moved' => $result['moved'], 'merged' => $result['merged']]);
+    }
+
+    public function renameBuilding(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'city'          => 'required|string|max:100',
+            'street'        => 'required|string|max:200',
+            'building'      => 'required|string|max:20',
+            'new_building'  => 'required|string|max:20',
+            'confirm_merge' => 'nullable|boolean',
+        ]);
+
+        $city   = $data['city'];
+        $street = $data['street'];
+        $from   = $data['building'];
+        $to     = trim($data['new_building']);
+
+        if ($to === '') {
+            return response()->json(['message' => 'Номер/название дома не может быть пустым'], 422);
+        }
+        if ($to === $from) {
+            return response()->json(['ok' => true, 'moved' => 0, 'merged' => 0]);
+        }
+
+        $scope = ['city' => $city, 'street' => $street];
+        $targetExists = Address::where($scope)->where('building', $to)->exists();
+
+        if ($targetExists && !$request->boolean('confirm_merge')) {
+            return response()->json([
+                'needs_confirm' => true,
+                'target_count'  => Address::where($scope)->where('building', $to)->count(),
+                'source_count'  => Address::where($scope)->where('building', $from)->count(),
+            ]);
+        }
+
+        $result = null;
+        DB::transaction(function () use ($scope, $from, $to, &$result) {
+            $result = $this->renameHierarchyLevel('building', $scope, $from, $to, ['apartment']);
+        });
+
+        return response()->json(['ok' => true, 'moved' => $result['moved'], 'merged' => $result['merged']]);
     }
 
     public function bulkSetType(Request $request): \Illuminate\Http\JsonResponse
@@ -337,14 +430,33 @@ class AddressController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Неразрушительный флип ЧС→МКД: если создаётся запись с квартирой в доме,
+     * у которого явно выставлен is_private=1 (ЧС), снимаем это переопределение
+     * -- иначе новая квартира "потеряется" за отображением ЧС в index() (там
+     * override форсирует ветку без квартир). NULL (авто-определение) и 0
+     * (уже МКД) не трогаем. Удаления здесь нет -- оно применимо только в
+     * обратную сторону, см. bulkSetType().
+     */
+    private function autoFlipToMkdIfNeeded(string $city, string $street, string $building): void
+    {
+        $override = Address::where('city', $city)->where('street', $street)->where('building', $building)
+            ->whereNotNull('is_private')->value('is_private');
+
+        if ($override !== null && (int) $override === 1) {
+            Address::where('city', $city)->where('street', $street)->where('building', $building)
+                ->update(['is_private' => 0]);
+        }
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
             'city'            => 'required|string|max:100',
             'territory_id'    => 'required|exists:territories,id',
             'street'          => 'required|string|max:200',
-            'building'        => 'nullable|string|max:20',
-            'apartment'       => 'nullable|string|max:20',
+            'building'        => 'nullable|string|max:30',
+            'apartment'       => 'nullable|string|max:30',
             'entrance'        => 'nullable|string|max:10',
             'floor'           => 'nullable|string|max:10',
             'subscriber_name' => 'nullable|string|max:200',
@@ -369,6 +481,7 @@ class AddressController extends Controller
             DB::transaction(function () use ($data, $buildingFrom, $buildingTo, $buildStep, $aptFrom, $aptTo, &$created) {
                 for ($b = $buildingFrom; $b <= $buildingTo; $b += $buildStep) {
                     if ($aptFrom && $aptTo) {
+                        $this->autoFlipToMkdIfNeeded($data['city'], $data['street'], (string) $b);
                         for ($apt = $aptFrom; $apt <= $aptTo; $apt++) {
                             Address::firstOrCreate(
                                 ['city' => $data['city'], 'street' => $data['street'],
@@ -416,7 +529,12 @@ class AddressController extends Controller
             }
         }
 
-        Address::create($data);
+        DB::transaction(function () use ($data) {
+            if (!blank($data['apartment'] ?? null)) {
+                $this->autoFlipToMkdIfNeeded($data['city'], $data['street'], (string) ($data['building'] ?? ''));
+            }
+            Address::create($data);
+        });
         return back()->with('success', 'Адрес добавлен');
     }
 
@@ -426,8 +544,8 @@ class AddressController extends Controller
             'city'            => 'required|string|max:100',
             'territory_id'    => 'required|exists:territories,id',
             'street'          => 'required|string|max:200',
-            'building'        => 'nullable|string|max:20',
-            'apartment'       => 'nullable|string|max:20',
+            'building'        => 'nullable|string|max:30',
+            'apartment'       => 'nullable|string|max:30',
             'entrance'        => 'nullable|string|max:10',
             'subscriber_name' => 'nullable|string|max:200',
             'phone'           => 'nullable|string|max:30',

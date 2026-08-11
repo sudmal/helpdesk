@@ -92,13 +92,22 @@
     <div v-if="level === 0">
       <p class="text-xs text-gray-400 mb-3">Выберите город</p>
       <div class="flex flex-wrap gap-2">
-        <button v-for="city in items" :key="city.name"
-                @click="selectCity(city.name)"
-                class="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200
-                       rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm font-medium">
-          🏙 {{ city.name }}
-          <span class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{{ city.count }}</span>
-        </button>
+        <div v-for="city in items" :key="city.name"
+             class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-gray-200
+                    rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm font-medium">
+          <button @click="selectCity(city.name)" class="flex items-center gap-2 px-1.5 py-1">
+            🏙 {{ city.name }}
+            <span class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{{ city.count }}</span>
+          </button>
+          <button @click.stop="openRename('city', city.name)" title="Переименовать город"
+                  class="shrink-0 text-gray-300 hover:text-blue-600 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <p v-if="!items.length" class="text-gray-400 text-sm py-8 text-center">Адреса не добавлены</p>
     </div>
@@ -128,7 +137,7 @@
               <span class="font-medium truncate">{{ st.name }}</span>
               <span class="text-xs text-gray-400 ml-2 shrink-0">{{ st.count }}</span>
             </button>
-            <button @click.stop="openRenameStreet(st.name)" title="Переименовать улицу"
+            <button @click.stop="openRename('street', st.name, { city: selected.city })" title="Переименовать улицу"
                     class="ml-1.5 shrink-0 text-gray-300 hover:text-blue-600 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -190,6 +199,17 @@
                 class="absolute top-1 right-1 w-4 h-4 rounded border flex items-center justify-center text-xs leading-none"
                 :class="isBuildingSelected(b) ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'">
             <span v-if="isBuildingSelected(b)">✓</span>
+          </span>
+          <span v-if="!editTypeMode"
+                role="button"
+                title="Переименовать дом"
+                @click.stop="openRename('building', b.building, { city: selected.city, street: selected.street })"
+                class="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-gray-300 hover:text-blue-600 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
           </span>
           <span class="text-xl mb-1">{{ b.has_apartments ? '🏢' : '🏠' }}</span>
           <span class="font-semibold">{{ b.building }}</span>
@@ -320,11 +340,17 @@
         <!-- Город + Территория -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="field-label">Город <span class="text-red-500">*</span></label>
-            <input v-model="addrForm.city" list="cl" required class="field-input" placeholder="Донецк" />
-            <datalist id="cl">
-              <option v-for="c in cityNames" :key="c" :value="c" />
-            </datalist>
+            <label class="field-label">Город <span v-if="!cityLocked" class="text-red-500">*</span></label>
+            <p v-if="cityLocked" class="field-input text-gray-600 truncate">{{ addrForm.city }}</p>
+            <div v-else class="grid grid-cols-3 gap-1.5">
+              <select v-model="addrForm.city_prefix" class="field-input px-1.5">
+                <option v-for="p in CITY_PREFIXES" :key="p.value" :value="p.value">{{ p.label }}</option>
+              </select>
+              <input v-model="addrForm.city_name" list="cl" required class="field-input col-span-2" placeholder="Донецк" />
+              <datalist id="cl">
+                <option v-for="c in cityNames" :key="c" :value="c" />
+              </datalist>
+            </div>
           </div>
           <div>
             <label class="field-label">Территория <span class="text-red-500">*</span></label>
@@ -338,31 +364,42 @@
           </div>
         </div>
 
-        <!-- Тип + Название улицы -->
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="field-label">Тип</label>
-            <select v-model="addrForm.street_type" class="field-input">
-              <option>ул.</option><option>пр.</option><option>пер.</option>
-              <option>кв-л</option><option>б-р</option><option>ш.</option>
+        <!-- Улица -->
+        <div>
+          <label class="field-label">Улица <span v-if="!streetLocked" class="text-red-500">*</span></label>
+          <p v-if="streetLocked" class="field-input text-gray-600 truncate">{{ addrForm.street }}</p>
+          <div v-else class="grid grid-cols-3 gap-2">
+            <select v-model="addrForm.street_prefix" class="field-input">
+              <option v-for="p in STREET_PREFIXES_SELECT" :key="p.value" :value="p.value">{{ p.label }}</option>
             </select>
-          </div>
-          <div class="col-span-2">
-            <label class="field-label">Улица <span class="text-red-500">*</span></label>
-            <input v-model="addrForm.street_name" required list="sl" class="field-input" placeholder="Малиновского" />
-            <datalist id="sl">
-              <option v-for="s in streetNames" :key="s" :value="s" />
-            </datalist>
+            <div class="col-span-2">
+              <input v-model="addrForm.street_name" required list="sl" class="field-input" placeholder="Малиновского" />
+              <datalist id="sl">
+                <option v-for="s in streetNames" :key="s" :value="s" />
+              </datalist>
+            </div>
           </div>
         </div>
 
         <!-- Одиночный адрес -->
         <template v-if="editingAddr || addrMode === 'single'">
+          <div>
+            <label class="field-label">Дом <span v-if="!buildingLocked" class="text-red-500">*</span></label>
+            <p v-if="buildingLocked" class="field-input text-gray-600 truncate">{{ addrForm.building }}</p>
+            <div v-else class="grid grid-cols-3 gap-2">
+              <select v-model="addrForm.building_prefix" class="field-input">
+                <option v-for="p in BUILDING_PREFIXES" :key="p.value" :value="p.value">{{ p.label }}</option>
+              </select>
+              <input v-model="addrForm.building_name" required class="field-input col-span-2" />
+            </div>
+          </div>
           <div class="grid grid-cols-3 gap-2">
-            <div><label class="field-label">Дом *</label>
-              <input v-model="addrForm.building" required class="field-input" /></div>
+            <div><label class="field-label">Тип кв./помещ.</label>
+              <select v-model="addrForm.apartment_prefix" class="field-input">
+                <option v-for="p in APARTMENT_PREFIXES" :key="p.value" :value="p.value">{{ p.label }}</option>
+              </select></div>
             <div><label class="field-label">Кв./Офис</label>
-              <input v-model="addrForm.apartment" class="field-input" /></div>
+              <input v-model="addrForm.apartment_name" class="field-input" /></div>
             <div><label class="field-label">Подъезд</label>
               <input v-model="addrForm.entrance" class="field-input" /></div>
           </div>
@@ -450,34 +487,41 @@
       </form>
     </Modal>
 
-    <!-- Переименование улицы -->
-    <Modal v-if="showRenameStreetModal" title="Переименовать улицу" @close="closeRenameStreetModal">
+    <!-- Переименование города/улицы/дома -->
+    <Modal v-if="showRenameModal" :title="`Переименовать ${RENAME_LABELS[renameLevel]}`" @close="closeRenameModal">
       <div class="space-y-4">
-        <div v-if="!renameStreetConfirm">
-          <label class="field-label">Название улицы</label>
-          <input v-model="renameStreetForm.new" type="text"
-                 class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm
-                        focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                 @keyup.enter="submitRenameStreet" />
+        <p v-if="renameParent.city || renameParent.street" class="text-xs text-gray-400">
+          <span v-if="renameParent.city">{{ renameParent.city }}</span>
+          <span v-if="renameParent.street"> › {{ renameParent.street }}</span>
+        </p>
+        <div v-if="!renameConfirm">
+          <label class="field-label">Название</label>
+          <div class="grid grid-cols-3 gap-2">
+            <select v-model="renamePrefix" class="field-input">
+              <option v-for="p in PREFIX_LISTS[renameLevel]" :key="p.value" :value="p.value">{{ p.label }}</option>
+            </select>
+            <input v-model="renameNameField" type="text" class="field-input col-span-2"
+                   @keyup.enter="submitRename" />
+          </div>
           <p class="text-xs text-gray-400 mt-1">
-            Было: «{{ renameStreetForm.old }}». Если новое название совпадёт с уже существующей
-            улицей — адреса объединятся в неё.
+            Было: «{{ renameOld }}». Если новое название совпадёт с уже существующим —
+            адреса объединятся в него.
           </p>
         </div>
         <div v-else class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-amber-800">
-          Улица «{{ renameStreetForm.new }}» уже существует
-          ({{ renameStreetConfirm.target_count }} адресов). Все {{ renameStreetConfirm.source_count }}
-          адресов с «{{ renameStreetForm.old }}» будут перенесены туда, дубликаты домов/квартир объединятся.
+          «{{ composeValue(renamePrefix, renameNameField) }}» уже существует
+          ({{ renameConfirm.target_count }} адресов). Все {{ renameConfirm.source_count }}
+          адресов с «{{ renameOld }}» будут перенесены туда, дубликаты объединятся.
           Продолжить?
         </div>
-        <div v-if="renameStreetError" class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
-          {{ renameStreetError }}
+        <div v-if="renameError" class="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-700">
+          {{ renameError }}
         </div>
         <div class="flex justify-end gap-2 pt-2">
-          <button type="button" @click="closeRenameStreetModal" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitRenameStreet" :disabled="renameStreetLoading"
-                  :class="['text-sm disabled:opacity-50', renameStreetConfirm ? 'btn-primary bg-amber-600 hover:bg-amber-700 border-amber-600' : 'btn-primary']">
-            {{ renameStreetLoading ? 'Сохраняю…' : (renameStreetConfirm ? 'Объединить' : 'Сохранить') }}
+          <button type="button" @click="closeRenameModal" class="btn-outline text-sm">Отмена</button>
+          <button @click="submitRename" :disabled="renameLoading"
+                  :class="['text-sm disabled:opacity-50', renameConfirm ? 'btn-primary bg-amber-600 hover:bg-amber-700 border-amber-600' : 'btn-primary']">
+            {{ renameLoading ? 'Сохраняю…' : (renameConfirm ? 'Объединить' : 'Сохранить') }}
           </button>
         </div>
       </div>
@@ -552,6 +596,7 @@ import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
 import Pagination from '@/Components/UI/Pagination.vue'
+import { PREFIX_LISTS, CITY_PREFIXES, STREET_PREFIXES_SELECT, BUILDING_PREFIXES, APARTMENT_PREFIXES, splitPrefix, composeValue } from '@/utils/addressAffix.js'
 
 const props = defineProps({
   territories: { type: Array, default: () => [] },
@@ -763,72 +808,107 @@ const modes = [
   { key: 'mkd',     label: '🏢 МКД - Множеств.' },
 ]
 
+// cityLocked/streetLocked/buildingLocked — когда true, соответствующий уровень
+// показывается read-only (сырое значение как есть, без разбора на префикс+
+// название). Это и есть исправление бага "ул. ул. Садовая": родитель, внутри
+// которого создаётся/редактируется дочерняя сущность, никогда не проходит
+// через попытку раскроить уже готовую строку обратно на части.
+const cityLocked     = ref(false)
+const streetLocked   = ref(false)
+const buildingLocked = ref(false)
+
 const addrForm = useForm({
-  city: selected.value.city ?? '', territory_id: '',
-  street_type: 'ул.', street_name: selected.value.street ?? '',
-  building: selected.value.building ?? '', apartment: '', entrance: '',
-  subscriber_name: '', phone: '', contract_no: '',
+  city: '', street: '', building: '', territory_id: '',
+  city_prefix: '', city_name: '',
+  street_prefix: '', street_name: '',
+  building_prefix: '', building_name: '',
+  apartment_prefix: '', apartment_name: '',
+  entrance: '', subscriber_name: '', phone: '', contract_no: '',
   confirm_duplicate: false,
 })
 
 function openAddModal() {
   editingAddr.value = null
-  addrForm.city         = selected.value.city ?? ''
-  addrForm.street_name  = selected.value.street?.replace(/^[а-яё]+\.\s*/i, '') ?? ''
-  addrForm.building     = ''
-  showAddModal.value    = true
+  cityLocked.value     = level.value >= 1
+  streetLocked.value   = level.value >= 2
+  buildingLocked.value = false
+
+  addrForm.city = selected.value.city ?? ''
+  addrForm.city_prefix = ''; addrForm.city_name = ''
+  addrForm.street = selected.value.street ?? ''
+  addrForm.street_prefix = ''; addrForm.street_name = ''
+  addrForm.building = ''
+  addrForm.building_prefix = ''; addrForm.building_name = ''
+  addrForm.apartment_prefix = ''; addrForm.apartment_name = ''
+  addrForm.territory_id = ''
+  addrForm.entrance = ''; addrForm.subscriber_name = ''; addrForm.phone = ''; addrForm.contract_no = ''
+  showAddModal.value = true
 }
 
 // Единичная/именная квартира прямо из списка квартир конкретного дома МКД —
 // в отличие от общей кнопки "+ Добавить" (открывается пустой, режим "МКД" даёт
 // только массовую генерацию диапазона apt_from/apt_to, оба числовые), тут дом
 // и улица уже известны из контекста драм-дауна, и режим сразу "Один" — можно
-// сразу вписать любой текст в номер квартиры (например "маг. Ромашка").
+// сразу вписать любой текст в номер квартиры (например "маг. Ромашка"). Город/
+// улица/дом всегда read-only здесь — берутся из контекста как есть.
 function openAddApartmentModal() {
-  editingAddr.value    = null
-  addrMode.value       = 'single'
-  addrForm.city        = selected.value.city ?? ''
-  const parts = (selected.value.street ?? '').split('. ')
-  addrForm.street_type = parts.length > 1 ? parts[0] + '.' : 'ул.'
-  addrForm.street_name = parts.length > 1 ? parts.slice(1).join('. ') : (selected.value.street ?? '')
-  addrForm.building    = selected.value.building ?? ''
-  addrForm.apartment   = ''
-  addrForm.entrance    = ''
+  editingAddr.value = null
+  addrMode.value     = 'single'
+  cityLocked.value = true; streetLocked.value = true; buildingLocked.value = true
+
+  addrForm.city     = selected.value.city ?? ''
+  addrForm.street   = selected.value.street ?? ''
+  addrForm.building = selected.value.building ?? ''
+  addrForm.apartment_prefix = ''; addrForm.apartment_name = ''
+  addrForm.entrance = ''
   addrForm.subscriber_name = ''
   addrForm.phone       = ''
   addrForm.contract_no = ''
   // Территория обязательна — подхватываем у любой уже существующей квартиры
   // этого же дома, если она есть; иначе оператор выбирает вручную в форме.
   addrForm.territory_id = items.value[0]?.territory_id ?? ''
-  showAddModal.value   = true
+  showAddModal.value = true
 }
 
+// Город/улица/дом при редактировании всегда read-only (это не операция
+// переименования всей группы, а правка одной конкретной строки) — только
+// apartment разбирается best-effort на префикс+название для предзаполнения.
 function editAddress(a) {
   if (!a) return
   editingAddr.value = a
-  const parts = (a.street ?? '').split('. ')
-  addrForm.city           = a.city ?? ''
-  addrForm.territory_id   = a.territory_id ?? ''
-  addrForm.street_type    = parts.length > 1 ? parts[0] + '.' : 'ул.'
-  addrForm.street_name    = parts.length > 1 ? parts.slice(1).join('. ') : a.street
-  addrForm.building       = a.building ?? ''
-  addrForm.apartment      = a.apartment ?? ''
-  addrForm.entrance       = a.entrance ?? ''
-  addrForm.subscriber_name = a.subscriber_name ?? ''
-  addrForm.phone          = a.phone ?? ''
-  addrForm.contract_no    = a.contract_no ?? ''
-  showAddModal.value      = true
+  cityLocked.value = true; streetLocked.value = true; buildingLocked.value = true
+
+  addrForm.city         = a.city ?? ''
+  addrForm.street       = a.street ?? ''
+  addrForm.building     = a.building ?? ''
+  addrForm.territory_id = a.territory_id ?? ''
+  const { type, name } = splitPrefix(a.apartment, APARTMENT_PREFIXES)
+  addrForm.apartment_prefix = type
+  addrForm.apartment_name   = name
+  addrForm.entrance         = a.entrance ?? ''
+  addrForm.subscriber_name  = a.subscriber_name ?? ''
+  addrForm.phone            = a.phone ?? ''
+  addrForm.contract_no      = a.contract_no ?? ''
+  showAddModal.value        = true
 }
 
-function closeAddModal() { showAddModal.value = false; editingAddr.value = null }
+function closeAddModal() {
+  showAddModal.value = false
+  editingAddr.value  = null
+  cityLocked.value = false; streetLocked.value = false; buildingLocked.value = false
+}
 
 function submitAddress(confirmDuplicate = false) {
   if (!addrForm.territory_id) {
     addrForm.errors.territory_id = 'Выберите территорию'
     return
   }
-  const street = addrForm.street_type + ' ' + addrForm.street_name
-  const base   = { ...addrForm.data(), street, confirm_duplicate: confirmDuplicate }
+  const city      = cityLocked.value     ? addrForm.city     : composeValue(addrForm.city_prefix, addrForm.city_name)
+  const street    = streetLocked.value   ? addrForm.street   : composeValue(addrForm.street_prefix, addrForm.street_name)
+  const building  = buildingLocked.value ? addrForm.building : composeValue(addrForm.building_prefix, addrForm.building_name)
+  const apartment = composeValue(addrForm.apartment_prefix, addrForm.apartment_name)
+
+  const base = { ...addrForm.data(), city, street, building, apartment, confirm_duplicate: confirmDuplicate }
 
   if (addrMode.value === 'private') {
     base.building_from = genFrom.value; base.building_to = genTo.value; base.building_step = genStep.value
@@ -871,56 +951,79 @@ function submitTerritoryChange() {
     })
 }
 
-// ── Переименование/слияние улицы ───────────────────────────────────
-const showRenameStreetModal = ref(false)
-const renameStreetForm      = reactive({ old: '', new: '' })
-const renameStreetConfirm   = ref(null)
-const renameStreetError     = ref('')
-const renameStreetLoading   = ref(false)
+// ── Переименование/слияние города/улицы/дома ────────────────────────
+const RENAME_LABELS = { city: 'город', street: 'улицу', building: 'дом' }
+const RENAME_ROUTES = { city: 'addresses.rename-city', street: 'addresses.rename-street', building: 'addresses.rename-building' }
 
-function openRenameStreet(streetName) {
-  renameStreetForm.old = streetName
-  renameStreetForm.new = streetName
-  renameStreetConfirm.value = null
-  renameStreetError.value = ''
-  showRenameStreetModal.value = true
+const showRenameModal = ref(false)
+const renameLevel     = ref('street') // 'city' | 'street' | 'building'
+const renameParent    = reactive({ city: '', street: '' })
+const renameOld       = ref('')
+const renamePrefix    = ref('')
+const renameNameField = ref('')
+const renameConfirm   = ref(null)
+const renameError     = ref('')
+const renameLoading   = ref(false)
+
+function openRename(levelKey, oldValue, parent = {}) {
+  renameLevel.value = levelKey
+  renameOld.value = oldValue
+  renameParent.city = parent.city ?? ''
+  renameParent.street = parent.street ?? ''
+  const { type, name } = splitPrefix(oldValue, PREFIX_LISTS[levelKey])
+  renamePrefix.value = type
+  renameNameField.value = name
+  renameConfirm.value = null
+  renameError.value = ''
+  showRenameModal.value = true
 }
 
-function closeRenameStreetModal() {
-  showRenameStreetModal.value = false
-  renameStreetConfirm.value = null
-  renameStreetError.value = ''
+function closeRenameModal() {
+  showRenameModal.value = false
+  renameConfirm.value = null
+  renameError.value = ''
 }
 
-async function submitRenameStreet() {
-  const newName = renameStreetForm.new.trim()
-  if (!newName) { renameStreetError.value = 'Название не может быть пустым'; return }
+async function submitRename() {
+  const newValue = composeValue(renamePrefix.value, renameNameField.value)
+  if (!newValue) { renameError.value = 'Название не может быть пустым'; return }
 
-  renameStreetLoading.value = true
-  renameStreetError.value = ''
+  renameLoading.value = true
+  renameError.value = ''
   try {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content
-    const { data } = await axios.patch(route('addresses.rename-street'), {
-      city: selected.value.city,
-      street: renameStreetForm.old,
-      new_street: newName,
-      confirm_merge: !!renameStreetConfirm.value,
-    }, { headers: { 'X-CSRF-TOKEN': csrf } })
+    const payload = { confirm_merge: !!renameConfirm.value }
+    if (renameLevel.value === 'city') {
+      payload.city = renameOld.value
+      payload.new_city = newValue
+    } else if (renameLevel.value === 'street') {
+      payload.city = renameParent.city
+      payload.street = renameOld.value
+      payload.new_street = newValue
+    } else {
+      payload.city = renameParent.city
+      payload.street = renameParent.street
+      payload.building = renameOld.value
+      payload.new_building = newValue
+    }
+    const { data } = await axios.patch(route(RENAME_ROUTES[renameLevel.value]), payload, {
+      headers: { 'X-CSRF-TOKEN': csrf },
+    })
 
     if (data.needs_confirm) {
-      renameStreetConfirm.value = data
+      renameConfirm.value = data
       return
     }
 
-    showRenameStreetModal.value = false
+    showRenameModal.value = false
     if (data.merged) {
       alert(`Готово. Перенесено адресов: ${data.moved}, объединено дублей: ${data.merged}.`)
     }
     router.reload()
   } catch (e) {
-    renameStreetError.value = e.response?.data?.message ?? e.message
+    renameError.value = e.response?.data?.message ?? e.message
   } finally {
-    renameStreetLoading.value = false
+    renameLoading.value = false
   }
 }
 
