@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Act;
 use App\Models\Material;
+use App\Models\Promotion;
 use App\Models\Ticket;
 use App\Services\TicketService;
 use Illuminate\Database\Eloquent\Builder;
@@ -156,6 +157,21 @@ class TicketController extends Controller
             'materials'     => 'nullable|array',
             'materials.*.material_id' => 'required|integer|exists:materials,id',
             'materials.*.quantity'    => 'required|numeric|min:0.01',
+            'promotion_id'  => [
+                'nullable', 'integer', 'exists:promotions,id',
+                function ($attribute, $value, $fail) use ($request, $ticket) {
+                    if (!$value) return;
+                    if (empty($request->input('materials'))) {
+                        $fail('Акция применяется только вместе с материалами (нужен акт).');
+                    }
+                    if (!$ticket->type?->allows_promotion) {
+                        $fail('Акция недоступна для этого типа заявки.');
+                    }
+                    if ($request->act_type !== 'regular') {
+                        $fail('Акция доступна только для обычного типа акта.');
+                    }
+                },
+            ],
             'attachments'   => 'nullable|array|max:10',
             'attachments.*' => 'file|mimes:jpeg,jpg,png,gif,pdf|max:20480',
         ]);
@@ -181,11 +197,16 @@ class TicketController extends Controller
 
             // Материалы формируют Акт (Act + ActMaterial) — см. фичу "Акты".
             if (!empty($request->materials)) {
+                $promotion = $request->filled('promotion_id') ? Promotion::find($request->promotion_id) : null;
+
                 $act = Act::createWithGeneratedNumber([
-                    'ticket_id'  => $ticket->id,
-                    'type'       => $request->act_type,
-                    'status'     => 'pending_foreman',
-                    'created_by' => $request->user()->id,
+                    'ticket_id'       => $ticket->id,
+                    'type'            => $request->act_type,
+                    'status'          => 'pending_foreman',
+                    'created_by'      => $request->user()->id,
+                    'promotion_id'    => $promotion?->id,
+                    'promotion_name'  => $promotion?->name,
+                    'promotion_price' => $promotion?->price,
                 ], fn() => Act::generateNumber($ticket, $request->act_type));
 
                 foreach ($request->materials as $item) {
@@ -256,6 +277,9 @@ class TicketController extends Controller
                 'type'                 => $t->act->type,
                 'status'               => $t->act->status,
                 'materials_changed_at' => $t->act->materials_changed_at?->toIso8601String(),
+                'promotion_id'         => $t->act->promotion_id,
+                'promotion_name'       => $t->act->promotion_name,
+                'promotion_price'      => $t->act->promotion_price,
             ] : null,
             'address'      => $t->address ? [
                 // Без квартиры: apartment этой заявки уже есть отдельным полем выше,
@@ -279,6 +303,11 @@ class TicketController extends Controller
                 'name' => $t->address->territory->name,
             ] : null,
             'type'    => $t->type?->name,
+            // Новое поле (акции на обычных заявках, 2026-08-11) — намеренно
+            // ДОБАВЛЕНО рядом с уже существующим 'type' (строка), а не вместо
+            // него, чтобы не ломать текущий контракт для ещё не обновлённого
+            // Android-клиента. См. ТЗ для мобильного агента.
+            'type_allows_promotion' => (bool) $t->type?->allows_promotion,
             'service_type' => $t->serviceType ? [
                 'id'    => $t->serviceType->id,
                 'name'  => $t->serviceType->name,

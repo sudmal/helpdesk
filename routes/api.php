@@ -62,8 +62,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         );
     });
 
-    // Акции по подключениям — только для передачи promotion_id в
-    // /connection-requests/{id}/close, справочником в приложении не управляют.
+    // Акции — для передачи promotion_id в /connection-requests/{id}/close
+    // (всегда) и в /tickets/{id}/close (только когда ticket.type_allows_promotion,
+    // см. фичу "Акции на обычных заявках", 2026-08-11) — справочником в
+    // приложении не управляют, только выбор при закрытии.
     Route::get('/promotions', function () {
         return response()->json(
             Promotion::active()->get(['id', 'name', 'price'])

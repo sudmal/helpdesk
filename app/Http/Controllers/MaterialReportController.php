@@ -83,9 +83,10 @@ class MaterialReportController extends Controller
             ->whereBetween('crm.created_at', [$from, $to]);
 
         $crPromoSide = null;
+        $ticketPromoSide = null;
 
         if ($onlyBillable) {
-            $ticketSide->where('a.type', 'regular');
+            $ticketSide->where('a.type', 'regular')->whereNull('a.promotion_price');
             $crMaterialsSide->where('a2.type', 'regular')->whereNull('a2.promotion_price');
 
             $crPromoSide = DB::table('acts as a3')
@@ -93,33 +94,54 @@ class MaterialReportController extends Controller
                 ->where('a3.type', 'regular')
                 ->whereNotNull('a3.promotion_price')
                 ->whereBetween('a3.created_at', [$from, $to]);
+
+            // Акции на обычных заявках (2026-08-11) — тот же приём, что и у
+            // crPromoSide выше: реальные материалы промо-акта исключены из
+            // ticketSide (whereNull('a.promotion_price') строкой выше), вместо
+            // них одна синтетическая строка с суммой акции. В отличие от
+            // заявок на подключение у тикетов ЕСТЬ brigade_id — поэтому (в
+            // отличие от crPromoSide) этот бакет участвует в фильтре по
+            // бригаде наравне с ticketSide, а не всегда "1=0".
+            $ticketPromoSide = DB::table('acts as a4')
+                ->join('tickets as t2', 'a4.ticket_id', '=', 't2.id')
+                ->leftJoin('addresses as addr2', 't2.address_id', '=', 'addr2.id')
+                ->whereNull('t2.deleted_at')
+                ->where('a4.type', 'regular')
+                ->whereNotNull('a4.promotion_price')
+                ->whereBetween('a4.created_at', [$from, $to]);
         }
 
         if ($filterDim === 'brigade') {
             if ($filterId === 'connection_requests') {
                 $ticketSide->whereRaw('1 = 0'); // у заявок на ремонт бригада есть всегда — этот бакет только из connection_requests
+                $ticketPromoSide?->whereRaw('1 = 0');
             } elseif ($filterId !== null) {
                 $ticketSide->where('t.brigade_id', $filterId);
+                $ticketPromoSide?->where('t2.brigade_id', $filterId);
                 $crMaterialsSide->whereRaw('1 = 0'); // у заявок на подключение бригады не бывает вообще
                 $crPromoSide?->whereRaw('1 = 0');
             }
         } elseif ($filterDim === 'territory') {
             if ($filterId === 'unknown') {
                 $ticketSide->whereNull('addr.territory_id');
+                $ticketPromoSide?->whereNull('addr2.territory_id');
                 $crMaterialsSide->whereNull('cr.territory_id');
                 $crPromoSide?->whereNull('cr2.territory_id');
             } elseif ($filterId !== null) {
                 $ticketSide->where('addr.territory_id', $filterId);
+                $ticketPromoSide?->where('addr2.territory_id', $filterId);
                 $crMaterialsSide->where('cr.territory_id', $filterId);
                 $crPromoSide?->where('cr2.territory_id', $filterId);
             }
         } elseif ($filterDim === 'service_type') {
             if ($filterId === 'unknown') {
                 $ticketSide->whereNull('t.service_type_id');
+                $ticketPromoSide?->whereNull('t2.service_type_id');
                 $crMaterialsSide->whereNull('cr.service_type_id');
                 $crPromoSide?->whereNull('cr2.service_type_id');
             } elseif ($filterId !== null) {
                 $ticketSide->where('t.service_type_id', $filterId);
+                $ticketPromoSide?->where('t2.service_type_id', $filterId);
                 $crMaterialsSide->where('cr.service_type_id', $filterId);
                 $crPromoSide?->where('cr2.service_type_id', $filterId);
             }
@@ -133,6 +155,11 @@ class MaterialReportController extends Controller
         if ($crPromoSide) {
             $crPromoSide->selectRaw("NULL as material_id, a3.promotion_name as material_name, CONCAT('PROMO-', a3.promotion_id) as material_code, 'шт' as material_unit, 1 as quantity, a3.promotion_price as price_at_time, a3.created_at as created_at, NULL as brigade_id, cr2.territory_id as territory_id, cr2.service_type_id as service_type_id, a3.connection_request_id as source_id, 'connection_request' as source");
             $union = $union->unionAll($crPromoSide);
+        }
+
+        if ($ticketPromoSide) {
+            $ticketPromoSide->selectRaw("NULL as material_id, a4.promotion_name as material_name, CONCAT('PROMO-', a4.promotion_id) as material_code, 'шт' as material_unit, 1 as quantity, a4.promotion_price as price_at_time, a4.created_at as created_at, t2.brigade_id as brigade_id, addr2.territory_id as territory_id, t2.service_type_id as service_type_id, a4.ticket_id as source_id, 'ticket' as source");
+            $union = $union->unionAll($ticketPromoSide);
         }
 
         return $union;

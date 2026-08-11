@@ -96,9 +96,10 @@ class SettingsController extends Controller
     {
         $this->authorize('manage-settings');
         $data = $request->validate([
-            'name'       => 'required|string|max:100|unique:ticket_types,name',
-            'color'      => 'required|string|regex:/^#[0-9a-fA-F]{6}$/',
-            'sort_order' => 'nullable|integer',
+            'name'             => 'required|string|max:100|unique:ticket_types,name',
+            'color'            => 'required|string|regex:/^#[0-9a-fA-F]{6}$/',
+            'sort_order'       => 'nullable|integer',
+            'allows_promotion' => 'boolean',
         ]);
         TicketType::create($data);
         return back()->with('success', 'Тип добавлен');
@@ -108,10 +109,11 @@ class SettingsController extends Controller
     {
         $this->authorize('manage-settings');
         $data = $request->validate([
-            'name'       => 'required|string|max:100|unique:ticket_types,name,' . $ticketType->id,
-            'color'      => 'required|string|regex:/^#[0-9a-fA-F]{6}$/',
-            'is_active'  => 'boolean',
-            'sort_order' => 'nullable|integer',
+            'name'             => 'required|string|max:100|unique:ticket_types,name,' . $ticketType->id,
+            'color'            => 'required|string|regex:/^#[0-9a-fA-F]{6}$/',
+            'is_active'        => 'boolean',
+            'sort_order'       => 'nullable|integer',
+            'allows_promotion' => 'boolean',
         ]);
         $ticketType->update($data);
         return back()->with('success', 'Тип обновлён');

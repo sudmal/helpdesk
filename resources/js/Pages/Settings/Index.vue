@@ -24,6 +24,9 @@
              class="flex items-center px-4 py-1 gap-2 hover:bg-gray-50">
           <span class="w-3 h-3 rounded-full shrink-0" :style="{ background: t.color }"></span>
           <span class="flex-1 text-sm font-medium">{{ t.name }}</span>
+          <span v-if="t.allows_promotion" class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+            🏷 Акции
+          </span>
           <span :class="['text-xs px-2 py-0.5 rounded-full',
                          t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500']">
             {{ t.is_active ? 'Активен' : 'Скрыт' }}
@@ -742,6 +745,9 @@
         <label class="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" v-model="typeForm.is_active" class="rounded" /> Активен
         </label>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" v-model="typeForm.allows_promotion" class="rounded" /> Разрешить акции при закрытии
+        </label>
         <div class="flex justify-end gap-3 pt-2">
           <button type="button" @click="closeTypeModal" class="btn-outline text-sm">Отмена</button>
           <button class="btn-primary text-sm">{{ editingType ? 'Сохранить' : 'Создать' }}</button>
@@ -1184,11 +1190,11 @@ function saveSvcList() {
 // ── Типы ────────────────────────────────────────────────────────────
 const showTypeModal = ref(false)
 const editingType   = ref(null)
-const typeForm = useForm({ name: '', color: '#3b82f6', is_active: true, sort_order: 0 })
+const typeForm = useForm({ name: '', color: '#3b82f6', is_active: true, allows_promotion: false, sort_order: 0 })
 
 function openTypeModal(t = null) {
   editingType.value = t
-  if (t) Object.assign(typeForm, { name: t.name, color: t.color, is_active: t.is_active })
+  if (t) Object.assign(typeForm, { name: t.name, color: t.color, is_active: t.is_active, allows_promotion: t.allows_promotion })
   else typeForm.reset()
   showTypeModal.value = true
 }

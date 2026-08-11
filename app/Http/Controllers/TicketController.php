@@ -257,6 +257,7 @@ class TicketController extends Controller
             'ticket'         => $ticket,
             'addressHistory' => $addressHistory,
             'materialsCatalog' => \App\Models\Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','code','name','unit','price']),
+            'promotions'     => \App\Models\Promotion::active()->get(['id', 'name', 'price']),
             'statuses'       => TicketStatus::active()->get(['id', 'name', 'color', 'slug', 'is_final']),
             'brigades'       => Brigade::with('members')->where(fn($q) => $q->where('is_active', true)->orWhere('id', $ticket->brigade_id))->orderBy('name')->get(),
             'canEdit'        => auth()->user()->can('update', $ticket),
@@ -365,8 +366,23 @@ class TicketController extends Controller
     {
         $this->authorize('close', $ticket);
         $request->validate([
-            'comment'  => 'nullable|string|max:2000',
-            'act_type' => 'nullable|in:regular,repair',
+            'comment'      => 'nullable|string|max:2000',
+            'act_type'     => 'nullable|in:regular,repair',
+            'promotion_id' => [
+                'nullable', 'integer', 'exists:promotions,id',
+                function ($attribute, $value, $fail) use ($request, $ticket) {
+                    if (!$value) return;
+                    if (empty($request->input('materials'))) {
+                        $fail('Акция применяется только вместе с материалами (нужен акт).');
+                    }
+                    if (!$ticket->type?->allows_promotion) {
+                        $fail('Акция недоступна для этого типа заявки.');
+                    }
+                    if ($request->act_type !== 'regular') {
+                        $fail('Акция доступна только для обычного типа акта.');
+                    }
+                },
+            ],
         ]);
 
         $materialsData = $request->input('materials');
@@ -405,11 +421,16 @@ class TicketController extends Controller
             // Материалы теперь формируют Акт (Act + ActMaterial), а не пишутся на тикет напрямую —
             // см. фичу "Акты" (согласование Бригадир -> ПЭО/Логистика -> Абонотдел).
             if (!empty($materialsData) && is_array($materialsData)) {
+                $promotion = $request->filled('promotion_id') ? \App\Models\Promotion::find($request->promotion_id) : null;
+
                 $act = \App\Models\Act::createWithGeneratedNumber([
-                    'ticket_id'  => $ticket->id,
-                    'type'       => $request->act_type,
-                    'status'     => 'pending_foreman',
-                    'created_by' => auth()->id(),
+                    'ticket_id'       => $ticket->id,
+                    'type'            => $request->act_type,
+                    'status'          => 'pending_foreman',
+                    'created_by'      => auth()->id(),
+                    'promotion_id'    => $promotion?->id,
+                    'promotion_name'  => $promotion?->name,
+                    'promotion_price' => $promotion?->price,
                 ], fn() => \App\Models\Act::generateNumber($ticket, $request->act_type));
 
                 foreach ($materialsData as $item) {

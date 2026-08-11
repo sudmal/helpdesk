@@ -5,8 +5,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TicketType extends Model
 {
-    protected $fillable = ['name', 'color', 'is_active', 'sort_order'];
-    protected $casts = ['is_active' => 'boolean'];
+    protected $fillable = ['name', 'color', 'is_active', 'sort_order', 'allows_promotion'];
+    protected $casts = ['is_active' => 'boolean', 'allows_promotion' => 'boolean'];
 
     public function tickets(): HasMany { return $this->hasMany(Ticket::class, 'type_id'); }
 

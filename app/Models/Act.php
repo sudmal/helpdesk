@@ -18,13 +18,25 @@ class Act extends Model
     protected static function booted(): void
     {
         static::saving(function (Act $act) {
-            // Акция — только для актов заявок на подключение (см. память
-            // project-acts-feature, "Акции по подключениям"). Тикетные акты
-            // (ремонт/обычные заявки) фиксированной ценой не оперируют.
-            if ($act->promotion_id !== null && $act->connection_request_id === null) {
-                throw new \RuntimeException(
-                    'Акция применима только к актам заявок на подключение.'
+            // Акция разрешена на актах заявок на подключение всегда, и на
+            // актах обычных заявок (Ticket) — только если тип заявки явно
+            // помечен allows_promotion (Настройки → Типы заявок). См. память
+            // project-acts-feature, "Акции по подключениям"/"Акции на
+            // обычных заявках". Остальные типы заявок (ремонт и т.п.)
+            // фиксированной ценой не оперируют. Плюс акт должен быть
+            // regular — ремонтный акт (type=repair) по определению
+            // бесплатный для абонента, акция там противоречива по смыслу.
+            if ($act->promotion_id !== null) {
+                $allowed = $act->type === 'regular' && (
+                    $act->connection_request_id !== null
+                    || ($act->ticket_id !== null && (bool) $act->ticket?->type?->allows_promotion)
                 );
+
+                if (!$allowed) {
+                    throw new \RuntimeException(
+                        'Акция недоступна для этого типа заявки.'
+                    );
+                }
             }
 
             if (!$act->isDirty('status') || $act->status !== 'completed' || $act->type === null) {

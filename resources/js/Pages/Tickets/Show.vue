@@ -344,6 +344,17 @@
               </select>
             </div>
             <MaterialsForm :materials="materialsCatalog" v-model="materialItems" />
+            <div v-if="closeActType === 'regular' && ticket.type?.allows_promotion">
+              <label class="field-label font-medium">Акция</label>
+              <select v-model="closePromotionId" class="field-input w-full text-xs">
+                <option :value="null">— без акции, по реальной стоимости материалов —</option>
+                <option v-for="p in promotions" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }} ₽</option>
+              </select>
+              <p v-if="selectedPromotion" class="text-xs text-gray-500 mt-1">
+                Абонент платит <span class="font-semibold text-emerald-600">{{ selectedPromotion.price }} ₽</span>
+                вместо {{ closeMaterialsTotal.toFixed(2) }} ₽ по факту материалов — реальная стоимость всё равно уйдёт в списание Логистике.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -506,6 +517,7 @@ async function saveGeocode(addressId, lat, lng) {
 const props = defineProps({
   ticket: Object, addressHistory: Array, statuses: Array, brigades: Array,
   materialsCatalog: { type: Array, default: () => [] },
+  promotions: { type: Array, default: () => [] },
   canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canCancel: Boolean, canComment: Boolean, canDelete: Boolean,
   canStart: Boolean, canPause: Boolean, canPostpone: Boolean,
   settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
@@ -540,6 +552,7 @@ const closeComment      = ref('')
 const closeFiles        = ref([])
 const useMaterials      = ref(false)
 const materialItems     = ref([{ material_id: '', quantity: 1 }])
+const closePromotionId  = ref(null)
 const postponeDateTime  = ref('')
 const postponeComment   = ref('')
 const commentBody       = ref('')
@@ -559,6 +572,16 @@ const priorityMap = {
 }
 const priorityColor = computed(() => priorityMap[props.ticket.priority]?.[0] ?? '#94a3b8')
 const priorityLabel = computed(() => priorityMap[props.ticket.priority]?.[1] ?? props.ticket.priority)
+
+const closeMaterialsTotal = computed(() =>
+  materialItems.value.reduce((sum, i) => {
+    const m = props.materialsCatalog.find(mc => mc.id === i.material_id)
+    return m && i.quantity > 0 ? sum + m.price * i.quantity : sum
+  }, 0)
+)
+const selectedPromotion = computed(() =>
+  (props.promotions ?? []).find(p => p.id === closePromotionId.value) ?? null
+)
 
 function formatDate(d)     { return d ? dayjs(d).format('DD MMM, HH:mm') : '—' }
 function formatDateTime(d) { return d ? dayjs(d).format('DD MMM YYYY HH:mm') : '—' }
@@ -606,6 +629,7 @@ const closeForm = useForm({
   comment: '',
   act_type: '',
   materials: '',
+  promotion_id: null,
   attachments: [],
 })
 
@@ -614,11 +638,13 @@ function submitClose() {
   closeForm.attachments = closeFiles.value
   closeForm.act_type = ''
   closeForm.materials = ''
+  closeForm.promotion_id = null
   if (useMaterials.value) {
     closeForm.act_type = closeActType.value
     const validItems = materialItems.value.filter(i => i.material_id && i.quantity > 0)
     if (validItems.length) {
       closeForm.materials = JSON.stringify(validItems)
+      closeForm.promotion_id = closeActType.value === 'regular' ? closePromotionId.value : null
     }
   }
   closeForm.post(route('tickets.close', props.ticket.id), {
@@ -629,6 +655,7 @@ function submitClose() {
       closeActType.value = ''
       useMaterials.value = false
       materialItems.value = [{ material_id: '', quantity: 1 }]
+      closePromotionId.value = null
       closeForm.reset()
     }
   })
