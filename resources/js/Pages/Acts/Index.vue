@@ -43,6 +43,13 @@
             <option value="repair">Ремонт/Восстановление</option>
           </select>
         </div>
+        <div>
+          <label class="field-label">Бригада</label>
+          <select v-model="f.brigade" @change="apply" class="field-input">
+            <option value="">Все</option>
+            <option v-for="b in brigades" :key="b.id" :value="b.id">{{ b.name }}</option>
+          </select>
+        </div>
         <div v-if="tab === 'archive'">
           <label class="field-label">Сортировка</label>
           <select v-model="f.sort" @change="apply" class="field-input">
@@ -193,6 +200,7 @@ const props = defineProps({
   filters:         { type: Object, default: () => ({}) },
   authUserId:      { type: Number, default: null },
   canViewReports:  { type: Boolean, default: false },
+  brigades:        { type: Array, default: () => [] },
 })
 
 // "(!)" виден только тому, кто создал акт (обычно монтажник) — это к нему
@@ -224,6 +232,7 @@ const activeStatusLabels = Object.fromEntries(
 const f = reactive({
   status:   props.filters?.status   || '',
   type:     props.filters?.type     || '',
+  brigade:  props.filters?.brigade  || '',
   search:   props.filters?.search   || '',
   sort:     props.filters?.sort     || 'completed_at',
   sort_dir: props.filters?.sort_dir || 'desc',

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Act, ActMaterial, Material};
+use App\Models\{Act, ActMaterial, Brigade, Material};
 use App\Services\ActService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -84,7 +84,10 @@ class ActController extends Controller
             ->when($scopeToTerritory, fn($q) =>
                 $q->whereIn(DB::raw('COALESCE(addresses.territory_id, connection_requests.territory_id)'), $userTerritories)
             )
-            ->when($request->type, fn($q) => $q->where('acts.type', $request->type));
+            ->when($request->type, fn($q) => $q->where('acts.type', $request->type))
+            ->when($request->brigade, fn($q) =>
+                $q->where(DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'), $request->brigade)
+            );
 
         if ($tab === 'archive') {
             // Полностью завершённые акты уходят сюда с главной вкладки и здесь
@@ -138,8 +141,9 @@ class ActController extends Controller
         return Inertia::render('Acts/Index', [
             'tab'        => $tab,
             'acts'       => $acts,
-            'filters'    => $request->only(['status', 'type', 'search', 'sort', 'sort_dir', 'legacy']),
+            'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir', 'legacy']),
             'authUserId' => $user->id,
+            'brigades'   => Brigade::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
