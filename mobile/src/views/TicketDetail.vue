@@ -67,6 +67,10 @@
         <div>
           <div class="text-[#E0E0E0] text-sm">Акт {{ ticket.act.number }}</div>
           <div class="text-[#9E9E9E] text-xs">{{ actStatusLabel(ticket.act.status) }}</div>
+          <div v-if="ticket.act.promotion_name && ticket.act.promotion_price != null"
+               class="text-[#FBBF24] text-xs mt-0.5">
+            🎁 Акция «{{ ticket.act.promotion_name }}» — к оплате {{ ticket.act.promotion_price.toFixed(2) }} руб.
+          </div>
         </div>
         <span v-if="ticket.act.materials_changed_at" class="text-black text-[10px] px-2 py-1 rounded" style="background:#FBBF24">
           есть правки акта
@@ -164,6 +168,17 @@
               Итого: {{ materialsTotal.toFixed(2) }}₽
             </div>
           </div>
+
+          <div v-if="materialsTotal > 0 && closeActType === 'regular' && ticket.type_allows_promotion">
+            <select v-model="promotionId"
+                    class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10">
+              <option :value="null">Без акции</option>
+              <option v-for="p in promotions" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }}₽</option>
+            </select>
+            <p v-if="selectedPromotion" class="text-[#9E9E9E] text-xs mt-1">
+              Абонент платит: {{ selectedPromotion.price.toFixed(2) }}₽
+            </p>
+          </div>
         </div>
 
         <div v-if="closeError" class="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-3 py-2">
@@ -224,6 +239,8 @@ const closeActType = ref('')
 const materialItems = ref([{ material_id: '', quantity: 1 }])
 const materialsCatalog = ref([])
 const loadingMaterials = ref(false)
+const promotions = ref([])
+const promotionId = ref(null)
 
 const rescheduleModal = ref(false)
 const rescheduleAt = ref('')
@@ -260,6 +277,8 @@ const materialsTotal = computed(() => {
     return sum + mat.price * item.quantity
   }, 0)
 })
+
+const selectedPromotion = computed(() => promotions.value.find((p) => p.id === promotionId.value) || null)
 
 const actStatusLabels = { pending_foreman: 'Ждёт бригадира', approved: 'Утверждён', processing: 'В обработке', pending_subscriber_dept: 'Ждёт Абонотдел', completed: 'Завершён' }
 function actStatusLabel(s) {
@@ -340,8 +359,12 @@ async function openCloseModal() {
   if (!materialsCatalog.value.length && !loadingMaterials.value) {
     loadingMaterials.value = true
     try {
-      const { data } = await api.get('/materials')
-      materialsCatalog.value = data
+      const [materialsRes, promotionsRes] = await Promise.all([
+        api.get('/materials'),
+        api.get('/promotions').catch(() => ({ data: [] })),
+      ])
+      materialsCatalog.value = materialsRes.data
+      promotions.value = promotionsRes.data
     } finally {
       loadingMaterials.value = false
     }
@@ -356,7 +379,12 @@ async function closeTicket() {
     if (useMaterials.value) {
       payload.act_type = closeActType.value
       const validItems = materialItems.value.filter(i => i.material_id && i.quantity > 0)
-      if (validItems.length) payload.materials = validItems
+      if (validItems.length) {
+        payload.materials = validItems
+        if (closeActType.value === 'regular' && ticket.value.type_allows_promotion) {
+          payload.promotion_id = promotionId.value
+        }
+      }
     }
     const { data } = await api.post(`/tickets/${route.params.id}/close`, payload)
     ticket.value = data
@@ -365,6 +393,7 @@ async function closeTicket() {
     useMaterials.value = false
     closeActType.value = ''
     materialItems.value = [{ material_id: '', quantity: 1 }]
+    promotionId.value = null
   } catch (e) {
     // Заявку могли переоткрыть и закрыть повторно — у неё уже есть акт
     // (см. фикс в TicketController::close() и Api/TicketController::close()).
