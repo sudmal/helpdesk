@@ -33,6 +33,11 @@ class ActPolicy
      * случай отсутствия бригадира — отпуск/болезнь). head_support/operator
      * права на утверждение НЕ имеют (2026-07-15, уточнение пользователя —
      * раньше был общий admin/head_support/operator-байпас на все действия).
+     *
+     * Автор акта, если он сам бригадир, может утвердить акт без привязки к
+     * бригаде заявки (2026-08-12) — кейс: бригадир закрыл заявку чужой/
+     * бесхозной бригады (например, подменял отсутствующего монтажника), и
+     * scopeMatch по бригаде заявки не проходит, хотя утверждать явно есть кому.
      */
     public function foremanReview(User $user, Act $act): bool
     {
@@ -40,6 +45,8 @@ class ActPolicy
         if ($user->isAdmin()) return true;
         if (!$user->isForeman()) return false;
         if (!$user->hasPermission('acts.foreman_review')) return false;
+
+        if ($act->created_by === $user->id) return true;
 
         return $this->scopeMatch($user, $act);
     }
