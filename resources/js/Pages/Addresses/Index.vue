@@ -3,7 +3,7 @@
   <AppLayout title="Адреса абонентов" help-tab="admin" help-section="addresses">
     <template #actions>
       <button @click="showImportModal = true" class="btn-outline text-sm">⬆ Импорт</button>
-      <button @click="openAddModal"           class="btn-primary text-sm">+ Добавить</button>
+      <button @click="openAddForLevel" class="btn-primary text-sm">{{ addButtonLabel }}</button>
     </template>
 
     <!-- ── Поиск по адресу ── -->
@@ -355,11 +355,12 @@
     <!-- ── Модалки ── -->
 
     <!-- Добавление адреса -->
-    <Modal v-if="showAddModal" :title="editingAddr ? 'Редактировать адрес' : 'Новый адрес'" @close="closeAddModal">
+    <Modal v-if="showAddModal" :title="addModalTitle" @close="closeAddModal">
       <form @submit.prevent="submitAddress()" class="space-y-4">
 
-        <!-- Режим (только при создании) -->
-        <div v-if="!editingAddr" class="flex gap-2">
+        <!-- Режим (только при создании, только на уровне улицы -- массовое
+             добавление домов/квартир имеет смысл именно здесь) -->
+        <div v-if="!editingAddr && level === 1" class="flex gap-2">
           <button v-for="m in modes" :key="m.key" type="button"
                   @click="addrMode = m.key"
                   :class="['px-3 py-1.5 rounded-xl text-sm border transition-colors',
@@ -489,6 +490,31 @@
             Всё равно создать
           </button>
           <button class="btn-primary text-sm">{{ editingAddr ? 'Сохранить' : 'Создать' }}</button>
+        </div>
+      </form>
+    </Modal>
+
+    <!-- Новый город (уровень 0) -- только переход в контекст города, без
+         записи в БД: улица/дом добавляются следующим шагом внутри него -->
+    <Modal v-if="showAddCityModal" title="Новый город" @close="showAddCityModal = false">
+      <form @submit.prevent="submitAddCity" class="space-y-4">
+        <div>
+          <label class="field-label">Город <span class="text-red-500">*</span></label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <select v-model="cityForm.prefix" class="field-input px-1.5">
+              <option v-for="p in CITY_PREFIXES" :key="p.value" :value="p.value">{{ p.label }}</option>
+            </select>
+            <input v-model="cityForm.name" list="cl-new-city" required autofocus
+                   class="field-input col-span-2" placeholder="Донецк" />
+            <datalist id="cl-new-city">
+              <option v-for="c in cityNames" :key="c" :value="c" />
+            </datalist>
+          </div>
+        </div>
+        <p class="text-xs text-gray-400">Улица и дом добавляются на следующем шаге — внутри города.</p>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showAddCityModal = false" class="btn-outline text-sm">Отмена</button>
+          <button class="btn-primary text-sm">Далее →</button>
         </div>
       </form>
     </Modal>
@@ -864,11 +890,53 @@ const addrForm = useForm({
   confirm_duplicate: false,
 })
 
+// "Добавить город" -- уровень 0. У города нет отдельной сущности (это
+// агрегат по Address.city), поэтому здесь ничего не создаётся в БД: просто
+// переходим в контекст указанного города (новый или уже существующий),
+// а сама запись адреса появится позже, когда там же добавят улицу с домом
+// (см. openAddModal ниже, ensureCityAllowed на бэкенде сработает тогда).
+const showAddCityModal = ref(false)
+const cityForm = reactive({ prefix: '', name: '' })
+
+function openAddCityModal() {
+  cityForm.prefix = ''
+  cityForm.name   = ''
+  showAddCityModal.value = true
+}
+
+function submitAddCity() {
+  const city = composeValue(cityForm.prefix, cityForm.name)
+  if (!city.trim()) return
+  showAddCityModal.value = false
+  selectCity(city)
+}
+
+const addButtonLabel = computed(() => {
+  if (level.value === 0) return '+ Добавить город'
+  if (level.value === 1) return '+ Добавить улицу'
+  if (level.value === 2) return '+ Добавить дом'
+  return '+ Добавить квартиру'
+})
+
+const addModalTitle = computed(() => {
+  if (editingAddr.value) return 'Редактировать адрес'
+  if (level.value === 1) return 'Новая улица'
+  if (level.value === 2) return 'Новый дом'
+  return 'Новый адрес'
+})
+
+function openAddForLevel() {
+  if (level.value === 0) openAddCityModal()
+  else if (level.value === 3) openAddApartmentModal()
+  else openAddModal()
+}
+
 function openAddModal() {
   editingAddr.value = null
-  cityLocked.value     = level.value >= 1
+  cityLocked.value     = true
   streetLocked.value   = level.value >= 2
   buildingLocked.value = false
+  addrMode.value        = 'single'
 
   addrForm.city = selected.value.city ?? ''
   addrForm.city_prefix = ''; addrForm.city_name = ''
