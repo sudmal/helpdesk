@@ -555,8 +555,10 @@ class AddressController extends Controller
         return back()->with('success', 'Адрес обновлён');
     }
 
-    public function destroy(Address $address)
+    public function destroy(Request $request, Address $address)
     {
+        abort_unless($request->user()?->id === 1, 403, 'Удаление адресов доступно только администратору.');
+
         // FK tickets.address_id -- nullOnDelete(): без этой проверки заявки
         // на этот адрес молча остаются с address_id=NULL ("Адрес не указан"),
         // теряя территорию и ссылку на адрес, оставаясь на вид никак не
@@ -569,8 +571,90 @@ class AddressController extends Controller
             );
         }
 
+        // calls.address_id -- без FK-constraint (см. миграцию calls), та же
+        // логика, что и для tickets: без проверки удаление молча оставляет
+        // висячую ссылку в истории звонков.
+        $callsCount = DB::table('calls')->where('address_id', $address->id)->count();
+        if ($callsCount > 0) {
+            return back()->with('error',
+                "Нельзя удалить адрес: на него ссылается {$callsCount} " .
+                ($callsCount === 1 ? 'звонок' : 'звонков') . " в истории вызовов."
+            );
+        }
+
         $address->delete();
         return back()->with('success', 'Адрес удалён');
+    }
+
+    // Удаление всех адресов на уровне город/улица/дом целиком. Доступно
+    // только пользователю id=1 (см. ensureCanDeleteHierarchy) -- массовое
+    // необратимое удаление, по просьбе после случайного создания дубля
+    // города с неверными адресами внутри.
+    private function ensureCanDeleteHierarchy(Request $request): void
+    {
+        abort_unless($request->user()?->id === 1, 403, 'Удаление адресов доступно только администратору.');
+    }
+
+    public function destroyCity(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureCanDeleteHierarchy($request);
+        $data = $request->validate(['city' => 'required|string|max:100']);
+        return $this->destroyHierarchyLevel('city', [], $data['city']);
+    }
+
+    public function destroyStreet(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureCanDeleteHierarchy($request);
+        $data = $request->validate([
+            'city'   => 'required|string|max:100',
+            'street' => 'required|string|max:200',
+        ]);
+        return $this->destroyHierarchyLevel('street', ['city' => $data['city']], $data['street']);
+    }
+
+    public function destroyBuilding(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->ensureCanDeleteHierarchy($request);
+        $data = $request->validate([
+            'city'     => 'required|string|max:100',
+            'street'   => 'required|string|max:200',
+            'building' => 'required|string|max:20',
+        ]);
+        return $this->destroyHierarchyLevel('building', ['city' => $data['city'], 'street' => $data['street']], $data['building']);
+    }
+
+    // Та же защита, что и в destroy(): блокируем, если есть ссылки из
+    // заявок или истории звонков, чтобы не оставить висячих address_id.
+    private function destroyHierarchyLevel(string $column, array $scope, string $value): \Illuminate\Http\JsonResponse
+    {
+        $ids = Address::where($scope)->where($column, $value)->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return response()->json(['message' => 'Ничего не найдено'], 404);
+        }
+
+        $ticketsCount = \App\Models\Ticket::whereIn('address_id', $ids)->count();
+        if ($ticketsCount > 0) {
+            return response()->json(['message' =>
+                "Нельзя удалить: на эти адреса ссылается {$ticketsCount} " .
+                ($ticketsCount === 1 ? 'заявка' : 'заявок') . '. Сначала перенесите или закройте эти заявки.'
+            ], 422);
+        }
+
+        $callsCount = DB::table('calls')->whereIn('address_id', $ids)->count();
+        if ($callsCount > 0) {
+            return response()->json(['message' =>
+                "Нельзя удалить: на эти адреса ссылается {$callsCount} " .
+                ($callsCount === 1 ? 'звонок' : 'звонков') . ' в истории вызовов.'
+            ], 422);
+        }
+
+        $deleted = 0;
+        DB::transaction(function () use ($ids, &$deleted) {
+            $deleted = Address::whereIn('id', $ids)->delete();
+        });
+
+        return response()->json(['ok' => true, 'deleted' => $deleted]);
     }
 
     // territory_ids для фильтра по бригаде (опционально, через ?brigade_id=)

@@ -119,6 +119,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/',             [AddressController::class, 'index'])->name('index');
         Route::post('/',            [AddressController::class, 'store'])->name('store');
         Route::put('/{address}',    [AddressController::class, 'update'])->name('update');
+        Route::delete('/city',      [AddressController::class, 'destroyCity'])->name('destroy-city');
+        Route::delete('/street',    [AddressController::class, 'destroyStreet'])->name('destroy-street');
+        Route::delete('/building',  [AddressController::class, 'destroyBuilding'])->name('destroy-building');
         Route::delete('/{address}', [AddressController::class, 'destroy'])->name('destroy');
         Route::patch('/{address}/geocode', [AddressController::class, 'storeGeocode'])->name('geocode');
         Route::post('/import',      [AddressController::class, 'import'])->name('import');

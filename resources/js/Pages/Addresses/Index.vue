@@ -107,6 +107,16 @@
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
+          <button v-if="canDeleteAddresses" @click.stop="deleteCity(city.name, city.count)" title="Удалить город"
+                  class="shrink-0 text-gray-300 hover:text-red-500 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+          </button>
         </div>
       </div>
       <p v-if="!items.length" class="text-gray-400 text-sm py-8 text-center">Адреса не добавлены</p>
@@ -144,6 +154,16 @@
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
+            </button>
+            <button v-if="canDeleteAddresses" @click.stop="deleteStreet(st.name, st.count)" title="Удалить улицу"
+                    class="ml-1 shrink-0 text-gray-300 hover:text-red-500 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
             </button>
           </div>
         </div>
@@ -211,6 +231,19 @@
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </span>
+          <span v-if="!editTypeMode && canDeleteAddresses"
+                role="button"
+                title="Удалить дом"
+                @click.stop="deleteBuilding(b)"
+                class="absolute top-1 right-6 w-4 h-4 flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+          </span>
           <span class="text-xl mb-1">{{ b.has_apartments ? '🏢' : '🏠' }}</span>
           <span class="font-semibold">{{ b.building }}</span>
           <span class="text-xs text-gray-400 mt-0.5">
@@ -270,7 +303,7 @@
               </td>
               <td class="px-4 py-2.5 text-right">
                 <button @click="editAddress(a)" class="p-1 text-gray-400 hover:text-blue-600 rounded">✏️</button>
-                <button @click="deleteAddr(a)"  class="p-1 text-gray-400 hover:text-red-500 rounded">🗑</button>
+                <button v-if="canDeleteAddresses" @click="deleteAddr(a)"  class="p-1 text-gray-400 hover:text-red-500 rounded">🗑</button>
               </td>
             </tr>
           </tbody>
@@ -591,7 +624,7 @@
 
 <script setup>
 import { ref, computed, reactive } from 'vue'
-import { Head, useForm, router } from '@inertiajs/vue3'
+import { Head, useForm, router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
@@ -612,6 +645,10 @@ const props = defineProps({
   currentStreet:   { type: String, default: '' },
   currentBuilding: { type: String, default: '' },
 })
+
+// Удаление объектов адресов -- необратимая операция, доступна только
+// пользователю id=1 (см. AddressController::ensureCanDeleteHierarchy)
+const canDeleteAddresses = computed(() => usePage().props.auth?.user?.id === 1)
 
 // ── Навигация ──────────────────────────────────────────────────────
 function ticketsLink(a) {
@@ -926,6 +963,34 @@ function submitAddress(confirmDuplicate = false) {
 
 function deleteAddr(a) {
   if (confirm('Удалить адрес?')) router.delete(route('addresses.destroy', a.id), { onSuccess: () => router.reload() })
+}
+
+function hierarchyDeleteCsrf() {
+  return document.querySelector('meta[name="csrf-token"]')?.content
+}
+
+function deleteCity(name, count) {
+  if (!confirm(`Удалить город «${name}» и все адреса внутри (${count})? Это необратимо.`)) return
+  axios.delete(route('addresses.destroy-city'), {
+    data: { city: name },
+    headers: { 'X-CSRF-TOKEN': hierarchyDeleteCsrf() },
+  }).then(() => router.reload()).catch(e => alert(e.response?.data?.message ?? e.message))
+}
+
+function deleteStreet(name, count) {
+  if (!confirm(`Удалить улицу «${name}» и все адреса на ней (${count})? Это необратимо.`)) return
+  axios.delete(route('addresses.destroy-street'), {
+    data: { city: selected.value.city, street: name },
+    headers: { 'X-CSRF-TOKEN': hierarchyDeleteCsrf() },
+  }).then(() => router.reload()).catch(e => alert(e.response?.data?.message ?? e.message))
+}
+
+function deleteBuilding(b) {
+  if (!confirm(`Удалить дом «${b.building}» и все адреса в нём (${b.count})? Это необратимо.`)) return
+  axios.delete(route('addresses.destroy-building'), {
+    data: { city: selected.value.city, street: selected.value.street, building: b.building },
+    headers: { 'X-CSRF-TOKEN': hierarchyDeleteCsrf() },
+  }).then(() => router.reload()).catch(e => alert(e.response?.data?.message ?? e.message))
 }
 
 // ── Смена территории дома целиком (квартиры переезжают вместе с домом) ──
