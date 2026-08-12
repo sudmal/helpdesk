@@ -136,6 +136,11 @@ class ActPolicy
      * Ограничение снято 2026-08-03 по ТЗ от Android-агента (через
      * API_MOBILE.md): на практике мешало бригадиру исправить собственную
      * ошибку в составе материалов — оставалось только утвердить как есть.
+     *
+     * Автор акта (2026-08-12) — та же логика, что и в view()/foremanReview():
+     * если бригадир закрыл заявку вне своей бригады (бесхозная/чужая
+     * бригада), scopeMatch не проходит, но он всё равно должен мочь
+     * поправить состав материалов в акте, который сам создал.
      */
     public function editMaterials(User $user, Act $act): bool
     {
@@ -145,6 +150,8 @@ class ActPolicy
 
         if (!$user->isForeman()) return false;
         if (!in_array($act->status, ['pending_foreman', 'approved'], true)) return false;
+
+        if ($act->created_by === $user->id) return true;
 
         return $this->scopeMatch($user, $act);
     }
