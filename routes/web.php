@@ -16,6 +16,7 @@ use App\Http\Controllers\{
     ServiceRequestController,
     PromotionController,
     ProfileController,
+    DocsController,
 };
 use Illuminate\Support\Facades\Route;
 
@@ -232,6 +233,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/onboarding/{tour}/seen', [App\Http\Controllers\OnboardingController::class, 'markSeen'])->name('onboarding.seen');
 
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help');
+
+    // Просмотрщик md-документации разработчика (docs/*.md) -- только admin,
+    // ссылка на него -- в Справке, вкладка "Администраторы" (не в основном меню).
+    Route::get('/docs', [DocsController::class, 'index'])->name('docs.index');
 
 });
 

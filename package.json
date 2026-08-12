@@ -12,11 +12,13 @@
     "@fullcalendar/timegrid": "^6.1.11",
     "@fullcalendar/vue3": "^6.1.11",
     "@inertiajs/vue3": "^2.3.21",
+    "@tailwindcss/typography": "^0.5.20",
     "axios": "^1.6.4",
     "chart.js": "^4.4.9",
     "dayjs": "^1.11.10",
     "leaflet": "^1.9.4",
     "lucide-vue-next": "^0.378.0",
+    "marked": "^15.0.12",
     "qrcode": "^1.5.4",
     "vue": "^3.4.0"
   },

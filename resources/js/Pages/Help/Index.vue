@@ -797,6 +797,11 @@
         </ul>
       </HelpSection>
 
+      <HelpSection v-if="isAdmin" id="admin-docs-viewer" title="Документация разработчика" icon="📄">
+        <p>Техническая документация проекта (архитектура, путь запроса, что где менять, справочник API) — файлы <b>docs/*.md</b> в репозитории.</p>
+        <p><Link :href="route('docs.index')" class="text-blue-600 hover:text-blue-800 underline font-medium">Открыть просмотрщик документации →</Link></p>
+      </HelpSection>
+
     </div>
 
     <!-- ПРИЛОЖЕНИЕ -->
@@ -911,8 +916,8 @@
 </template>
 
 <script setup>
-import { ref, h, defineComponent, onMounted, nextTick } from 'vue'
-import { Head } from '@inertiajs/vue3'
+import { ref, computed, h, defineComponent, onMounted, nextTick } from 'vue'
+import { Head, Link, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 
 const HelpSection = defineComponent({
@@ -940,6 +945,7 @@ const tabs = [
   { id: 'app',        label: '📱 Приложение (Android / PWA)' },
 ]
 const activeTab = ref('about')
+const isAdmin = computed(() => usePage().props.auth?.user?.role?.slug === 'admin')
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
   const tab = params.get('tab')

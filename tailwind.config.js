@@ -7,5 +7,8 @@ export default {
         './resources/js/**/*.vue',
     ],
     theme: { extend: {} },
-    plugins: [],
+    plugins: [
+        // .prose -- используется только в просмотрщике docs/*.md (Pages/Docs/Index.vue)
+        require('@tailwindcss/typography'),
+    ],
 }

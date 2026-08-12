@@ -91,7 +91,7 @@ PHP — версия **8.2**, и она не задана как `php` по ум
 
 ```bash
 cd /var/www/sites/vega8helpdesk
-sudo npm run build
+sudo -u www-data npm run build
 ```
 
 Это соберёт всё в `public/build/` (JS/CSS с хэшами в именах +
@@ -102,9 +102,11 @@ sudo npm run build
 несовпадение версии ассетов и делает полную перезагрузку — см.
 [REQUEST_LIFECYCLE.md](REQUEST_LIFECYCLE.md#b-переход-внутри-уже-загруженного-сайта)).
 
-Команда `npm run build` требует `sudo`, т.к. пишет файлы, которые должны
-принадлежать `www-data` (см. раздел 0) — на этом сервере так исторически
-настроено, само по себе выполнение `npm` не требует привилегий root.
+**Обязательно `sudo -u www-data`, не голый `sudo`** — файлы должны
+принадлежать `www-data` (см. раздел 0), а голый `sudo` соберёт их от имени
+`root`. Если это всё же произошло — следующая сборка от `www-data` упадёт с
+`EACCES` при попытке Vite очистить `public/build/` (нет прав удалить чужие
+root-файлы). Лечится разовым `sudo chown -R www-data:www-data public/build`.
 
 Локальной среды разработки с горячей перезагрузкой (`npm run dev`) на этом
 сервере обычно не поднимают — правки идут сразу "по-боевому" со сборкой
@@ -282,7 +284,7 @@ cd /var/www/sites/vega8helpdesk
 php8.2 -l app/Http/Controllers/ИзменённыйФайл.php
 
 # 3. Пересобрать фронтенд, если менялся resources/js или resources/css
-sudo npm run build
+sudo -u www-data npm run build
 
 # 4. Если менялись .env/config/routes — пересобрать кэш
 sudo -u www-data php8.2 artisan route:clear
