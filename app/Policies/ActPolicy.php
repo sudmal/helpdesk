@@ -18,11 +18,15 @@ class ActPolicy
     /**
      * Просмотр одного акта — admin/head_support/operator видят всё без
      * territory/brigade-скоупа (оверсайт), остальные — по своему участку цепочки.
+     * Автор акта видит его всегда (2026-08-12) — иначе не может даже открыть
+     * акт, который сам создал вне своей бригады, чтобы дойти до утверждения
+     * (см. foremanReview ниже).
      */
     public function view(User $user, Act $act): bool
     {
         if ($user->isAdmin() || $user->isHeadSupport() || $user->isOperator()) return true;
         if (!$this->viewAny($user)) return false;
+        if ($act->created_by === $user->id) return true;
 
         return $this->scopeMatch($user, $act);
     }
