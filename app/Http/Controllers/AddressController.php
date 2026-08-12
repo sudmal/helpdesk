@@ -449,6 +449,43 @@ class AddressController extends Controller
         }
     }
 
+    /**
+     * Плодение городов через опечатки/варианты написания типа (см. память
+     * проекта: оператор выбрал тип "Город" + вписал "Макеевка" -> получил
+     * отдельную строку "Город Макеевка" вместо существующей "Макеевка").
+     * Непустой $city сверяется с уже существующими городами по
+     * Address::normalizeCity(): при совпадении с другим написанием -- просим
+     * подтвердить (как для улиц в store()), при полном отсутствии совпадений
+     * (город реально новый) -- создание разрешено только id=1, остальным
+     * нужно обратиться к администратору.
+     */
+    private function ensureCityAllowed(Request $request, string $city): ?\Illuminate\Http\RedirectResponse
+    {
+        $norm = Address::normalizeCity($city);
+
+        $matched = Address::query()
+            ->distinct()
+            ->pluck('city')
+            ->first(fn ($c) => Address::normalizeCity($c) === $norm);
+
+        if ($matched !== null && $matched !== $city) {
+            if (!$request->boolean('confirm_duplicate')) {
+                return back()->withErrors([
+                    'duplicate' => "Похоже, город «{$city}» -- это уже существующий «{$matched}». Если это разные города -- нажмите «Всё равно создать».",
+                ])->withInput();
+            }
+            return null;
+        }
+
+        if ($matched === null && $request->user()?->id !== 1) {
+            return back()->withErrors([
+                'city_restricted' => "Города «{$city}» пока нет в системе. Добавить новый город может только администратор.",
+            ])->withInput();
+        }
+
+        return null;
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -469,6 +506,10 @@ class AddressController extends Controller
             'building_step'   => 'nullable|integer|min:1',
             'confirm_duplicate' => 'nullable|boolean',
         ]);
+
+        if ($cityError = $this->ensureCityAllowed($request, $data['city'])) {
+            return $cityError;
+        }
 
         $buildingFrom = $request->input('building_from');
         $buildingTo   = $request->input('building_to');
@@ -961,7 +1002,7 @@ class AddressController extends Controller
             ],
         ]);
 
-        $result = $importer->import($request->file('file'));
+        $result = $importer->import($request->file('file'), $request->user()?->id);
         return response()->json(['import_result' => $result]);
     }
     public function storeGeocode(Request $request, Address $address): \Illuminate\Http\JsonResponse

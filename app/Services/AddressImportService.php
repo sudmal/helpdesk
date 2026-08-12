@@ -7,7 +7,7 @@ use Illuminate\Http\UploadedFile;
 
 class AddressImportService
 {
-    public function import(UploadedFile $file): array
+    public function import(UploadedFile $file, ?int $userId = null): array
     {
         $extension = strtolower($file->getClientOriginalExtension());
 
@@ -22,9 +22,18 @@ class AddressImportService
             fn($id, $name) => [mb_strtolower($name) => $id]
         )->toArray();
 
-        $created = 0;
-        $skipped = 0;
-        $errors  = [];
+        // Кэш существующих городов по нормализованному имени (см. память
+        // проекта и Address::normalizeCity): импорт CSV/XLSX -- второй после
+        // формы создания одиночного адреса источник "плодения" городов через
+        // опечатки/варианты написания, только массовый и потому опаснее.
+        $existingCities = Address::query()->distinct()->pluck('city')
+            ->mapWithKeys(fn($c) => [Address::normalizeCity($c) => $c])
+            ->toArray();
+
+        $created   = 0;
+        $skipped   = 0;
+        $corrected = 0;
+        $errors    = [];
 
         foreach ($rows as $index => $row) {
             try {
@@ -42,6 +51,30 @@ class AddressImportService
                 }
                 unset($data['territory_name']);
 
+                if (!empty($data['city'])) {
+                    $cityNorm = Address::normalizeCity($data['city']);
+                    $known    = $existingCities[$cityNorm] ?? null;
+
+                    if ($known !== null && $known !== $data['city']) {
+                        // Вариант написания уже существующего города -- тихо
+                        // приводим к каноническому написанию, чтобы не плодить
+                        // дубль (по строке файла подтверждение не спросишь).
+                        $data['city'] = $known;
+                        $corrected++;
+                    } elseif ($known === null) {
+                        // Города нет в системе вообще -- как и в ручном
+                        // создании (AddressController::ensureCityAllowed),
+                        // добавлять новые города массовым импортом может
+                        // только администратор (id=1).
+                        if ($userId !== 1) {
+                            $errors[] = "Строка " . ($index + 2) . ": новый город «{$data['city']}» -- добавление новых городов доступно только администратору, строка пропущена.";
+                            $skipped++;
+                            continue;
+                        }
+                        $existingCities[$cityNorm] = $data['city'];
+                    }
+                }
+
                 $existing = Address::where('street', $data['street'])
                     ->where('building', $data['building'])
                     ->where('apartment', $data['apartment'] ?? null)
@@ -58,7 +91,7 @@ class AddressImportService
             }
         }
 
-        return compact('created', 'skipped', 'errors');
+        return compact('created', 'skipped', 'corrected', 'errors');
     }
 
     private function parseCsv(string $path): array

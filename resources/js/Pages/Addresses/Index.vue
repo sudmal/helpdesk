@@ -574,7 +574,7 @@
         <input type="file" ref="importFile" accept=".csv" class="w-full text-sm" />
         <div v-if="importError" class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{{ importError }}</div>
         <div v-if="importResult" :class="['rounded-xl p-3 text-sm', importResult.errors?.length ? 'bg-amber-50' : 'bg-green-50']">
-          ✅ Создано: {{ importResult.created }} | ⏭ Пропущено: {{ importResult.skipped }}
+          ✅ Создано: {{ importResult.created }} | ⏭ Пропущено: {{ importResult.skipped }}<template v-if="importResult.corrected"> | 🛠 Исправлено городов: {{ importResult.corrected }}</template>
           <p v-for="e in importResult.errors" :key="e" class="text-red-600 text-xs mt-1">{{ e }}</p>
         </div>
         <div class="flex justify-end gap-2">
