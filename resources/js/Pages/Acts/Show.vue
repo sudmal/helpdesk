@@ -120,13 +120,28 @@
       </div>
 
       <!-- Акция -->
-      <div v-if="act.promotion_name" class="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between flex-wrap gap-2">
-        <div class="text-sm text-emerald-800">
-          🎁 Акция «<span class="font-medium">{{ act.promotion_name }}</span>»
+      <div v-if="act.promotion_name || (can.editMaterials && editMode && promotionEligible)"
+           class="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 space-y-2">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="text-sm text-emerald-800">
+            <template v-if="act.promotion_name">🎁 Акция «<span class="font-medium">{{ act.promotion_name }}</span>»</template>
+            <template v-else>Акция не выбрана</template>
+          </div>
+          <div v-if="act.promotion_name" class="text-sm text-emerald-800">
+            Абонент платит: <span class="font-semibold">{{ Number(act.promotion_price).toFixed(2) }} ₽</span>
+            <span class="text-emerald-600/70"> (материалы по факту — {{ totalMaterials }} ₽, идут в списание Логистике как есть)</span>
+          </div>
         </div>
-        <div class="text-sm text-emerald-800">
-          Абонент платит: <span class="font-semibold">{{ Number(act.promotion_price).toFixed(2) }} ₽</span>
-          <span class="text-emerald-600/70"> (материалы по факту — {{ totalMaterials }} ₽, идут в списание Логистике как есть)</span>
+        <!-- Доступность считается по актуальному типу заявки/подключения
+             (promotionEligible), не по тому, каким акт был создан -- см.
+             память project-acts-type-promotion-editing-gap. Выбор акции
+             сам переводит акт в "Обычный" (Act::booted() и так требует
+             type=regular при наличии акции). -->
+        <div v-if="can.editMaterials && editMode && promotionEligible" class="flex items-center gap-2">
+          <select v-model="selectedPromotionId" @change="updatePromotion" class="field-input text-sm max-w-xs">
+            <option value="">Без акции</option>
+            <option v-for="p in promotions" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }} ₽</option>
+          </select>
         </div>
       </div>
 
@@ -237,6 +252,7 @@ const props = defineProps({
   act: Object,
   can: Object,
   materialsCatalog: { type: Array, default: () => [] },
+  promotions: { type: Array, default: () => [] },
 })
 
 const statusLabels = {
@@ -392,6 +408,20 @@ function saveEdit(m) {
 function removeMaterialRow(m) {
   if (!confirm(`Удалить материал "${m.material_name}" из акта?`)) return
   router.delete(route('acts.materials.destroy', [props.act.id, m.id]), { preserveScroll: true })
+}
+
+// ── Акция на акте -- доступность живая, по текущему ticket.type/
+// connection_request, не по значению на момент создания акта ──
+const promotionEligible = computed(() =>
+  !!props.act.connection_request || !!props.act.ticket?.type?.allows_promotion
+)
+const selectedPromotionId = ref(props.act.promotion_id ?? '')
+watch(() => props.act.promotion_id, (id) => { selectedPromotionId.value = id ?? '' })
+
+function updatePromotion() {
+  router.put(route('acts.promotion.update', props.act.id), {
+    promotion_id: selectedPromotionId.value || null,
+  }, { preserveScroll: true })
 }
 
 const newMaterialId = ref('')

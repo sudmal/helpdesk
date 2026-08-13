@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Act;
 use App\Models\ActMaterial;
 use App\Models\Material;
+use App\Models\Promotion;
 use App\Models\User;
 
 /**
@@ -74,6 +75,44 @@ class ActService
         $this->flagMaterialsChanged($act, $user->id);
         $this->flagMaterialsCorrected($act);
         $this->logHistory($act, $user->id, 'material_removed', null, $old, null);
+    }
+
+    /**
+     * Акция на уже созданном акте -- независимо от того, каким type он был
+     * создан. Если акция назначается, акт становится type=regular заодно
+     * (модель Act::booted() и так требует type=regular при promotion_id !=
+     * null -- ремонтный акт по определению бесплатный, акция там
+     * противоречива, см. память project-acts-feature). Обратный переход
+     * (снятие акции) type не трогает -- если акт уже "обычный", это его
+     * состояние, снятие акции само по себе не делает его снова ремонтным.
+     * Право (совпадает ли type заявки/ConnectionRequest с allows_promotion)
+     * проверяется в контроллере до вызова -- сюда попадают только уже
+     * провалидированные действия, как и у остальных методов сервиса.
+     */
+    public function updatePromotion(Act $act, User $user, ?int $promotionId): Act
+    {
+        $old = $act->promotion_name ?? 'нет акции';
+
+        if ($promotionId === null) {
+            $act->promotion_id    = null;
+            $act->promotion_name  = null;
+            $act->promotion_price = null;
+        } else {
+            $promotion = Promotion::findOrFail($promotionId);
+            $act->type             = 'regular';
+            $act->promotion_id     = $promotion->id;
+            $act->promotion_name   = $promotion->name;
+            $act->promotion_price  = $promotion->price;
+        }
+        $act->save();
+
+        $new = $act->promotion_name ?? 'нет акции';
+
+        $this->flagMaterialsChanged($act, $user->id);
+        $this->flagMaterialsCorrected($act);
+        $this->logHistory($act, $user->id, 'promotion_changed', 'promotion', $old, $new);
+
+        return $act;
     }
 
     public function acknowledge(Act $act, User $user): Act

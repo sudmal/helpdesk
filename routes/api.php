@@ -47,6 +47,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/acts/{act}/materials/{material}',      [ActController::class, 'updateMaterial']);
     Route::delete('/acts/{act}/materials/{material}',   [ActController::class, 'removeMaterial']);
     Route::post('/acts/{act}/acknowledge',              [ActController::class, 'acknowledge']);
+    Route::put('/acts/{act}/promotion',                   [ActController::class, 'updatePromotion']);
 
     Route::get('/service_types', function () {
         return response()->json(

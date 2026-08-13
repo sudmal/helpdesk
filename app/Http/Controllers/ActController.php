@@ -174,6 +174,7 @@ class ActController extends Controller
                 'acknowledge'      => $user->can('acknowledge', $act),
             ],
             'materialsCatalog' => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
+            'promotions'      => \App\Models\Promotion::active()->get(['id', 'name', 'price']),
         ]);
     }
 
@@ -338,6 +339,36 @@ class ActController extends Controller
         $this->actService->removeMaterial($act, $material, auth()->user());
 
         return back()->with('success', 'Материал удалён из акта');
+    }
+
+    /**
+     * Назначить/снять акцию на уже созданном акте -- та же авторизация и то
+     * же окно, что и у правки материалов (editMaterials): доступность акции
+     * проверяется заново по текущему типу заявки/подключения, а не по
+     * значению, зафиксированному при закрытии заявки (см. память
+     * project-acts-type-promotion-editing-gap, живой кейс i-022108).
+     */
+    public function updatePromotion(Request $request, Act $act): RedirectResponse
+    {
+        $this->authorize('editMaterials', $act);
+        $request->validate([
+            'promotion_id' => 'nullable|integer|exists:promotions,id',
+        ]);
+
+        $promotionId = $request->input('promotion_id');
+
+        if ($promotionId !== null) {
+            $eligible = $act->connection_request_id !== null
+                || ($act->ticket_id !== null && (bool) $act->ticket?->type?->allows_promotion);
+
+            if (!$eligible) {
+                return back()->withErrors(['promotion_id' => 'Акция недоступна для этого типа заявки.']);
+            }
+        }
+
+        $this->actService->updatePromotion($act, auth()->user(), $promotionId !== null ? (int) $promotionId : null);
+
+        return back()->with('success', $promotionId !== null ? 'Акция применена к акту' : 'Акция снята с акта');
     }
 
     /** Монтажник подтверждает, что увидел правки бригадира в составе акта */

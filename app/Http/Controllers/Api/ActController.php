@@ -118,6 +118,41 @@ class ActController extends Controller
         return response()->json($this->formatOne($act, $request->user()));
     }
 
+    /**
+     * Назначить/снять акцию на уже созданном акте -- та же авторизация и то
+     * же окно, что и editMaterials. Доступность акции проверяется заново по
+     * текущему типу заявки/подключения (см. web ActController::updatePromotion
+     * и память project-acts-type-promotion-editing-gap), а не по значению,
+     * зафиксированному при закрытии заявки.
+     */
+    public function updatePromotion(Request $request, Act $act): JsonResponse
+    {
+        $this->authorize('editMaterials', $act);
+        $request->validate([
+            'promotion_id' => 'nullable|integer|exists:promotions,id',
+        ]);
+
+        $promotionId = $request->input('promotion_id');
+
+        if ($promotionId !== null) {
+            $eligible = $act->connection_request_id !== null
+                || ($act->ticket_id !== null && (bool) $act->ticket?->type?->allows_promotion);
+
+            if (!$eligible) {
+                return response()->json([
+                    'message' => 'Акция недоступна для этого типа заявки.',
+                    'errors'  => ['promotion_id' => ['Акция недоступна для этого типа заявки.']],
+                ], 422);
+            }
+        }
+
+        $this->actService->updatePromotion($act, $request->user(), $promotionId !== null ? (int) $promotionId : null);
+
+        $act->load(['materials.material', 'history.user', 'creator', 'foremanReviewer']);
+
+        return response()->json($this->formatOne($act, $request->user()));
+    }
+
     public function acknowledge(Request $request, Act $act): JsonResponse
     {
         $this->authorize('acknowledge', $act);
@@ -178,9 +213,13 @@ class ActController extends Controller
             'foreman_reviewed_by'   => $act->foremanReviewer?->name,
             'materials_changed_at'  => $act->materials_changed_at?->toIso8601String(),
             'materials_corrected_at' => $act->materials_corrected_at?->toIso8601String(),
-            // Акция — только у актов заявок на подключение (connection_request_id
-            // не null), у тикетных всегда null. См. память project-acts-feature,
-            // "Акции по подключениям".
+            // Акция бывает и у актов заявок на подключение (connection_request_id
+            // не null, всегда доступна), и у тикетных -- если у типа заявки
+            // allows_promotion=true (см. "Акции на обычных заявках", 2026-08-11)
+            // и акт type=regular. Доступность живая, по текущему типу заявки,
+            // не фиксируется на момент закрытия -- см. PUT /acts/{id}/promotion
+            // и память project-acts-type-promotion-editing-gap.
+            'promotion_id'          => $act->promotion_id,
             'promotion_name'        => $act->promotion_name,
             'promotion_price'       => $act->promotion_price !== null ? (float) $act->promotion_price : null,
             'materials' => $act->materials->map(fn(ActMaterial $m) => [

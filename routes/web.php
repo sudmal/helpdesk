@@ -217,6 +217,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('/{act}/materials/{material}', [App\Http\Controllers\ActController::class, 'updateMaterial'])->name('materials.update');
         Route::delete('/{act}/materials/{material}', [App\Http\Controllers\ActController::class, 'removeMaterial'])->name('materials.destroy');
         Route::post('/{act}/acknowledge', [App\Http\Controllers\ActController::class, 'acknowledge'])->name('acknowledge');
+        Route::put('/{act}/promotion', [App\Http\Controllers\ActController::class, 'updatePromotion'])->name('promotion.update');
 
         // Отчёты по расходу материалов/поступлениям от абонентов — переехали сюда из
         // раздела "Материалы" (см. память project-acts-feature). Доступ (reports.view)
