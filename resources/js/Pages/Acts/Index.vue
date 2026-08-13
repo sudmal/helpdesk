@@ -86,6 +86,7 @@
                 <th class="px-2 py-1 text-left whitespace-nowrap">Создан</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Номер</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Заявка</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Адрес</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Тип</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Статус</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Бригадир</th>
@@ -108,7 +109,7 @@
             <tbody v-if="tab === 'active'" class="divide-y divide-gray-100">
               <template v-for="row in groupedRows" :key="row.key">
                 <tr v-if="row.isGroup" class="bg-gray-100">
-                  <td colspan="9" class="px-2 py-1.5 text-center text-xs font-bold text-gray-700">
+                  <td colspan="10" class="px-2 py-1.5 text-center text-xs font-bold text-gray-700">
                     {{ row.territoryName }} <span class="text-gray-500 font-semibold">· {{ row.brigadeName }}</span>
                   </td>
                 </tr>
@@ -121,6 +122,7 @@
                           title="Бригадир изменил состав акта — есть неподтверждённые изменения">(!)</span>
                   </td>
                   <td class="px-2 py-1 whitespace-nowrap text-blue-600">{{ requestLabel(row.act) }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap text-gray-600 max-w-[220px] truncate" :title="requestAddress(row.act)">{{ requestAddress(row.act) }}</td>
                   <td class="px-2 py-1 whitespace-nowrap">
                     <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(row.act.type) }}</span>
                   </td>
@@ -146,7 +148,7 @@
                 </tr>
               </template>
               <tr v-if="!acts.data.length">
-                <td colspan="9" class="px-4 py-8 text-center text-gray-400">Нет актов</td>
+                <td colspan="10" class="px-4 py-8 text-center text-gray-400">Нет актов</td>
               </tr>
             </tbody>
 
