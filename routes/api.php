@@ -27,6 +27,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/tickets/{ticket}/close',         [TicketController::class, 'close']);
     Route::post('/tickets/{ticket}/attachments',   [TicketController::class, 'addAttachment']);
     Route::post('/tickets/{ticket}/reschedule',    [TicketController::class, 'reschedule']);
+    Route::post('/tickets/{ticket}/cancel',        [TicketController::class, 'cancel']);
 
     Route::get('/connection-requests',                                        [ConnectionRequestController::class, 'index']);
     Route::post('/connection-requests',                                       [ConnectionRequestController::class, 'store']);
@@ -35,6 +36,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/connection-requests/{connectionRequest}/close',             [ConnectionRequestController::class, 'close']);
     Route::post('/connection-requests/{connectionRequest}/mark-called',       [ConnectionRequestController::class, 'markCalled']);
     Route::post('/connection-requests/{connectionRequest}/feasibility',       [ConnectionRequestController::class, 'feasibility']);
+    Route::post('/connection-requests/{connectionRequest}/cancel',           [ConnectionRequestController::class, 'cancel']);
     Route::delete('/connection-requests/{connectionRequest}',                 [ConnectionRequestController::class, 'destroy']);
 
     // Полевая часть workflow "Акты" — утверждение бригадиром, правка состава

@@ -258,6 +258,33 @@ class TicketController extends Controller
         return response()->json($this->formatOne($ticket));
     }
 
+    /**
+     * Отмена заявки -- то же действие, что и на веб-портале (см.
+     * TicketController::cancel(), политика TicketPolicy::cancel()): та же
+     * зона ответственности, что и закрытие (tickets.close), причина
+     * обязательна и попадает в close_notes + отдельную строку истории.
+     */
+    public function cancel(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('cancel', $ticket);
+
+        $request->validate([
+            'comment' => 'required|string|max:2000',
+        ]);
+
+        $this->ticketService->updateStatus($ticket, 'cancelled', $request->user(), $request->comment);
+
+        $ticket->history()->create([
+            'user_id'   => $request->user()->id,
+            'action'    => 'cancelled',
+            'new_value' => $request->comment,
+        ]);
+
+        $ticket->load(['address.territory', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'attachments', 'act']);
+
+        return response()->json($this->formatOne($ticket));
+    }
+
     private function formatOne(Ticket $t): array
     {
         return [

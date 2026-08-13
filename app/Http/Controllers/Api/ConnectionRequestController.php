@@ -305,6 +305,39 @@ class ConnectionRequestController extends Controller
         return response()->json($this->formatOne($connectionRequest));
     }
 
+    /**
+     * Отказ абонента -- он сам передумал уже после того, как оставил заявку
+     * (в отличие от "rejected", который отражает решение оператора/монтажника).
+     * То же действие и та же семантика, что и на веб-портале (см.
+     * ConnectionRequestController::cancel()) -- отдельный статус и отдельный
+     * лог, без ограничения по роли (как и на вебе, доступ гейтится видимостью
+     * заявки по территории, см. index()).
+     */
+    public function cancel(Request $request, ConnectionRequest $connectionRequest): JsonResponse
+    {
+        abort_if(
+            in_array($connectionRequest->status, ['closed', 'rejected', 'cancelled']),
+            422,
+            'Заявка уже в финальном статусе.'
+        );
+
+        $data = $request->validate([
+            'comment' => 'nullable|string|max:2000',
+        ]);
+
+        $connectionRequest->update([
+            'status'         => 'cancelled',
+            'notes'          => $data['comment'] ?? $connectionRequest->notes,
+            'needs_callback' => false,
+        ]);
+
+        $this->logEvent($connectionRequest, $request->user()->id, 'cancelled', $data['comment'] ?? null);
+
+        $connectionRequest->load(['territory', 'serviceType', 'creator', 'assignee', 'feasibilityByUser', 'logs.user']);
+
+        return response()->json($this->formatOne($connectionRequest));
+    }
+
     private function logEvent(ConnectionRequest $req, ?int $userId, string $action, ?string $notes = null, ?array $meta = null): void
     {
         ConnectionRequestLog::create([
