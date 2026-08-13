@@ -220,6 +220,12 @@ class ActController extends Controller
             // не фиксируется на момент закрытия -- см. PUT /acts/{id}/promotion
             // и память project-acts-type-promotion-editing-gap.
             'promotion_id'          => $act->promotion_id,
+            // Самодостаточный флаг для экрана акта в отрыве от контекста заявки
+            // (PWA открывает акт и из списка "Акты", не только с карточки заявки,
+            // где ticket.type_allows_promotion уже был бы под рукой) -- та же
+            // формула, что и в updatePromotion() ниже.
+            'promotion_eligible'    => $act->connection_request_id !== null
+                || ($act->ticket_id !== null && (bool) $act->ticket?->type?->allows_promotion),
             'promotion_name'        => $act->promotion_name,
             'promotion_price'       => $act->promotion_price !== null ? (float) $act->promotion_price : null,
             'materials' => $act->materials->map(fn(ActMaterial $m) => [

@@ -36,9 +36,28 @@
         <div v-if="act.foreman_reviewed_by" class="text-[#9E9E9E] text-xs">
           Утвердил: {{ act.foreman_reviewed_by }}, {{ formatDateTime(act.foreman_reviewed_at) }}
         </div>
-        <div v-if="act.promotion_name" class="text-[#4ADE80] text-xs">
-          Акция «{{ act.promotion_name }}»: абонент платит {{ act.promotion_price }}₽
+      </div>
+
+      <!-- Акция -- доступность живая, по текущему ticket.type_allows_promotion /
+           connection_request_id (promotion_eligible из ответа сервера), не по
+           тому, каким акт был создан. Выбор акции сам переводит акт в
+           "Обычный" на сервере (Act::booted() и так требует type=regular при
+           наличии promotion_id) -- см. API_MOBILE.md, PUT /acts/{id}/promotion. -->
+      <div v-if="act.promotion_name || (act.can.edit_materials && act.promotion_eligible)"
+           class="bg-[#0F2A1D] border border-[#4ADE80]/30 rounded-lg p-3 space-y-2">
+        <div class="text-[#4ADE80] text-sm">
+          <template v-if="act.promotion_name">🎁 Акция «{{ act.promotion_name }}»</template>
+          <template v-else>Акция не выбрана</template>
         </div>
+        <div v-if="act.promotion_name" class="text-[#9E9E9E] text-xs">
+          Абонент платит: <span class="text-[#E0E0E0] font-medium">{{ Number(act.promotion_price).toFixed(2) }}₽</span>
+        </div>
+        <select v-if="act.can.edit_materials && act.promotion_eligible" v-model="selectedPromotionId"
+                @change="updatePromotion" :disabled="savingPromotion"
+                class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10 disabled:opacity-50">
+          <option value="">Без акции</option>
+          <option v-for="p in promotionsCatalog" :key="p.id" :value="p.id">{{ p.name }} — {{ p.price }}₽</option>
+        </select>
       </div>
 
       <!-- Материалы -->
@@ -129,6 +148,9 @@ const editQty = ref({})
 const materialsCatalog = ref([])
 const newMaterialId = ref('')
 const newMaterialQty = ref(1)
+const promotionsCatalog = ref([])
+const selectedPromotionId = ref('')
+const savingPromotion = ref(false)
 
 const statusLabels = { pending_foreman: 'Ждёт бригадира', approved: 'Утверждён', processing: 'В обработке', pending_subscriber_dept: 'Ждёт Абонотдел', completed: 'Завершён' }
 const statusColors = { pending_foreman: '#CA8A04', approved: '#4F46E5', processing: '#4F46E5', pending_subscriber_dept: '#4F46E5', completed: '#16A34A' }
@@ -168,18 +190,44 @@ function syncEditQty() {
   editQty.value = map
 }
 
+function syncPromotion() {
+  selectedPromotionId.value = act.value?.promotion_id ?? ''
+}
+
 async function load() {
   loading.value = true
   try {
     const { data } = await api.get(`/acts/${route.params.id}`)
     act.value = data
     syncEditQty()
+    syncPromotion()
     if (data.can.edit_materials && !materialsCatalog.value.length) {
       const { data: mats } = await api.get('/materials')
       materialsCatalog.value = mats
     }
+    if (data.can.edit_materials && data.promotion_eligible && !promotionsCatalog.value.length) {
+      const { data: promos } = await api.get('/promotions')
+      promotionsCatalog.value = promos
+    }
   } finally {
     loading.value = false
+  }
+}
+
+async function updatePromotion() {
+  savingPromotion.value = true
+  try {
+    const { data } = await api.put(`/acts/${route.params.id}/promotion`, {
+      promotion_id: selectedPromotionId.value || null,
+    })
+    act.value = data
+    syncEditQty()
+    syncPromotion()
+  } catch (e) {
+    alert(e.response?.data?.message || 'Не удалось изменить акцию')
+    syncPromotion()
+  } finally {
+    savingPromotion.value = false
   }
 }
 

@@ -1,1 +1,0 @@
-import{D as s,i}from"./index-BTuHyaRk.js";const e="mobile_settings",t={syncIntervalMinutes:15,sortOrder:"time",serviceTypeFilter:"",territoryFilter:""};function o(){try{return{...t,...JSON.parse(localStorage.getItem(e)||"{}")}}catch{return{...t}}}const a=s(o());i(()=>({...a}),r=>localStorage.setItem(e,JSON.stringify(r)),{deep:!0});export{a as s};
