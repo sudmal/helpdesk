@@ -327,14 +327,25 @@
         </div>
         <AttachmentUpload v-model="closeFiles" label="Прикрепить фото/документы" />
 
-        <!-- Расходные материалы -->
+        <!-- Расходные материалы -- у заявки уже может быть акт с прошлого
+             закрытия (переоткрыли и закрывают снова: acts.ticket_id уникален,
+             второй акт создать нельзя, сервер и так отклонит с 422). Раньше
+             форма всё равно предлагала "создать акт" и материалы, приводя к
+             гарантированному отказу -- теперь сразу видно, что акт уже есть,
+             с прямой ссылкой на него вместо тупика. -->
         <div class="border-t border-gray-100 pt-2.5">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" v-model="useMaterials"
-                   class="rounded w-4 h-4 text-blue-600" />
-            <span class="text-sm text-gray-700">📦 Использовались расходные материалы (создать акт)</span>
-          </label>
-          <div v-if="useMaterials" class="mt-2 space-y-2">
+          <div v-if="ticket.act" class="text-sm text-gray-500">
+            По заявке уже есть акт
+            <a :href="route('acts.show', ticket.act.id)" class="text-blue-600 hover:underline font-medium">№{{ ticket.act.number }}</a>
+            — материалы редактируются на его странице, повторно создать акт нельзя.
+          </div>
+          <template v-else>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" v-model="useMaterials"
+                     class="rounded w-4 h-4 text-blue-600" />
+              <span class="text-sm text-gray-700">📦 Использовались расходные материалы (создать акт)</span>
+            </label>
+            <div v-if="useMaterials" class="mt-2 space-y-2">
             <div class="field-row">
               <label class="field-label">Тип акта *</label>
               <select v-model="closeActType" required class="field-input">
@@ -356,6 +367,7 @@
               </p>
             </div>
           </div>
+          </template>
         </div>
 
         <div v-if="Object.keys(closeForm.errors).length"

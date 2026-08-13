@@ -134,6 +134,18 @@
         <textarea v-model="closeNotes" placeholder="Что было сделано..." rows="3"
                   class="w-full bg-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 border border-white/10"></textarea>
 
+        <!-- У заявки уже может быть акт с прошлого закрытия (переоткрыли и
+             закрывают снова) -- acts.ticket_id уникален, второй акт сервер не
+             создаст, вернёт 422. Раньше форма всё равно предлагала завести
+             материалы, гарантированно упираясь в отказ -- теперь сразу видно,
+             что акт уже есть, со ссылкой на него вместо тупика. -->
+        <div v-if="ticket.act" class="text-[#9E9E9E] text-sm">
+          По заявке уже есть акт
+          <button @click="$router.push({ name: 'act-detail', params: { id: ticket.act.id } })"
+                  class="text-[#3B82F6] font-medium">№{{ ticket.act.number }}</button>
+          — материалы редактируются на его странице, повторно создать акт нельзя.
+        </div>
+        <template v-else>
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" v-model="useMaterials" class="w-4 h-4" />
           <span class="text-[#E0E0E0] text-sm">📦 Использовались расходные материалы</span>
@@ -180,6 +192,7 @@
             </p>
           </div>
         </div>
+        </template>
 
         <div v-if="closeError" class="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-3 py-2">
           {{ closeError }}
