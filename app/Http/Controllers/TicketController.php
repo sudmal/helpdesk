@@ -322,17 +322,10 @@ class TicketController extends Controller
             $serviceTypeName = $newServiceTypeId
                 ? ServiceType::find($newServiceTypeId)?->name
                 : null;
-            $lower = mb_strtolower((string) $serviceTypeName);
-            if (str_contains($lower, 'интернет') || str_contains($lower, 'inet')) {
-                $newPrefix = 'i';
-            } elseif (str_contains($lower, 'ктв') || str_contains($lower, 'ctv') || str_contains($lower, 'кабел')) {
-                $newPrefix = 'c';
-            } else {
-                $newPrefix = 'Т';
-            }
-            if (preg_match('/^[^-]+-(\d+)$/', $ticket->number, $m)) {
-                $data['number'] = $newPrefix . '-' . $m[1];
-            }
+            // Просто переставить префикс на тот же числовой хвост нельзя --
+            // номер с этим префиксом мог уже быть занят другой заявкой
+            // (падение с tickets_number_unique). Генератор ищет свободный номер.
+            $data['number'] = Ticket::generateNumber($serviceTypeName);
         }
 
         $ticket->update($data);
