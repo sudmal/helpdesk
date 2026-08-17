@@ -43,8 +43,13 @@ class SendEveningReport extends Command
         )->where('is_active', true)->get();
 
         foreach ($recipients as $user) {
-            $user->notify(new EveningReportNotification($stats, $tickets));
-            $this->info("Отправлено: {$user->name}");
+            try {
+                $user->notify(new EveningReportNotification($stats, $tickets));
+                $this->info("Отправлено: {$user->name}");
+            } catch (\Throwable $e) {
+                report($e);
+                $this->error("Не удалось уведомить {$user->name}: {$e->getMessage()}");
+            }
         }
 
         $this->table(

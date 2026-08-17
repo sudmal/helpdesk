@@ -16,7 +16,11 @@ class EveningReportNotification extends Notification
         if ($notifiable->notify_email)    $channels[] = 'mail';
         if ($notifiable->notify_telegram) $channels[] = TelegramChannel::class;
         if ($notifiable->notify_max)      $channels[] = MaxChannel::class;
-        return $channels ?: ['mail'];
+        // Если ни один канал не включён -- молча ничего не отправляем
+        // (раньше был откат на ['mail'], который заставлял слать письмо
+        // даже тем, кто явно отключил все уведомления -- при нерабочем
+        // SMTP это роняло всю рассылку остальным получателям).
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage

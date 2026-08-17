@@ -56,7 +56,12 @@ class SendDailySummary extends Command
 
                 $this->info("Бригада «{$brigade->name}» → {$member->name} | заявок: {$tickets->count()} | каналы: " . implode(',', $channels));
 
-                $member->notify(new DailySummaryNotification($brigade, $tickets, $date));
+                try {
+                    $member->notify(new DailySummaryNotification($brigade, $tickets, $date));
+                } catch (\Throwable $e) {
+                    report($e);
+                    $this->error("Не удалось уведомить {$member->name}: {$e->getMessage()}");
+                }
             }
         }
 
