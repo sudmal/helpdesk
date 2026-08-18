@@ -253,9 +253,29 @@ class TicketController extends Controller
                        'apartment', 'description', 'close_notes', 'created_at']);
         }
 
+        // Последние звонки абонента -- сопоставляем по номеру телефона заявки.
+        // Форматы телефона в calls (как пришло с АТС) и в заявке (как ввёл
+        // оператор) не всегда совпадают дословно -- сравниваем по последним 7
+        // цифрам, тем же способом, что и в CallLogController::index(). Статус
+        // абонента -- это lanbilling_blocked СО ВРЕМЕНИ звонка (снимок, который
+        // PbxController записал при поступлении звонка), не текущий статус из
+        // биллинга -- показываем каким он был на тот момент, а не сейчас.
+        $recentCalls = [];
+        if ($ticket->phone) {
+            $suffix = substr(preg_replace('/\D/', '', $ticket->phone), -7);
+            if ($suffix) {
+                $recentCalls = \App\Models\Call::where('phone', 'like', "%{$suffix}")
+                    ->latest('called_at')
+                    ->take(5)
+                    ->get(['id', 'phone', 'called_at', 'lanbilling_blocked']);
+            }
+        }
+
         return Inertia::render('Tickets/Show', [
             'ticket'         => $ticket,
             'addressHistory' => $addressHistory,
+            'recentCalls'    => $recentCalls,
+            'blockedLabels'  => \App\Models\IvrLog::$blockedLabels,
             'materialsCatalog' => \App\Models\Material::active()->orderBy('sort_order')->orderBy('name')->get(['id','code','name','unit','price']),
             'promotions'     => \App\Models\Promotion::active()->get(['id', 'name', 'price']),
             'statuses'       => TicketStatus::active()->get(['id', 'name', 'color', 'slug', 'is_final']),

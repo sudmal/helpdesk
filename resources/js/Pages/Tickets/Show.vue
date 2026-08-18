@@ -259,6 +259,21 @@
           <div ref="ymapEl" style="height:220px"></div>
         </div>
 
+        <!-- Звонки абонента -->
+        <div v-if="recentCalls?.length" class="bg-white rounded-xl border border-gray-200 p-3.5">
+          <h3 class="font-medium text-sm mb-2 text-gray-700">Звонки абонента</h3>
+          <div class="space-y-1.5">
+            <div v-for="c in recentCalls" :key="c.id"
+                 class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-gray-50">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-700">{{ formatDate(c.called_at) }}</p>
+                <p class="text-xs text-gray-400 font-mono truncate">{{ c.phone }}</p>
+              </div>
+              <Badge small :color="callStatusColor(c.lanbilling_blocked)" :label="callStatusLabel(c.lanbilling_blocked)" />
+            </div>
+          </div>
+        </div>
+
         <!-- История по адресу -->
         <div v-if="addressHistory?.length" data-tour="tour-ticket-history-address"
              class="bg-white rounded-xl border border-gray-200 p-3.5">
@@ -528,6 +543,8 @@ async function saveGeocode(addressId, lat, lng) {
 
 const props = defineProps({
   ticket: Object, addressHistory: Array, statuses: Array, brigades: Array,
+  recentCalls: { type: Array, default: () => [] },
+  blockedLabels: { type: Object, default: () => ({}) },
   materialsCatalog: { type: Array, default: () => [] },
   promotions: { type: Array, default: () => [] },
   canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canCancel: Boolean, canComment: Boolean, canDelete: Boolean,
@@ -599,6 +616,18 @@ function formatDate(d)     { return d ? dayjs(d).format('DD MMM, HH:mm') : '—'
 function formatDateTime(d) { return d ? dayjs(d).format('DD MMM YYYY HH:mm') : '—' }
 function formatTime(d)     { return d ? dayjs(d).format('HH:mm') : '—' }
 function formatDay(d)      { return d ? dayjs(d).format('DD MMM YYYY') : '—' }
+
+// Статус абонента -- это lanbilling_blocked НА МОМЕНТ звонка (снимок из
+// calls, не текущее состояние в биллинге), 0 -- активен, любой другой код --
+// та или иная блокировка (см. IvrLog::$blockedLabels на бэкенде).
+function callStatusLabel(code) {
+  if (code === null || code === undefined) return 'Неизвестно'
+  return props.blockedLabels?.[code] ?? `Код ${code}`
+}
+function callStatusColor(code) {
+  if (code === null || code === undefined) return '#94a3b8'
+  return code === 0 ? '#16a34a' : '#dc2626'
+}
 
 function actionLabel(h) {
   if (h.action === 'created')        return 'Заявка создана'
