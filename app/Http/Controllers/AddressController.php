@@ -809,7 +809,18 @@ class AddressController extends Controller
         // Раньше здесь была своя формула "территории бригады, ЕСЛИ есть
         // бригада, ИНАЧЕ личные" (взаимоисключающе, не union) — теперь как
         // везде: объединение.
-        $scopeToTerritory = !$user->isAdmin();
+        //
+        // Исключение -- создание/редактирование заявки (for_ticket=1):
+        // оператор должен уметь завести заявку по адресу ЛЮБОГО города, не
+        // только своей территории (звонок может быть откуда угодно, бригада
+        // подбирается отдельно по территории самого адреса). Тот же экран
+        // уже даёт неограниченный доступ через модалку "Выбор адреса"
+        // (hierarchy() ниже вообще не скоупится по территории пользователя)
+        // -- без этого исключения быстрый текстовый поиск и модалка на одной
+        // и той же форме вели себя по-разному и молчком отфильтровывали
+        // адреса из чужого города (баг: "чапаева 11" давал только Донецк,
+        // хотя есть и в Донецке, и в Макеевке).
+        $scopeToTerritory = !$user->isAdmin() && !$request->boolean('for_ticket');
         $userTerritories  = $scopeToTerritory ? $user->territoryScopeIds() : collect();
 
         // Точный резолв из модалки "Выбор адреса" -- city/street/building
@@ -862,14 +873,46 @@ class AddressController extends Controller
 
             $searchQuery = implode(' ', $textWords);
 
-            $addresses = Address::with('territory')
-                ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $userTerritories))
-                ->when($searchQuery, fn($q) => $q->search($searchQuery))
-                ->when($buildingHint, fn($q) => $q->whereIn('building', $this->buildingVariants($buildingHint)))
-                ->orderByRaw('CAST(building AS UNSIGNED)')
-                ->limit(15)
-                ->get(['id', 'city', 'street', 'building', 'apartment',
-                       'subscriber_name', 'phone', 'contract_no', 'territory_id']);
+            if ($buildingHint) {
+                // LIMIT должен ограничивать число РАЗНЫХ домов (city+street+
+                // building), а не сырых строк -- иначе один большой МКД с
+                // сотней именных квартир (у каждой квартиры своя запись
+                // Address) съедает весь лимит(15) целиком, и другие
+                // совпадения (в том числе тот же дом в ДРУГОМ городе) вообще
+                // не попадают в выборку. Баг: "чапаева 11" находило только
+                // Донецк (там огромный МКД на полторы сотни квартир), хотя
+                // такой же дом есть и в Макеевке. Сначала находим до 15
+                // РАЗНЫХ домов, затем по каждому берём одну представительную
+                // запись -- сами квартиры дом-ветка ниже вытягивает отдельным
+                // запросом, тут они не нужны.
+                $buildingKeys = Address::query()
+                    ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $userTerritories))
+                    ->when($searchQuery, fn($q) => $q->search($searchQuery))
+                    ->whereIn('building', $this->buildingVariants($buildingHint))
+                    ->select('city', 'street', 'building')
+                    ->distinct()
+                    ->orderByRaw('CAST(building AS UNSIGNED)')
+                    ->limit(15)
+                    ->get();
+
+                $addresses = collect();
+                foreach ($buildingKeys as $key) {
+                    $rep = Address::with('territory')
+                        ->where('city', $key->city)->where('street', $key->street)->where('building', $key->building)
+                        ->orderByRaw("(apartment IS NULL OR apartment = '') DESC")
+                        ->first(['id', 'city', 'street', 'building', 'apartment',
+                                 'subscriber_name', 'phone', 'contract_no', 'territory_id']);
+                    if ($rep) $addresses->push($rep);
+                }
+            } else {
+                $addresses = Address::with('territory')
+                    ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $userTerritories))
+                    ->when($searchQuery, fn($q) => $q->search($searchQuery))
+                    ->orderByRaw('CAST(building AS UNSIGNED)')
+                    ->limit(15)
+                    ->get(['id', 'city', 'street', 'building', 'apartment',
+                           'subscriber_name', 'phone', 'contract_no', 'territory_id']);
+            }
         }
 
         $results     = [];

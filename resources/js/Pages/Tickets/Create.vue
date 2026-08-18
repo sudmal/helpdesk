@@ -563,7 +563,7 @@ function searchAddresses() {
   searchTimer = setTimeout(async () => {
     try {
       const { data } = await axios.get(route('addresses.search'), {
-        params: { q: addressQuery.value }
+        params: { q: addressQuery.value, for_ticket: 1 }
       })
       suggestions.value = data
     } catch { suggestions.value = [] }
@@ -769,6 +769,7 @@ async function applyAddrModal() {
         street: addrSel.street,
         building: addrSel.building,
         apartment: addrSel.apartment,
+        for_ticket: 1,
       },
     })
     suggestions.value = data
