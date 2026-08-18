@@ -267,7 +267,7 @@ class TicketController extends Controller
                 $recentCalls = \App\Models\Call::where('phone', 'like', "%{$suffix}")
                     ->latest('called_at')
                     ->take(5)
-                    ->get(['id', 'phone', 'called_at', 'lanbilling_blocked']);
+                    ->get(['id', 'phone', 'called_at', 'lanbilling_blocked', 'operator_ext', 'queue_status']);
             }
         }
 

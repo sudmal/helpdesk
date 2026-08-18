@@ -261,13 +261,18 @@
 
         <!-- Звонки абонента -->
         <div v-if="recentCalls?.length" class="bg-white rounded-xl border border-gray-200 p-3.5">
-          <h3 class="font-medium text-sm mb-2 text-gray-700">Звонки абонента</h3>
+          <a :href="route('calls.index', { phone: ticket.phone })"
+             class="font-medium text-sm mb-2 text-gray-700 hover:text-blue-600 hover:underline inline-block">
+            Звонки абонента
+          </a>
           <div class="space-y-1.5">
             <div v-for="c in recentCalls" :key="c.id"
                  class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-gray-50">
               <div class="min-w-0">
                 <p class="text-sm font-medium text-gray-700">{{ formatDate(c.called_at) }}</p>
-                <p class="text-xs text-gray-400 font-mono truncate">{{ c.phone }}</p>
+                <p class="text-xs text-gray-400 font-mono truncate">
+                  {{ c.phone }}<span v-if="c.queue_status === 'answered' && c.operator_ext"> · принял доб. {{ c.operator_ext }}</span>
+                </p>
               </div>
               <Badge small :color="callStatusColor(c.lanbilling_blocked)" :label="callStatusLabel(c.lanbilling_blocked)" />
             </div>
