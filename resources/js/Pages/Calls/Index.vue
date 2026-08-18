@@ -1,6 +1,7 @@
 <template>
-  <Head :title="activeTab === 'queue' ? 'Очередь АТС' : 'Журнал звонков'" />
-  <AppLayout :title="activeTab === 'queue' ? 'Очередь АТС' : 'Журнал звонков'" help-tab="dispatcher" :help-section="activeTab === 'queue' ? 'call-queue' : 'call-log'">
+  <Head :title="activeTab === 'queue' ? 'Очередь АТС' : activeTab === 'shifts' ? 'Смены' : 'Журнал звонков'" />
+  <AppLayout :title="activeTab === 'queue' ? 'Очередь АТС' : activeTab === 'shifts' ? 'Смены' : 'Журнал звонков'" help-tab="dispatcher"
+             :help-section="activeTab === 'queue' ? 'call-queue' : activeTab === 'shifts' ? 'call-shifts' : 'call-log'">
 
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2">
