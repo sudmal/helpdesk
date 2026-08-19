@@ -44,6 +44,7 @@
               </select>
             </div>
           </div>
+          <FieldError :error="form.errors.address_id || form.errors.apartment" />
         </div>
 
         <!-- Детали -->
