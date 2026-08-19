@@ -197,6 +197,10 @@ async function fetchApartments(city, street, building) {
   return (await axios.get(route('addresses.hierarchy'), { params: hierarchyParams({ city, street, building, with_id: 1 }) })).data
 }
 
+async function resolveAddressNoApartment(city, street, building) {
+  return (await axios.get(route('addresses.search'), { params: { city, street, building, for_ticket: 1 } })).data
+}
+
 async function onAddrCity() {
   addrSel.street = ''; addrSel.building = ''
   addrBuildings.value = []; addrApartments.value = []; selectedApartmentId.value = ''
@@ -211,7 +215,23 @@ async function onAddrStreet() {
 
 async function onAddrBuilding() {
   selectedApartmentId.value = ''
-  addrApartments.value = addrSel.building ? await fetchApartments(addrSel.city, addrSel.street, addrSel.building) : []
+  form.address_id = ''
+  form.apartment  = ''
+  if (!addrSel.building) { addrApartments.value = []; return }
+  addrApartments.value = await fetchApartments(addrSel.city, addrSel.street, addrSel.building)
+  if (addrApartments.value.length === 0) {
+    // Дом без квартир в справочнике (частный сектор/ЧС) -- единственная
+    // запись Address на дом резолвится напрямую по city/street/building,
+    // без квартиры. Раньше без этой ветки select квартиры оставался
+    // disabled ("нет квартир в справочнике") и form.address_id никогда не
+    // менялся -- новый адрес молча не сохранялся.
+    const found = await resolveAddressNoApartment(addrSel.city, addrSel.street, addrSel.building)
+    const pick = found[0] ?? null
+    if (pick) {
+      form.address_id = pick.id
+      currentAddress.value = [addrSel.city, addrSel.street, addrSel.building].filter(Boolean).join(', ')
+    }
+  }
 }
 
 function onAddrApartment() {

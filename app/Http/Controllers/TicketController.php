@@ -349,7 +349,7 @@ class TicketController extends Controller
         }
 
         $ticket->update($data);
-        return back()->with('success', 'Заявка обновлена');
+        return redirect()->route('tickets.show', $ticket)->with('success', 'Заявка обновлена');
     }
 
     public function destroy(Ticket $ticket): \Illuminate\Http\RedirectResponse
