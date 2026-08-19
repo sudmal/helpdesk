@@ -16,7 +16,7 @@ class UpdateTicketRequest extends FormRequest
     {
         return [
             'address_id'   => 'nullable|exists:addresses,id',
-            'apartment'    => 'nullable|string|max:20',
+            'apartment'    => 'nullable|string|max:50',
             'type_id'      => 'required|exists:ticket_types,id',
             // Закрыть/отменить — только через отдельные действия с обязательной
             // причиной (см. TicketController::close()/cancel()), не через

@@ -22,7 +22,7 @@ class StoreTicketRequest extends FormRequest
             'assigned_to'  => 'nullable|exists:users,id',
             'description'  => 'required|string|max:5000',
             'phone'        => 'nullable|string|max:20',
-            'apartment'    => 'nullable|string|max:20',
+            'apartment'    => 'nullable|string|max:50',
             'contract_no'  => 'nullable|string|max:50',
             'priority'     => 'required|in:low,normal,high,urgent',
             // after_or_equal:today -- сравнение по дате, не по точному времени: заявка
