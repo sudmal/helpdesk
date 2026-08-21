@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\{Ticket, TicketStatus, User};
+use App\Models\{Territory, Ticket, TicketStatus, User};
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
 use NotificationChannels\WebPush\WebPushMessage;
@@ -55,8 +55,9 @@ class SendMorningReport extends Command
             });
         }
 
-        // Telegram
-        $telegram->broadcast($telegram->formatDailyList());
+        // Telegram (без territoryIds formatDailyList() ничего не находит -- whereIn с пустым массивом)
+        $territoryIds = Territory::pluck('id')->toArray();
+        $telegram->broadcast($telegram->formatDailyList(null, $territoryIds));
 
         $this->info("Push: {$users->count()} | Telegram: отправлено");
     }

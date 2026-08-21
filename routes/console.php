@@ -38,3 +38,12 @@ Schedule::command('helpdesk:generate-shift-reports')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Здоровье сервера (диск/SMART/CPU/RAM/сервисы) -- алерт админу при аномалиях.
+// Раньше жил только в App\Console\Kernel::schedule(), который в Laravel 11
+// не подключён (bootstrap/app.php регистрирует расписание только отсюда) --
+// поэтому фактически никогда не запускался.
+Schedule::command('helpdesk:check-health')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
