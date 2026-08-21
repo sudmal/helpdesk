@@ -93,6 +93,41 @@ class TelegramService
         return rtrim($lines);
     }
 
+    /** Заявки на сегодня, ещё не назначенные ни одной бригаде -- напоминание диспетчеру. */
+    public function formatUnassignedList(): string
+    {
+        $today = today()->toDateString();
+
+        $tickets = Ticket::with(['address', 'serviceType', 'status'])
+            ->whereDate('scheduled_at', $today)
+            ->whereHas('status', fn($q) => $q->where('is_final', false))
+            ->whereNull('brigade_id')
+            ->orderBy('scheduled_at')
+            ->get();
+
+        $date = now()->format('d.m.Y');
+
+        if ($tickets->isEmpty()) {
+            return "📋 <u>Заявки без бригады на {$date}</u>\nЗаявок нет";
+        }
+
+        $lines = "📋 <u>Заявки без бригады на {$date} ({$tickets->count()})</u>\n";
+
+        foreach ($tickets as $t) {
+            $address = $t->address;
+            $aptStr  = $t->apartment ? " кв.{$t->apartment}" : '';
+            $street  = $address ? $address->street : '—';
+            $bld     = $address ? "д.{$address->building}{$aptStr}" : '';
+            $time    = $t->scheduled_at ? Carbon::parse($t->scheduled_at)->format('H:i') : '--:--';
+            $phone   = $t->phone ?? '—';
+            $desc    = str_replace(["\n", "\r"], ' ', $t->description ?? '—');
+
+            $lines .= "<blockquote>{$t->number} {$time} {$street} {$bld} {$phone} {$desc}</blockquote>\n\n";
+        }
+
+        return rtrim($lines);
+    }
+
     public function formatStats(array $territoryIds = []): string
     {
         $today   = today()->toDateString();

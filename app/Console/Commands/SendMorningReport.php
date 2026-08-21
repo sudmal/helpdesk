@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\{Territory, Ticket, TicketStatus, User};
+use App\Models\{Ticket, TicketStatus, User};
 use App\Services\TelegramService;
 use Illuminate\Console\Command;
 use NotificationChannels\WebPush\WebPushMessage;
@@ -55,9 +55,11 @@ class SendMorningReport extends Command
             });
         }
 
-        // Telegram (без territoryIds formatDailyList() ничего не находит -- whereIn с пустым массивом)
-        $territoryIds = Territory::pluck('id')->toArray();
-        $telegram->broadcast($telegram->formatDailyList(null, $territoryIds));
+        // Telegram -- напоминание диспетчеру про заявки, ещё не назначенные бригаде
+        // (раньше здесь стоял formatDailyList() без аргументов -- пустой whereIn
+        // по territoryIds не находил ничего, поэтому всегда слал "Заявок нет"
+        // всем участникам бригад, независимо от реальных заявок)
+        $telegram->broadcast($telegram->formatUnassignedList());
 
         $this->info("Push: {$users->count()} | Telegram: отправлено");
     }
