@@ -15,6 +15,12 @@ use App\Http\Controllers\PbxController;
 
 Route::post('/pbx/incoming', [PbxController::class, 'webhook']);
 
+// Приём заявок с общего сайта фирмы -- вызывается СЕРВЕРОМ сайта (не браузером
+// посетителя), токен + опциональный IP-allowlist, тот же паттерн, что и
+// SyncController::storeLegacy(). См. память project-website-connection-intake.
+Route::post('/public/connection-requests', [ConnectionRequestController::class, 'storeFromWebsite'])
+    ->middleware('throttle:30,1');
+
 Route::post('/auth/login', [AuthController::class, 'login']);
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {

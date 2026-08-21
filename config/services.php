@@ -13,4 +13,8 @@ return [
     'pbx' => [
         'token' => env('PBX_TOKEN'),
     ],
+    'website_intake' => [
+        'token'       => env('WEBSITE_INTAKE_TOKEN'),
+        'allowed_ips' => env('WEBSITE_INTAKE_ALLOWED_IPS', ''),
+    ],
 ];

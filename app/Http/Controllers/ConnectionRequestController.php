@@ -40,12 +40,20 @@ class ConnectionRequestController extends Controller
         // фильтровались только счётчики/выпадающий список, сам список заявок
         // на подключение был виден целиком любому пользователю.
         $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act'])
-            ->when(!$user->isAdmin(), fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
+            // Заявки с сайта без территории -- "ничьи", видны всем операторам вне
+            // обычного скоупа (пока оператор не проставит территорию), см. память
+            // project-website-connection-intake. Как только территория выставлена --
+            // заявка входит в обычный скоуп и это правило больше её не касается.
+            ->when(!$user->isAdmin(), fn($q) => $q->where(function ($q2) use ($userTerritories) {
+                $q2->whereIn('territory_id', $userTerritories->pluck('id'))
+                   ->orWhereNull('territory_id');
+            }))
             ->when($territory, fn($q) => $q->where('territory_id', $territory))
             ->when($request->boolean('trashed'), fn($q) => $q->onlyTrashed())
             ->orderByRaw("
                 CASE
                     WHEN needs_callback = 1 THEN 0
+                    WHEN territory_id IS NULL AND status = 'pending' THEN 0
                     WHEN status IN ('closed', 'rejected', 'cancelled') THEN 2
                     ELSE 1
                 END
@@ -81,6 +89,13 @@ class ConnectionRequestController extends Controller
             ->groupBy('territory_id')
             ->pluck('cnt', 'territory_id');
 
+        // Заявки с сайта, ещё не разобранные оператором (без территории) -- не
+        // входят ни в один territory_id, считаются отдельно, видны всем (см. память
+        // project-website-connection-intake, заявка "ничья" до простановки территории).
+        $newFromWebsite = ConnectionRequest::where('status', 'pending')
+            ->whereNull('territory_id')
+            ->count();
+
         return Inertia::render('ConnectionRequests/Index', [
             'requests'           => $query->paginate(50)->withQueryString(),
             'filters'            => $request->only(['status', 'search', 'territory', 'service_type', 'trashed']),
@@ -91,6 +106,7 @@ class ConnectionRequestController extends Controller
             'pendingByTerritory' => $pendingByTerritory,
             'totalPending'       => $pendingByTerritory->sum(),
             'overdueByTerritory' => $overdueByTerritory,
+            'newFromWebsite'     => $newFromWebsite,
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
             'promotions'         => Promotion::active()->get(['id', 'name', 'price']),
             'settings'           => [
@@ -414,6 +430,10 @@ class ConnectionRequestController extends Controller
             403,
             'Ответить может только монтажник или бригадир.'
         );
+
+        // Заявка с сайта без территории -- оператор ещё не разобрал, монтажнику
+        // отвечать рано (см. память project-website-connection-intake).
+        abort_if(!$connectionRequest->territory_id, 422, 'Сначала нужно указать территорию заявки.');
 
         $data = $request->validate([
             'answer'  => 'required|in:possible,impossible',

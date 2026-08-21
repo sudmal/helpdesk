@@ -21,6 +21,10 @@
                 class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
             {{ totalOverdue }}
           </span>
+          <span v-if="newFromWebsite > 0" title="Новые заявки с сайта -- нужно проставить территорию"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-blue-500 text-white leading-none">
+            🌐{{ newFromWebsite }}
+          </span>
         </button>
         <button v-for="t in territories" :key="t.id"
                 @click="selectTerritory(t.id)"
@@ -110,7 +114,8 @@
           <tbody class="divide-y divide-gray-100 text-xs">
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50"
                 :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at,
-                          'ring-2 ring-inset ring-red-400': isOverdue(r) }">
+                          'ring-2 ring-inset ring-red-400': isOverdue(r),
+                          'ring-2 ring-inset ring-blue-400': !r.territory_id && r.status === 'pending' && !r.deleted_at }">
               <td class="px-1.5 py-px text-center whitespace-nowrap">
                 <button v-if="r.status === 'pending' || r.status === 'scheduled'"
                         @click="openEdit(r)" title="Редактировать"
@@ -126,7 +131,10 @@
               <td class="px-2 py-px font-medium truncate max-w-24">{{ r.name }}</td>
               <td class="px-2 py-px font-mono whitespace-nowrap">{{ r.phone }}</td>
               <td class="px-2 py-px text-blue-600 hover:underline cursor-pointer truncate max-w-36"
-                  @click="openDetail(r)">{{ r.address_string }}</td>
+                  @click="openDetail(r)">
+                <span v-if="r.source === 'website'" title="Заявка с сайта">🌐</span>
+                {{ r.address_string }}
+              </td>
               <td class="px-2 py-px text-gray-500 max-w-32 truncate" :title="r.description">{{ r.description || '—' }}</td>
               <td class="px-2 py-px">
                 <div class="flex items-center gap-1.5">
@@ -506,7 +514,10 @@
           </div>
           <div class="flex items-center gap-1.5 flex-wrap">
             <template v-if="detailData && !detailData.deleted_at">
-              <template v-if="detailData.status === 'pending' && !detailData.feasibility">
+              <template v-if="detailData.status === 'pending' && !detailData.territory_id">
+                <span class="text-[11px] text-blue-600 font-medium">🌐 Заявка с сайта — сначала укажите территорию (карандаш слева)</span>
+              </template>
+              <template v-else-if="detailData.status === 'pending' && !detailData.feasibility">
                 <button @click="modals.detail = false; openFeasibility(detailData, 'possible')"
                         class="px-2.5 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-medium">
                   Возможно
@@ -688,6 +699,7 @@ const props = defineProps({
   pendingByTerritory:  { type: Object, default: () => ({}) },
   totalPending:        { type: Number, default: 0 },
   overdueByTerritory:  { type: Object, default: () => ({}) },
+  newFromWebsite:      { type: Number, default: 0 },
   materialsCatalog:  Array,
   promotions:        { type: Array, default: () => [] },
   settings:          { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },

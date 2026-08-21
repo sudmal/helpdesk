@@ -87,6 +87,43 @@ class ConnectionRequestController extends Controller
         return response()->json($this->formatOne($cr), 201);
     }
 
+    /**
+     * Приём неструктурированной заявки с общего сайта фирмы -- вызывается
+     * СЕРВЕРОМ сайта (не браузером посетителя), без auth:sanctum. Территорию/
+     * бригаду/участок посетитель не указывает и не может передать -- их
+     * проставляет оператор вручную, увидев заявку в разделе "Подключения",
+     * вкладка "Все" (см. память project-website-connection-intake). До этого
+     * момента заявка "ничья": видна всем операторам вне обычного скоупа по
+     * территориям (см. ConnectionRequestController::index(), веб).
+     */
+    public function storeFromWebsite(Request $request): JsonResponse
+    {
+        $allowedIps = array_filter(array_map('trim', explode(',', config('services.website_intake.allowed_ips', ''))));
+        if (!empty($allowedIps) && !in_array($request->ip(), $allowedIps)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $token = $request->bearerToken() ?? $request->input('token');
+        if (!$token || $token !== config('services.website_intake.token')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $data = $request->validate([
+            'name'           => 'required|string|max:100',
+            'phone'          => 'required|string|max:30',
+            'address_string' => 'required|string|max:255',
+            'description'    => 'nullable|string|max:2000',
+        ]);
+
+        $data['status'] = 'pending';
+        $data['source'] = 'website';
+
+        $cr = ConnectionRequest::create($data);
+        $this->logEvent($cr, null, 'created_from_website', null, ['ip' => $request->ip()]);
+
+        return response()->json(['id' => $cr->id, 'status' => $cr->status], 201);
+    }
+
     public function update(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
         $data = $request->validate([
@@ -277,6 +314,12 @@ class ConnectionRequestController extends Controller
         $user = $request->user();
         if (!$user->isTechnician() && !$user->isForeman() && !$user->isAdmin() && !$user->isHeadSupport()) {
             return response()->json(['message' => 'Ответить может только монтажник или бригадир.'], 403);
+        }
+
+        // Заявка с сайта без территории -- оператор ещё не разобрал, монтажнику
+        // отвечать рано (см. память project-website-connection-intake).
+        if (!$connectionRequest->territory_id) {
+            return response()->json(['message' => 'Сначала нужно указать территорию заявки.'], 422);
         }
 
         $data = $request->validate([
