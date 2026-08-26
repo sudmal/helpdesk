@@ -356,8 +356,8 @@ class AddressController extends Controller
         $data = $request->validate([
             'city'          => 'required|string|max:100',
             'street'        => 'required|string|max:200',
-            'building'      => 'required|string|max:20',
-            'new_building'  => 'required|string|max:20',
+            'building'      => 'required|string|max:30',
+            'new_building'  => 'required|string|max:30',
             'confirm_merge' => 'nullable|boolean',
         ]);
 
@@ -658,7 +658,7 @@ class AddressController extends Controller
         $data = $request->validate([
             'city'     => 'required|string|max:100',
             'street'   => 'required|string|max:200',
-            'building' => 'required|string|max:20',
+            'building' => 'required|string|max:30',
         ]);
         return $this->destroyHierarchyLevel('building', ['city' => $data['city'], 'street' => $data['street']], $data['building']);
     }
