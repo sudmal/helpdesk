@@ -598,7 +598,7 @@ class AddressController extends Controller
 
     public function destroy(Request $request, Address $address)
     {
-        abort_unless($request->user()?->id === 1, 403, 'Удаление адресов доступно только администратору.');
+        abort_unless($request->user()?->isAdmin(), 403, 'Удаление адресов доступно только администратору.');
 
         // FK tickets.address_id -- nullOnDelete(): без этой проверки заявки
         // на этот адрес молча остаются с address_id=NULL ("Адрес не указан"),
@@ -627,13 +627,12 @@ class AddressController extends Controller
         return back()->with('success', 'Адрес удалён');
     }
 
-    // Удаление всех адресов на уровне город/улица/дом целиком. Доступно
-    // только пользователю id=1 (см. ensureCanDeleteHierarchy) -- массовое
+    // Удаление всех адресов на уровне город/улица/дом целиком -- массовое
     // необратимое удаление, по просьбе после случайного создания дубля
-    // города с неверными адресами внутри.
+    // города с неверными адресами внутри. Доступно администраторам.
     private function ensureCanDeleteHierarchy(Request $request): void
     {
-        abort_unless($request->user()?->id === 1, 403, 'Удаление адресов доступно только администратору.');
+        abort_unless($request->user()?->isAdmin(), 403, 'Удаление адресов доступно только администратору.');
     }
 
     public function destroyCity(Request $request): \Illuminate\Http\JsonResponse

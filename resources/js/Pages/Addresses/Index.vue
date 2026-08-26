@@ -673,8 +673,8 @@ const props = defineProps({
 })
 
 // Удаление объектов адресов -- необратимая операция, доступна только
-// пользователю id=1 (см. AddressController::ensureCanDeleteHierarchy)
-const canDeleteAddresses = computed(() => usePage().props.auth?.user?.id === 1)
+// администраторам (см. AddressController::ensureCanDeleteHierarchy)
+const canDeleteAddresses = computed(() => usePage().props.auth?.user?.role?.slug === 'admin')
 
 // ── Навигация ──────────────────────────────────────────────────────
 function ticketsLink(a) {
