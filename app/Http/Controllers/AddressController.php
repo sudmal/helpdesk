@@ -190,8 +190,8 @@ class AddressController extends Controller
                         'id'               => $baseAddress?->id,
                         'tickets_count'    => (int)($ticketCountsByApt[$apt] ?? 0),
                         'calls_count'      => $callCountsByApt[$apt] ?? 0,
-                        'last_call_at'     => $lastCallByApt[$apt]?->called_at,
-                        'last_caller_name' => $lastCallByApt[$apt]?->lanbilling_name,
+                        'last_call_at'     => $lastCallByApt->get($apt)?->called_at,
+                        'last_caller_name' => $lastCallByApt->get($apt)?->lanbilling_name,
                     ]
                 ))->toArray();
             } else {
@@ -200,8 +200,8 @@ class AddressController extends Controller
                     [
                         'tickets_count'    => (int)($ticketCountsByApt[$a->apartment ?? ''] ?? 0),
                         'calls_count'      => $callCountsByApt[$a->apartment ?? ''] ?? 0,
-                        'last_call_at'     => $lastCallByApt[$a->apartment ?? '']?->called_at,
-                        'last_caller_name' => $lastCallByApt[$a->apartment ?? '']?->lanbilling_name,
+                        'last_call_at'     => $lastCallByApt->get($a->apartment ?? '')?->called_at,
+                        'last_caller_name' => $lastCallByApt->get($a->apartment ?? '')?->lanbilling_name,
                     ]
                 ))->toArray();
             }
