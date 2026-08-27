@@ -278,12 +278,13 @@
               <th class="text-left px-4 py-2.5 hidden sm:table-cell">Телефон</th>
               <th class="text-left px-4 py-2.5 hidden md:table-cell">Договор</th>
               <th class="text-left px-4 py-2.5">Заявки</th>
+              <th class="text-left px-4 py-2.5">Звонки</th>
               <th class="px-4 py-2.5"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="!pagedItems.length">
-              <td colspan="6" class="text-center py-8 text-gray-400">Квартиры не найдены</td>
+              <td colspan="7" class="text-center py-8 text-gray-400">Квартиры не найдены</td>
             </tr>
             <tr v-for="a in pagedItems" :key="a.id" class="hover:bg-gray-50">
               <td class="px-4 py-2.5 font-semibold text-gray-700">{{ a.apartment }}</td>
@@ -300,6 +301,14 @@
                   </span>
                   <span v-else class="text-gray-400">—</span>
                 </a>
+              </td>
+              <td class="px-4 py-2.5">
+                <span v-if="a.calls_count"
+                      :title="callsTitle(a)"
+                      class="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                  ☎ {{ a.calls_count }}
+                </span>
+                <span v-else class="text-gray-400 text-xs">—</span>
               </td>
               <td class="px-4 py-2.5 text-right">
                 <button @click="editAddress(a)" class="p-1 text-gray-400 hover:text-blue-600 rounded">✏️</button>
@@ -335,6 +344,9 @@
               {{ buildingInfo?.subscriber_name ?? 'Абонент не указан' }}
               {{ buildingInfo?.phone ? '· ' + buildingInfo.phone : '' }}
               {{ buildingInfo?.contract_no ? '· Договор: ' + buildingInfo.contract_no : '' }}
+            </p>
+            <p v-if="buildingInfo?.calls_count" class="text-xs text-green-700 mt-1">
+              ☎ Звонков: {{ buildingInfo.calls_count }} · последний {{ fmtDate(buildingInfo.last_call_at) }}
             </p>
           </div>
           <div class="flex gap-1">
@@ -677,6 +689,20 @@ const props = defineProps({
 const canDeleteAddresses = computed(() => usePage().props.auth?.user?.role?.slug === 'admin')
 
 // ── Навигация ──────────────────────────────────────────────────────
+function callsTitle(a) {
+  const parts = []
+  if (a.last_call_at) parts.push('Последний звонок: ' + fmtDate(a.last_call_at))
+  if (a.last_caller_name) parts.push('Имя из биллинга: ' + a.last_caller_name)
+  return parts.join('\n')
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function ticketsLink(a) {
   if (a.apartment) {
     return route('tickets.index', {

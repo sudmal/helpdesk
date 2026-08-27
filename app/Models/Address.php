@@ -25,6 +25,11 @@ class Address extends Model
         return $this->hasMany(Ticket::class)->latest();
     }
 
+    public function calls(): HasMany
+    {
+        return $this->hasMany(Call::class)->latest('called_at');
+    }
+
     /** Человекочитаемый адрес */
     public function getFullAddressAttribute(): string
     {

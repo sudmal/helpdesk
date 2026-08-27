@@ -45,6 +45,29 @@ class PbxController extends Controller
             [$addressId, $addressString, $apartment] = $this->fallbackAddress($phone);
         }
 
+        // Донаполняем карточку адреса из звонка -- только если поле ещё
+        // пустое (не перезаписываем то, что уже внесено вручную/биллинг-
+        // импортом): lanbilling_name приходит из живого запроса к LanBilling
+        // (lb_ivr.sh), для именных адресов типа "ООО Юкойл" это часто
+        // единственный источник имени/телефона в системе.
+        if ($addressId) {
+            $matchedAddress = Address::find($addressId);
+            if ($matchedAddress) {
+                $dirty = false;
+                if (!$matchedAddress->subscriber_name && $lanbillingName) {
+                    $matchedAddress->subscriber_name = $lanbillingName;
+                    $dirty = true;
+                }
+                if (!$matchedAddress->phone && $phone) {
+                    $matchedAddress->phone = $phone;
+                    $dirty = true;
+                }
+                if ($dirty) {
+                    $matchedAddress->save();
+                }
+            }
+        }
+
         Call::create([
             'phone'          => $phone,
             'address_string' => $addressString ?: null,

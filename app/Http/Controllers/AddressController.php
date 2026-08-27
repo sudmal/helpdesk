@@ -149,6 +149,21 @@ class AddressController extends Controller
                 ->distinct()
                 ->pluck('apartment');
 
+            // Звонки, смэтченные на этот дом -- группируем по СОБСТВЕННОЙ
+            // квартире звонка (calls.apartment из разбора строки биллинга в
+            // PbxController::matchAddress()), а не по address_id: матчинг не
+            // различает квартиры внутри дома, все звонки на дом ссылаются на
+            // одну и ту же запись Address, поэтому разбивка по квартирам
+            // живёт только в calls.apartment -- та же логика, что уже у
+            // ticketCountsByApt выше.
+            $calls = \App\Models\Call::whereIn('address_id', $addressIds)
+                ->whereNotNull('called_at')
+                ->orderByDesc('called_at')
+                ->get(['apartment', 'called_at', 'lanbilling_name', 'phone']);
+            $callsByApt      = $calls->groupBy(fn($c) => $c->apartment ?? '');
+            $callCountsByApt = $callsByApt->map->count();
+            $lastCallByApt   = $callsByApt->map->first();
+
             if ($isPrivateOverride !== null) {
                 $isMkd = !(bool)(int)$isPrivateOverride;
             } else {
@@ -170,16 +185,31 @@ class AddressController extends Controller
                 $baseAddress = $allInBuilding->first();
                 $aptList = $ticketApartments->map(fn($apt) => array_merge(
                     $baseAddress ? $baseAddress->toArray() : [],
-                    ['apartment' => $apt, 'id' => $baseAddress?->id, 'tickets_count' => (int)($ticketCountsByApt[$apt] ?? 0)]
+                    [
+                        'apartment'        => $apt,
+                        'id'               => $baseAddress?->id,
+                        'tickets_count'    => (int)($ticketCountsByApt[$apt] ?? 0),
+                        'calls_count'      => $callCountsByApt[$apt] ?? 0,
+                        'last_call_at'     => $lastCallByApt[$apt]?->called_at,
+                        'last_caller_name' => $lastCallByApt[$apt]?->lanbilling_name,
+                    ]
                 ))->toArray();
             } else {
                 $aptList = $allInBuilding->map(fn($a) => array_merge(
                     $a->toArray(),
-                    ['tickets_count' => (int)($ticketCountsByApt[$a->apartment ?? ''] ?? 0)]
+                    [
+                        'tickets_count'    => (int)($ticketCountsByApt[$a->apartment ?? ''] ?? 0),
+                        'calls_count'      => $callCountsByApt[$a->apartment ?? ''] ?? 0,
+                        'last_call_at'     => $lastCallByApt[$a->apartment ?? '']?->called_at,
+                        'last_caller_name' => $lastCallByApt[$a->apartment ?? '']?->lanbilling_name,
+                    ]
                 ))->toArray();
             }
 
-            $buildingInfo = !$isMkd ? $allInBuilding->first()?->toArray() : null;
+            $buildingInfo = !$isMkd ? array_merge($allInBuilding->first()?->toArray() ?? [], [
+                'calls_count'  => $calls->count(),
+                'last_call_at' => $calls->first()?->called_at,
+            ]) : null;
         }
 
         return Inertia::render('Addresses/Index', [
