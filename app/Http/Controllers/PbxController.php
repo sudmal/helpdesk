@@ -50,20 +50,42 @@ class PbxController extends Controller
         // импортом): lanbilling_name приходит из живого запроса к LanBilling
         // (lb_ivr.sh), для именных адресов типа "ООО Юкойл" это часто
         // единственный источник имени/телефона в системе.
+        //
+        // $addressId -- это результат matchAddress()/fallbackAddress(), а
+        // они резолвят только ДОМ (первую попавшуюся запись Address на
+        // building), без учёта квартиры -- квартира лежит отдельно в
+        // $apartment (свой парсинг строки биллинга). Если её не найти и
+        // не донаполнить именно ЕЁ запись Address, все звонки на дом будут
+        // молча писать в одну "базовую" запись без квартиры, которая нигде
+        // в поквартирном UI не показывается (найдено 2026-08-27: 9 звонков
+        // на кв. 7/8 одного дома все ушли в address_id общей записи дома).
         if ($addressId) {
             $matchedAddress = Address::find($addressId);
-            if ($matchedAddress) {
+            $targetAddress  = $matchedAddress;
+
+            if ($matchedAddress && $apartment) {
+                $aptAddress = Address::where('city', $matchedAddress->city)
+                    ->where('street', $matchedAddress->street)
+                    ->where('building', $matchedAddress->building)
+                    ->where('apartment', $apartment)
+                    ->first();
+                if ($aptAddress) {
+                    $targetAddress = $aptAddress;
+                }
+            }
+
+            if ($targetAddress) {
                 $dirty = false;
-                if (!$matchedAddress->subscriber_name && $lanbillingName) {
-                    $matchedAddress->subscriber_name = $lanbillingName;
+                if (!$targetAddress->subscriber_name && $lanbillingName) {
+                    $targetAddress->subscriber_name = $lanbillingName;
                     $dirty = true;
                 }
-                if (!$matchedAddress->phone && $phone) {
-                    $matchedAddress->phone = $phone;
+                if (!$targetAddress->phone && $phone) {
+                    $targetAddress->phone = $phone;
                     $dirty = true;
                 }
                 if ($dirty) {
-                    $matchedAddress->save();
+                    $targetAddress->save();
                 }
             }
         }
