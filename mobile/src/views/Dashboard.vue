@@ -148,7 +148,7 @@ const todayMerged = computed(() => {
   return [...map.values()]
 })
 
-function applyFilterSort(list) {
+function applyFilter(list) {
   let out = list
   if (settings.serviceTypeFilter) {
     out = out.filter((t) => t.service_type?.name === settings.serviceTypeFilter)
@@ -156,7 +156,11 @@ function applyFilterSort(list) {
   if (settings.territoryFilter) {
     out = out.filter((t) => t.territory?.id === settings.territoryFilter)
   }
-  out = [...out]
+  return out
+}
+
+function applyFilterSort(list) {
+  let out = [...applyFilter(list)]
   if (settings.sortOrder === 'address') {
     out.sort((a, b) => (a.address?.full || '').localeCompare(b.address?.full || ''))
   } else if (settings.sortOrder === 'service') {
@@ -168,9 +172,9 @@ function applyFilterSort(list) {
 }
 
 const tabs = computed(() => [
-  { key: 'overdue', label: 'Просрочено', count: raw.value.overdue.length },
-  { key: 'today', label: 'Сегодня', count: todayMerged.value.length },
-  { key: 'tomorrow', label: 'Завтра', count: raw.value.tomorrow.length },
+  { key: 'overdue', label: 'Просрочено', count: applyFilter(raw.value.overdue).length },
+  { key: 'today', label: 'Сегодня', count: applyFilter(todayMerged.value).length },
+  { key: 'tomorrow', label: 'Завтра', count: applyFilter(raw.value.tomorrow).length },
 ])
 
 const currentList = computed(() => {
