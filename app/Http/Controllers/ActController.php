@@ -94,15 +94,6 @@ class ActController extends Controller
             // ищутся/сортируются как обычный архив, а не очередь на согласование.
             $query->where('acts.status', 'completed');
 
-            // Легаси-акты (type=null, бэкфилл ticket_materials до появления workflow —
-            // см. память project-acts-feature) по умолчанию скрыты из архива как
-            // "неправильные" в глазах пользователя, но НЕ удаляются — можно вернуть
-            // ?legacy=show. Тип — надёжный признак, дата ненадёжна (новые акты со
-            // старыми датами тоже возможны при повторном бэкфилле).
-            if ($request->legacy !== 'show') {
-                $query->whereNotNull('acts.type');
-            }
-
             $query->when($request->search, function ($q) use ($request) {
                 $s = '%' . $request->search . '%';
                 $q->where(function ($qq) use ($s) {
@@ -141,7 +132,7 @@ class ActController extends Controller
         return Inertia::render('Acts/Index', [
             'tab'        => $tab,
             'acts'       => $acts,
-            'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir', 'legacy']),
+            'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir']),
             'authUserId' => $user->id,
             'brigades'   => Brigade::orderBy('name')->get(['id', 'name']),
         ]);
