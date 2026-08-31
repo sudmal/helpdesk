@@ -3,7 +3,7 @@
   <AppLayout title="Новая заявка" help-tab="dispatcher" help-section="ticket-create">
 
     <!-- Двухколоночный layout: форма слева, история справа -->
-    <div class="flex gap-3 items-start">
+    <div class="flex flex-col lg:flex-row gap-3 items-start">
 
       <!-- ── Левая колонка: форма ── -->
       <div class="flex-1 min-w-0 space-y-3">
@@ -109,7 +109,7 @@
               class="bg-white rounded-xl border border-gray-200 p-3.5 space-y-3">
           <h3 class="font-medium text-sm text-gray-700">Детали заявки</h3>
 
-          <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
 
             <!-- Участок * -->
             <div class="field-row">
@@ -156,14 +156,14 @@
             <div>
               <div class="field-row">
                 <label class="field-label">Телефон <span class="text-red-500">*</span></label>
-                <div :class="['input-group flex-1', fieldError.phone ? 'has-error' : '']">
+                <div :class="['input-group sm:flex-1', fieldError.phone ? 'has-error' : '']">
                   <span class="input-group-prefix">📞</span>
                   <input v-model="form.phone" type="tel" placeholder="+7..." />
                 </div>
               </div>
-              <p v-if="fieldError.phone" class="text-xs text-red-500 mt-1 ml-[6.5rem]">⚠ Укажите телефон</p>
+              <p v-if="fieldError.phone" class="text-xs text-red-500 mt-1 sm:ml-[6.5rem]">⚠ Укажите телефон</p>
               <!-- Подсказка из журнала звонков -->
-              <div v-if="phoneLookup" class="mt-1.5 ml-[6.5rem] rounded-lg border border-blue-200 bg-blue-50 text-xs divide-y divide-blue-100">
+              <div v-if="phoneLookup" class="mt-1.5 sm:ml-[6.5rem] rounded-lg border border-blue-200 bg-blue-50 text-xs divide-y divide-blue-100">
                 <div v-if="phoneLookup.last_call" class="px-2.5 py-1 flex items-center justify-between gap-2">
                   <span class="text-blue-700">
                     📞 {{ phoneLookup.last_call.called_at }}
@@ -191,12 +191,12 @@
             </div>
 
             <!-- Время выезда * -->
-            <div class="col-span-2" :class="fieldError.scheduled_at ? 'ring-1 ring-red-300 rounded-lg p-1.5 bg-red-50' : ''">
-              <div class="flex items-center gap-2">
-                <label class="field-label w-24 shrink-0 text-right mb-0">
+            <div class="sm:col-span-2" :class="fieldError.scheduled_at ? 'ring-1 ring-red-300 rounded-lg p-1.5 bg-red-50' : ''">
+              <div class="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                <label class="field-label sm:w-24 sm:shrink-0 sm:text-right mb-0.5 sm:mb-0">
                   Время выезда <span class="text-red-500">*</span>
                 </label>
-                <div class="flex-1">
+                <div class="w-full sm:flex-1">
                   <TimePicker v-model="form.scheduled_at"
                               :work-start="settings.work_hours_start"
                               :work-end="settings.work_hours_end"
@@ -204,7 +204,7 @@
                 </div>
               </div>
               <div v-if="form.errors.scheduled_at"
-                   class="mt-1.5 ml-[6.5rem] p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                   class="mt-1.5 sm:ml-[6.5rem] p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
                 ⚠ {{ form.errors.scheduled_at }}
               </div>
             </div>
@@ -248,8 +248,8 @@
 
       <!-- ── Правая колонка: история по адресу ── -->
       <div v-if="selectedAddress && historyTotal > 0"
-           class="w-72 shrink-0 bg-white rounded-xl border border-amber-200 overflow-hidden
-                  sticky top-3 max-h-[calc(100vh-5rem)] flex flex-col">
+           class="w-full lg:w-72 lg:shrink-0 bg-white rounded-xl border border-amber-200 overflow-hidden
+                  lg:sticky lg:top-3 max-h-[60vh] lg:max-h-[calc(100vh-5rem)] flex flex-col">
         <div class="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
           <h3 class="font-medium text-sm text-amber-800">
             📋 Заявки по адресу
