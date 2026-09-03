@@ -15,7 +15,7 @@ class ConnectionRequest extends Model
     protected $fillable = [
         'name', 'phone', 'address_string', 'description',
         'status', 'scheduled_at', 'notes', 'act_number',
-        'assigned_to', 'created_by', 'source', 'territory_id', 'brigade_id', 'service_type_id', 'needs_callback',
+        'assigned_to', 'created_by', 'source', 'territory_id', 'brigade_id', 'service_type_id', 'kind', 'needs_callback',
         'feasibility', 'feasibility_comment', 'feasibility_by', 'feasibility_at',
     ];
 

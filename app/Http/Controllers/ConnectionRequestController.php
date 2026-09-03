@@ -66,6 +66,9 @@ class ConnectionRequestController extends Controller
         if ($request->filled('service_type')) {
             $query->where('service_type_id', $request->service_type);
         }
+        if ($request->filled('kind')) {
+            $query->where('kind', $request->kind);
+        }
         if ($request->filled('search')) {
             $s = '%' . $request->search . '%';
             $query->where(function ($q) use ($s) {
@@ -98,7 +101,7 @@ class ConnectionRequestController extends Controller
 
         return Inertia::render('ConnectionRequests/Index', [
             'requests'           => $query->paginate(50)->withQueryString(),
-            'filters'            => $request->only(['status', 'search', 'territory', 'service_type', 'trashed']),
+            'filters'            => $request->only(['status', 'search', 'territory', 'service_type', 'kind', 'trashed']),
             'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
             'brigades'           => Brigade::with('territories:id,name')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'serviceTypes'       => ServiceType::active()->get(['id', 'name', 'color']),
@@ -131,9 +134,11 @@ class ConnectionRequestController extends Controller
             // Участок (тип услуги) — выбирается один раз здесь и используется
             // при закрытии для номера акта (in-/cn-) вместо повторного вопроса.
             'service_type_id' => 'required|exists:service_types,id',
+            'kind'            => 'nullable|in:connection,switch',
         ]);
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
+        $data['kind']       = $data['kind'] ?? 'connection';
 
         $req = ConnectionRequest::create($data);
         $this->logEvent($req, $request->user()->id, 'created');
@@ -159,6 +164,7 @@ class ConnectionRequestController extends Controller
             'address_string' => 'sometimes|required|string|max:255',
             'description'    => 'nullable|string|max:2000',
             'status'         => 'sometimes|in:pending,scheduled,rejected,closed',
+            'kind'           => 'sometimes|in:connection,switch',
             'scheduled_at'   => 'nullable|date',
             'notes'          => 'nullable|string|max:2000',
             'territory_id'   => 'nullable|exists:territories,id',
@@ -181,9 +187,23 @@ class ConnectionRequestController extends Controller
         // подключить (см. память проекта, project-connection-feasibility).
         // Прямое отклонение (Отклонить) оператором -- по-прежнему без гейта,
         // это отдельный, независимый путь.
-        if (($data['status'] ?? null) === 'scheduled' && $connectionRequest->feasibility !== 'possible') {
+        $effectiveKind = $data['kind'] ?? $connectionRequest->kind;
+        if (($data['status'] ?? null) === 'scheduled'
+            && $connectionRequest->feasibility !== 'possible'
+            && $effectiveKind !== 'switch') {
             return back()->withErrors([
                 'status' => 'Сначала нужен ответ монтажника: возможно ли подключение.',
+            ])->withInput();
+        }
+
+        // Дата обязательна при переводе в "Назначено" -- без неё заявка
+        // повисает "назначенной" без даты: не видна в календаре/просрочках,
+        // никак не найти (живой баг 2026-09-03, заявка #183).
+        if (($data['status'] ?? null) === 'scheduled'
+            && empty($data['scheduled_at'])
+            && !$connectionRequest->scheduled_at) {
+            return back()->withErrors([
+                'scheduled_at' => 'Укажите дату подключения — без неё заявку нельзя назначить.',
             ])->withInput();
         }
 

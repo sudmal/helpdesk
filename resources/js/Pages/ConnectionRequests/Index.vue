@@ -75,6 +75,14 @@
             <option value="closed">Выполнено</option>
           </select>
         </div>
+        <div>
+          <label class="field-label">Вид</label>
+          <select v-model="f.kind" @change="apply" class="field-input">
+            <option value="">Все</option>
+            <option value="connection">Подключение</option>
+            <option value="switch">Переключение на PON</option>
+          </select>
+        </div>
         <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
           <input type="checkbox" v-model="f.trashed" @change="apply" class="rounded border-gray-300" />
           Показать удалённые
@@ -143,6 +151,7 @@
                     <span v-else-if="r.feasibility === 'impossible'" class="text-red-600"
                           :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
                   </span>
+                  <span v-if="r.kind === 'switch'" class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-semibold whitespace-nowrap" title="Переключение на PON">ПЕРЕКЛ</span>
                   <span :class="statusClass(r.status, r.feasibility)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
                     {{ statusLabel(r.status, r.feasibility) }}
                   </span>
@@ -221,6 +230,13 @@
             <select v-model="createForm.service_type_id" class="field-input">
               <option :value="null">— выберите участок —</option>
               <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label class="field-label">Вид <span class="text-red-400">*</span></label>
+            <select v-model="createForm.kind" class="field-input">
+              <option value="connection">Подключение</option>
+              <option value="switch">Переключение на PON</option>
             </select>
           </div>
           <div>
@@ -310,6 +326,7 @@
                           :step-minutes="settings.schedule_step_minutes"
                           :disabled-slots="occupiedSlots"
                           @date-change="fetchOccupiedSlots" />
+              <p v-if="!scheduleForm.scheduled_at" class="mt-1 text-xs text-red-500">Выберите дату подключения</p>
               <p v-if="!activeRecord?.brigade_id" class="mt-1 text-xs text-amber-600">
                 ⚠ Бригада не назначена — занятость слотов не проверяется
               </p>
@@ -324,7 +341,7 @@
         </div>
         <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.schedule = false" class="btn-outline text-sm">Отмена</button>
-          <button @click="submitSchedule" :disabled="submitting" class="btn-primary text-sm">Сохранить</button>
+          <button @click="submitSchedule" :disabled="submitting || (scheduleForm.status === 'scheduled' && !scheduleForm.scheduled_at)" class="btn-primary text-sm">Сохранить</button>
         </div>
       </div>
     </div>
@@ -526,9 +543,9 @@
                         class="px-2.5 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-medium">
                   Невозможно
                 </button>
-                <span class="text-[11px] text-gray-400">ждём ответ монтажника</span>
+                <span class="text-[11px] text-gray-400">{{ detailData.kind === 'switch' ? 'ответ монтажника необязателен (переключение)' : 'ждём ответ монтажника' }}</span>
               </template>
-              <button v-if="detailData.status === 'pending' && detailData.feasibility === 'possible'"
+              <button v-if="detailData.status === 'pending' && (detailData.feasibility === 'possible' || detailData.kind === 'switch')"
                       @click="modals.detail = false; openSchedule(detailData)"
                       class="px-2.5 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium">
                 Назначить
@@ -584,6 +601,7 @@
             <p v-if="detailData.territory"><span class="text-xs text-gray-400">Территория: </span>{{ detailData.territory.name }}</p>
             <p v-if="detailData.brigade"><span class="text-xs text-gray-400">Бригада: </span>{{ detailData.brigade.name }}</p>
             <p v-if="detailData.service_type"><span class="text-xs text-gray-400">Участок: </span>{{ detailData.service_type.name }}</p>
+            <p><span class="text-xs text-gray-400">Вид: </span>{{ detailData.kind === 'switch' ? 'Переключение на PON' : 'Подключение' }}</p>
             <p v-if="detailData.scheduled_at"><span class="text-xs text-gray-400">Дата подключения: </span>{{ fmtDateTime(detailData.scheduled_at) }}</p>
             <p v-if="detailData.act">
               <span class="text-xs text-gray-400">Акт: </span>
@@ -739,6 +757,7 @@ function isOverdue(r) {
 const f = ref({
   search:       props.filters?.search       ?? '',
   status:       props.filters?.status       ?? '',
+  kind:         props.filters?.kind         ?? '',
   service_type: props.filters?.service_type ? Number(props.filters.service_type) : null,
   trashed:      !!props.filters?.trashed,
 })
@@ -770,7 +789,7 @@ function apply() {
 }
 
 function reset() {
-  f.value = { search: '', status: '', service_type: null, trashed: false }
+  f.value = { search: '', status: '', kind: '', service_type: null, trashed: false }
   router.get(route('connection-requests.index'), { territory: props.selectedTerritory }, { preserveState: true })
 }
 
@@ -780,7 +799,7 @@ const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')
 
-const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null })
+const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection' })
 const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null })
 const editErrors  = ref('')
 
