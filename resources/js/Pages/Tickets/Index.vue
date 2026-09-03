@@ -115,7 +115,7 @@
                 <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded border-gray-300 cursor-pointer" />
               </th>
               <th class="w-5 px-1 py-0.5"></th>
-              <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-24 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
                 Добавлена <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
               </th>
@@ -123,11 +123,11 @@
                   @click="sortBy('number')">
                 № <span class="text-gray-400">{{ sortIcon('number') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-14">Автор</th>
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-12">Автор</th>
               <th class="text-left px-2 py-0.5">Адрес / Описание</th>
-              <th class="text-left px-2 py-0.5 hidden md:table-cell w-20">Тип</th>
-              <th class="text-left px-2 py-0.5 hidden lg:table-cell w-16">Бригада</th>
-              <th class="text-left px-2 py-0.5 w-16 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden md:table-cell w-28">Тип</th>
+              <th class="text-left px-2 py-0.5 hidden lg:table-cell w-36">Бригада</th>
+              <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('status_id')">
                 Статус <span class="text-gray-400">{{ sortIcon('status_id') }}</span>
               </th>
@@ -167,7 +167,7 @@
               </td>
 
               <!-- Автор -->
-              <td class="px-2 py-px hidden sm:table-cell text-xs text-gray-500 truncate max-w-[72px]">
+              <td class="px-2 py-px hidden sm:table-cell text-xs text-gray-500 truncate">
                 {{ t.creator?.login ?? '—' }}
               </td>
               <!-- Адрес + телефон + описание -->
@@ -191,7 +191,7 @@
               </td>
 
               <!-- Бригада -->
-              <td class="px-2 py-px hidden lg:table-cell text-xs text-gray-500 truncate">
+              <td class="px-2 py-px hidden lg:table-cell text-xs text-gray-500 truncate" :title="t.brigade?.name">
                 {{ t.brigade?.name ?? '—' }}
               </td>
 
