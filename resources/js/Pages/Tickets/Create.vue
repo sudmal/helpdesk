@@ -203,6 +203,10 @@
                               :step-minutes="Number(settings.schedule_step_minutes)" />
                 </div>
               </div>
+              <div v-if="scheduledDayOff"
+                   class="mt-1.5 sm:ml-[6.5rem] p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                ⚠ Выбран выходной день — {{ scheduledDayOff }} (по настройкам это общий выходной)
+              </div>
               <div v-if="form.errors.scheduled_at"
                    class="mt-1.5 sm:ml-[6.5rem] p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
                 ⚠ {{ form.errors.scheduled_at }}
@@ -368,7 +372,7 @@ const props = defineProps({
   initialApartment: { type: String, default: '' },
   settings: {
     type: Object,
-    default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 })
+    default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30, work_days: '1,2,3,4,5' })
   },
 })
 
@@ -517,6 +521,19 @@ function todayDate() {
 function scheduledDatePart() {
   return form.scheduled_at ? form.scheduled_at.split('T')[0] : todayDate()
 }
+
+// Предупреждение: выбранная дата выезда — общий выходной (день недели не в work_days настроек)
+const WEEKDAY_RU = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+const scheduledDayOff = computed(() => {
+  const datePart = form.scheduled_at ? form.scheduled_at.split('T')[0] : null
+  if (!datePart) return null
+  const d = new Date(datePart + 'T00:00:00')
+  if (isNaN(d)) return null
+  const iso = d.getDay() === 0 ? 7 : d.getDay()
+  const workDays = String(props.settings?.work_days ?? '1,2,3,4,5')
+    .split(',').map(s => parseInt(s, 10)).filter(Boolean)
+  return workDays.includes(iso) ? null : WEEKDAY_RU[iso - 1]
+})
 
 // Бригады по территории адреса (пустой адрес = все бригады)
 const availableBrigades = computed(() => {
