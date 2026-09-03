@@ -116,6 +116,7 @@ class ConnectionRequestController extends Controller
                 'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
                 'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
                 'schedule_step_minutes' => (int) SystemSetting::get('schedule_step_minutes', 30),
+                'work_days'             => SystemSetting::get('work_days', '1,2,3,4,5'),
             ],
         ]);
     }

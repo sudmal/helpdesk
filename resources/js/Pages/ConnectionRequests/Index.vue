@@ -327,6 +327,7 @@
                           :disabled-slots="occupiedSlots"
                           @date-change="fetchOccupiedSlots" />
               <p v-if="!scheduleForm.scheduled_at" class="mt-1 text-xs text-red-500">Выберите дату подключения</p>
+              <p v-else-if="scheduledDayOff" class="mt-1 text-xs text-amber-600">⚠ {{ scheduledDayOff }} — общий выходной</p>
               <p v-if="!activeRecord?.brigade_id" class="mt-1 text-xs text-amber-600">
                 ⚠ Бригада не назначена — занятость слотов не проверяется
               </p>
@@ -720,7 +721,7 @@ const props = defineProps({
   newFromWebsite:      { type: Number, default: 0 },
   materialsCatalog:  Array,
   promotions:        { type: Array, default: () => [] },
-  settings:          { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
+  settings:          { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30, work_days: '1,2,3,4,5' }) },
 })
 
 // ── Обучение: как устроен алгоритм заявки на подключение ──
@@ -830,6 +831,18 @@ watch(() => editForm.territory_id, (territoryId) => {
 })
 const createErrors = ref('')
 const scheduleForm = reactive({ status: 'scheduled', scheduled_at: '', territory_id: null, notes: '' })
+const WEEKDAY_RU = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+const scheduledDayOff = computed(() => {
+  const src = scheduleForm.scheduled_at
+  const datePart = src ? String(src).split('T')[0] : null
+  if (!datePart) return null
+  const d = new Date(datePart + 'T00:00:00')
+  if (isNaN(d)) return null
+  const iso = d.getDay() === 0 ? 7 : d.getDay()
+  const workDays = String(props.settings?.work_days ?? '1,2,3,4,5').split(',').map(s => parseInt(s, 10)).filter(Boolean)
+  return workDays.includes(iso) ? null : WEEKDAY_RU[iso - 1]
+})
+
 const occupiedSlots = ref([])
 const slotsLoading  = ref(false)
 

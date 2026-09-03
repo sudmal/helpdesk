@@ -85,6 +85,9 @@
                 <input v-model="form.scheduled_at" type="datetime-local" class="field-input" />
               </div>
               <FieldError class="ml-[6.5rem]" :error="form.errors.scheduled_at" />
+              <div v-if="scheduledDayOff" class="ml-[6.5rem] mt-1 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                ⚠ Выбран выходной день — {{ scheduledDayOff }} (по настройкам это общий выходной)
+              </div>
             </div>
 
             <div class="field-row">
@@ -147,7 +150,7 @@ import dayjs from 'dayjs'
 
 const props = defineProps({
   ticket: Object, types: Array, statuses: Array, brigades: Array, serviceTypes: Array,
-  settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
+  settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30, work_days: '1,2,3,4,5' }) },
 })
 
 // Не берём address.full_address напрямую: Address может быть общим на несколько
@@ -176,6 +179,18 @@ const form = useForm({
   service_type_id: props.ticket.service_type_id ?? '',
   scheduled_at: props.ticket.scheduled_at
     ? dayjs(props.ticket.scheduled_at).format('YYYY-MM-DDTHH:mm') : '',
+})
+
+const WEEKDAY_RU = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+const scheduledDayOff = computed(() => {
+  const src = form.scheduled_at
+  const datePart = src ? String(src).split('T')[0] : null
+  if (!datePart) return null
+  const d = new Date(datePart + 'T00:00:00')
+  if (isNaN(d)) return null
+  const iso = d.getDay() === 0 ? 7 : d.getDay()
+  const workDays = String(props.settings?.work_days ?? '1,2,3,4,5').split(',').map(s => parseInt(s, 10)).filter(Boolean)
+  return workDays.includes(iso) ? null : WEEKDAY_RU[iso - 1]
 })
 
 // ── Каскадный выбор адреса: Город → Улица → Дом → Квартира ──

@@ -439,6 +439,9 @@
                         :step-minutes="Number(settings?.schedule_step_minutes ?? 30)" />
           </div>
         </div>
+        <div v-if="scheduledDayOff" class="p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+          ⚠ Выбран выходной день — {{ scheduledDayOff }} (по настройкам это общий выходной)
+        </div>
         <div>
           <label class="field-label">Причина переноса</label>
           <textarea v-model="postponeComment" rows="2" class="field-input resize-none"></textarea>
@@ -554,7 +557,7 @@ const props = defineProps({
   promotions: { type: Array, default: () => [] },
   canEdit: Boolean, canAssign: Boolean, canClose: Boolean, canCancel: Boolean, canComment: Boolean, canDelete: Boolean,
   canStart: Boolean, canPause: Boolean, canPostpone: Boolean,
-  settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30 }) },
+  settings: { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30, work_days: '1,2,3,4,5' }) },
 })
 
 // ── Обучение при первом открытии карточки заявки ──
@@ -589,6 +592,18 @@ const materialItems     = ref([{ material_id: '', quantity: 1 }])
 const closePromotionId  = ref(null)
 const postponeDateTime  = ref('')
 const postponeComment   = ref('')
+const WEEKDAY_RU = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+const scheduledDayOff = computed(() => {
+  const src = postponeDateTime.value
+  const datePart = src ? String(src).split('T')[0] : null
+  if (!datePart) return null
+  const d = new Date(datePart + 'T00:00:00')
+  if (isNaN(d)) return null
+  const iso = d.getDay() === 0 ? 7 : d.getDay()
+  const workDays = String(props.settings?.work_days ?? '1,2,3,4,5').split(',').map(s => parseInt(s, 10)).filter(Boolean)
+  return workDays.includes(iso) ? null : WEEKDAY_RU[iso - 1]
+})
+
 const commentBody       = ref('')
 const commentInternal   = ref(false)
 const commentFiles      = ref([])
