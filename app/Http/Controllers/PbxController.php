@@ -35,6 +35,15 @@ class PbxController extends Controller
         $lanbillingBlocked = $request->input('lanbilling_blocked');
         $lanbillingBlocked = ctype_digit((string) $lanbillingBlocked) ? (int) $lanbillingBlocked : null;
 
+        // Снимок живой интернет-сессии абонента на момент звонка (из
+        // lbphone.sh -> getSessionsRadius по vgid). null -- данных не было
+        // (старый звонок / номер не абонент интернета).
+        $sessionOnline = $request->input('session_online');
+        $sessionOnline = ($sessionOnline === null || $sessionOnline === '') ? null : (bool) (int) $sessionOnline;
+        $sessionIp = filter_var((string) $request->input('session_ip', ''), FILTER_VALIDATE_IP) ?: null;
+        $sessionRedirect = $request->input('session_redirect');
+        $sessionRedirect = ($sessionRedirect === null || $sessionRedirect === '') ? null : (bool) (int) $sessionRedirect;
+
         if (!$phone) {
             return response()->json(['status' => 'skipped']);
         }
@@ -98,6 +107,9 @@ class PbxController extends Controller
             'lanbilling_uid'  => $lanbillingUid,
             'lanbilling_name' => $lanbillingName,
             'lanbilling_blocked' => $lanbillingBlocked,
+            'session_online'   => $sessionOnline,
+            'session_ip'       => $sessionIp,
+            'session_redirect' => $sessionRedirect,
             'called_at'      => now(),
             'event'          => $request->input('event', 'incoming'),
             'payload'        => $request->except('token'),
@@ -1034,12 +1046,13 @@ class PbxController extends Controller
         $addressByPhone = [];
         $uidByPhone = [];
         $blockedByPhone = [];
+        $sessionByPhone = [];
         foreach ($allPhones as $phone) {
             $digits = preg_replace('/\D/', '', $phone);
             if (strlen($digits) === 11 && $digits[0] === '8') $digits = '7' . substr($digits, 1);
             $suffix = substr($digits, -7);
             $call = Call::where('phone', 'like', "%{$suffix}")
-                ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id')->orWhereNotNull('lanbilling_uid')->orWhereNotNull('lanbilling_blocked'))
+                ->where(fn($q) => $q->whereNotNull('address_string')->orWhereNotNull('address_id')->orWhereNotNull('lanbilling_uid')->orWhereNotNull('lanbilling_blocked')->orWhereNotNull('session_online'))
                 ->with('address')
                 ->latest('called_at')
                 ->first();
@@ -1062,6 +1075,7 @@ class PbxController extends Controller
                 }
                 $uidByPhone[$phone] = $call->lanbilling_uid;
                 $blockedByPhone[$phone] = $call->lanbilling_blocked;
+                $sessionByPhone[$phone] = ['online' => $call->session_online, 'ip' => $call->session_ip, 'redirect' => $call->session_redirect];
             }
         }
 
@@ -1069,9 +1083,12 @@ class PbxController extends Controller
             'address' => $addressByPhone[$c['phone'] ?? ''] ?? null,
             'lanbilling_uid' => $uidByPhone[$c['phone'] ?? ''] ?? null,
             'lanbilling_blocked' => $blockedByPhone[$c['phone'] ?? ''] ?? null,
+            'session_online'   => $sessionByPhone[$c['phone'] ?? '']['online'] ?? null,
+            'session_ip'       => $sessionByPhone[$c['phone'] ?? '']['ip'] ?? null,
+            'session_redirect' => $sessionByPhone[$c['phone'] ?? '']['redirect'] ?? null,
         ]), $callers);
 
-        $members = array_map(function ($m) use ($memberCallerPhone, $addressByPhone, $uidByPhone, $blockedByPhone) {
+        $members = array_map(function ($m) use ($memberCallerPhone, $addressByPhone, $uidByPhone, $blockedByPhone, $sessionByPhone) {
             if ($m['status'] !== 'in_call') return $m;
             $phone = $memberCallerPhone[$m['ext']] ?? null;
             return array_merge($m, [
@@ -1079,6 +1096,9 @@ class PbxController extends Controller
                 'caller_address' => $phone ? ($addressByPhone[$phone] ?? null) : null,
                 'caller_uid'     => $phone ? ($uidByPhone[$phone] ?? null) : null,
                 'caller_blocked' => $phone ? ($blockedByPhone[$phone] ?? null) : null,
+                'caller_session_online'   => $phone ? ($sessionByPhone[$phone]['online'] ?? null) : null,
+                'caller_session_ip'       => $phone ? ($sessionByPhone[$phone]['ip'] ?? null) : null,
+                'caller_session_redirect' => $phone ? ($sessionByPhone[$phone]['redirect'] ?? null) : null,
             ]);
         }, $members);
 

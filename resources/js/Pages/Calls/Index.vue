@@ -165,6 +165,11 @@
                     <span :class="blockedDotClass(c.ivr_blocked ?? c.lanbilling_blocked)"
                           :title="blockedDotTitle(c.ivr_blocked ?? c.lanbilling_blocked)"
                           class="inline-block w-2 h-2 rounded-full shrink-0"></span>
+                    <span v-if="sessState(c)" :class="SESS_CLS[sessState(c)]" :title="sessTitle(c)"
+                          class="inline-flex items-center shrink-0">
+                      <svg v-if="sessState(c) === 'off'" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                      <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    </span>
                     <span>{{ c.ivr_agreement_num ?? '—' }}</span>
                   </span>
                 </td>
@@ -273,6 +278,11 @@
                   <span :class="blockedDotClass(c.lanbilling_blocked)"
                         :title="blockedDotTitle(c.lanbilling_blocked)"
                         class="inline-block w-2 h-2 rounded-full shrink-0"></span>
+                    <span v-if="sessState(c)" :class="SESS_CLS[sessState(c)]" :title="sessTitle(c)"
+                          class="inline-flex items-center shrink-0">
+                      <svg v-if="sessState(c) === 'off'" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                      <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    </span>
                   <span class="text-xs font-mono font-semibold text-gray-800">{{ c.phone ?? '—' }}</span>
                 </span>
                 <span class="text-xs font-bold font-mono text-amber-600 tabular-nums shrink-0">{{ c.wait }}</span>
@@ -323,6 +333,11 @@
                       <span :class="blockedDotClass(m.caller_blocked)"
                             :title="blockedDotTitle(m.caller_blocked)"
                             class="inline-block w-2 h-2 rounded-full shrink-0"></span>
+                    <span v-if="sessState(m)" :class="SESS_CLS[sessState(m)]" :title="sessTitle(m)"
+                          class="inline-flex items-center shrink-0">
+                      <svg v-if="sessState(m) === 'off'" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                      <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    </span>
                       <span class="text-xs font-mono text-gray-700">{{ m.caller_phone }}</span>
                     </span>
                     <a v-if="m.caller_address && m.caller_uid" :href="lanUserUrl(m.caller_uid)" target="_blank" rel="noopener"
@@ -734,6 +749,35 @@ function blockedDotTitle(code) {
   if (code === null || code === undefined) return 'Нет данных'
   return props.blockedLabels[code] ?? `Код ${code}`
 }
+
+// Живая интернет-сессия абонента на момент звонка (снимок из lbphone.sh):
+// зелёная иконка Wi-Fi = онлайн, жёлтая = онлайн, но в редиректе (портал
+// блокировки), серая перечёркнутая = активной сессии нет. Иконки нет вовсе,
+// если это не абонент интернета (нет uid) или данных о сессии не было
+// (старый звонок). Поля: журнал звонков -- session_*, оператор в очереди --
+// caller_session_*.
+function sessRead(o) {
+  return {
+    uid:      o?.lanbilling_uid     ?? o?.caller_uid              ?? null,
+    online:   o?.session_online     ?? o?.caller_session_online   ?? null,
+    redirect: o?.session_redirect   ?? o?.caller_session_redirect ?? null,
+    ip:       o?.session_ip         ?? o?.caller_session_ip       ?? null,
+  }
+}
+function sessState(o) {
+  const { uid, online, redirect } = sessRead(o)
+  if (!uid || online === null || online === undefined) return null
+  if (!online) return 'off'
+  return redirect ? 'redir' : 'on'
+}
+function sessTitle(o) {
+  const st = sessState(o)
+  if (!st) return ''
+  if (st === 'off') return 'Оффлайн — активной интернет-сессии нет'
+  const { ip } = sessRead(o)
+  return `Онлайн${ip ? ' · ' + ip : ''}` + (st === 'redir' ? ' · в редиректе (портал блокировки)' : ' · сессия активна')
+}
+const SESS_CLS = { on: 'text-green-500', redir: 'text-amber-500', off: 'text-gray-300' }
 const BLOCK_LEGEND = [
   { label: 'Нет данных',                 dot: 'bg-white border border-gray-300' },
   { label: 'Активна',                    dot: 'bg-green-400' },
