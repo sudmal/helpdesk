@@ -145,6 +145,14 @@
           </div>
         </div>
 
+        <div>
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" v-model="generalForm.calls_show_session_icon" />
+            <span>Показывать иконку интернет-сессии в разделе «Звонки»</span>
+          </label>
+          <p class="text-xs text-gray-400 mt-1">Значок наличия/отсутствия активной RADIUS-сессии абонента в журнале звонков и очереди АТС.</p>
+        </div>
+
         <div class="border-t border-gray-100 pt-4">
           <div class="flex items-center justify-between mb-3">
             <h2 class="font-semibold">🔐 Защита от перебора</h2>
@@ -1551,6 +1559,7 @@ const generalForm = useForm({
   login_captcha_attempts:  props.generalSettings?.login_captcha_attempts ?? 3,
   login_block_attempts:    props.generalSettings?.login_block_attempts ?? 6,
   login_block_minutes:     props.generalSettings?.login_block_minutes ?? 60,
+  calls_show_session_icon: props.generalSettings?.calls_show_session_icon ?? true,
 })
 
 function saveGeneral() {

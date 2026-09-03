@@ -130,6 +130,7 @@ class CallLogController extends Controller
             ),
             'actionLabels'  => IvrLog::$actionLabels,
             'blockedLabels' => IvrLog::$blockedLabels,
+            'showSessionIcon' => (bool) \App\Models\SystemSetting::get('calls_show_session_icon', true),
         ]);
     }
 }

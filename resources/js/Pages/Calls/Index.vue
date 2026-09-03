@@ -165,7 +165,7 @@
                     <span :class="blockedDotClass(c.ivr_blocked ?? c.lanbilling_blocked)"
                           :title="blockedDotTitle(c.ivr_blocked ?? c.lanbilling_blocked)"
                           class="inline-block w-2 h-2 rounded-full shrink-0"></span>
-                    <span v-if="sessState(c)" :class="SESS_CLS[sessState(c)]" :title="sessTitle(c)"
+                    <span v-if="showSessionIcon && sessState(c)" :class="SESS_CLS[sessState(c)]" :title="sessTitle(c)"
                           class="inline-flex items-center shrink-0">
                       <svg v-if="sessState(c) === 'off'" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
                       <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
@@ -278,7 +278,7 @@
                   <span :class="blockedDotClass(c.lanbilling_blocked)"
                         :title="blockedDotTitle(c.lanbilling_blocked)"
                         class="inline-block w-2 h-2 rounded-full shrink-0"></span>
-                    <span v-if="sessState(c)" :class="SESS_CLS[sessState(c)]" :title="sessTitle(c)"
+                    <span v-if="showSessionIcon && sessState(c)" :class="SESS_CLS[sessState(c)]" :title="sessTitle(c)"
                           class="inline-flex items-center shrink-0">
                       <svg v-if="sessState(c) === 'off'" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
                       <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
@@ -333,7 +333,7 @@
                       <span :class="blockedDotClass(m.caller_blocked)"
                             :title="blockedDotTitle(m.caller_blocked)"
                             class="inline-block w-2 h-2 rounded-full shrink-0"></span>
-                    <span v-if="sessState(m)" :class="SESS_CLS[sessState(m)]" :title="sessTitle(m)"
+                    <span v-if="showSessionIcon && sessState(m)" :class="SESS_CLS[sessState(m)]" :title="sessTitle(m)"
                           class="inline-flex items-center shrink-0">
                       <svg v-if="sessState(m) === 'off'" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
                       <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
@@ -665,6 +665,7 @@ const props = defineProps({
   stats:         Object,
   actionLabels:  { type: Object, default: () => ({}) },
   blockedLabels: { type: Object, default: () => ({}) },
+  showSessionIcon: { type: Boolean, default: true },
 })
 
 const activeTab = ref('calls')

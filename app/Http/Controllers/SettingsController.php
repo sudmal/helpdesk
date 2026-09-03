@@ -80,6 +80,7 @@ class SettingsController extends Controller
                 'login_captcha_attempts' => SystemSetting::get('login_captcha_attempts', 3),
                 'login_block_attempts'   => SystemSetting::get('login_block_attempts', 6),
                 'login_block_minutes'    => SystemSetting::get('login_block_minutes', 60),
+                'calls_show_session_icon' => (bool) SystemSetting::get('calls_show_session_icon', true),
             ],
             'notificationSettings' => [
                 'daily_summary_enabled'  => (bool) SystemSetting::get('daily_summary_enabled', '1'),
@@ -417,6 +418,7 @@ class SettingsController extends Controller
         SystemSetting::set('login_captcha_attempts', $data['login_captcha_attempts']);
         SystemSetting::set('login_block_attempts',   $data['login_block_attempts']);
         SystemSetting::set('login_block_minutes',    $data['login_block_minutes']);
+        SystemSetting::set('calls_show_session_icon', $request->boolean('calls_show_session_icon'));
 
         return back()->with('success', 'Настройки сохранены');
     }
