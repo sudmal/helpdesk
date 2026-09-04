@@ -232,7 +232,7 @@ class ConnectionRequestController extends Controller
             && (($data['status'] ?? null) === 'scheduled' || $scheduledAtChanged)) {
             dispatch(function () use ($connectionRequest) {
                 \App\Notifications\ConnectionScheduledNotification::dispatch(
-                    $connectionRequest->fresh(['brigade.members.role'])
+                    $connectionRequest->fresh(['brigade.members.role', 'serviceType'])
                 );
             })->afterResponse();
         }

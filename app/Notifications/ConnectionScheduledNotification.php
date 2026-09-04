@@ -27,10 +27,12 @@ class ConnectionScheduledNotification extends Notification
     {
         $cr   = $this->connectionRequest;
         $when = $cr->scheduled_at?->format('d.m.Y H:i');
+        $type = $cr->serviceType?->name;
+        $desc = $cr->description ? str_replace(["\n", "\r"], ' ', trim($cr->description)) : null;
 
         return (new WebPushMessage)
-            ->title('📅 Подключение назначено')
-            ->body($cr->address_string."\n".$when)
+            ->title('📅 Подключение назначено'.($type ? ' · '.$type : ''))
+            ->body($cr->address_string."\n".$when.($desc ? "\n".$desc : ''))
             ->data(['url' => '/connection-requests?search='.urlencode($cr->phone)])
             ->tag('connection-'.$cr->id);
     }
@@ -40,6 +42,7 @@ class ConnectionScheduledNotification extends Notification
         if (!$cr->relationLoaded('brigade')) {
             $cr->load('brigade.members');
         }
+        $cr->loadMissing('serviceType');
         $brigade = $cr->brigade;
         if (!$brigade) return;
 
@@ -51,7 +54,10 @@ class ConnectionScheduledNotification extends Notification
         if ($members->isEmpty()) return;
 
         $when = $cr->scheduled_at?->format('d.m.Y H:i');
-        $text = "📅 Подключение назначено\n{$cr->name}\n{$cr->address_string}\n{$when}";
+        $type = $cr->serviceType?->name;
+        $desc = $cr->description ? str_replace(["\n", "\r"], ' ', trim($cr->description)) : null;
+        $text = "📅 Подключение назначено".($type ? " · {$type}" : "")
+              ."\n{$cr->name}\n{$cr->address_string}\n{$when}".($desc ? "\n{$desc}" : "");
 
         try {
             $telegram = app(TelegramService::class);
