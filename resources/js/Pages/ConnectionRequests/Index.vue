@@ -291,6 +291,13 @@
               <option v-for="st in serviceTypes" :key="st.id" :value="st.id">{{ st.name }}</option>
             </select>
           </div>
+          <div class="field-row">
+            <label class="field-label">Вид</label>
+            <select v-model="editForm.kind" class="field-input">
+              <option value="connection">Подключение</option>
+              <option value="switch">Переключение на PON</option>
+            </select>
+          </div>
           <div>
             <label class="field-label">Описание</label>
             <textarea v-model="editForm.description" class="field-input resize-y min-h-[8rem] leading-relaxed" rows="7"></textarea>
@@ -811,7 +818,7 @@ const activeRecord = ref(null)
 const closeErrors  = ref('')
 
 const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection' })
-const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null })
+const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection' })
 const editErrors  = ref('')
 
 // Бригады, обслуживающие выбранную территорию (пустая территория = все бригады)
@@ -899,6 +906,7 @@ function openEdit(r) {
     territory_id:   r.territory_id ?? null,
     brigade_id:     r.brigade_id ?? null,
     service_type_id: r.service_type_id ?? null,
+    kind:           r.kind ?? 'connection',
   })
   editErrors.value = ''
   modals.edit = true
