@@ -117,10 +117,24 @@ class DashboardController extends Controller
             ->groupBy('territory_id')
             ->pluck('cnt', 'territory_id');
 
+        // Назначенные на выбранную дату заявки на подключение -- в счётчик
+        // "Ожидают" (open_count) вкладки территории. Раньше вкладки считали
+        // только tickets, и назначенные подключения на них не отражались,
+        // хотя в самом списке дня (mergedTodayItems) они есть. Фильтр 1:1
+        // с $scheduledConnections ниже (без service_type -- список подключений
+        // тоже не скоупится переключателем участка).
+        $scheduledConnectionsByTerritory = ConnectionRequest::where('status', 'scheduled')
+            ->whereDate('scheduled_at', $date)
+            ->whereIn('territory_id', $userTerritories->pluck('id'))
+            ->selectRaw('territory_id, COUNT(*) as cnt')
+            ->groupBy('territory_id')
+            ->pluck('cnt', 'territory_id');
+
         $territoriesWithCounts = $userTerritories->map(fn($t) => [
             'id'            => $t->id,
             'name'          => $t->name,
-            'open_count'    => (int)($territoryStats[$t->id]->open_count   ?? 0),
+            'open_count'    => (int)($territoryStats[$t->id]->open_count   ?? 0)
+                             + (int)($scheduledConnectionsByTerritory[$t->id] ?? 0),
             'closed_count'  => (int)($territoryStats[$t->id]->closed_count ?? 0),
             'overdue_count' => (int)($overdueByTerritory[$t->id]->cnt ?? 0)
                              + (int)($overdueConnectionsByTerritory[$t->id] ?? 0),
