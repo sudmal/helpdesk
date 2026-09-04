@@ -75,12 +75,14 @@
 
         <!-- Код -->
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1">Код (артикул)</label>
-          <input v-model="form.code"
+          <label class="block text-xs font-medium text-gray-500 mb-1">Код (артикул) <span class="text-red-400">*</span></label>
+          <input v-model="form.code" required
                  placeholder="001"
                  maxlength="50"
                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono
                         focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
+          <p v-if="codeConflict" class="mt-1 text-xs text-red-600">Такой код уже используется</p>
+          <p v-else-if="!editing && form.code && form.code === suggestedCode" class="mt-1 text-xs text-gray-400">Первый свободный код</p>
         </div>
 
         <!-- Наименование -->
@@ -127,6 +129,8 @@
           <span class="text-sm text-gray-600">Активен <span class="text-gray-400">(отображается при выборе)</span></span>
         </label>
 
+        <p v-if="formError" class="text-xs text-red-600">{{ formError }}</p>
+
         <!-- Кнопки -->
         <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <button type="button" @click="showModal = false"
@@ -152,7 +156,7 @@ import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
 
-const props = defineProps({ materials: Array, canManage: Boolean })
+const props = defineProps({ materials: Array, canManage: Boolean, suggestedCode: { type: String, default: '' } })
 
 const search = ref('')
 const filtered = computed(() => {
@@ -167,12 +171,20 @@ const filtered = computed(() => {
 const showModal = ref(false)
 const editing   = ref(null)
 const form      = ref({ code: '', name: '', unit: 'шт', price: 0, is_active: true })
+const formError = ref('')
 
 function openCreate() {
   editing.value = null
-  form.value = { code: '', name: '', unit: 'шт', price: 0, is_active: true }
+  form.value = { code: props.suggestedCode || '', name: '', unit: 'шт', price: 0, is_active: true }
+  formError.value = ''
   showModal.value = true
 }
+
+const codeConflict = computed(() => {
+  const c = (form.value.code || '').trim()
+  if (!c) return false
+  return (props.materials || []).some(m => (m.code || '').trim() === c && m.id !== editing.value?.id)
+})
 
 function openEdit(m) {
   editing.value = m
@@ -181,15 +193,16 @@ function openEdit(m) {
 }
 
 function submit() {
-  if (editing.value) {
-    router.put(route('materials.update', editing.value.id), form.value, {
-      onSuccess: () => { showModal.value = false }
-    })
-  } else {
-    router.post(route('materials.store'), form.value, {
-      onSuccess: () => { showModal.value = false }
-    })
+  formError.value = ''
+  const code = (form.value.code || '').trim()
+  if (!code) { formError.value = 'Укажите код'; return }
+  if (codeConflict.value) { formError.value = 'Такой код уже используется'; return }
+  const opts = {
+    onSuccess: () => { showModal.value = false },
+    onError: (e) => { formError.value = e.code || e.name || e.price || 'Не удалось сохранить' },
   }
+  if (editing.value) router.put(route('materials.update', editing.value.id), form.value, opts)
+  else router.post(route('materials.store'), form.value, opts)
 }
 
 function deactivate(m) {

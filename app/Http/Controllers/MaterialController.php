@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\{Material, TicketMaterial, Ticket};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class MaterialController extends Controller
@@ -25,8 +26,25 @@ class MaterialController extends Controller
         return Inertia::render('Materials/Index', [
             'materials'     => $materials,
             'canManage'     => auth()->user()->hasPermission('materials.manage'),
+            'suggestedCode' => $this->firstFreeCode(),
         ]);
     }
+
+    /** Первый свободный числовой код (001, 002, ...), не занятый ни одним материалом. */
+    private function firstFreeCode(): string
+    {
+        $taken = Material::whereRaw("code REGEXP '^[0-9]+$'")
+            ->pluck('code')
+            ->map(fn ($c) => (int) $c)
+            ->flip();
+        for ($i = 1; $i < 1000; $i++) {
+            if (!$taken->has($i)) {
+                return str_pad((string) $i, 3, '0', STR_PAD_LEFT);
+            }
+        }
+        return '';
+    }
+
 
     // Общий union расхода материалов (акты по заявкам + заявки на подключение), без ограничения по дате
     private function usageUnion()
@@ -85,7 +103,7 @@ class MaterialController extends Controller
     {
         abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
         $data = $request->validate([
-            'code'       => 'nullable|string|max:50',
+            'code'       => ['required', 'string', 'max:50', Rule::unique('materials', 'code')],
             'name'       => 'required|string|max:255',
             'unit'       => 'required|string|max:20',
             'price'      => 'required|numeric|min:0',
@@ -100,7 +118,7 @@ class MaterialController extends Controller
     {
         abort_unless(auth()->user()->hasPermission('materials.manage'), 403);
         $data = $request->validate([
-            'code'       => 'nullable|string|max:50',
+            'code'       => ['required', 'string', 'max:50', Rule::unique('materials', 'code')->ignore($material->id)],
             'name'       => 'required|string|max:255',
             'unit'       => 'required|string|max:20',
             'price'      => 'required|numeric|min:0',
