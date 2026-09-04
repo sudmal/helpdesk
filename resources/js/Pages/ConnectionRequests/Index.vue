@@ -241,7 +241,7 @@
           </div>
           <div>
             <label class="field-label">Описание</label>
-            <textarea v-model="createForm.description" class="field-input resize-none" rows="2"
+            <textarea v-model="createForm.description" class="field-input resize-y min-h-[6rem] leading-relaxed" rows="4"
                       placeholder="Желаемый тариф, заметки..."></textarea>
           </div>
         </div>
@@ -293,7 +293,7 @@
           </div>
           <div>
             <label class="field-label">Описание</label>
-            <textarea v-model="editForm.description" class="field-input resize-none" rows="2"></textarea>
+            <textarea v-model="editForm.description" class="field-input resize-y min-h-[8rem] leading-relaxed" rows="7"></textarea>
           </div>
         </div>
         <div v-if="editErrors" class="mt-2 text-xs text-red-600">{{ editErrors }}</div>
