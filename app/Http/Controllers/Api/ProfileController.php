@@ -23,12 +23,13 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'name'               => 'required|string|max:200',
-            'phone'              => 'nullable|string|max:20',
-            'email'              => 'nullable|email|unique:users,email,' . $user->id,
-            'telegram_chat_id'   => 'nullable|string|max:50',
-            'max_chat_id'        => 'nullable|string|max:50',
-            'notify_on_days_off' => 'boolean',
+            'name'                => 'required|string|max:200',
+            'phone'               => 'nullable|string|max:20',
+            'email'               => 'nullable|email|unique:users,email,' . $user->id,
+            'telegram_chat_id'    => 'nullable|string|max:50',
+            'max_chat_id'         => 'nullable|string|max:50',
+            'notify_on_days_off'  => 'boolean',
+            'dashboard_sort_mode' => 'nullable|in:time,status',
         ]);
 
         $user->update($data);
@@ -46,6 +47,11 @@ class ProfileController extends Controller
             'telegram_chat_id'   => $user->telegram_chat_id,
             'max_chat_id'        => $user->max_chat_id,
             'notify_on_days_off' => $user->notify_on_days_off,
+            // Сортировка заявок на Дашборде -- 'time' (по умолчанию, как раньше)
+            // или 'status' (открытые сверху, выполненные в центре, отменённые
+            // снизу -- группировка по TicketStatus.sort_order). 2026-09-05,
+            // см. ТЗ в API_MOBILE.md.
+            'dashboard_sort_mode' => $user->dashboard_sort_mode,
             'role'               => $user->role?->slug,
         ];
     }

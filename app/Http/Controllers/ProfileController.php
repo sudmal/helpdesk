@@ -18,12 +18,13 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'name'               => 'required|string|max:200',
-            'phone'              => 'nullable|string|max:20',
-            'email'              => 'nullable|email|unique:users,email,' . $user->id,
-            'telegram_chat_id'   => 'nullable|string|max:50',
-            'max_chat_id'        => 'nullable|string|max:50',
-            'notify_on_days_off' => 'boolean',
+            'name'                 => 'required|string|max:200',
+            'phone'                => 'nullable|string|max:20',
+            'email'                => 'nullable|email|unique:users,email,' . $user->id,
+            'telegram_chat_id'     => 'nullable|string|max:50',
+            'max_chat_id'          => 'nullable|string|max:50',
+            'notify_on_days_off'   => 'boolean',
+            'dashboard_sort_mode'  => 'nullable|in:time,status',
         ]);
 
         $user->update($data);

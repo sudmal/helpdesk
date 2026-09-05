@@ -341,10 +341,13 @@ class TicketController extends Controller
                 'color' => $t->serviceType->color,
             ] : null,
             'status'  => [
-                'name'     => $t->status?->name,
-                'is_final' => (bool) $t->status?->is_final,
-                'color'    => $t->status?->color,
-                'slug'     => $t->status?->slug,
+                'name'       => $t->status?->name,
+                'is_final'   => (bool) $t->status?->is_final,
+                'color'      => $t->status?->color,
+                'slug'       => $t->status?->slug,
+                // Порядок группировки статусов -- новое поле (сортировка
+                // Дашборда "по статусу", 2026-09-05), см. ТЗ в API_MOBILE.md.
+                'sort_order' => $t->status?->sort_order,
             ],
             'brigade'  => $t->brigade?->name,
             'assignee' => $t->assignee?->name,

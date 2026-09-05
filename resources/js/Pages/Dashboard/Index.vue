@@ -650,10 +650,24 @@ const props = defineProps({
 // заявок "в нужном тайм-слоте" вместо отдельного блока сверху, но не
 // заводим под него Ticket (см. комментарии у самих строк в шаблоне ниже,
 // запрос пользователя 2026-08-08).
+//
+// Тип сортировки настраивается в профиле (Sidebar.vue, "Мои данные"):
+// 'time' -- как раньше, строго по времени выезда; 'status' -- группами
+// по TicketStatus.sort_order (открытые 1-4 сверху, закрытые/выполненные
+// 5 в центре, отменённые 6 снизу), внутри группы -- тоже по времени.
+// Подключения при этом всегда трактуются как "открытые" (tier 0) -- у
+// ConnectionRequest своя, отдельная модель статусов без такого деления.
+const page = usePage()
+const dashboardSortMode = computed(() => page.props.auth?.user?.dashboard_sort_mode ?? 'time')
+
 const mergedTodayItems = computed(() => {
-  const tickets = (props.todayTickets ?? []).map(t => ({ kind: 'ticket', id: t.id, time: t.scheduled_at, ticket: t }))
-  const conns   = (props.scheduledConnections ?? []).map(c => ({ kind: 'connection', id: c.id, time: c.scheduled_at, conn: c }))
-  return [...tickets, ...conns].sort((a, b) => new Date(a.time) - new Date(b.time))
+  const tickets = (props.todayTickets ?? []).map(t => ({ kind: 'ticket', id: t.id, time: t.scheduled_at, tier: t.status?.sort_order ?? 0, ticket: t }))
+  const conns   = (props.scheduledConnections ?? []).map(c => ({ kind: 'connection', id: c.id, time: c.scheduled_at, tier: 0, conn: c }))
+  const items = [...tickets, ...conns]
+  if (dashboardSortMode.value === 'status') {
+    return items.sort((a, b) => (a.tier - b.tier) || (new Date(a.time) - new Date(b.time)))
+  }
+  return items.sort((a, b) => new Date(a.time) - new Date(b.time))
 })
 
 // То же самое для просроченных -- бригадные bulk-действия (закрыть/перенести
@@ -683,7 +697,6 @@ const dashboardTourSteps = [
 ]
 tour.register('dashboard', dashboardTourSteps)
 
-const page = usePage()
 onMounted(() => {
   if (!hasSeenTour(page.props.auth?.user, 'dashboard')) {
     setTimeout(() => tour.start('dashboard', dashboardTourSteps), 400)

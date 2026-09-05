@@ -152,6 +152,19 @@
               <input type="checkbox" v-model="profileForm.notify_on_days_off" class="rounded border-gray-300" />
               Получать уведомления в выходные дни
             </label>
+            <div class="pt-1">
+              <label class="block text-xs text-gray-500 mb-1">Сортировка заявок на Дашборде</label>
+              <div class="space-y-1">
+                <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                  <input type="radio" value="time" v-model="profileForm.dashboard_sort_mode" class="border-gray-300" />
+                  По времени
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                  <input type="radio" value="status" v-model="profileForm.dashboard_sort_mode" class="border-gray-300" />
+                  По статусу
+                </label>
+              </div>
+            </div>
           </div>
           <div v-if="profileErrors" class="mt-2 text-xs text-red-600">{{ profileErrors }}</div>
           <div class="mt-4 flex justify-end gap-2">
@@ -295,16 +308,18 @@ const profileSubmitting = ref(false)
 const profileErrors     = ref('')
 const profileForm = ref({
   name: '', phone: '', email: '', telegram_chat_id: '', max_chat_id: '', notify_on_days_off: false,
+  dashboard_sort_mode: 'time',
 })
 
 function openProfile() {
   profileForm.value = {
-    name:               props.user?.name ?? '',
-    phone:              props.user?.phone ?? '',
-    email:              props.user?.email ?? '',
-    telegram_chat_id:   props.user?.telegram_chat_id ?? '',
-    max_chat_id:        props.user?.max_chat_id ?? '',
-    notify_on_days_off: !!props.user?.notify_on_days_off,
+    name:                 props.user?.name ?? '',
+    phone:                props.user?.phone ?? '',
+    email:                props.user?.email ?? '',
+    telegram_chat_id:     props.user?.telegram_chat_id ?? '',
+    max_chat_id:          props.user?.max_chat_id ?? '',
+    notify_on_days_off:   !!props.user?.notify_on_days_off,
+    dashboard_sort_mode:  props.user?.dashboard_sort_mode ?? 'time',
   }
   profileErrors.value = ''
   profileOpen.value = true

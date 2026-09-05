@@ -20,7 +20,7 @@ class User extends Authenticatable
         'role_id', 'name', 'login', 'email', 'phone', 'password',
         'telegram_chat_id', 'max_chat_id',
         'notify_telegram', 'notify_email', 'notify_max', 'notify_on_days_off',
-        'is_active', 'onboarding_seen',
+        'is_active', 'onboarding_seen', 'dashboard_sort_mode',
     ];
 
     protected $hidden = ['password', 'remember_token'];
