@@ -84,13 +84,10 @@
         <div v-if="!act.materials?.length" class="text-[#666] text-sm py-2">Материалов нет</div>
 
         <div v-if="act.can.edit_materials" class="flex gap-2 items-center mt-2 pt-2 border-t border-white/5">
-          <select v-model="newMaterialId"
-                  class="flex-1 min-w-0 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10">
-            <option value="">— Добавить материал —</option>
-            <option v-for="m in materialsCatalog" :key="m.id" :value="m.id">
-              {{ m.code ? '[' + m.code + '] ' : '' }}{{ m.name }} — {{ m.price }}₽/{{ m.unit }}
-            </option>
-          </select>
+          <button @click="materialPickerOpen = true" type="button"
+                  class="flex-1 min-w-0 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10 text-left truncate">
+            {{ newMaterialLabel }}
+          </button>
           <input v-model.number="newMaterialQty" type="number" min="0" placeholder="Кол-во"
                  class="w-16 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10 text-center" />
           <button @click="addMaterial" :disabled="!newMaterialId || !newMaterialQty || addingMaterial"
@@ -128,6 +125,9 @@
         <div v-if="!act.history?.length" class="text-[#666] text-sm">Пусто</div>
       </div>
     </div>
+
+    <MaterialSelectSheet :open="materialPickerOpen" :materials="materialsCatalog"
+                          @select="onMaterialPicked" @close="materialPickerOpen = false" />
   </div>
 </template>
 
@@ -135,6 +135,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api'
+import MaterialSelectSheet from '../components/MaterialSelectSheet.vue'
 
 const route = useRoute()
 
@@ -148,6 +149,7 @@ const editQty = ref({})
 const materialsCatalog = ref([])
 const newMaterialId = ref('')
 const newMaterialQty = ref(1)
+const materialPickerOpen = ref(false)
 const promotionsCatalog = ref([])
 const selectedPromotionId = ref('')
 const savingPromotion = ref(false)
@@ -172,6 +174,16 @@ const statusColor = computed(() => statusColors[act.value?.status] || '#6B7280')
 const typeLabel = computed(() => typeLabels[act.value?.type] || act.value?.type)
 
 const total = computed(() => (act.value?.materials || []).reduce((s, m) => s + m.price_at_time * m.quantity, 0))
+
+const newMaterialLabel = computed(() => {
+  const m = materialsCatalog.value.find((x) => x.id == newMaterialId.value)
+  return m ? `${m.name} (${m.unit})` : '— Добавить материал —'
+})
+
+function onMaterialPicked(material) {
+  newMaterialId.value = material.id
+  materialPickerOpen.value = false
+}
 
 function actionLabel(a) {
   return actionLabels[a] || a

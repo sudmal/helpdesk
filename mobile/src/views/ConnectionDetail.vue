@@ -136,13 +136,10 @@
           <div v-if="loadingMaterials" class="text-[#9E9E9E] text-xs">Загрузка справочника...</div>
 
           <div v-for="(item, idx) in materialItems" :key="idx" class="flex gap-2 items-center">
-            <select v-model="item.material_id"
-                    class="flex-1 min-w-0 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10">
-              <option value="">— Материал —</option>
-              <option v-for="m in materialsCatalog" :key="m.id" :value="m.id">
-                {{ m.code ? '[' + m.code + '] ' : '' }}{{ m.name }} — {{ m.price }}₽/{{ m.unit }}
-              </option>
-            </select>
+            <button @click="materialPickerIdx = idx" type="button"
+                    class="flex-1 min-w-0 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10 text-left truncate">
+              {{ materialLabel(item.material_id) }}
+            </button>
             <input v-model.number="item.quantity" type="number" min="0" placeholder="Кол-во"
                    class="w-16 bg-[#2A2A2A] text-white text-sm rounded-lg px-2 py-2 border border-white/10 text-center" />
             <button @click="removeMaterialRow(idx)" class="text-[#9E9E9E] w-8 h-8 shrink-0 text-lg leading-none">✕</button>
@@ -178,6 +175,9 @@
         </div>
       </div>
     </div>
+
+    <MaterialSelectSheet :open="materialPickerIdx !== null" :materials="materialsCatalog"
+                          @select="onMaterialPicked" @close="materialPickerIdx = null" />
   </div>
 </template>
 
@@ -185,6 +185,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api'
+import MaterialSelectSheet from '../components/MaterialSelectSheet.vue'
 
 const route = useRoute()
 
@@ -205,6 +206,7 @@ const useMaterials = ref(false)
 const materialItems = ref([{ material_id: '', quantity: 1 }])
 const materialsCatalog = ref([])
 const loadingMaterials = ref(false)
+const materialPickerIdx = ref(null)
 const promotions = ref([])
 const promotionId = ref(null)
 
@@ -281,6 +283,16 @@ async function submitFeasibility() {
   } finally {
     submittingFeasibility.value = false
   }
+}
+
+function materialLabel(id) {
+  const m = materialsCatalog.value.find((x) => x.id == id)
+  return m ? `${m.name} (${m.unit})` : '— Материал —'
+}
+
+function onMaterialPicked(material) {
+  materialItems.value[materialPickerIdx.value].material_id = material.id
+  materialPickerIdx.value = null
 }
 
 function addMaterialRow() {
