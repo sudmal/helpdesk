@@ -27,6 +27,7 @@
           <option value="time">По времени</option>
           <option value="address">По адресу</option>
           <option value="service">По типу участка</option>
+          <option value="status">По статусу</option>
         </select>
       </div>
 
