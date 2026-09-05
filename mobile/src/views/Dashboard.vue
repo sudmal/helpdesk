@@ -132,9 +132,9 @@ const actsPendingCount = ref(0)
 
 const todayLabel = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })
 
-const sortLabels = { time: 'по времени', address: 'по адресу', service: 'по участку' }
+const sortLabels = { time: 'по времени', address: 'по адресу', service: 'по участку', status: 'по статусу' }
 const sortLabel = computed(() => sortLabels[settings.sortOrder] || 'по времени')
-const sortCycle = ['time', 'address', 'service']
+const sortCycle = ['time', 'address', 'service', 'status']
 function cycleSortOrder() {
   const idx = sortCycle.indexOf(settings.sortOrder)
   settings.sortOrder = sortCycle[(idx + 1) % sortCycle.length]
@@ -165,6 +165,17 @@ function applyFilterSort(list) {
     out.sort((a, b) => (a.address?.full || '').localeCompare(b.address?.full || ''))
   } else if (settings.sortOrder === 'service') {
     out.sort((a, b) => (a.service_type?.name || '').localeCompare(b.service_type?.name || ''))
+  } else if (settings.sortOrder === 'status') {
+    // Группами по status.sort_order -- открытые статусы сверху, закрытые
+    // (обычно sort_order=5) в центре, отменённые (обычно sort_order=6,
+    // максимум) снизу; внутри группы -- по времени. Тот же принцип, что и
+    // в Android (по продуктовому решению -- чисто локальная настройка
+    // устройства, не синхронизируется с сервером, см. API_MOBILE.md).
+    out.sort((a, b) => {
+      const tierDiff = (a.status?.sort_order ?? 0) - (b.status?.sort_order ?? 0)
+      if (tierDiff) return tierDiff
+      return new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0)
+    })
   } else {
     out.sort((a, b) => new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0))
   }
