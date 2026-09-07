@@ -290,7 +290,7 @@
               <div class="flex items-start justify-between gap-2 mb-0.5">
                 <div>
                   <span class="text-xs font-mono text-blue-600 font-medium">{{ h.number }}</span>
-                  <span class="text-xs text-gray-400 ml-1.5">{{ formatDate(h.created_at) }}</span>
+                  <span class="text-xs text-gray-400 ml-1.5">{{ formatDateTime(h.created_at) }}</span>
                 </div>
                 <Badge v-if="h.status" :color="h.status.color" :label="h.status.name" small />
               </div>
@@ -632,10 +632,14 @@ const selectedPromotion = computed(() =>
   (props.promotions ?? []).find(p => p.id === closePromotionId.value) ?? null
 )
 
-function formatDate(d)     { return d ? dayjs(d).format('DD MMM, HH:mm') : '—' }
-function formatDateTime(d) { return d ? dayjs(d).format('DD MMM YYYY HH:mm') : '—' }
+// Год показываем только если он отличается от текущего -- иначе даты в
+// пределах одного года визуально загромождены, а старые записи (прошлые
+// годы) без года легко спутать по числу/месяцу с недавними.
+function yearSuffix(d) { return dayjs(d).year() === dayjs().year() ? '' : ' YYYY' }
+function formatDate(d)     { return d ? dayjs(d).format(`DD MMM${yearSuffix(d)}, HH:mm`) : '—' }
+function formatDateTime(d) { return d ? dayjs(d).format(`DD MMM${yearSuffix(d)} HH:mm`) : '—' }
 function formatTime(d)     { return d ? dayjs(d).format('HH:mm') : '—' }
-function formatDay(d)      { return d ? dayjs(d).format('DD MMM YYYY') : '—' }
+function formatDay(d)      { return d ? dayjs(d).format(`DD MMM${yearSuffix(d)}`) : '—' }
 
 // Статус абонента -- это lanbilling_blocked НА МОМЕНТ звонка (снимок из
 // calls, не текущее состояние в биллинге), 0 -- активен, любой другой код --
