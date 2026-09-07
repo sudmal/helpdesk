@@ -294,7 +294,13 @@ function requestTerritoryName(act) {
 }
 
 function requestAddress(act) {
-  return act.ticket?.address?.full_address || act.connection_request?.address_string || '—'
+  if (act.ticket) {
+    const a = act.ticket.address
+    const apartment = act.ticket.apartment || a?.apartment
+    const parts = [a?.city, a?.street, a?.building, apartment ? ('кв. ' + apartment) : null].filter(Boolean)
+    return parts.join(', ') || '—'
+  }
+  return act.connection_request?.address_string || '—'
 }
 
 function typeLabel(type) {

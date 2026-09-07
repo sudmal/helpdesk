@@ -61,7 +61,7 @@
             <span class="text-xs text-gray-400">Территория / адрес: </span>
             <span class="font-medium text-gray-700">
               <template v-if="act.ticket">
-                <span v-if="act.ticket.address?.territory">{{ act.ticket.address.territory.name }} — </span>{{ act.ticket.address?.full_address || '—' }}
+                <span v-if="act.ticket.address?.territory">{{ act.ticket.address.territory.name }} — </span>{{ ticketFullAddress(act.ticket) }}
               </template>
               <template v-else-if="act.connection_request">
                 <span v-if="act.connection_request.territory">{{ act.connection_request.territory.name }} — </span>{{ act.connection_request.address_string || '—' }}
@@ -298,6 +298,19 @@ function actionLabel(action) {
 
 function fmtDateTime(d) {
   return d ? new Date(d).toLocaleString('ru-RU') : '—'
+}
+
+// Квартира -- сначала из самой заявки (ticket.apartment), и только потом из
+// адреса (ticket.address.apartment) -- тот же fallback, что на Tickets/Show.vue
+// и в Ticket::getFullAddressAttribute() на бэкенде. Заявка может ссылаться на
+// адрес уровня дома (там apartment=NULL -- нет отдельной именной записи на
+// каждую квартиру), а номер квартиры при этом введён прямо в саму заявку --
+// раньше в этом случае он молча пропадал из акта.
+function ticketFullAddress(ticket) {
+  const a = ticket?.address
+  const apartment = ticket?.apartment || a?.apartment
+  const parts = [a?.city, a?.street, a?.building, apartment ? ('кв. ' + apartment) : null].filter(Boolean)
+  return parts.join(', ') || '—'
 }
 
 function post(routeName) {

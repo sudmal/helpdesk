@@ -176,11 +176,7 @@ class ActController extends Controller
             'connection_request_id'   => $act->connection_request_id,
             'connection_request_name' => $act->connectionRequest?->name,
             'address'                 => $act->ticket
-                ? ($act->ticket->address ? collect([
-                    $act->ticket->address->city,
-                    $act->ticket->address->street,
-                    $act->ticket->address->building,
-                  ])->filter()->implode(', ') : null)
+                ? $act->ticket->full_address
                 : $act->connectionRequest?->address_string,
             'creator'                 => $act->creator?->name,
             'created_at'              => $act->created_at->toIso8601String(),

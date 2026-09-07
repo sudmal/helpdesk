@@ -66,7 +66,7 @@ class ActController extends Controller
                 $join->on('brigades.id', '=', DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'));
             })
             ->with([
-                'ticket:id,number,address_id,brigade_id,type_id,service_type_id',
+                'ticket:id,number,address_id,apartment,brigade_id,type_id,service_type_id',
                 'ticket.address:id,city,street,building,apartment,territory_id',
                 'ticket.address.territory:id,name',
                 'ticket.brigade:id,name',
@@ -189,7 +189,7 @@ class ActController extends Controller
             : $act->connectionRequest?->name;
 
         $address = $act->ticket
-            ? $act->ticket->address?->full_address
+            ? $act->ticket->full_address
             : $act->connectionRequest?->address_string;
 
         $materialsTotal = $act->materials->sum(fn($m) => $m->price_at_time * $m->quantity);

@@ -22,6 +22,27 @@ protected $fillable = [
         'closed_at'    => 'datetime',
     ];
 
+    // Полный адрес заявки -- как у Address::full_address, но квартира
+    // берётся В ПЕРВУЮ ОЧЕРЕДЬ из самой заявки (tickets.apartment), и только
+    // если там пусто -- из связанного адреса. Нужно потому что заявка может
+    // ссылаться на адрес уровня дома/подъезда (там apartment=NULL -- нет
+    // отдельной именной записи для каждой квартиры), а номер квартиры при
+    // этом введён/пришёл прямо в саму заявку. Раньше в актах (печать/карточка/
+    // список/мобильный API) использовался только Address::full_address --
+    // квартира в таком случае молча пропадала из акта, хотя на самой заявке
+    // была видна (см. Tickets/Show.vue, там точно такой же fallback).
+    public function getFullAddressAttribute(): string
+    {
+        $apartment = $this->apartment ?: $this->address?->apartment;
+        $parts = array_filter([
+            $this->address?->city,
+            $this->address?->street,
+            $this->address?->building,
+            $apartment ? 'кв. ' . $apartment : null,
+        ]);
+        return implode(', ', $parts);
+    }
+
     // === Relations ===
     public function address(): BelongsTo      { return $this->belongsTo(Address::class); }
     public function serviceType(): BelongsTo  { return $this->belongsTo(\App\Models\ServiceType::class, 'service_type_id'); }
