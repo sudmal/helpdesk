@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Act;
+use App\Models\ConnectionRequest;
 use App\Models\Material;
 use App\Models\Promotion;
 use App\Models\Ticket;
@@ -57,11 +58,33 @@ class TicketController extends Controller
         $tomorrow_list = $base()->whereDate('scheduled_at', $tomorrow)
                                 ->orderBy('scheduled_at')->get();
 
+        // Заявки на подключение, назначенные (status=scheduled) на те же дни --
+        // раньше в мобильном API отсутствовали вообще, из-за чего монтажник видел
+        // их только на отдельном экране "Подключения", а не среди обычных заявок
+        // дня (расхождение с веб-дашбордом, где они давно слиты в общий список
+        // по времени, см. DashboardController::index()). См. ТЗ в API_MOBILE.md,
+        // раздел "Подключения в списке заявок дня" -- тот же баг был на PWA и
+        // в Android (там маскировался баннером-счётчиком, но сами заявки в
+        // список всё равно не попадали).
+        $connBase = fn(): Builder => ConnectionRequest::with(['territory', 'serviceType', 'act'])
+            ->where('status', 'scheduled')
+            ->when($scopeToTerritory, fn($q) => $q->whereIn('territory_id', $territoryIds));
+
+        $overdue_connections  = $connBase()->whereDate('scheduled_at', '<', $today)
+                                            ->orderBy('scheduled_at')->get();
+        $today_connections    = $connBase()->whereDate('scheduled_at', $today)
+                                            ->orderBy('scheduled_at')->get();
+        $tomorrow_connections = $connBase()->whereDate('scheduled_at', $tomorrow)
+                                            ->orderBy('scheduled_at')->get();
+
         return response()->json([
-            'overdue'   => $this->format($overdue),
-            'today'     => $this->format($today_list),
-            'new_today' => $this->format($new_today),
-            'tomorrow'  => $this->format($tomorrow_list),
+            'overdue'             => $this->format($overdue),
+            'today'               => $this->format($today_list),
+            'new_today'           => $this->format($new_today),
+            'tomorrow'            => $this->format($tomorrow_list),
+            'overdue_connections'  => $this->formatConnections($overdue_connections),
+            'today_connections'    => $this->formatConnections($today_connections),
+            'tomorrow_connections' => $this->formatConnections($tomorrow_connections),
             'synced_at' => now()->toIso8601String(),
         ]);
     }
@@ -377,5 +400,30 @@ class TicketController extends Controller
     private function format($tickets): array
     {
         return $tickets->map(fn(Ticket $t) => $this->formatOne($t))->values()->all();
+    }
+
+    // Та же форма полей, что у territory/service_type в formatOne() выше --
+    // сделано намеренно одинаково, чтобы клиент мог сортировать/фильтровать
+    // тикеты и подключения одним и тем же кодом без спецразбора по типу.
+    private function formatConnections($connections): array
+    {
+        return $connections->map(fn(ConnectionRequest $r) => [
+            'id'             => $r->id,
+            'name'           => $r->name,
+            'phone'          => $r->phone,
+            'address_string' => $r->address_string,
+            'description'    => $r->description,
+            'status'         => $r->status,
+            'scheduled_at'   => $r->scheduled_at?->toIso8601String(),
+            'created_at'     => $r->created_at->toIso8601String(),
+            'territory'      => $r->territory ? ['id' => $r->territory->id, 'name' => $r->territory->name] : null,
+            'service_type'   => $r->serviceType ? [
+                'id'    => $r->serviceType->id,
+                'name'  => $r->serviceType->name,
+                'color' => $r->serviceType->color,
+            ] : null,
+            'act'         => $r->act ? ['materials_changed_at' => $r->act->materials_changed_at?->toIso8601String()] : null,
+            'feasibility' => $r->feasibility,
+        ])->values()->all();
     }
 }

@@ -98,12 +98,20 @@
             <span class="text-sm">Нет заявок</span>
           </div>
 
-          <TicketCard v-for="t in currentList" :key="t.id" :ticket="t" :group="activeTab === 'overdue' ? 'overdue' : activeTab"
-                      :is-new="newIds.has(t.id)"
-                      @open="$router.push({ name: 'ticket-detail', params: { id: t.id } })"
-                      @open-act="$router.push({ name: 'act-detail', params: { id: $event } })"
-                      @swipe-close="$router.push({ name: 'ticket-detail', params: { id: t.id }, query: { action: 'close' } })"
-                      @swipe-reschedule="$router.push({ name: 'ticket-detail', params: { id: t.id }, query: { action: 'reschedule' } })" />
+          <template v-for="item in currentList" :key="(item.__kind === 'connection' ? 'c-' : 't-') + item.id">
+            <!-- Заявка на подключение, назначенная на этот день -- слита в общий
+                 список вместе с обычными заявками (2026-09-08, по образцу веб-
+                 дашборда), а не только в отдельном экране "Подключения", см.
+                 API_MOBILE.md. -->
+            <ConnectionCard v-if="item.__kind === 'connection'" :request="item"
+                            @open="$router.push({ name: 'connection-detail', params: { id: item.id } })" />
+            <TicketCard v-else :ticket="item" :group="activeTab === 'overdue' ? 'overdue' : activeTab"
+                        :is-new="newIds.has(item.id)"
+                        @open="$router.push({ name: 'ticket-detail', params: { id: item.id } })"
+                        @open-act="$router.push({ name: 'act-detail', params: { id: $event } })"
+                        @swipe-close="$router.push({ name: 'ticket-detail', params: { id: item.id }, query: { action: 'close' } })"
+                        @swipe-reschedule="$router.push({ name: 'ticket-detail', params: { id: item.id }, query: { action: 'reschedule' } })" />
+          </template>
         </div>
       </PullToRefresh>
     </div>
@@ -119,10 +127,14 @@ import { commentQueue } from '../store/commentQueue'
 import { useRouter } from 'vue-router'
 import PullToRefresh from '../components/PullToRefresh.vue'
 import TicketCard from '../components/TicketCard.vue'
+import ConnectionCard from '../components/ConnectionCard.vue'
 
 const router = useRouter()
 
-const raw = ref({ overdue: [], today: [], new_today: [], tomorrow: [] })
+const raw = ref({
+  overdue: [], today: [], new_today: [], tomorrow: [],
+  overdue_connections: [], today_connections: [], tomorrow_connections: [],
+})
 const loading = ref(false)
 const hasLoadedOnce = ref(false)
 const lastSyncLabel = ref('Ещё не синхронизировано')
@@ -142,11 +154,24 @@ function cycleSortOrder() {
 
 const newIds = computed(() => new Set(raw.value.new_today.map((t) => t.id)))
 
+// Заявки на подключение (status=scheduled) подмешиваются в каждый бакет дня
+// рядом с обычными заявками -- помечены `__kind: 'connection'`, чтобы шаблон
+// мог отрисовать их через ConnectionCard вместо TicketCard. Те же 3 бакета,
+// что и у тикетов (overdue/today/tomorrow), приходят с сервера уже отдельными
+// полями (см. Api/TicketController::index()) -- дата "сегодня/завтра/просрочено"
+// должна совпадать 1:1 с тем, что видно на вкладке "Подключения" и на вебе.
+function tagConnections(list) {
+  return list.map((c) => ({ ...c, __kind: 'connection' }))
+}
+
 const todayMerged = computed(() => {
   const map = new Map()
   ;[...raw.value.today, ...raw.value.new_today].forEach((t) => map.set(t.id, t))
-  return [...map.values()]
+  return [...map.values(), ...tagConnections(raw.value.today_connections)]
 })
+
+const overdueMerged = computed(() => [...raw.value.overdue, ...tagConnections(raw.value.overdue_connections)])
+const tomorrowMerged = computed(() => [...raw.value.tomorrow, ...tagConnections(raw.value.tomorrow_connections)])
 
 function applyFilter(list) {
   let out = list
@@ -162,7 +187,7 @@ function applyFilter(list) {
 function applyFilterSort(list) {
   let out = [...applyFilter(list)]
   if (settings.sortOrder === 'address') {
-    out.sort((a, b) => (a.address?.full || '').localeCompare(b.address?.full || ''))
+    out.sort((a, b) => (a.address?.full || a.address_string || '').localeCompare(b.address?.full || b.address_string || ''))
   } else if (settings.sortOrder === 'service') {
     out.sort((a, b) => (a.service_type?.name || '').localeCompare(b.service_type?.name || ''))
   } else if (settings.sortOrder === 'status') {
@@ -183,17 +208,22 @@ function applyFilterSort(list) {
 }
 
 const tabs = computed(() => [
-  { key: 'overdue', label: 'Просрочено', count: applyFilter(raw.value.overdue).length },
+  { key: 'overdue', label: 'Просрочено', count: applyFilter(overdueMerged.value).length },
   { key: 'today', label: 'Сегодня', count: applyFilter(todayMerged.value).length },
-  { key: 'tomorrow', label: 'Завтра', count: applyFilter(raw.value.tomorrow).length },
+  { key: 'tomorrow', label: 'Завтра', count: applyFilter(tomorrowMerged.value).length },
 ])
 
 const currentList = computed(() => {
-  const list = activeTab.value === 'today' ? todayMerged.value : raw.value[activeTab.value]
+  const list = activeTab.value === 'today' ? todayMerged.value
+             : activeTab.value === 'tomorrow' ? tomorrowMerged.value
+             : overdueMerged.value
   return applyFilterSort(list)
 })
 
-const allTickets = computed(() => [...raw.value.overdue, ...raw.value.today, ...raw.value.new_today, ...raw.value.tomorrow])
+const allTickets = computed(() => [
+  ...raw.value.overdue, ...raw.value.today, ...raw.value.new_today, ...raw.value.tomorrow,
+  ...raw.value.overdue_connections, ...raw.value.today_connections, ...raw.value.tomorrow_connections,
+])
 
 const serviceTypes = computed(() =>
   [...new Set(allTickets.value.map((t) => t.service_type?.name).filter(Boolean))].sort()
