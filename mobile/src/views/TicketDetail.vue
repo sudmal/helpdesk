@@ -96,6 +96,13 @@
           Перенести
         </button>
       </div>
+      <div v-else-if="ticket.can?.reopen">
+        <button @click="reopenTicket" :disabled="reopening"
+                class="w-full h-11 rounded-lg text-white text-sm font-medium disabled:opacity-50" style="background:#F59E0B">
+          {{ reopening ? 'Переоткрываем…' : '↺ Переоткрыть' }}
+        </button>
+        <p v-if="reopenError" class="text-[#F87171] text-xs mt-1">{{ reopenError }}</p>
+      </div>
       <label class="block">
         <input type="file" accept="image/*" capture="environment" class="hidden" @change="uploadPhoto" />
         <span class="block w-full h-11 rounded-lg text-white text-sm font-medium text-center leading-[44px]" style="background:#374151">
@@ -261,6 +268,8 @@ const rescheduleModal = ref(false)
 const rescheduleAt = ref('')
 const rescheduleComment = ref('')
 const rescheduling = ref(false)
+const reopening = ref(false)
+const reopenError = ref('')
 
 const commentText = ref('')
 const sendingComment = ref(false)
@@ -428,6 +437,20 @@ async function closeTicket() {
       ?? 'Не удалось закрыть заявку. Попробуйте ещё раз.'
   } finally {
     closing.value = false
+  }
+}
+
+async function reopenTicket() {
+  if (!confirm('Переоткрыть заявку? Она вернётся в статус "Новая", закрыть можно будет заново.')) return
+  reopening.value = true
+  reopenError.value = ''
+  try {
+    const { data } = await api.post(`/tickets/${route.params.id}/reopen`)
+    ticket.value = data
+  } catch (e) {
+    reopenError.value = e.response?.data?.message ?? 'Не удалось переоткрыть заявку. Попробуйте ещё раз.'
+  } finally {
+    reopening.value = false
   }
 }
 

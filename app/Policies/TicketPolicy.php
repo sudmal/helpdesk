@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\{Ticket, User};
+use Illuminate\Auth\Access\Response;
 
 class TicketPolicy
 {
@@ -108,19 +109,27 @@ class TicketPolicy
     }
 
     /** Закрыть */
-    public function close(User $user, Ticket $ticket): bool
+    public function close(User $user, Ticket $ticket): Response
     {
-        if ($ticket->status?->is_final) return false;
+        if ($ticket->status?->is_final) {
+            return Response::deny('Заявка уже в финальном статусе -- повторное закрытие невозможно, сначала переоткройте её.');
+        }
 
-        return $user->hasPermission('tickets.close') || $user->isAdmin();
+        return $user->hasPermission('tickets.close') || $user->isAdmin()
+            ? Response::allow()
+            : Response::deny('Нет прав на закрытие заявок.');
     }
 
     /** Отменить (та же зона ответственности, что и закрытие) */
-    public function cancel(User $user, Ticket $ticket): bool
+    public function cancel(User $user, Ticket $ticket): Response
     {
-        if ($ticket->status?->is_final) return false;
+        if ($ticket->status?->is_final) {
+            return Response::deny('Заявка уже в финальном статусе -- отмена невозможна.');
+        }
 
-        return $user->hasPermission('tickets.close') || $user->isAdmin();
+        return $user->hasPermission('tickets.close') || $user->isAdmin()
+            ? Response::allow()
+            : Response::deny('Нет прав на отмену заявок.');
     }
 
     /** Комментировать */

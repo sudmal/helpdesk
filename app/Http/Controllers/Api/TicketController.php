@@ -264,6 +264,17 @@ class TicketController extends Controller
         return response()->json($this->formatOne($ticket));
     }
 
+    public function reopen(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('update', $ticket);
+
+        $this->ticketService->updateStatus($ticket, 'new', $request->user());
+
+        $ticket->load(['address.territory', 'type', 'serviceType', 'status', 'brigade', 'assignee', 'closedBy', 'comments.author', 'comments.attachments', 'attachments', 'act']);
+
+        return response()->json($this->formatOne($ticket));
+    }
+
     public function reschedule(Request $request, Ticket $ticket): JsonResponse
     {
         $this->authorize('postpone', $ticket);
@@ -363,6 +374,9 @@ class TicketController extends Controller
                 'name'  => $t->serviceType->name,
                 'color' => $t->serviceType->color,
             ] : null,
+            'can' => [
+                'reopen' => auth()->user()?->can('update', $t) ?? false,
+            ],
             'status'  => [
                 'name'       => $t->status?->name,
                 'is_final'   => (bool) $t->status?->is_final,
