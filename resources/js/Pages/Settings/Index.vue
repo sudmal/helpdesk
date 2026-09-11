@@ -1741,7 +1741,7 @@ watch(() => sortableTerritories.value, (list) => {
 const matrixRows = computed(() => {
   const tid = matrixTerritoryId.value
   if (tid == null) return []
-  return territoryAccessMatrix.filter(u =>
+  return props.territoryAccessMatrix.filter(u =>
     u.is_admin || !!u.brigade_territory_names[tid] || u.personal_territory_ids.includes(tid)
   )
 })
@@ -1752,7 +1752,7 @@ const matrixRows = computed(() => {
 const missingDeptUsers = computed(() => {
   const tid = matrixTerritoryId.value
   if (tid == null) return []
-  return territoryAccessMatrix.filter(u =>
+  return props.territoryAccessMatrix.filter(u =>
     deptRoles.includes(u.role_slug) && !u.is_admin &&
     !u.brigade_territory_names[tid] && !u.personal_territory_ids.includes(tid)
   )
