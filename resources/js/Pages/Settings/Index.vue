@@ -209,7 +209,14 @@
              :class="['flex items-center gap-2 p-2 bg-white border rounded-xl transition-colors cursor-grab',
                       dragOver_ter === idx ? 'border-blue-400 bg-blue-50' : 'border-gray-200']">
           <span class="text-gray-300 select-none text-lg">⠿</span>
-          <span class="flex-1 font-medium text-sm text-gray-800">{{ t.name }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-sm text-gray-800">{{ t.name }}</div>
+            <div v-if="t.description || t.brigades?.length" class="text-xs text-gray-400 truncate">
+              <span v-if="t.description">{{ t.description }}</span>
+              <span v-if="t.description && t.brigades?.length"> · </span>
+              <span v-if="t.brigades?.length">{{ t.brigades.map(b => b.name).join(', ') }}</span>
+            </div>
+          </div>
           <button @click="openTerritoryModal(t)"
                   class="text-xs text-blue-600 hover:text-blue-800 mr-2">✏️</button>
           <button @click="deleteTerritory(t)"
@@ -1060,6 +1067,12 @@
                class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm
                       focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
       </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Описание</label>
+        <textarea v-model="territoryForm.description" rows="2"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/30"></textarea>
+      </div>
       <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
         <button type="button" @click="showTerritoryModal = false"
                 class="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600">
@@ -1639,11 +1652,11 @@ watch(() => props.territories,  v => { sortableTerritories.value  = [...(v ?? []
 // Территории
 const showTerritoryModal = ref(false)
 const editingTerritory   = ref(null)
-const territoryForm      = ref({ name: '' })
+const territoryForm      = ref({ name: '', description: '' })
 
 function openTerritoryModal(t) {
   editingTerritory.value = t
-  territoryForm.value = { name: t?.name ?? '' }
+  territoryForm.value = { name: t?.name ?? '', description: t?.description ?? '' }
   showTerritoryModal.value = true
 }
 

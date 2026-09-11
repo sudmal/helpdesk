@@ -82,8 +82,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     // РўРµСЂСЂРёС‚РѕСЂРёРё
+    // Раздел /territories упразднён (2026-09-12) — управление территориями
+    // объединено в Настройки → Территории. Store/update/destroy остались —
+    // ими пользуется модалка на странице Настроек (те же роуты).
     Route::middleware('can:manage-settings')->prefix('territories')->name('territories.')->group(function () {
-        Route::get('/',               [TerritoryController::class, 'index'])->name('index');
         Route::post('/',              [TerritoryController::class, 'store'])->name('store');
         Route::put('/{territory}',    [TerritoryController::class, 'update'])->name('update');
         Route::delete('/{territory}', [TerritoryController::class, 'destroy'])->name('destroy');

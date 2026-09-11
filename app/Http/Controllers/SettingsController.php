@@ -51,11 +51,6 @@ class SettingsController extends Controller
     {
         $this->authorize('manage-settings');
 
-        $user = auth()->user();
-        $territoriesQuery = $user->isAdmin()
-            ? Territory::orderBy('sort_order')->orderBy('name')
-            : $user->territories()->orderBy('sort_order')->orderBy('name');
-
         return Inertia::render('Settings/Index', [
             'ticketTypes'      => TicketType::orderBy('sort_order')->get(),
             'ticketStatuses'   => TicketStatus::orderBy('sort_order')->get(),
@@ -63,7 +58,14 @@ class SettingsController extends Controller
             'promotions'       => Promotion::orderBy('sort_order')->orderBy('name')->get(),
             'users'            => $this->usersWithActivity(),
             'roles'            => Role::orderBy('name')->get(),
-            'territories'      => $territoriesQuery->get(['id', 'name']),
+            // Перенесено со страницы /territories (2026-09-12, раздел
+            // упразднён, весь функционал объединён здесь) — всегда все
+            // территории независимо от роли смотрящего, с описанием и
+            // списком привязанных бригад, как было на прежней странице.
+            'territories'      => Territory::withCount('brigades')
+                ->with('brigades:id,name')
+                ->orderBy('sort_order')->orderBy('name')
+                ->get(),
             'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),
             'serviceRequestServices' => $this->getServiceRequestServices(),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),

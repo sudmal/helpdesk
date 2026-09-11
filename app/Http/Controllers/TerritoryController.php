@@ -4,19 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\{Territory, User};
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 
 class TerritoryController extends Controller
 {
-    public function index()
-    {
-        return Inertia::render('Territories/Index', [
-            'territories' => Territory::withCount('brigades')
-                ->with('brigades:id,name')
-                ->orderBy('name')
-                ->get(),
-        ]);
-    }
+    // index() убран (2026-09-12) — раздел /territories упразднён, список
+    // теперь рендерится в SettingsController::index() для Настройки → Территории.
 
     public function store(Request $request)
     {

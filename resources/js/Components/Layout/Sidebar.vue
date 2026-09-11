@@ -41,7 +41,6 @@
                :href="route('brigades.show', foremanBrigadeId)"
                icon="users" label="Моя бригада" />
       <template v-if="canManageSettings">
-        <NavItem :href="route('territories.index')" icon="map-pin"  label="Территории" />
         <NavItem :href="route('brigades.index')"    icon="users"    label="Бригады" />
       </template>
       <NavItem :href="route('addresses.index')"     icon="database" label="Адреса" />
