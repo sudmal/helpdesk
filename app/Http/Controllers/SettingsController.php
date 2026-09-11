@@ -62,11 +62,30 @@ class SettingsController extends Controller
      */
     private function territoryAccessMatrixUsers()
     {
-        return User::with(['role', 'territories:id', 'brigades'])
+        // brigades.territories загружены явно (не через territoryBrigadeIds(),
+        // который бы дал только id без привязки к конкретной бригаде) — нужно
+        // знать ИМЕННО какая бригада даёт доступ к территории, для подсказки
+        // на значке "Б" в UI (пользователь может состоять в нескольких бригадах).
+        return User::with(['role', 'territories:id', 'brigades.territories:id,name'])
             ->where('is_active', true)
             ->get()
             ->map(function (User $u) {
                 $isAdmin = $u->isAdmin();
+
+                // territory_id => "Бригада А, Бригада Б" (на случай, если сразу
+                // несколько бригад пользователя покрывают одну и ту же территорию)
+                $brigadeTerritoryNames = collect();
+                if (!$isAdmin) {
+                    foreach ($u->brigades as $brigade) {
+                        foreach ($brigade->territories as $territory) {
+                            $brigadeTerritoryNames->push(['id' => $territory->id, 'brigade' => $brigade->name]);
+                        }
+                    }
+                }
+                $brigadeMap = $brigadeTerritoryNames
+                    ->groupBy('id')
+                    ->map(fn($rows) => $rows->pluck('brigade')->unique()->implode(', '));
+
                 return [
                     'id'                     => $u->id,
                     'name'                   => $u->name,
@@ -74,7 +93,7 @@ class SettingsController extends Controller
                     'role_slug'              => $u->role?->slug,
                     'is_admin'               => $isAdmin,
                     'brigades'               => $u->brigades->pluck('name')->implode(', ') ?: null,
-                    'brigade_territory_ids'  => $isAdmin ? collect() : $u->territoryBrigadeIds()->values(),
+                    'brigade_territory_names' => $brigadeMap,
                     'personal_territory_ids' => $isAdmin ? collect() : $u->territories->pluck('id')->values(),
                 ];
             })
