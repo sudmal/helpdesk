@@ -192,12 +192,30 @@
       <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <div>
           <h2 class="font-semibold">Территории</h2>
-          <p class="text-xs text-gray-400 mt-0.5">Перетащите для изменения порядка вкладок</p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            {{ territoriesView === 'list' ? 'Перетащите для изменения порядка вкладок' : 'Кто и откуда видит каждую территорию (только незаблокированные)' }}
+          </p>
         </div>
-        <button @click="openTerritoryModal(null)"
-                class="btn-primary text-sm">+ Добавить</button>
+        <div class="flex items-center gap-2">
+          <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
+            <button @click="territoriesView = 'list'"
+                    :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                             territoriesView === 'list' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+              Список
+            </button>
+            <button @click="territoriesView = 'matrix'"
+                    :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                             territoriesView === 'matrix' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+              Матрица доступа
+            </button>
+          </div>
+          <button v-if="territoriesView === 'list'" @click="openTerritoryModal(null)"
+                  class="btn-primary text-sm">+ Добавить</button>
+        </div>
       </div>
-      <div class="divide-y divide-gray-100 p-2 space-y-1">
+
+      <!-- Список (перетаскивание для сортировки) -->
+      <div v-if="territoriesView === 'list'" class="divide-y divide-gray-100 p-2 space-y-1">
         <div v-if="!sortableTerritories.length" class="text-center py-6 text-gray-400 text-sm">
           Территории не добавлены
         </div>
@@ -221,6 +239,53 @@
                   class="text-xs text-blue-600 hover:text-blue-800 mr-2">✏️</button>
           <button @click="deleteTerritory(t)"
                   class="text-xs text-gray-300 hover:text-red-500">✕</button>
+        </div>
+      </div>
+
+      <!-- Матрица доступа: сотрудник × территория, источник доступа -->
+      <div v-else class="p-3">
+        <div class="overflow-x-auto border border-gray-200 rounded-xl">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-100">
+                <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky left-0 bg-gray-50">Сотрудник</th>
+                <th class="text-left px-3 py-2 text-xs font-medium text-gray-500">Роль</th>
+                <th v-for="t in sortableTerritories" :key="t.id"
+                    class="px-2 py-2 text-[11px] font-medium text-gray-500 text-center leading-tight w-20">
+                  {{ t.name }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-if="!territoryAccessMatrix.length">
+                <td :colspan="2 + sortableTerritories.length" class="text-center py-6 text-gray-400 text-xs">Нет активных пользователей</td>
+              </tr>
+              <tr v-for="u in territoryAccessMatrix" :key="u.id"
+                  :class="deptRoles.includes(u.role_slug) ? 'bg-purple-50/40' : ''">
+                <td class="px-3 py-1.5 font-medium text-gray-800 whitespace-nowrap sticky left-0" :class="deptRoles.includes(u.role_slug) ? 'bg-purple-50/40' : 'bg-white'">{{ u.name }}</td>
+                <td class="px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">{{ u.role }}</td>
+                <td v-if="u.is_admin" :colspan="sortableTerritories.length" class="px-2 py-1.5 text-center text-xs text-gray-400 italic">
+                  видит всё — администратор (в коде, не в данных)
+                </td>
+                <template v-else>
+                  <td v-for="t in sortableTerritories" :key="t.id" class="px-2 py-1.5 text-center">
+                    <span v-if="u.brigade_territory_ids.includes(t.id)"
+                          title="Доступ через бригаду"
+                          class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 mr-0.5">Б</span>
+                    <span v-if="u.personal_territory_ids.includes(t.id)"
+                          title="Назначено лично"
+                          class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-green-100 text-green-700">И</span>
+                    <span v-if="!u.brigade_territory_ids.includes(t.id) && !u.personal_territory_ids.includes(t.id)" class="text-gray-300">—</span>
+                  </td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
+          <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-blue-100 text-blue-700 align-middle mr-1">Б</span>доступ через бригаду</span>
+          <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-green-100 text-green-700 align-middle mr-1">И</span>назначено лично</span>
+          <span><span class="inline-block w-3 h-3 rounded bg-purple-50 border border-purple-200 align-middle mr-1"></span>роль по правилам видит все территории — пустая ячейка в этой строке означает недосинк, стоит проверить</span>
         </div>
       </div>
     </div>
@@ -1168,6 +1233,7 @@ const props = defineProps({
   users:          { type: Array, default: () => [] },
   roles:          { type: Array, default: () => [] },
   territories:    { type: Array, default: () => [] },
+  territoryAccessMatrix: { type: Array, default: () => [] },
   brigades:       { type: Array, default: () => [] },
   lanbillingConfig:       { type: Object, default: () => ({}) },
   generalSettings:        { type: Object, default: () => ({}) },
@@ -1650,6 +1716,11 @@ watch(() => props.serviceTypes, v => { sortableServiceTypes.value = [...(v ?? []
 watch(() => props.territories,  v => { sortableTerritories.value  = [...(v ?? [])] })
 
 // Территории
+const territoriesView = ref('list') // 'list' | 'matrix'
+// Роли, которые по бизнес-правилам должны видеть все территории (реализовано
+// через данные, не хардкод — см. память project-territory-visibility-system).
+// Используется только для подсветки строк матрицы, саму видимость это не определяет.
+const deptRoles = ['operator', 'head_support', 'peo', 'logistics']
 const showTerritoryModal = ref(false)
 const editingTerritory   = ref(null)
 const territoryForm      = ref({ name: '', description: '' })

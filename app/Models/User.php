@@ -108,13 +108,21 @@ class User extends Authenticatable
     // Начальник ТП, ПЭО, Логистика), реализуют это через данные — у них в
     // user_territory должны быть проставлены ВСЕ территории (см. бэкфилл
     // 2026-08-04), а не через дополнительный код здесь.
-    public function territoryScopeIds(): \Illuminate\Support\Collection
+    // Территории, доступные через членство в бригаде(ах) — вынесено отдельно
+    // от territoryScopeIds() (2026-09-12), чтобы матрица доступа
+    // (Настройки → Территории) могла показать источник доступа (бригада vs
+    // личное назначение) по отдельности, а не только итоговое объединение.
+    public function territoryBrigadeIds(): \Illuminate\Support\Collection
     {
         $brigadeIds = $this->brigades->pluck('id');
-        $brigadeTerritories = $brigadeIds->isNotEmpty()
+        return $brigadeIds->isNotEmpty()
             ? Territory::whereHas('brigades', fn($q) => $q->whereIn('brigades.id', $brigadeIds))->pluck('id')
             : collect();
-        return $brigadeTerritories->merge($this->territories->pluck('id'))->unique();
+    }
+
+    public function territoryScopeIds(): \Illuminate\Support\Collection
+    {
+        return $this->territoryBrigadeIds()->merge($this->territories->pluck('id'))->unique();
     }
 
     // === Onboarding tours ===

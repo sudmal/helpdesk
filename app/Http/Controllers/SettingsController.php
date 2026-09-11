@@ -47,6 +47,41 @@ class SettingsController extends Controller
             });
     }
 
+    /**
+     * Матрица доступа к территориям (2026-09-12, Настройки → Территории) —
+     * по каждому активному пользователю показывает, ОТКУДА у него доступ к
+     * каждой территории: через бригаду, личное назначение (user_territory)
+     * или администратор (хардкод-байпас в коде, без опоры на данные — см.
+     * User::isAdmin() и память project-territory-visibility-system).
+     *
+     * Намеренно НЕ считает "Оператор/Начальник ТП/ПЭО/Логистика видят всё"
+     * готовым фактом по роли — у этих ролей это обычное личное назначение
+     * (им просто проставлены ВСЕ территории через бэкфилл/автосинк). Если
+     * где-то реально не досинкали территорию — здесь будет видна пустая
+     * ячейка вместо того, чтобы предположение по роли замаскировало дыру.
+     */
+    private function territoryAccessMatrixUsers()
+    {
+        return User::with(['role', 'territories:id', 'brigades'])
+            ->where('is_active', true)
+            ->get()
+            ->map(function (User $u) {
+                $isAdmin = $u->isAdmin();
+                return [
+                    'id'                     => $u->id,
+                    'name'                   => $u->name,
+                    'role'                   => $u->role?->name,
+                    'role_slug'              => $u->role?->slug,
+                    'is_admin'               => $isAdmin,
+                    'brigades'               => $u->brigades->pluck('name')->implode(', ') ?: null,
+                    'brigade_territory_ids'  => $isAdmin ? collect() : $u->territoryBrigadeIds()->values(),
+                    'personal_territory_ids' => $isAdmin ? collect() : $u->territories->pluck('id')->values(),
+                ];
+            })
+            ->sortBy([['role', 'asc'], ['name', 'asc']])
+            ->values();
+    }
+
     public function index()
     {
         $this->authorize('manage-settings');
@@ -66,6 +101,7 @@ class SettingsController extends Controller
                 ->with('brigades:id,name')
                 ->orderBy('sort_order')->orderBy('name')
                 ->get(),
+            'territoryAccessMatrix' => $this->territoryAccessMatrixUsers(),
             'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),
             'serviceRequestServices' => $this->getServiceRequestServices(),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),
