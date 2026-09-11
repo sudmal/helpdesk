@@ -264,35 +264,33 @@
                 <tr class="bg-gray-50 border-b border-gray-100">
                   <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Сотрудник</th>
                   <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Роль</th>
-                  <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Доступ</th>
+                  <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Индивидуально</th>
+                  <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Бригада</th>
+                  <th class="text-center px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Админ</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
                 <tr v-if="!matrixRows.length">
-                  <td colspan="3" class="text-center py-6 text-gray-400 text-xs">Никто из незаблокированных сотрудников не видит эту территорию</td>
+                  <td colspan="5" class="text-center py-6 text-gray-400 text-xs">Никто из незаблокированных сотрудников не видит эту территорию</td>
                 </tr>
                 <tr v-for="u in matrixRows" :key="u.id" :class="deptRoles.includes(u.role_slug) ? 'bg-purple-50/40' : ''">
                   <td class="px-3 py-1.5 font-medium text-gray-800 whitespace-nowrap">{{ u.name }}</td>
                   <td class="px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">{{ u.role }}</td>
-                  <td class="px-3 py-1.5">
-                    <span v-if="u.is_admin" class="text-xs text-gray-400 italic">администратор — в коде, не в данных</span>
-                    <template v-else>
-                      <span v-if="u.brigade_territory_names[matrixTerritoryId]"
-                            :title="'Бригада: ' + u.brigade_territory_names[matrixTerritoryId]"
-                            class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 mr-1">Б</span>
-                      <span v-if="u.personal_territory_ids.includes(matrixTerritoryId)"
-                            title="Назначено лично"
-                            class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-green-100 text-green-700">И</span>
-                    </template>
+                  <td class="px-3 py-1.5 text-green-600 font-semibold">
+                    <span v-if="!u.is_admin && u.personal_territory_ids.includes(matrixTerritoryId)">✓</span>
+                  </td>
+                  <td class="px-3 py-1.5 text-blue-700 text-xs whitespace-nowrap">
+                    {{ !u.is_admin ? (u.brigade_territory_names[matrixTerritoryId] ?? '') : '' }}
+                  </td>
+                  <td class="px-3 py-1.5 text-center text-gray-500 font-semibold">
+                    <span v-if="u.is_admin">✓</span>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
-            <span>{{ matrixRows.length }} из {{ territoryAccessMatrix.length }} незаблокированных сотрудников видят эту территорию</span>
-            <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-blue-100 text-blue-700 align-middle mr-1">Б</span>доступ через бригаду</span>
-            <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-green-100 text-green-700 align-middle mr-1">И</span>назначено лично</span>
+          <div class="text-xs text-gray-400 mt-2">
+            {{ matrixRows.length }} из {{ territoryAccessMatrix.length }} незаблокированных сотрудников видят эту территорию
           </div>
         </template>
       </div>
