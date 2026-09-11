@@ -242,51 +242,59 @@
         </div>
       </div>
 
-      <!-- Матрица доступа: сотрудник × территория, источник доступа -->
+      <!-- Матрица доступа: выбор территории + кто и откуда её видит -->
       <div v-else class="p-3">
-        <div class="overflow-auto border border-gray-200 rounded-xl max-h-[70vh]">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-gray-50 border-b border-gray-100">
-                <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 left-0 z-20 bg-gray-50">Сотрудник</th>
-                <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">Роль</th>
-                <th v-for="t in sortableTerritories" :key="t.id"
-                    class="px-2 py-2 text-[11px] font-medium text-gray-500 text-center leading-tight w-20 sticky top-0 z-10 bg-gray-50">
-                  {{ t.name }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr v-if="!territoryAccessMatrix.length">
-                <td :colspan="2 + sortableTerritories.length" class="text-center py-6 text-gray-400 text-xs">Нет активных пользователей</td>
-              </tr>
-              <tr v-for="u in territoryAccessMatrix" :key="u.id"
-                  :class="deptRoles.includes(u.role_slug) ? 'bg-purple-50/40' : ''">
-                <td class="px-3 py-1.5 font-medium text-gray-800 whitespace-nowrap sticky left-0" :class="deptRoles.includes(u.role_slug) ? 'bg-purple-50/40' : 'bg-white'">{{ u.name }}</td>
-                <td class="px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">{{ u.role }}</td>
-                <td v-if="u.is_admin" :colspan="sortableTerritories.length" class="px-2 py-1.5 text-center text-xs text-gray-400 italic">
-                  видит всё — администратор (в коде, не в данных)
-                </td>
-                <template v-else>
-                  <td v-for="t in sortableTerritories" :key="t.id" class="px-2 py-1.5 text-center">
-                    <span v-if="u.brigade_territory_names[t.id]"
-                          :title="'Бригада: ' + u.brigade_territory_names[t.id]"
-                          class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 mr-0.5">Б</span>
-                    <span v-if="u.personal_territory_ids.includes(t.id)"
-                          title="Назначено лично"
-                          class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-green-100 text-green-700">И</span>
-                    <span v-if="!u.brigade_territory_names[t.id] && !u.personal_territory_ids.includes(t.id)" class="text-gray-300">—</span>
+        <div class="flex items-center gap-2 mb-3">
+          <label class="text-xs text-gray-500">Территория:</label>
+          <select v-model="matrixTerritoryId"
+                  class="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option v-for="t in sortableTerritories" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+        </div>
+
+        <div v-if="!sortableTerritories.length" class="text-center py-6 text-gray-400 text-sm">Территории не добавлены</div>
+        <template v-else>
+          <div v-if="missingDeptUsers.length" class="mb-3 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+            ⚠️ Не видят эту территорию, хотя роль предполагает доступ ко всем: {{ missingDeptUsers.map(u => u.name + ' (' + u.role + ')').join(', ') }}
+          </div>
+
+          <div class="overflow-auto border border-gray-200 rounded-xl max-h-[70vh]">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-100">
+                  <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Сотрудник</th>
+                  <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Роль</th>
+                  <th class="text-left px-3 py-2 text-xs font-medium text-gray-500 sticky top-0 bg-gray-50">Доступ</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-if="!matrixRows.length">
+                  <td colspan="3" class="text-center py-6 text-gray-400 text-xs">Никто из незаблокированных сотрудников не видит эту территорию</td>
+                </tr>
+                <tr v-for="u in matrixRows" :key="u.id" :class="deptRoles.includes(u.role_slug) ? 'bg-purple-50/40' : ''">
+                  <td class="px-3 py-1.5 font-medium text-gray-800 whitespace-nowrap">{{ u.name }}</td>
+                  <td class="px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">{{ u.role }}</td>
+                  <td class="px-3 py-1.5">
+                    <span v-if="u.is_admin" class="text-xs text-gray-400 italic">администратор — в коде, не в данных</span>
+                    <template v-else>
+                      <span v-if="u.brigade_territory_names[matrixTerritoryId]"
+                            :title="'Бригада: ' + u.brigade_territory_names[matrixTerritoryId]"
+                            class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 mr-1">Б</span>
+                      <span v-if="u.personal_territory_ids.includes(matrixTerritoryId)"
+                            title="Назначено лично"
+                            class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-semibold bg-green-100 text-green-700">И</span>
+                    </template>
                   </td>
-                </template>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
-          <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-blue-100 text-blue-700 align-middle mr-1">Б</span>доступ через бригаду</span>
-          <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-green-100 text-green-700 align-middle mr-1">И</span>назначено лично</span>
-          <span><span class="inline-block w-3 h-3 rounded bg-purple-50 border border-purple-200 align-middle mr-1"></span>роль по правилам видит все территории — пустая ячейка в этой строке означает недосинк, стоит проверить</span>
-        </div>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-400">
+            <span>{{ matrixRows.length }} из {{ territoryAccessMatrix.length }} незаблокированных сотрудников видят эту территорию</span>
+            <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-blue-100 text-blue-700 align-middle mr-1">Б</span>доступ через бригаду</span>
+            <span><span class="inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-semibold bg-green-100 text-green-700 align-middle mr-1">И</span>назначено лично</span>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -1721,6 +1729,34 @@ const territoriesView = ref('list') // 'list' | 'matrix'
 // через данные, не хардкод — см. память project-territory-visibility-system).
 // Используется только для подсветки строк матрицы, саму видимость это не определяет.
 const deptRoles = ['operator', 'head_support', 'peo', 'logistics']
+
+// Матрица теперь по одной территории за раз (2026-09-12) — таблица "все
+// территории колонками" разрасталась бы бесконтрольно по мере добавления
+// территорий. Выбор через select, по умолчанию — первая по сортировке.
+const matrixTerritoryId = ref(null)
+watch(() => sortableTerritories.value, (list) => {
+  if (matrixTerritoryId.value == null && list.length) matrixTerritoryId.value = list[0].id
+}, { immediate: true })
+
+const matrixRows = computed(() => {
+  const tid = matrixTerritoryId.value
+  if (tid == null) return []
+  return territoryAccessMatrix.filter(u =>
+    u.is_admin || !!u.brigade_territory_names[tid] || u.personal_territory_ids.includes(tid)
+  )
+})
+
+// Роли "видит всё по правилам" (deptRoles), у которых при этом НЕТ доступа
+// к выбранной территории — реальная дыра в данных, а не то, что список
+// матрицы просто отфильтровал их как "не имеющих доступа".
+const missingDeptUsers = computed(() => {
+  const tid = matrixTerritoryId.value
+  if (tid == null) return []
+  return territoryAccessMatrix.filter(u =>
+    deptRoles.includes(u.role_slug) && !u.is_admin &&
+    !u.brigade_territory_names[tid] && !u.personal_territory_ids.includes(tid)
+  )
+})
 const showTerritoryModal = ref(false)
 const editingTerritory   = ref(null)
 const territoryForm      = ref({ name: '', description: '' })
