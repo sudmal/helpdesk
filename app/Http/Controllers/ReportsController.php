@@ -22,10 +22,10 @@ class ReportsController extends Controller
         return [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()];
     }
 
-    public function brigadeLoadData(Request $request)
+    public function brigadeEfficiencyData(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
-        return response()->json($this->brigadeLoad($from, $to));
+        return response()->json($this->brigadeEfficiency($from, $to));
     }
 
     public function territoryFrequencyData(Request $request)
@@ -50,12 +50,6 @@ class ReportsController extends Controller
         return response()->json($this->materialDynamics($from, $to));
     }
 
-    public function deadlineComplianceData(Request $request)
-    {
-        [$from, $to] = $this->parseRange($request);
-        return response()->json($this->deadlineCompliance($from, $to));
-    }
-
     public function distributionData(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
@@ -68,25 +62,108 @@ class ReportsController extends Controller
         return response()->json($this->callStats($from, $to));
     }
 
-    private function brigadeLoad(Carbon $from, Carbon $to): array
+    /**
+     * Сводный отчёт по бригадам (2026-09-11, заменил разрозненные "Нагрузка
+     * бригад" + "Соблюдение сроков"): закрытые заявки, сроки, расход
+     * материалов и нагрузка нормализованная на человеко-дни из графика
+     * бригад (brigade_schedules — реальная явка, а не штатная численность,
+     * см. память project-brigade-schedule-rework про плавающие выходные).
+     *
+     * Reopen-rate сюда сознательно НЕ включён — по словам пользователя,
+     * бригадиры чаще переоткрывают заявку из-за ошибки при заполнении формы
+     * закрытия, а не из-за реальной недоделанной работы, так что общий
+     * счётчик переоткрытий вводил бы в заблуждение, а не отражал качество.
+     */
+    private function brigadeEfficiency(Carbon $from, Carbon $to): array
     {
-        $rows = DB::table('tickets as t')
-            ->join('brigades as b', 't.brigade_id', '=', 'b.id')
+        $closed = DB::table('tickets as t')
             ->join('ticket_statuses as ts', 't.status_id', '=', 'ts.id')
-            ->whereBetween('t.created_at', [$from, $to])
+            ->whereNotNull('t.brigade_id')
+            ->where('ts.is_final', 1)
+            ->whereBetween('t.closed_at', [$from, $to])
             ->whereNull('t.deleted_at')
-            ->selectRaw('b.name as brigade, COUNT(*) as total, SUM(ts.is_final) as closed')
-            ->groupBy('b.id', 'b.name')
-            ->orderByDesc('total')
-            ->get();
+            ->selectRaw('
+                t.brigade_id,
+                COUNT(*) as closed,
+                SUM(t.scheduled_at IS NOT NULL) as with_schedule,
+                SUM(t.scheduled_at IS NOT NULL AND t.closed_at <= t.scheduled_at) as on_time,
+                SUM(t.scheduled_at IS NOT NULL AND t.closed_at > t.scheduled_at) as overdue,
+                AVG(TIMESTAMPDIFF(HOUR, t.created_at, t.closed_at)) as avg_hours
+            ')
+            ->groupBy('t.brigade_id')
+            ->get()
+            ->keyBy('brigade_id');
+
+        $materials = DB::table('act_materials as tm')
+            ->join('acts as a', 'tm.act_id', '=', 'a.id')
+            ->join('tickets as t', 'a.ticket_id', '=', 't.id')
+            ->whereNotNull('t.brigade_id')
+            ->whereNull('t.deleted_at')
+            ->whereBetween('tm.created_at', [$from, $to])
+            ->selectRaw('t.brigade_id, SUM(tm.quantity * tm.price_at_time) as amount')
+            ->groupBy('t.brigade_id')
+            ->pluck('amount', 'brigade_id');
+
+        // Человеко-дни — реальная явка по графику (work), не штатная численность,
+        // поэтому корректно учитывает отпуска/больничные/неполный состав.
+        $manDays = DB::table('brigade_schedules')
+            ->where('status', 'work')
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->selectRaw('brigade_id, COUNT(*) as days')
+            ->groupBy('brigade_id')
+            ->pluck('days', 'brigade_id');
+
+        $brigades = DB::table('brigades')->orderBy('name')->get(['id', 'name']);
+
+        $rows = $brigades->map(function ($b) use ($closed, $materials, $manDays) {
+            $c = $closed->get($b->id);
+            $closedCount  = (int)($c->closed ?? 0);
+            $withSchedule = (int)($c->with_schedule ?? 0);
+            $onTime       = (int)($c->on_time ?? 0);
+            $overdue      = (int)($c->overdue ?? 0);
+            $days         = (int)($manDays->get($b->id) ?? 0);
+            $amount       = (float)($materials->get($b->id) ?? 0);
+
+            return [
+                'brigade_id'      => $b->id,
+                'brigade'         => $b->name,
+                'closed'          => $closedCount,
+                'on_time'         => $onTime,
+                'overdue'         => $overdue,
+                'pct_on_time'     => $withSchedule > 0 ? round(100 * $onTime / $withSchedule, 1) : null,
+                'man_days'        => $days,
+                'per_man_day'     => $days > 0 ? round($closedCount / $days, 2) : null,
+                'material_cost'   => round($amount, 2),
+                'cost_per_ticket' => $closedCount > 0 ? round($amount / $closedCount, 2) : null,
+                'avg_hours'       => $c && $c->avg_hours !== null ? round((float)$c->avg_hours, 1) : null,
+            ];
+        })->sortByDesc('closed')->values();
+
+        $totalClosed   = $rows->sum('closed');
+        $totalOnTime   = $rows->sum('on_time');
+        $totalOverdue  = $rows->sum('overdue');
+        $totalManDays  = $rows->sum('man_days');
+        $totalMaterial = $rows->sum('material_cost');
+        $withSchedule  = $totalOnTime + $totalOverdue;
 
         return [
-            'labels' => $rows->pluck('brigade')->toArray(),
-            'total'  => $rows->pluck('total')->map(fn($v) => (int)$v)->toArray(),
-            'closed' => $rows->pluck('closed')->map(fn($v) => (int)$v)->toArray(),
+            'rows'    => $rows->toArray(),
+            'summary' => [
+                'closed'        => (int)$totalClosed,
+                'pct_on_time'   => $withSchedule > 0 ? round(100 * $totalOnTime / $withSchedule, 1) : null,
+                'material_cost' => round($totalMaterial, 2),
+                'per_man_day'   => $totalManDays > 0 ? round($totalClosed / $totalManDays, 2) : null,
+            ],
         ];
     }
 
+    /**
+     * Территории (2026-09-11): к сырому числу обращений добавлена
+     * нормализация на количество адресов территории — иначе крупная
+     * территория всегда выглядит "самой проблемной" просто за счёт размера.
+     * Число адресов не зависит от периода (текущий размер территории), в
+     * отличие от заявок.
+     */
     private function territoryFrequency(Carbon $from, Carbon $to): array
     {
         $rows = DB::table('tickets as t')
@@ -94,14 +171,35 @@ class ReportsController extends Controller
             ->join('territories as ter', 'a.territory_id', '=', 'ter.id')
             ->whereBetween('t.created_at', [$from, $to])
             ->whereNull('t.deleted_at')
-            ->selectRaw('ter.name as territory, COUNT(*) as total')
+            ->selectRaw('ter.id as territory_id, ter.name as territory, COUNT(*) as total')
             ->groupBy('ter.id', 'ter.name')
             ->orderByDesc('total')
             ->get();
 
+        $addressCounts = DB::table('addresses')
+            ->whereNotNull('territory_id')
+            ->selectRaw('territory_id, COUNT(*) as cnt')
+            ->groupBy('territory_id')
+            ->pluck('cnt', 'territory_id');
+
+        $labels = [];
+        $values = [];
+        $addresses = [];
+        $per100 = [];
+
+        foreach ($rows as $r) {
+            $addrCnt = (int)($addressCounts->get($r->territory_id) ?? 0);
+            $labels[]    = $r->territory;
+            $values[]    = (int)$r->total;
+            $addresses[] = $addrCnt;
+            $per100[]    = $addrCnt > 0 ? round($r->total / $addrCnt * 100, 2) : null;
+        }
+
         return [
-            'labels' => $rows->pluck('territory')->toArray(),
-            'values' => $rows->pluck('total')->map(fn($v) => (int)$v)->toArray(),
+            'labels'    => $labels,
+            'values'    => $values,
+            'addresses' => $addresses,
+            'per100'    => $per100,
         ];
     }
 
@@ -166,40 +264,6 @@ class ReportsController extends Controller
                 'amount' => $weekly->pluck('amount')->map(fn($v) => (float)$v)->toArray(),
             ],
             'top' => $top->toArray(),
-        ];
-    }
-
-    private function deadlineCompliance(Carbon $from, Carbon $to): array
-    {
-        $rows = DB::table('tickets as t')
-            ->join('ticket_statuses as ts', 't.status_id', '=', 'ts.id')
-            ->join('brigades as b', 't.brigade_id', '=', 'b.id')
-            ->where('ts.is_final', 1)
-            ->whereBetween('t.closed_at', [$from, $to])
-            ->whereNotNull('t.scheduled_at')
-            ->whereNull('t.deleted_at')
-            ->selectRaw('
-                b.name as brigade,
-                COUNT(*) as total,
-                SUM(t.closed_at <= t.scheduled_at) as on_time,
-                SUM(t.closed_at > t.scheduled_at) as overdue
-            ')
-            ->groupBy('b.id', 'b.name')
-            ->orderByDesc('total')
-            ->get();
-
-        $totalOnTime = $rows->sum('on_time');
-        $totalAll    = $rows->sum('total');
-
-        return [
-            'labels'  => $rows->pluck('brigade')->toArray(),
-            'on_time' => $rows->pluck('on_time')->map(fn($v) => (int)$v)->toArray(),
-            'overdue' => $rows->pluck('overdue')->map(fn($v) => (int)$v)->toArray(),
-            'summary' => [
-                'total'   => (int)$totalAll,
-                'on_time' => (int)$totalOnTime,
-                'pct'     => $totalAll > 0 ? round(100 * $totalOnTime / $totalAll, 1) : 0,
-            ],
         ];
     }
 

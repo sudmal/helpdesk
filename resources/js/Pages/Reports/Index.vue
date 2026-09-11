@@ -13,34 +13,77 @@
         </button>
       </div>
 
+    <!-- Эффективность бригад -->
     <div v-show="activeTab === 'brigade'" class="p-4 space-y-3">
       <RangePicker :range="brigade" />
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <h2 class="text-sm font-semibold text-gray-600 mb-3">Количество заявок по бригадам</h2>
-        <div v-if="brigade.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
-        <div v-else-if="!brigade.state.data.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
-        <canvas v-else ref="brigadeCanvas" style="max-height:320px" />
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
+          <div class="text-2xl font-bold text-gray-800">{{ brigade.state.data.summary.closed }}</div>
+          <div class="text-xs text-gray-500 mt-1">Закрыто заявок</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
+          <div :class="['text-2xl font-bold', pctColor(brigade.state.data.summary.pct_on_time)]">
+            {{ brigade.state.data.summary.pct_on_time != null ? brigade.state.data.summary.pct_on_time + '%' : '—' }}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">Соблюдение сроков</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
+          <div class="text-2xl font-bold text-gray-800">
+            {{ brigade.state.data.summary.per_man_day ?? '—' }}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">Заявок на человеко-день</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
+          <div class="text-2xl font-bold text-gray-800">{{ formatMoney(brigade.state.data.summary.material_cost) }}</div>
+          <div class="text-xs text-gray-500 mt-1">Расход материалов, ₽</div>
+        </div>
       </div>
+
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3">Соблюдение сроков по бригадам</h2>
+        <div v-if="brigade.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
+        <div v-else-if="!brigade.state.data.rows.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
+        <canvas v-else ref="brigadeCanvas" style="max-height:280px" />
+      </div>
+
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3">Заявок на человеко-день</h2>
+        <p class="text-xs text-gray-400 mb-3">Нагрузка, нормализованная на реальную явку бригады по графику — так бригады разного состава сравнимы честно.</p>
+        <div v-if="brigade.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
+        <div v-else-if="!brigade.state.data.rows.some(r => r.man_days > 0)" class="text-center py-10 text-gray-400 text-sm">Нет данных графика за выбранный период</div>
+        <canvas v-else ref="perManDayCanvas" style="max-height:240px" />
+      </div>
+
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
-              <th class="text-left px-4 py-2.5">Бригада</th>
-              <th class="text-right px-4 py-2.5 w-28">Всего</th>
-              <th class="text-right px-4 py-2.5 w-28">Закрыто</th>
-              <th class="text-right px-4 py-2.5 w-28">Открыто</th>
+              <th class="text-left px-3 py-2.5">Бригада</th>
+              <th class="text-right px-3 py-2.5">Закрыто</th>
+              <th class="text-right px-3 py-2.5">В срок</th>
+              <th class="text-right px-3 py-2.5">Просрочено</th>
+              <th class="text-right px-3 py-2.5">% в срок</th>
+              <th class="text-right px-3 py-2.5">Человеко-дней</th>
+              <th class="text-right px-3 py-2.5">Заявок/чел-день</th>
+              <th class="text-right px-3 py-2.5">Ср. время, ч</th>
+              <th class="text-right px-3 py-2.5">Материалы, ₽</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-if="!brigade.state.data.labels.length">
-              <td colspan="4" class="text-center py-4 text-gray-400 text-xs">—</td>
+            <tr v-if="!brigade.state.data.rows.length">
+              <td colspan="9" class="text-center py-4 text-gray-400 text-xs">—</td>
             </tr>
-            <tr v-for="(label, i) in brigade.state.data.labels" :key="i" class="hover:bg-gray-50">
-              <td class="px-4 py-2 text-gray-800">{{ label }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums">{{ brigade.state.data.total[i] }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums text-green-600">{{ brigade.state.data.closed[i] }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums text-orange-500">{{ brigade.state.data.total[i] - brigade.state.data.closed[i] }}</td>
+            <tr v-for="r in brigade.state.data.rows" :key="r.brigade_id" class="hover:bg-gray-50">
+              <td class="px-3 py-2 text-gray-800">{{ r.brigade }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">{{ r.closed }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-green-600">{{ r.on_time }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-red-500">{{ r.overdue }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">{{ r.pct_on_time != null ? r.pct_on_time + '%' : '—' }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-gray-500">{{ r.man_days || '—' }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums font-medium">{{ r.per_man_day ?? '—' }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-gray-500">{{ r.avg_hours ?? '—' }}</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-gray-500">{{ formatMoney(r.material_cost) }}</td>
             </tr>
           </tbody>
         </table>
@@ -52,9 +95,24 @@
     <div v-show="activeTab === 'territory'" class="p-4 space-y-3">
       <RangePicker :range="territory" />
       <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <h2 class="text-sm font-semibold text-gray-600 mb-3">Частота обращений по территориям</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-gray-600">Частота обращений по территориям</h2>
+          <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
+            <button @click="territoryMode = 'total'"
+                    :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                             territoryMode === 'total' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+              По количеству
+            </button>
+            <button @click="territoryMode = 'per100'"
+                    :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                             territoryMode === 'per100' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+              На 100 адресов
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-gray-400 mb-3">«На 100 адресов» показывает реальную проблемность территории — крупная территория не выглядит «хуже» просто из-за размера.</p>
         <div v-if="territory.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
-        <div v-else-if="!territory.state.data.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
+        <div v-else-if="!territoryRows.length" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
         <canvas v-else ref="territoryCanvas" style="max-height:320px" />
       </div>
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -64,79 +122,22 @@
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
               <th class="text-left px-4 py-2.5">Территория</th>
               <th class="text-right px-4 py-2.5 w-28">Заявок</th>
+              <th class="text-right px-4 py-2.5 w-28">Адресов</th>
+              <th class="text-right px-4 py-2.5 w-32">На 100 адресов</th>
               <th class="text-right px-4 py-2.5 w-28">% от общего</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-if="!territory.state.data.labels.length">
-              <td colspan="3" class="text-center py-4 text-gray-400 text-xs">—</td>
-            </tr>
-            <tr v-for="(label, i) in territory.state.data.labels" :key="i" class="hover:bg-gray-50">
-              <td class="px-4 py-2 text-gray-800">{{ label }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums">{{ territory.state.data.values[i] }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums text-gray-500">
-                {{ totalTerritory ? (territory.state.data.values[i] / totalTerritory * 100).toFixed(1) + '%' : '—' }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Соблюдение сроков -->
-    <div v-show="activeTab === 'deadlines'" class="p-4 space-y-3">
-      <RangePicker :range="deadlines" />
-      <div class="grid grid-cols-3 gap-3">
-        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
-          <div class="text-3xl font-bold text-gray-800">{{ deadlines.state.data.summary.total }}</div>
-          <div class="text-xs text-gray-500 mt-1">Закрыто заявок</div>
-        </div>
-        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
-          <div class="text-3xl font-bold text-green-600">{{ deadlines.state.data.summary.on_time }}</div>
-          <div class="text-xs text-gray-500 mt-1">Закрыто в срок</div>
-        </div>
-        <div class="bg-white rounded-xl border border-gray-200 p-3.5 text-center">
-          <div :class="['text-3xl font-bold',
-                        deadlines.state.data.summary.pct >= 80 ? 'text-green-600'
-                        : deadlines.state.data.summary.pct >= 60 ? 'text-yellow-500'
-                        : 'text-red-500']">
-            {{ deadlines.state.data.summary.pct }}%
-          </div>
-          <div class="text-xs text-gray-500 mt-1">Соблюдение сроков</div>
-        </div>
-      </div>
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <h2 class="text-sm font-semibold text-gray-600 mb-3">Соблюдение сроков по бригадам</h2>
-        <div v-if="deadlines.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
-        <div v-else-if="!deadlines.state.data.labels.length" class="text-center py-10 text-gray-400 text-sm">Нет закрытых заявок за выбранный период</div>
-        <canvas v-else ref="deadlineCanvas" style="max-height:320px" />
-      </div>
-      <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
-              <th class="text-left px-4 py-2.5">Бригада</th>
-              <th class="text-right px-4 py-2.5 w-24">Всего</th>
-              <th class="text-right px-4 py-2.5 w-24">В срок</th>
-              <th class="text-right px-4 py-2.5 w-24">Просрочено</th>
-              <th class="text-right px-4 py-2.5 w-28">% в срок</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr v-if="!deadlines.state.data.labels.length">
+            <tr v-if="!territoryRows.length">
               <td colspan="5" class="text-center py-4 text-gray-400 text-xs">—</td>
             </tr>
-            <tr v-for="(label, i) in deadlines.state.data.labels" :key="i" class="hover:bg-gray-50">
-              <td class="px-4 py-2 text-gray-800">{{ label }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums">
-                {{ deadlines.state.data.on_time[i] + deadlines.state.data.overdue[i] }}
-              </td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums text-green-600">{{ deadlines.state.data.on_time[i] }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums text-red-500">{{ deadlines.state.data.overdue[i] }}</td>
-              <td class="px-4 py-2 text-right font-mono tabular-nums">
-                {{ rowPct(deadlines.state.data.on_time[i], deadlines.state.data.overdue[i]) }}
+            <tr v-for="row in territoryRows" :key="row.label" class="hover:bg-gray-50">
+              <td class="px-4 py-2 text-gray-800">{{ row.label }}</td>
+              <td class="px-4 py-2 text-right font-mono tabular-nums">{{ row.total }}</td>
+              <td class="px-4 py-2 text-right font-mono tabular-nums text-gray-500">{{ row.addresses || '—' }}</td>
+              <td class="px-4 py-2 text-right font-mono tabular-nums font-medium">{{ row.per100 ?? '—' }}</td>
+              <td class="px-4 py-2 text-right font-mono tabular-nums text-gray-500">
+                {{ totalTerritory ? (row.total / totalTerritory * 100).toFixed(1) + '%' : '—' }}
               </td>
             </tr>
           </tbody>
@@ -258,9 +259,8 @@ import RangePicker from '@/Components/Reports/RangePicker.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
 const tabs = [
-  { id: 'brigade',      label: 'Нагрузка бригад' },
+  { id: 'brigade',      label: 'Эффективность бригад' },
   { id: 'territory',    label: 'Территории' },
-  { id: 'deadlines',    label: 'Соблюдение сроков' },
   { id: 'distribution', label: 'Распределение по дням' },
   { id: 'callcenter',   label: 'Обработка звонков' },
 ]
@@ -270,10 +270,11 @@ const activeTab = ref('brigade')
 // ── Каждая вкладка — независимый диапазон дат + свой запрос данных ──
 // "Расход материалов" перенесён во вкладку "Отчёты" раздела Акты (2026-07-15,
 // см. память project-acts-feature) — здесь больше не запрашивается.
-const brigade    = useReportRange('reports.brigade-load',        { labels: [], total: [], closed: [] })
-const territory  = useReportRange('reports.territory-frequency', { labels: [], values: [] })
-const deadlines  = useReportRange('reports.deadline-compliance', { labels: [], on_time: [], overdue: [], summary: { total: 0, on_time: 0, pct: 0 } })
-const callcenter = useReportRange('reports.call-stats',           { hours: [], summary: {} })
+const brigade    = useReportRange('reports.brigade-efficiency',  { rows: [], summary: { closed: 0, pct_on_time: null, material_cost: 0, per_man_day: null } })
+const territory  = useReportRange('reports.territory-frequency', { labels: [], values: [], addresses: [], per100: [] })
+const callcenter = useReportRange('reports.call-stats',          { hours: [], summary: {} })
+
+const territoryMode = ref('total') // 'total' | 'per100'
 
 // ── Распределение по дням: без выбора диапазона, фиксированный период (текущий месяц) ──
 const distMode = ref('day') // 'day' | 'weekday'
@@ -283,6 +284,15 @@ const distributionState = reactive({
 })
 
 function toIso(d) { return d.toISOString().split('T')[0] }
+
+function formatMoney(v) {
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(v || 0)
+}
+
+function pctColor(pct) {
+  if (pct == null) return 'text-gray-400'
+  return pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-yellow-500' : 'text-red-500'
+}
 
 async function ensureDistributionLoaded() {
   if (distributionState.loaded) return
@@ -295,13 +305,30 @@ async function ensureDistributionLoaded() {
 }
 
 const brigadeCanvas      = ref(null)
+const perManDayCanvas    = ref(null)
 const territoryCanvas    = ref(null)
-const deadlineCanvas     = ref(null)
 const distributionCanvas = ref(null)
 const callcenterCanvas   = ref(null)
 const callcenterCanvas2  = ref(null)
 
 const charts = {}
+
+// Строки территорий, отсортированные под текущий режим отображения (по
+// количеству или на 100 адресов) — сырой ответ сервера всегда отсортирован
+// по количеству, для второго режима пересортировываем на клиенте.
+const territoryRows = computed(() => {
+  const d = territory.state.data
+  const rows = d.labels.map((label, i) => ({
+    label,
+    total: d.values[i],
+    addresses: d.addresses[i],
+    per100: d.per100[i],
+  }))
+  if (territoryMode.value === 'per100') {
+    return [...rows].sort((a, b) => (b.per100 ?? -1) - (a.per100 ?? -1))
+  }
+  return rows
+})
 
 const totalTerritory = computed(() =>
   territory.state.data.values.reduce((a, b) => a + b, 0)
@@ -327,11 +354,6 @@ const distGrandTotal = computed(() =>
   distTotals.value.reduce((a, b) => a + b.total, 0)
 )
 
-function rowPct(onTime, overdue) {
-  const total = onTime + overdue
-  return total ? (onTime / total * 100).toFixed(1) + '%' : '—'
-}
-
 const C = {
   blue:       'rgba(59,130,246,0.85)',
   blueAlpha:  'rgba(59,130,246,0.15)',
@@ -347,61 +369,65 @@ function destroy(key) {
 
 function buildBrigade() {
   destroy('brigade')
-  const data = brigade.state.data
-  if (!brigadeCanvas.value || !data.labels.length) return
+  const rows = brigade.state.data.rows
+  if (!brigadeCanvas.value || !rows.length) return
   charts.brigade = new Chart(brigadeCanvas.value, {
     type: 'bar',
     data: {
-      labels: data.labels,
+      labels: rows.map(r => r.brigade),
       datasets: [
-        { label: 'Всего',   data: data.total,  backgroundColor: C.blue },
-        { label: 'Закрыто', data: data.closed, backgroundColor: C.green },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-    },
-  })
-}
-
-function buildTerritory() {
-  destroy('territory')
-  const data = territory.state.data
-  if (!territoryCanvas.value || !data.labels.length) return
-  charts.territory = new Chart(territoryCanvas.value, {
-    type: 'bar',
-    data: {
-      labels: data.labels,
-      datasets: [{ label: 'Заявок', data: data.values, backgroundColor: C.blue }],
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
-    },
-  })
-}
-
-function buildDeadline() {
-  destroy('deadline')
-  const data = deadlines.state.data
-  if (!deadlineCanvas.value || !data.labels.length) return
-  charts.deadline = new Chart(deadlineCanvas.value, {
-    type: 'bar',
-    data: {
-      labels: data.labels,
-      datasets: [
-        { label: 'В срок',     data: data.on_time, backgroundColor: C.green, stack: 'a' },
-        { label: 'Просрочено', data: data.overdue, backgroundColor: C.red,   stack: 'a' },
+        { label: 'В срок',     data: rows.map(r => r.on_time), backgroundColor: C.green, stack: 'a' },
+        { label: 'Просрочено', data: rows.map(r => r.overdue), backgroundColor: C.red,   stack: 'a' },
       ],
     },
     options: {
       responsive: true,
       plugins: { legend: { position: 'top' } },
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { stacked: true } },
+    },
+  })
+}
+
+function buildPerManDay() {
+  destroy('perManDay')
+  const rows = brigade.state.data.rows.filter(r => r.man_days > 0)
+  if (!perManDayCanvas.value || !rows.length) return
+  const sorted = [...rows].sort((a, b) => (b.per_man_day ?? 0) - (a.per_man_day ?? 0))
+  charts.perManDay = new Chart(perManDayCanvas.value, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(r => r.brigade),
+      datasets: [{ label: 'Заявок на человеко-день', data: sorted.map(r => r.per_man_day), backgroundColor: C.blue }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } },
+    },
+  })
+}
+
+function buildTerritory() {
+  destroy('territory')
+  const rows = territoryRows.value
+  if (!territoryCanvas.value || !rows.length) return
+  const useTotal = territoryMode.value === 'total'
+  charts.territory = new Chart(territoryCanvas.value, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [{
+        label: useTotal ? 'Заявок' : 'Заявок на 100 адресов',
+        data: rows.map(r => useTotal ? r.total : (r.per100 ?? 0)),
+        backgroundColor: C.blue,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } },
     },
   })
 }
@@ -545,9 +571,8 @@ function buildCallcenter() {
 
 function buildForTab(tab) {
   nextTick(() => {
-    if (tab === 'brigade')      buildBrigade()
+    if (tab === 'brigade')      { buildBrigade(); buildPerManDay() }
     if (tab === 'territory')    buildTerritory()
-    if (tab === 'deadlines')    buildDeadline()
     if (tab === 'distribution') buildDistribution()
     if (tab === 'callcenter')   buildCallcenter()
   })
@@ -556,7 +581,6 @@ function buildForTab(tab) {
 function ensureLoadedForTab(tab) {
   if (tab === 'brigade')      brigade.ensureLoaded()
   if (tab === 'territory')    territory.ensureLoaded()
-  if (tab === 'deadlines')    deadlines.ensureLoaded()
   if (tab === 'callcenter')   callcenter.ensureLoaded()
   if (tab === 'distribution') ensureDistributionLoaded()
 }
@@ -568,9 +592,9 @@ function switchTab(id) {
 }
 
 // Перестраивать график вкладки при каждом новом ответе сервера (смена диапазона)
-watch(() => brigade.state.data,    () => nextTick(buildBrigade))
+watch(() => brigade.state.data,    () => nextTick(() => { buildBrigade(); buildPerManDay() }))
 watch(() => territory.state.data,  () => nextTick(buildTerritory))
-watch(() => deadlines.state.data,  () => nextTick(buildDeadline))
+watch(territoryMode,               () => nextTick(buildTerritory))
 watch(() => callcenter.state.data, () => nextTick(buildCallcenter))
 watch(() => distributionState.data, () => nextTick(buildDistribution))
 
