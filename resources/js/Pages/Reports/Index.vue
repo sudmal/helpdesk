@@ -149,7 +149,7 @@
     <!-- Распределение по дням -->
     <div v-show="activeTab === 'distribution'" class="p-4 space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <RangePicker :range="distribution" />
+        <RangePicker :range="distribution" :modes="['month', 'quarter', 'period']" />
         <select v-model="distTerritory"
                 class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">Все территории</option>

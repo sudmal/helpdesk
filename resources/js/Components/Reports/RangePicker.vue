@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-wrap items-center gap-3 mb-4">
     <div class="flex bg-gray-100 rounded-xl p-1 gap-0.5">
-      <button v-for="m in periodModes" :key="m.key" @click="range.setMode(m.key)"
+      <button v-for="m in visibleModes" :key="m.key" @click="range.setMode(m.key)"
               :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                        range.state.periodMode === m.key
                          ? 'bg-white shadow text-gray-800'
@@ -37,13 +37,26 @@
 </template>
 
 <script setup>
-defineProps({ range: { type: Object, required: true } })
+import { computed } from 'vue'
 
-const periodModes = [
+const props = defineProps({
+  range: { type: Object, required: true },
+  // Какие кнопки периода показывать — по умолчанию все. Например, для
+  // отчётов, где группировка идёт по числу месяца/дню недели, "День" и
+  // "Неделя" не дают осмысленной агрегации (2026-09-11).
+  modes: {
+    type: Array,
+    default: () => ['day', 'week', 'month', 'quarter', 'period'],
+  },
+})
+
+const allModes = [
   { key: 'day',     label: 'День' },
   { key: 'week',    label: 'Неделя' },
   { key: 'month',   label: 'Месяц' },
   { key: 'quarter', label: 'Квартал' },
   { key: 'period',  label: 'Период' },
 ]
+
+const visibleModes = computed(() => allModes.filter(m => props.modes.includes(m.key)))
 </script>
