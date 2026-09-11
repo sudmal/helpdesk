@@ -148,6 +148,14 @@
 
     <!-- Распределение по дням -->
     <div v-show="activeTab === 'distribution'" class="p-4 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <RangePicker :range="distribution" />
+        <select v-model="distTerritory"
+                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Все территории</option>
+          <option v-for="t in territories" :key="t.id" :value="t.id">{{ t.name }}</option>
+        </select>
+      </div>
       <div class="bg-white rounded-xl border border-gray-200 p-4">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-gray-600">Распределение заявок по типу обращения</h2>
@@ -164,14 +172,14 @@
             </button>
           </div>
         </div>
-        <div v-if="!distributionState.loaded" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
+        <div v-if="!distribution.state.loaded" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
         <div v-else-if="!hasDistData" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
         <canvas v-else ref="distributionCanvas" style="max-height:380px" />
       </div>
 
       <!-- Легенда / итоговая таблица -->
       <div v-if="hasDistData" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Итого за текущий месяц</div>
+        <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">Итого за период</div>
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -249,14 +257,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Head } from '@inertiajs/vue3'
-import axios from 'axios'
 import Chart from 'chart.js/auto'
 Chart.defaults.animation = false
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
 import { useReportRange } from '@/Composables/useReportRange'
+
+defineProps({
+  territories: { type: Array, default: () => [] },
+})
 
 const tabs = [
   { id: 'brigade',      label: 'Эффективность бригад' },
@@ -276,14 +287,18 @@ const callcenter = useReportRange('reports.call-stats',          { hours: [], su
 
 const territoryMode = ref('total') // 'total' | 'per100'
 
-// ── Распределение по дням: без выбора диапазона, фиксированный период (текущий месяц) ──
+// ── Распределение по дням: свой диапазон дат (2026-09-11, раньше был жёстко
+// зашит текущий месяц) + необязательный фильтр по территории. По умолчанию —
+// квартал, чтобы "По дням месяца" сразу показывал честную агрегацию по
+// числам месяца, а не по сути посуточный график одного месяца.
 const distMode = ref('day') // 'day' | 'weekday'
-const distributionState = reactive({
-  data: { byDay: { labels: [], datasets: [] }, byWeekday: { labels: [], datasets: [] } },
-  loaded: false,
-})
-
-function toIso(d) { return d.toISOString().split('T')[0] }
+const distTerritory = ref('') // '' = все территории
+const distribution = useReportRange(
+  'reports.distribution',
+  { byDay: { labels: [], datasets: [] }, byWeekday: { labels: [], datasets: [] } },
+  () => (distTerritory.value ? { territory_id: distTerritory.value } : {})
+)
+distribution.state.periodMode = 'quarter'
 
 function formatMoney(v) {
   return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(v || 0)
@@ -292,16 +307,6 @@ function formatMoney(v) {
 function pctColor(pct) {
   if (pct == null) return 'text-gray-400'
   return pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-yellow-500' : 'text-red-500'
-}
-
-async function ensureDistributionLoaded() {
-  if (distributionState.loaded) return
-  const now = new Date()
-  const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const to = toIso(now)
-  const res = await axios.get(route('reports.distribution'), { params: { from, to } })
-  distributionState.data = res.data
-  distributionState.loaded = true
 }
 
 const brigadeCanvas      = ref(null)
@@ -335,7 +340,7 @@ const totalTerritory = computed(() =>
 )
 
 const currentDistData = computed(() =>
-  distMode.value === 'day' ? distributionState.data.byDay : distributionState.data.byWeekday
+  distMode.value === 'day' ? distribution.state.data.byDay : distribution.state.data.byWeekday
 )
 
 const hasDistData = computed(() =>
@@ -582,7 +587,7 @@ function ensureLoadedForTab(tab) {
   if (tab === 'brigade')      brigade.ensureLoaded()
   if (tab === 'territory')    territory.ensureLoaded()
   if (tab === 'callcenter')   callcenter.ensureLoaded()
-  if (tab === 'distribution') ensureDistributionLoaded()
+  if (tab === 'distribution') distribution.ensureLoaded()
 }
 
 function switchTab(id) {
@@ -596,7 +601,8 @@ watch(() => brigade.state.data,    () => nextTick(() => { buildBrigade(); buildP
 watch(() => territory.state.data,  () => nextTick(buildTerritory))
 watch(territoryMode,               () => nextTick(buildTerritory))
 watch(() => callcenter.state.data, () => nextTick(buildCallcenter))
-watch(() => distributionState.data, () => nextTick(buildDistribution))
+watch(() => distribution.state.data, () => nextTick(buildDistribution))
+watch(distTerritory, () => distribution.refresh())
 
 onMounted(() => {
   ensureLoadedForTab(activeTab.value)

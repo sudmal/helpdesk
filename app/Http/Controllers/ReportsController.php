@@ -11,7 +11,9 @@ class ReportsController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Reports/Index');
+        return Inertia::render('Reports/Index', [
+            'territories' => DB::table('territories')->orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     private function parseRange(Request $request): array
@@ -53,7 +55,8 @@ class ReportsController extends Controller
     public function distributionData(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
-        return response()->json($this->distribution($from, $to));
+        $territoryId = $request->filled('territory_id') ? (int)$request->get('territory_id') : null;
+        return response()->json($this->distribution($from, $to, $territoryId));
     }
 
     public function callStatsData(Request $request)
@@ -267,26 +270,39 @@ class ReportsController extends Controller
         ];
     }
 
-    private function distribution(Carbon $from, Carbon $to): array
+    /**
+     * Распределение заявок по типу обращения (2026-09-11: добавлен выбор
+     * периода — раньше вкладка была жёстко на текущий месяц, из-за чего
+     * "По дням месяца" внутри одного месяца ничего фактически не
+     * агрегировало, каждое число месяца встречалось ровно один раз; теперь
+     * при периоде шире месяца это честная агрегация по числам месяца. Плюс
+     * необязательный фильтр по территории.
+     */
+    private function distribution(Carbon $from, Carbon $to, ?int $territoryId = null): array
     {
         $serviceTypes = DB::table('service_types')
             ->where('is_active', 1)
             ->orderBy('sort_order')
             ->get(['id', 'name', 'color']);
 
-        $byDayRaw = DB::table('tickets as t')
-            ->whereBetween('t.created_at', [$from, $to])
-            ->whereNull('t.deleted_at')
-            ->whereNotNull('t.service_type_id')
+        $applyFilters = function ($query) use ($from, $to, $territoryId) {
+            $query->whereBetween('t.created_at', [$from, $to])
+                ->whereNull('t.deleted_at')
+                ->whereNotNull('t.service_type_id');
+            if ($territoryId) {
+                $query->join('addresses as addr', 't.address_id', '=', 'addr.id')
+                    ->where('addr.territory_id', $territoryId);
+            }
+            return $query;
+        };
+
+        $byDayRaw = $applyFilters(DB::table('tickets as t'))
             ->selectRaw('t.service_type_id, DAY(t.created_at) as day, COUNT(*) as cnt')
             ->groupBy('t.service_type_id', DB::raw('DAY(t.created_at)'))
             ->get()
             ->groupBy('service_type_id');
 
-        $byDowRaw = DB::table('tickets as t')
-            ->whereBetween('t.created_at', [$from, $to])
-            ->whereNull('t.deleted_at')
-            ->whereNotNull('t.service_type_id')
+        $byDowRaw = $applyFilters(DB::table('tickets as t'))
             ->selectRaw('t.service_type_id, DAYOFWEEK(t.created_at) as dow, COUNT(*) as cnt')
             ->groupBy('t.service_type_id', DB::raw('DAYOFWEEK(t.created_at)'))
             ->get()
