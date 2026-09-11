@@ -468,10 +468,13 @@ class ReportsController extends Controller
             $missRate         = $r->calls_sum > 0 ? round(100 * $r->missed_sum / $r->calls_sum, 1) : 0;
             $overloadPct      = round(100 * $r->overload_days / $days, 1);
 
+            // "Избыток" не применим при 1 операторе — это обязательный дежурный
+            // минимум (ночью всегда должен быть хотя бы один), сокращать
+            // дальше некуда физически, независимо от того, насколько тихо.
             $verdict = 'balanced';
             if ($overloadPct >= 25) {
                 $verdict = 'understaffed';
-            } elseif ($baseline !== null && $callsPerOperator <= 0.4 * $baseline && $overloadPct == 0) {
+            } elseif ($avgOperators >= 2 && $baseline !== null && $callsPerOperator <= 0.4 * $baseline && $overloadPct == 0) {
                 $verdict = 'overstaffed';
             }
 
