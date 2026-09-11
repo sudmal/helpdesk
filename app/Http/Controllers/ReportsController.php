@@ -65,6 +65,12 @@ class ReportsController extends Controller
         return response()->json($this->callStats($from, $to));
     }
 
+    public function operatorLoadData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        return response()->json($this->operatorLoad($from, $to));
+    }
+
     /**
      * Сводный отчёт по бригадам (2026-09-11, заменил разрозненные "Нагрузка
      * бригад" + "Соблюдение сроков"): закрытые заявки, сроки, расход
@@ -396,6 +402,96 @@ class ReportsController extends Controller
                 'peak_hour'   => $peakHour  ? $peakHour['hour']  : null,
                 'worst_hour'  => $worstHour ? $worstHour['hour'] : null,
             ],
+        ];
+    }
+
+    /**
+     * Оптимизация расписания операторов (2026-09-12) — для планирования смен
+     * ТП нужна не картина одного дня, а типичная нагрузка на оператора по
+     * часам суток за длительный период. Намеренно отдельный от callStats()
+     * источник (его трогать нельзя — см. память project-reports-redesign):
+     * здесь усреднение по дням честное (AVG), а не MAX как в почасовой
+     * таблице выше, потому что там MAX оправдан для "что видели хотя бы
+     * раз", а тут важна типичная, а не пиковая картина.
+     *
+     * Вердикт по часу — эвристика, не точная модель: "не хватает", если
+     * очередь превышала число операторов на линии минимум в четверти дней
+     * этого часа; "возможен избыток", если нагрузка на оператора (звонков/
+     * оператора) заметно ниже среднечасовой по периоду и перегрузок не
+     * было вовсе. Финальное решение по расписанию — за человеком.
+     */
+    private function operatorLoad(Carbon $from, Carbon $to): array
+    {
+        $rows = DB::table('call_daily_stats')
+            ->whereBetween('stat_date', [$from->toDateString(), $to->toDateString()])
+            ->selectRaw('
+                hour,
+                COUNT(*) as days,
+                ROUND(AVG(avg_operators), 2) as avg_operators,
+                ROUND(AVG(total_calls), 2) as avg_calls,
+                SUM(total_calls) as calls_sum,
+                SUM(missed) as missed_sum,
+                SUM(CASE WHEN avg_operators > 0 AND max_queue_depth > avg_operators THEN 1 ELSE 0 END) as overload_days
+            ')
+            ->groupBy('hour')
+            ->orderBy('hour')
+            ->get()
+            ->keyBy('hour');
+
+        // Среднечасовая нагрузка на оператора по всем часам с операторами —
+        // точка отсчёта, относительно которой час считается "тихим".
+        $ratios = [];
+        foreach ($rows as $r) {
+            if ((float)$r->avg_operators > 0) {
+                $ratios[] = (float)$r->avg_calls / (float)$r->avg_operators;
+            }
+        }
+        $baseline = count($ratios) > 0 ? array_sum($ratios) / count($ratios) : null;
+
+        $hours = [];
+        for ($h = 0; $h < 24; $h++) {
+            $r = $rows->get($h);
+            $days = $r ? (int)$r->days : 0;
+
+            if ($days === 0 || (float)$r->avg_operators <= 0) {
+                $hours[] = [
+                    'hour' => $h, 'days' => $days, 'avg_operators' => null, 'avg_calls' => null,
+                    'calls_per_operator' => null, 'miss_rate' => null, 'overload_pct' => null,
+                    'verdict' => 'no_data',
+                ];
+                continue;
+            }
+
+            $avgOperators     = (float)$r->avg_operators;
+            $avgCalls         = (float)$r->avg_calls;
+            $callsPerOperator = round($avgCalls / $avgOperators, 2);
+            $missRate         = $r->calls_sum > 0 ? round(100 * $r->missed_sum / $r->calls_sum, 1) : 0;
+            $overloadPct      = round(100 * $r->overload_days / $days, 1);
+
+            $verdict = 'balanced';
+            if ($overloadPct >= 25) {
+                $verdict = 'understaffed';
+            } elseif ($baseline !== null && $callsPerOperator <= 0.4 * $baseline && $overloadPct == 0) {
+                $verdict = 'overstaffed';
+            }
+
+            $hours[] = [
+                'hour'               => $h,
+                'days'               => $days,
+                'avg_operators'      => round($avgOperators, 1),
+                'avg_calls'          => round($avgCalls, 1),
+                'calls_per_operator' => $callsPerOperator,
+                'miss_rate'          => $missRate,
+                'overload_pct'       => $overloadPct,
+                'verdict'            => $verdict,
+            ];
+        }
+
+        return [
+            'hours'        => $hours,
+            'baseline'     => $baseline !== null ? round($baseline, 2) : null,
+            'understaffed' => array_values(array_filter($hours, fn($h) => $h['verdict'] === 'understaffed')),
+            'overstaffed'  => array_values(array_filter($hours, fn($h) => $h['verdict'] === 'overstaffed')),
         ];
     }
 

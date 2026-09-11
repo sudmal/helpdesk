@@ -203,6 +203,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['auth', 'active'])->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
     Route::middleware('can:manage-settings')->get('/reports/distribution', [App\Http\Controllers\ReportsController::class, 'distributionData'])->name('reports.distribution');
     Route::middleware('can:manage-settings')->get('/reports/call-stats', [App\Http\Controllers\ReportsController::class, 'callStatsData'])->name('reports.call-stats');
+    Route::middleware('can:manage-settings')->get('/reports/operator-load', [App\Http\Controllers\ReportsController::class, 'operatorLoadData'])->name('reports.operator-load');
     Route::middleware(['auth', 'active'])->prefix('acts')->name('acts.')->group(function () {
         Route::get('/', [App\Http\Controllers\ActController::class, 'index'])->name('index');
         Route::get('/{act}', [App\Http\Controllers\ActController::class, 'show'])->name('show');

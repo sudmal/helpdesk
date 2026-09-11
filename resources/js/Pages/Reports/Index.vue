@@ -249,6 +249,66 @@
         </table>
         </div>
       </div>
+
+      <!-- Оптимизация расписания операторов (2026-09-12) — отдельный блок со
+           своим диапазоном дат, не связан с таблицей выше ни данными, ни кодом. -->
+      <div class="pt-2 border-t border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-700 mb-1">Оптимизация расписания операторов</h2>
+        <p class="text-xs text-gray-400 mb-3">Типичная нагрузка на оператора по часам суток за длительный период — где стоит усилить смену, а где людей обычно больше, чем нужно. Это эвристика по фактическим звонкам за период, не готовое решение — финальное слово за вами.</p>
+        <RangePicker :range="staffing" :modes="['month', 'quarter', 'period']" />
+
+        <div v-if="staffing.state.data.understaffed.length || staffing.state.data.overstaffed.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div class="bg-red-50 border border-red-200 rounded-xl p-3">
+            <div class="text-xs font-semibold text-red-700 mb-1">Не хватает операторов</div>
+            <div class="text-sm text-red-600">{{ staffing.state.data.understaffed.length ? staffing.state.data.understaffed.map(h => String(h.hour).padStart(2,'0') + ':00').join(', ') : '—' }}</div>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <div class="text-xs font-semibold text-blue-700 mb-1">Возможен избыток</div>
+            <div class="text-sm text-blue-600">{{ staffing.state.data.overstaffed.length ? staffing.state.data.overstaffed.map(h => String(h.hour).padStart(2,'0') + ':00').join(', ') : '—' }}</div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
+          <div v-if="staffing.state.loading" class="text-center py-10 text-gray-400 text-sm">Загрузка…</div>
+          <div v-else-if="!staffing.state.data.hours.some(h => h.days > 0)" class="text-center py-10 text-gray-400 text-sm">Нет данных за выбранный период</div>
+          <template v-else>
+            <h3 class="text-xs font-semibold text-gray-500 mb-3">Звонков на оператора по часам</h3>
+            <canvas ref="staffingCanvas" style="max-height:240px" />
+          </template>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mt-3">
+          <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
+              <th class="text-left px-3 py-2.5">Час</th>
+              <th class="text-right px-3 py-2.5">Дней с данными</th>
+              <th class="text-right px-3 py-2.5">Ср. операторов</th>
+              <th class="text-right px-3 py-2.5">Ср. звонков</th>
+              <th class="text-right px-3 py-2.5">Звонков/оператора</th>
+              <th class="text-right px-3 py-2.5">Пропуск %</th>
+              <th class="text-right px-3 py-2.5">% дней с перегрузкой</th>
+              <th class="text-left px-3 py-2.5">Вывод</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-if="!staffing.state.data.hours.some(h => h.days > 0)"><td colspan="8" class="text-center py-4 text-gray-400 text-xs">—</td></tr>
+              <tr v-for="h in staffing.state.data.hours.filter(h => h.days > 0)" :key="h.hour" class="hover:bg-gray-50">
+                <td class="px-3 py-1.5 font-medium text-gray-700 tabular-nums">{{ String(h.hour).padStart(2,'0') }}:00</td>
+                <td class="px-3 py-1.5 text-right tabular-nums text-gray-500">{{ h.days }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums">{{ h.avg_operators }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums">{{ h.avg_calls }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums font-medium">{{ h.calls_per_operator ?? '—' }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums">{{ h.miss_rate }}%</td>
+                <td class="px-3 py-1.5 text-right tabular-nums">{{ h.overload_pct }}%</td>
+                <td class="px-3 py-1.5">
+                  <span :class="['px-1.5 py-0.5 rounded text-xs font-medium', verdictClass(h.verdict)]">{{ verdictLabel(h.verdict) }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     </div><!-- end reports card -->
@@ -285,6 +345,32 @@ const brigade    = useReportRange('reports.brigade-efficiency',  { rows: [], sum
 const territory  = useReportRange('reports.territory-frequency', { labels: [], values: [], addresses: [], per100: [] })
 const callcenter = useReportRange('reports.call-stats',          { hours: [], summary: {} })
 
+// ── Оптимизация расписания операторов: отдельный от callcenter источник —
+// не трогает существующий отчёт по звонкам ни данными, ни диапазоном дат.
+// По умолчанию квартал — на дне/неделе картина по часам суток статистически
+// не показательна для планирования смен.
+const staffing = useReportRange('reports.operator-load', {
+  hours: Array.from({ length: 24 }, (_, h) => ({
+    hour: h, days: 0, avg_operators: null, avg_calls: null,
+    calls_per_operator: null, miss_rate: null, overload_pct: null, verdict: 'no_data',
+  })),
+  baseline: null, understaffed: [], overstaffed: [],
+})
+staffing.state.periodMode = 'quarter'
+
+function verdictLabel(v) {
+  return { understaffed: 'Не хватает', overstaffed: 'Возможен избыток', balanced: 'Норма', no_data: 'Нет данных' }[v] || '—'
+}
+
+function verdictClass(v) {
+  return {
+    understaffed: 'bg-red-100 text-red-700',
+    overstaffed:  'bg-blue-100 text-blue-700',
+    balanced:     'bg-green-100 text-green-700',
+    no_data:      'bg-gray-100 text-gray-500',
+  }[v] || 'bg-gray-100 text-gray-500'
+}
+
 const territoryMode = ref('total') // 'total' | 'per100'
 
 // ── Распределение по дням: свой диапазон дат (2026-09-11, раньше был жёстко
@@ -314,6 +400,7 @@ const perManDayCanvas    = ref(null)
 const territoryCanvas    = ref(null)
 const distributionCanvas = ref(null)
 const callcenterCanvas   = ref(null)
+const staffingCanvas     = ref(null)
 const callcenterCanvas2  = ref(null)
 
 const charts = {}
@@ -574,19 +661,56 @@ function buildCallcenter() {
   }
 }
 
+function buildStaffing() {
+  destroy('staffing')
+  const hours = staffing.state.data.hours.filter(h => h.days > 0)
+  if (!staffingCanvas.value || !hours.length) return
+  const verdictColor = { understaffed: '#ef4444', overstaffed: '#3b82f6', balanced: '#22c55e', no_data: '#d1d5db' }
+  charts.staffing = new Chart(staffingCanvas.value, {
+    type: 'bar',
+    data: {
+      labels: hours.map(h => String(h.hour).padStart(2, '0') + ':00'),
+      datasets: [{
+        label: 'Звонков на оператора',
+        data: hours.map(h => h.calls_per_operator ?? 0),
+        backgroundColor: hours.map(h => verdictColor[h.verdict] || '#9ca3af'),
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const h = hours[ctx.dataIndex]
+              return [
+                `Звонков/оператора: ${h.calls_per_operator ?? '—'}`,
+                `Ср. операторов: ${h.avg_operators}`,
+                `Перегрузка: ${h.overload_pct}% дней`,
+              ]
+            },
+          },
+        },
+      },
+      scales: { x: { ticks: { maxRotation: 0 } }, y: { beginAtZero: true } },
+    },
+  })
+}
+
 function buildForTab(tab) {
   nextTick(() => {
     if (tab === 'brigade')      { buildBrigade(); buildPerManDay() }
     if (tab === 'territory')    buildTerritory()
     if (tab === 'distribution') buildDistribution()
-    if (tab === 'callcenter')   buildCallcenter()
+    if (tab === 'callcenter')   { buildCallcenter(); buildStaffing() }
   })
 }
 
 function ensureLoadedForTab(tab) {
   if (tab === 'brigade')      brigade.ensureLoaded()
   if (tab === 'territory')    territory.ensureLoaded()
-  if (tab === 'callcenter')   callcenter.ensureLoaded()
+  if (tab === 'callcenter')   { callcenter.ensureLoaded(); staffing.ensureLoaded() }
   if (tab === 'distribution') distribution.ensureLoaded()
 }
 
@@ -601,6 +725,7 @@ watch(() => brigade.state.data,    () => nextTick(() => { buildBrigade(); buildP
 watch(() => territory.state.data,  () => nextTick(buildTerritory))
 watch(territoryMode,               () => nextTick(buildTerritory))
 watch(() => callcenter.state.data, () => nextTick(buildCallcenter))
+watch(() => staffing.state.data,   () => nextTick(buildStaffing))
 watch(() => distribution.state.data, () => nextTick(buildDistribution))
 watch(distTerritory, () => distribution.refresh())
 
