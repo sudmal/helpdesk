@@ -133,7 +133,40 @@ protected $fillable = [
     }
 
     // === Helpers ===
-    public static function generateNumber(?string $serviceTypeName = null): string
+
+    /**
+     * Номер заявки (2026-09-12): <буква участка>-YYMMDDNNN — буква как и
+     * раньше (i/c/Т по участку), дальше ДАТА (6 знаков) + порядковый номер
+     * ЗА ЭТОТ ДЕНЬ в рамках этой буквы (3 знака, свой счётчик на каждый
+     * день и каждую букву — обнуляется каждые сутки). Раньше номер был
+     * просто сквозным счётчиком без даты (например "i-022722") — старые
+     * номера НЕ переименовываются, продолжают существовать как есть,
+     * новая схема действует только для новых номеров.
+     *
+     * Формат сознательно копирует ту же идею, что уже была у номеров
+     * актов (см. Act::nextNumberForPrefix()) — акт для обычной заявки
+     * теперь СВОЙ номер не генерирует вовсе, а берёт готовый номер заявки
+     * (см. TicketController::close()) — вот ради чего вся эта миграция и
+     * затевалась: монтажник видит номер сразу при назначении заявки, не
+     * дожидаясь закрытия. Буква типа акта (ремонт/обычный) из номера
+     * убрана целиком — тип остаётся обычным полем на самом акте, просто
+     * больше не кодируется в строке номера.
+     *
+     * Счётчик — 3 знака (000-999), не 2 как у акта: у акта нагрузка
+     * дополнительно делилась на "ремонт"/"обычный" по отдельным счётчикам,
+     * у заявки такого деления нет и не будет — весь дневной объём идёт
+     * через один общий счётчик буквы участка. Проверено по истории на
+     * реальных данных 2026-09-12: префикс "i" разгонялся до 95 заявок в
+     * день — 2 знака (потолок 99) не дали бы нужного запаса.
+     *
+     * $date — дата, от которой считается число в номере. По умолчанию
+     * сегодня (обычное создание заявки). При смене участка на уже
+     * СУЩЕСТВУЮЩЕЙ заявке (см. TicketController::update()) сюда нужно
+     * передавать дату СОЗДАНИЯ этой заявки, а не сегодняшнюю — номер мог
+     * уже быть показан/напечатан абоненту, и он не должен "переехать"
+     * задним числом на день правки.
+     */
+    public static function generateNumber(?string $serviceTypeName = null, ?\Carbon\Carbon $date = null): string
     {
         // Определяем префикс по направлению
         if ($serviceTypeName) {
@@ -149,25 +182,79 @@ protected $fillable = [
             $prefix = 'Т';
         }
 
-        // Берём максимальный номер с этим префиксом и увеличиваем
+        return static::nextNumberForPrefix($prefix, $date ?? now());
+    }
+
+    /**
+     * lockForUpdate() защищает от гонки только внутри активной транзакции
+     * (см. Ticket::createWithGeneratedNumber() / updateWithGeneratedNumber()
+     * ниже, где это гарантировано) — без транзакции блокировка снимается
+     * сразу после SELECT. Приём — тот же, что у Act::nextNumberForPrefix(),
+     * уже проверен в бою на конкурентных закрытиях актов.
+     */
+    private static function nextNumberForPrefix(string $prefix, \Carbon\Carbon $date): string
+    {
+        $searchPrefix = $prefix . '-' . $date->format('ymd');
+        $searchLen    = mb_strlen($searchPrefix);
+
         $lastNumber = static::withTrashed()
-            ->where('number', 'LIKE', $prefix . '-%')
-            ->orderByRaw('CAST(SUBSTRING(number, ' . (strlen($prefix) + 2) . ') AS UNSIGNED) DESC')
+            ->where('number', 'LIKE', $searchPrefix . '%')
+            ->orderByRaw('CAST(SUBSTRING(number, ' . ($searchLen + 1) . ') AS UNSIGNED) DESC')
+            ->lockForUpdate()
             ->value('number');
 
-        if ($lastNumber) {
-            $lastNum = (int) substr($lastNumber, strlen($prefix) + 1);
-        } else {
-            $lastNum = 0;
-        }
+        $lastNum = $lastNumber ? (int) mb_substr($lastNumber, $searchLen) : 0;
 
-        // Ищем первый свободный номер начиная с lastNum+1
         $candidate = $lastNum + 1;
-        while (static::withTrashed()->where('number', $prefix . '-' . str_pad($candidate, 6, '0', STR_PAD_LEFT))->exists()) {
+        while (static::withTrashed()->where('number', $searchPrefix . str_pad($candidate, 3, '0', STR_PAD_LEFT))->exists()) {
             $candidate++;
         }
 
-        return $prefix . '-' . str_pad($candidate, 6, '0', STR_PAD_LEFT);
+        return $searchPrefix . str_pad($candidate, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Создать заявку с автогенерированным номером устойчиво к гонке
+     * параллельных созданий — аналог Act::createWithGeneratedNumber().
+     * lockForUpdate() внутри $numberResolver защищает обычный случай (есть
+     * что блокировать), retry здесь — редкий случай "первая заявка дня с
+     * этой буквой", когда блокировать ещё нечего.
+     */
+    public static function createWithGeneratedNumber(array $data, \Closure $numberResolver, int $maxAttempts = 5): self
+    {
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return static::create($data + ['number' => $numberResolver()]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($e->getCode() !== '23000' || $attempt === $maxAttempts) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Регенерация номера при смене участка на уже существующей заявке —
+     * та же связка блокировка+retry, но для update(), а не create().
+     * Оборачивает и генерацию, и сохранение в одну транзакцию: без этого
+     * lockForUpdate() внутри $numberResolver защитил бы только SELECT, а
+     * блокировка снялась бы ДО записи нового номера.
+     */
+    public static function updateWithGeneratedNumber(self $ticket, array $data, \Closure $numberResolver, int $maxAttempts = 5): self
+    {
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $data, $numberResolver) {
+                    $data['number'] = $numberResolver();
+                    $ticket->update($data);
+                    return $ticket;
+                });
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($e->getCode() !== '23000' || $attempt === $maxAttempts) {
+                    throw $e;
+                }
+            }
+        }
     }
 
     public function isClosed(): bool

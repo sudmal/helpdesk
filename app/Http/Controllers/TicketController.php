@@ -345,10 +345,19 @@ class TicketController extends Controller
             $serviceTypeName = $newServiceTypeId
                 ? ServiceType::find($newServiceTypeId)?->name
                 : null;
-            // Просто переставить префикс на тот же числовой хвост нельзя --
-            // номер с этим префиксом мог уже быть занят другой заявкой
-            // (падение с tickets_number_unique). Генератор ищет свободный номер.
-            $data['number'] = Ticket::generateNumber($serviceTypeName);
+            // Просто переставить букву на тот же числовой хвост нельзя --
+            // номер с этой буквой за эту дату мог уже быть занят другой
+            // заявкой (упадёт tickets_number_unique). Генератор ищет
+            // свободный номер сам. Дата в номере — дата СОЗДАНИЯ этой
+            // заявки (ticket->created_at), не сегодняшняя: номер мог уже
+            // быть показан/напечатан абоненту монтажником в поле, он не
+            // должен "переехать" задним числом на день правки участка.
+            Ticket::updateWithGeneratedNumber(
+                $ticket,
+                $data,
+                fn() => Ticket::generateNumber($serviceTypeName, $ticket->created_at)
+            );
+            return redirect()->route('tickets.show', $ticket)->with('success', 'Заявка обновлена');
         }
 
         $ticket->update($data);
@@ -447,7 +456,11 @@ class TicketController extends Controller
                     'promotion_id'    => $promotion?->id,
                     'promotion_name'  => $promotion?->name,
                     'promotion_price' => $promotion?->price,
-                ], fn() => \App\Models\Act::generateNumber($ticket, $request->act_type));
+                    // 2026-09-12: акт для обычной заявки больше не генерирует
+                    // свой номер — берёт готовый номер заявки (см.
+                    // Ticket::generateNumber()), тот виден монтажнику ещё до
+                    // выезда, не только в момент закрытия.
+                ], fn() => $ticket->number);
 
                 foreach ($materialsData as $item) {
                     if (empty($item['material_id']) || empty($item['quantity'])) continue;

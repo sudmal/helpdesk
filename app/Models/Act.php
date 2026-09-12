@@ -89,28 +89,11 @@ class Act extends Model
     public function subscriberDeptProcessor(): BelongsTo { return $this->belongsTo(User::class, 'subscriber_dept_processed_by'); }
     public function subscriberDeptCompleter(): BelongsTo { return $this->belongsTo(User::class, 'subscriber_dept_completed_by'); }
 
-    /**
-     * Номер акта: <буква участка заявки><буква типа акта>-YYMMDDNN.
-     * Буква участка — та же логика, что в Ticket::generateNumber() (i=интернет, c=КТВ, Т=прочее).
-     * Буква типа: r = обычный, v = ремонт/восстановление.
-     * Цифровая часть — см. nextNumberForPrefix().
-     */
-    public static function generateNumber(Ticket $ticket, string $type): string
-    {
-        $serviceTypeName = $ticket->serviceType?->name;
-        $lower = mb_strtolower((string) $serviceTypeName);
-        if (str_contains($lower, 'интернет') || str_contains($lower, 'inet')) {
-            $baseLetter = 'i';
-        } elseif (str_contains($lower, 'ктв') || str_contains($lower, 'ctv') || str_contains($lower, 'кабел')) {
-            $baseLetter = 'c';
-        } else {
-            $baseLetter = 'Т';
-        }
-
-        $typeLetter = $type === 'repair' ? 'v' : 'r';
-
-        return static::nextNumberForPrefix($baseLetter . $typeLetter);
-    }
+    // generateNumber(Ticket, type) убран (2026-09-12) — акт обычной заявки
+    // больше не генерирует свой номер, а берёт готовый номер заявки
+    // (см. Ticket::generateNumber() и TicketController::close()). Буква
+    // типа акта (r/v — обычный/ремонт) из номера ушла вместе с этим —
+    // тип остаётся обычным полем Act::type, просто не кодируется в строке.
 
     /**
      * Номер акта для заявки на подключение: <in|cn>-YYMMDDNN — буквенный префикс

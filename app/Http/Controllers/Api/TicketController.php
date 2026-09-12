@@ -230,7 +230,10 @@ class TicketController extends Controller
                     'promotion_id'    => $promotion?->id,
                     'promotion_name'  => $promotion?->name,
                     'promotion_price' => $promotion?->price,
-                ], fn() => Act::generateNumber($ticket, $request->act_type));
+                    // 2026-09-12: акт больше не генерирует свой номер — берёт
+                    // готовый номер заявки (см. Ticket::generateNumber() и
+                    // тот же фикс в веб-TicketController::close()).
+                ], fn() => $ticket->number);
 
                 foreach ($request->materials as $item) {
                     $material = Material::find($item['material_id']);

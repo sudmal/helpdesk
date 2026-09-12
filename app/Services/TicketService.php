@@ -62,12 +62,11 @@ class TicketService
                 ? ServiceType::find($data['service_type_id'])?->name
                 : null;
 
-            $ticket = Ticket::create([
-                'number'     => Ticket::generateNumber($serviceTypeName),
+            $ticket = Ticket::createWithGeneratedNumber([
                 'status_id'  => $newStatus->id,
                 'created_by' => $creator->id,
                 ...$data,
-            ]);
+            ], fn() => Ticket::generateNumber($serviceTypeName));
 
             $loaded = $ticket->load(['address', 'type', 'status', 'brigade', 'creator']);
             // Геокодируем адрес если нет координат (defer — не блокирует ответ)
