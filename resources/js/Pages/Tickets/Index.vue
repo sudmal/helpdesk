@@ -115,7 +115,7 @@
                 <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded border-gray-300 cursor-pointer" />
               </th>
               <th class="w-5 px-1 py-0.5"></th>
-              <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-36 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
                 Добавлена <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
               </th>
@@ -131,7 +131,7 @@
                   @click="sortBy('status_id')">
                 Статус <span class="text-gray-400">{{ sortIcon('status_id') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-28 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-36 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('scheduled_at')">
                 Выезд <span class="text-gray-400">{{ sortIcon('scheduled_at') }}</span>
               </th>
@@ -560,8 +560,12 @@ function toggleDesc(id) {
 // карточке заявки (Tickets/Show.vue), иначе список из истории (страницы
 // в конце пагинации) выглядит так, будто все заявки за последние пару
 // недель, хотя реально может быть 2024 год.
+// 2-значный год (не 4, как в карточке заявки) -- здесь плотная таблица с
+// фиксированной шириной колонок, полный "2025" вместе с полным именем
+// месяца (dayjs-локаль ru отдаёт "июля", а не короткое "июл") уже не
+// помещался в колонку и обрезался внешней рамкой таблицы.
 function yearSuffix(d) {
-  return dayjs(d).year() === dayjs().year() ? '' : ' YYYY'
+  return dayjs(d).year() === dayjs().year() ? '' : ' \'YY'
 }
 
 function formatDate(d) {
