@@ -156,8 +156,11 @@ class TicketServiceTest extends TestCase
     /** @test */
     public function generate_number_format_is_correct(): void
     {
+        // 2026-09-12: формат сменился с "Т-NNNNNN" (сквозной счётчик) на
+        // "Т-YYMMDDNNN" (дата + 3-значный счётчик за день) — см. память
+        // project-ticket-act-number-unification и Ticket::generateNumber().
         $number = Ticket::generateNumber();
-        $this->assertMatchesRegularExpression('/^Т-\d{6}$/', $number);
+        $this->assertMatchesRegularExpression('/^Т-\d{9}$/', $number);
     }
 
     // ── Helper ────────────────────────────────────────────────────────────
