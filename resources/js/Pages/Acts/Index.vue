@@ -80,7 +80,7 @@
               <tr v-if="tab === 'active'">
                 <th class="px-2 py-1 text-left whitespace-nowrap">Создан</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Номер</th>
-                <th class="px-2 py-1 text-left whitespace-nowrap">Заявка</th>
+                <th class="px-2 py-1 text-right whitespace-nowrap">Сумма</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Адрес</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Тип</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Статус</th>
@@ -116,7 +116,7 @@
                     <span v-if="needsAck(row.act)" class="ml-1 text-red-600 font-bold"
                           title="Бригадир изменил состав акта — есть неподтверждённые изменения">(!)</span>
                   </td>
-                  <td class="px-2 py-1 whitespace-nowrap text-blue-600">{{ requestLabel(row.act) }}</td>
+                  <td class="px-2 py-1 whitespace-nowrap text-right font-medium">{{ amountLabel(row.act) }}</td>
                   <td class="px-2 py-1 whitespace-nowrap text-gray-600 max-w-[220px] truncate" :title="requestAddress(row.act)">{{ requestAddress(row.act) }}</td>
                   <td class="px-2 py-1 whitespace-nowrap">
                     <span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{{ typeLabel(row.act.type) }}</span>
@@ -278,6 +278,21 @@ const groupedRows = computed(() => {
 
 function materialsTotal(act) {
   return (act.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
+}
+
+// Сумма для вкладки "Активные" (2026-09-12, заменила противоречивую колонку
+// "Заявка" -- та у актов заявок на подключение показывала имя абонента
+// вместо номера, т.к. у заявок на подключение своего номера нет). Реальная
+// сумма материалов показывается всегда; если на акте акция -- абонент по
+// факту платит фиксированную акционную цену, а не сумму материалов (см.
+// ActController::show(), $amountDue = $act->promotion_price ?? $materialsTotal),
+// поэтому она дописывается в скобках как дополнительная информация.
+function amountLabel(act) {
+  const total = materialsTotal(act)
+  if (act.promotion_price != null) {
+    return `${total} ₽ (акция: ${Number(act.promotion_price).toFixed(2)} ₽)`
+  }
+  return `${total} ₽`
 }
 
 // Акт теперь бывает от заявки (ticket) ИЛИ от заявки на подключение
