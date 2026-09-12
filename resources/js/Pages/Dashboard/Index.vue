@@ -192,7 +192,7 @@
                   @click="sortBy('scheduled_at')">
                 Время {{ sortIcon('scheduled_at') }}
               </th>
-              <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100 w-20"
+              <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100 w-24"
                   @click="sortBy('number')">
                 № {{ sortIcon('number') }}
               </th>
@@ -203,7 +203,7 @@
                   @click="sortBy('status_id')">
                 Статус {{ sortIcon('status_id') }}
               </th>
-              <th class="px-2 py-1.5 text-left text-gray-500 w-16">Акт</th>
+              <th class="px-2 py-1.5 text-left text-gray-500 w-20">Акт</th>
               <th class="px-2 py-1.5 text-left text-gray-500 w-20">Комментарий</th>
               <th class="px-2 py-1.5 w-20"></th>
             </tr>
@@ -424,7 +424,7 @@
                      class="rounded border-red-300 cursor-pointer" />
             </td>
             <td class="pl-1 pr-1 py-px text-center w-6">{{ serviceIcon(t.service_type?.name) }}</td>
-            <td class="px-3 py-px w-20">
+            <td class="px-3 py-px w-24">
               <span class="font-mono text-red-700 font-medium">{{ t.number }}</span>
             </td>
             <td class="px-3 py-px">
@@ -458,7 +458,7 @@
               @click="router.visit(route('connection-requests.index', { open: c.id }))">
             <td class="pl-2 pr-0 py-px text-center w-7"></td>
             <td class="pl-1 pr-1 py-px text-center w-6">🔌</td>
-            <td class="px-3 py-px w-20">
+            <td class="px-3 py-px w-24">
               <span class="font-mono text-blue-700 font-medium">—</span>
             </td>
             <td class="px-3 py-px">

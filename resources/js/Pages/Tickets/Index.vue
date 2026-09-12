@@ -115,11 +115,11 @@
                 <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded border-gray-300 cursor-pointer" />
               </th>
               <th class="w-5 px-1 py-0.5"></th>
-              <th class="text-left px-2 py-0.5 w-24 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-28 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('created_at')">
                 Добавлена <span class="text-gray-400">{{ sortIcon('created_at') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 w-16 cursor-pointer hover:text-gray-800 select-none"
+              <th class="text-left px-2 py-0.5 w-24 cursor-pointer hover:text-gray-800 select-none"
                   @click="sortBy('number')">
                 № <span class="text-gray-400">{{ sortIcon('number') }}</span>
               </th>
@@ -556,9 +556,17 @@ function toggleDesc(id) {
   expandedDesc.value = s
 }
 
+// Год показываем только если он не текущий — тот же приём, что и в
+// карточке заявки (Tickets/Show.vue), иначе список из истории (страницы
+// в конце пагинации) выглядит так, будто все заявки за последние пару
+// недель, хотя реально может быть 2024 год.
+function yearSuffix(d) {
+  return dayjs(d).year() === dayjs().year() ? '' : ' YYYY'
+}
+
 function formatDate(d) {
   if (!d) return '—'
-  return dayjs(d).format('DD MMM HH:mm')
+  return dayjs(d).format(`DD MMM${yearSuffix(d)} HH:mm`)
 }
 
 // Массовые операции
