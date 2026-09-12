@@ -565,7 +565,7 @@ function toggleDesc(id) {
 // месяца (dayjs-локаль ru отдаёт "июля", а не короткое "июл") уже не
 // помещался в колонку и обрезался внешней рамкой таблицы.
 function yearSuffix(d) {
-  return dayjs(d).year() === dayjs().year() ? '' : ' \'YY'
+  return dayjs(d).year() === dayjs().year() ? '' : ' YY'
 }
 
 function formatDate(d) {
