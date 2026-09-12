@@ -420,6 +420,58 @@ class ReportsController extends Controller
      * оператора) заметно ниже среднечасовой по периоду и перегрузок не
      * было вовсе. Финальное решение по расписанию — за человеком.
      */
+    // Erlang C (2026-09-12) — сколько операторов нужно, чтобы среднее время
+    // ожидания (ASA) не превышало ERLANG_TARGET_WAIT_SEC. Длительность
+    // разговора в системе нигде не фиксируется (call_daily_stats хранит
+    // только время ОЖИДАНИЯ в очереди, не разговора; отдельная таблица
+    // calls — это лог для привязки звонков к адресам, тоже без длительности)
+    // — поэтому она берётся константой по прямой договорённости с
+    // пользователем, а не из данных.
+    private const ERLANG_AHT_SEC        = 180; // 3 минуты на разговор
+    private const ERLANG_TARGET_WAIT_SEC = 30;  // целевое среднее время ожидания
+
+    // Erlang B через рекурсию Эрланга — устойчиво к большим N (без факториалов,
+    // которые быстро переполнили бы float). B(0,A)=1, B(n,A)=A*B(n-1,A)/(n+A*B(n-1,A)).
+    private function erlangB(float $a, int $n): float
+    {
+        $b = 1.0;
+        for ($i = 1; $i <= $n; $i++) {
+            $b = ($a * $b) / ($i + $a * $b);
+        }
+        return $b;
+    }
+
+    // Erlang C выражается через Erlang B — стандартный приём, тот же результат,
+    // что и "напрямую" по формуле Erlang C, но без риска деления факториалов.
+    private function erlangC(float $a, int $n): float
+    {
+        if ($n <= $a) return 1.0; // система нестабильна -- очередь ждёт с вероятностью 1
+        $b = $this->erlangB($a, $n);
+        return $b / (1 - ($a / $n) * (1 - $b));
+    }
+
+    // Минимальное число операторов N, при котором среднее время ожидания
+    // (Pwait * AHT / (N - A)) не превышает целевое. Перебор снизу вверх —
+    // N всегда небольшое (единицы-десятки), перебор быстрее любой аналитики.
+    private function erlangRequiredOperators(float $callsPerHour): int
+    {
+        if ($callsPerHour <= 0) return 1; // линия открыта -- минимум один дежурный
+
+        $a = $callsPerHour * self::ERLANG_AHT_SEC / 3600; // нагрузка в Эрлангах
+        $n = (int) floor($a) + 1; // минимум для стабильности очереди (N > A)
+        $maxN = $n + 200; // защита от бесконечного цикла на аномальных данных
+
+        while ($n <= $maxN) {
+            $c   = $this->erlangC($a, $n);
+            $asa = $c > 0 ? ($c * self::ERLANG_AHT_SEC) / ($n - $a) : 0;
+            if ($asa <= self::ERLANG_TARGET_WAIT_SEC) {
+                return $n;
+            }
+            $n++;
+        }
+        return $maxN; // не должно происходить в реальных диапазонах нагрузки
+    }
+
     private function operatorLoad(Carbon $from, Carbon $to): array
     {
         $rows = DB::table('call_daily_stats')
@@ -457,7 +509,7 @@ class ReportsController extends Controller
                 $hours[] = [
                     'hour' => $h, 'days' => $days, 'avg_operators' => null, 'avg_calls' => null,
                     'calls_per_operator' => null, 'miss_rate' => null, 'overload_pct' => null,
-                    'verdict' => 'no_data',
+                    'verdict' => 'no_data', 'required_operators' => null,
                 ];
                 continue;
             }
@@ -487,6 +539,7 @@ class ReportsController extends Controller
                 'miss_rate'          => $missRate,
                 'overload_pct'       => $overloadPct,
                 'verdict'            => $verdict,
+                'required_operators' => $this->erlangRequiredOperators($avgCalls),
             ];
         }
 

@@ -254,7 +254,7 @@
            своим диапазоном дат, не связан с таблицей выше ни данными, ни кодом. -->
       <div class="pt-2 border-t border-gray-100">
         <h2 class="text-sm font-semibold text-gray-700 mb-1">Оптимизация расписания операторов</h2>
-        <p class="text-xs text-gray-400 mb-3">Типичная нагрузка на оператора по часам суток за длительный период — где стоит усилить смену, а где людей обычно больше, чем нужно. Это эвристика по фактическим звонкам за период, не готовое решение — финальное слово за вами.</p>
+        <p class="text-xs text-gray-400 mb-3">Типичная нагрузка на оператора по часам суток за длительный период — где стоит усилить смену, а где людей обычно больше, чем нужно. «Нужно по Erlang C» — расчётное число операторов, при котором среднее время ожидания в очереди не превышает 30 секунд (разговор принят равным 3 минутам; модель не учитывает абонентов, вешающих трубку сами, поэтому число может быть с запасом).</p>
         <RangePicker :range="staffing" :modes="['month', 'quarter', 'period']" />
 
         <div v-if="staffing.state.data.understaffed.length || staffing.state.data.overstaffed.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -284,6 +284,7 @@
               <th class="text-left px-3 py-2.5">Час</th>
               <th class="text-right px-3 py-2.5">Дней с данными</th>
               <th class="text-right px-3 py-2.5">Ср. операторов</th>
+              <th class="text-right px-3 py-2.5">Нужно по Erlang C</th>
               <th class="text-right px-3 py-2.5">Ср. звонков</th>
               <th class="text-right px-3 py-2.5">Звонков/оператора</th>
               <th class="text-right px-3 py-2.5">Пропуск %</th>
@@ -291,11 +292,13 @@
               <th class="text-left px-3 py-2.5">Вывод</th>
             </tr></thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-if="!staffing.state.data.hours.some(h => h.days > 0)"><td colspan="8" class="text-center py-4 text-gray-400 text-xs">—</td></tr>
-              <tr v-for="h in staffing.state.data.hours.filter(h => h.days > 0)" :key="h.hour" class="hover:bg-gray-50">
+              <tr v-if="!staffing.state.data.hours.some(h => h.days > 0)"><td colspan="9" class="text-center py-4 text-gray-400 text-xs">—</td></tr>
+              <tr v-for="h in staffing.state.data.hours.filter(h => h.days > 0)" :key="h.hour" :class="overloadRowClass(h.overload_pct)">
                 <td class="px-3 py-1.5 font-medium text-gray-700 tabular-nums">{{ String(h.hour).padStart(2,'0') }}:00</td>
                 <td class="px-3 py-1.5 text-right tabular-nums text-gray-500">{{ h.days }}</td>
                 <td class="px-3 py-1.5 text-right tabular-nums">{{ h.avg_operators }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums font-medium"
+                    :class="h.required_operators > h.avg_operators ? 'text-red-600' : 'text-gray-700'">{{ h.required_operators ?? '—' }}</td>
                 <td class="px-3 py-1.5 text-right tabular-nums">{{ h.avg_calls }}</td>
                 <td class="px-3 py-1.5 text-right tabular-nums font-medium">{{ h.calls_per_operator ?? '—' }}</td>
                 <td class="px-3 py-1.5 text-right tabular-nums">{{ h.miss_rate }}%</td>
@@ -352,7 +355,7 @@ const callcenter = useReportRange('reports.call-stats',          { hours: [], su
 const staffing = useReportRange('reports.operator-load', {
   hours: Array.from({ length: 24 }, (_, h) => ({
     hour: h, days: 0, avg_operators: null, avg_calls: null,
-    calls_per_operator: null, miss_rate: null, overload_pct: null, verdict: 'no_data',
+    calls_per_operator: null, miss_rate: null, overload_pct: null, verdict: 'no_data', required_operators: null,
   })),
   baseline: null, understaffed: [], overstaffed: [],
 })
@@ -360,6 +363,15 @@ staffing.state.periodMode = 'quarter'
 
 function verdictLabel(v) {
   return { understaffed: 'Не хватает', overstaffed: 'Возможен избыток', balanced: 'Норма', no_data: 'Нет данных' }[v] || '—'
+}
+
+// Подсветка фона строки по % дней с перегрузкой — градация от той же
+// границы 25%, что уже используется в вердикте "Не хватает", плюс более
+// тревожный порог 50% для явных проблемных часов.
+function overloadRowClass(pct) {
+  if (pct >= 50) return 'bg-red-100/70 hover:bg-red-100'
+  if (pct >= 25) return 'bg-orange-50 hover:bg-orange-100'
+  return 'hover:bg-gray-50'
 }
 
 function verdictClass(v) {
@@ -670,30 +682,65 @@ function buildStaffing() {
     type: 'bar',
     data: {
       labels: hours.map(h => String(h.hour).padStart(2, '0') + ':00'),
-      datasets: [{
-        label: 'Звонков на оператора',
-        data: hours.map(h => h.calls_per_operator ?? 0),
-        backgroundColor: hours.map(h => verdictColor[h.verdict] || '#9ca3af'),
-      }],
+      datasets: [
+        {
+          label: 'Звонков на оператора',
+          data: hours.map(h => h.calls_per_operator ?? 0),
+          backgroundColor: hours.map(h => verdictColor[h.verdict] || '#9ca3af'),
+          yAxisID: 'y',
+          order: 3,
+        },
+        {
+          type: 'line',
+          label: 'Факт операторов',
+          data: hours.map(h => h.avg_operators),
+          borderColor: '#6366f1',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5,
+          pointRadius: 3,
+          stepped: 'before',
+          spanGaps: true,
+          yAxisID: 'y1',
+          order: 1,
+        },
+        {
+          type: 'line',
+          label: 'Нужно по Erlang C',
+          data: hours.map(h => h.required_operators),
+          borderColor: '#ef4444',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [5, 3],
+          pointRadius: 3,
+          stepped: 'before',
+          spanGaps: true,
+          yAxisID: 'y1',
+          order: 2,
+        },
+      ],
     },
     options: {
       responsive: true,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: { position: 'top' },
         tooltip: {
           callbacks: {
             label: ctx => {
-              const h = hours[ctx.dataIndex]
-              return [
-                `Звонков/оператора: ${h.calls_per_operator ?? '—'}`,
-                `Ср. операторов: ${h.avg_operators}`,
-                `Перегрузка: ${h.overload_pct}% дней`,
-              ]
+              if (ctx.dataset.label === 'Звонков на оператора') {
+                const h = hours[ctx.dataIndex]
+                return `Звонков/оператора: ${h.calls_per_operator ?? '—'} (перегрузка ${h.overload_pct}% дней)`
+              }
+              return `${ctx.dataset.label}: ${ctx.parsed.y}`
             },
           },
         },
       },
-      scales: { x: { ticks: { maxRotation: 0 } }, y: { beginAtZero: true } },
+      scales: {
+        x: { ticks: { maxRotation: 0 } },
+        y:  { beginAtZero: true, title: { display: true, text: 'Звонков на оператора' } },
+        y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { precision: 0 }, title: { display: true, text: 'Операторов' } },
+      },
     },
   })
 }
