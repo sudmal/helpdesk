@@ -186,7 +186,7 @@
 </template>
 
 <script setup>
-import { reactive, computed } from 'vue'
+import { reactive, computed, watch } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import MaterialsReport from '@/Components/Acts/MaterialsReport.vue'
@@ -238,6 +238,16 @@ const f = reactive({
 function apply() {
   router.get(route('acts.index'), { tab: props.tab, ...f }, { preserveState: true, replace: true })
 }
+
+// Живой поиск (2026-09-14) — запрос уходит через паузу после последнего
+// нажатия, а не по Enter/blur. Debounce, а не watch по каждому символу
+// напрямую, чтобы не слать запрос на каждую букву. replace:true в apply()
+// и так не плодит историю браузера при каждом срабатывании.
+let searchDebounce = null
+watch(() => f.search, () => {
+  clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(apply, 350)
+})
 
 function switchTab(id) {
   router.get(route('acts.index'), { tab: id }, { preserveState: false })
