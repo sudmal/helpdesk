@@ -22,7 +22,7 @@
     <template v-else>
       <!-- Фильтры -->
       <div class="bg-white rounded-xl border border-gray-200 p-3 mb-3 flex flex-wrap gap-2.5 items-end">
-        <div v-if="tab === 'archive'" class="flex-1 min-w-48">
+        <div class="flex-1 min-w-48">
           <label class="field-label">Поиск</label>
           <input v-model="f.search" @keydown.enter="apply"
                  placeholder="Номер акта, номер заявки, адрес..."

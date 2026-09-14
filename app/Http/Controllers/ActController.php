@@ -87,14 +87,11 @@ class ActController extends Controller
             ->when($request->type, fn($q) => $q->where('acts.type', $request->type))
             ->when($request->brigade, fn($q) =>
                 $q->where(DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'), $request->brigade)
-            );
-
-        if ($tab === 'archive') {
-            // Полностью завершённые акты уходят сюда с главной вкладки и здесь
-            // ищутся/сортируются как обычный архив, а не очередь на согласование.
-            $query->where('acts.status', 'completed');
-
-            $query->when($request->search, function ($q) use ($request) {
+            )
+            // Поиск (2026-09-14) — раньше работал только в Архиве, теперь одинаково
+            // на обеих вкладках: находит акт независимо от того, завершён он или
+            // ещё в работе, не нужно заранее гадать/переключать вкладку.
+            ->when($request->search, function ($q) use ($request) {
                 $s = '%' . $request->search . '%';
                 $q->where(function ($qq) use ($s) {
                     $qq->where('acts.number', 'like', $s)
@@ -109,6 +106,11 @@ class ActController extends Controller
                            ->orWhere('phone', 'like', $s));
                 });
             });
+
+        if ($tab === 'archive') {
+            // Полностью завершённые акты уходят сюда с главной вкладки и здесь
+            // ищутся/сортируются как обычный архив, а не очередь на согласование.
+            $query->where('acts.status', 'completed');
 
             $sortable = [
                 'completed_at' => 'acts.subscriber_dept_completed_at',
