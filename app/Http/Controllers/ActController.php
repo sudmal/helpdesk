@@ -91,20 +91,32 @@ class ActController extends Controller
             // Поиск (2026-09-14) — раньше работал только в Архиве, теперь одинаково
             // на обеих вкладках: находит акт независимо от того, завершён он или
             // ещё в работе, не нужно заранее гадать/переключать вкладку.
+            //
+            // По словам, а не фразой целиком (2026-09-14) — тот же приём, что в
+            // Address::scopeSearch() для раздела Адресов: строка бьётся на слова,
+            // каждое слово должно найтись ГДЕ-ТО (в любом из полей, не обязательно
+            // в одном), слова между собой — через AND. Без этого "Гвардейский 5 39"
+            // не находило ничего: ни одно поле не содержит всю фразу целиком (улица,
+            // дом и квартира — разные колонки). tickets/addresses уже присоединены
+            // выше (leftJoin) — можно обращаться к их колонкам напрямую, без under
+            // whereHas-подзапросов на каждое слово.
             ->when($request->search, function ($q) use ($request) {
-                $s = '%' . $request->search . '%';
-                $q->where(function ($qq) use ($s) {
-                    $qq->where('acts.number', 'like', $s)
-                       ->orWhereHas('ticket', fn($t) => $t->where('number', 'like', $s))
-                       ->orWhereHas('ticket.address', fn($a) => $a
-                           ->where('street', 'like', $s)
-                           ->orWhere('city', 'like', $s)
-                           ->orWhere('building', 'like', $s))
-                       ->orWhereHas('connectionRequest', fn($c) => $c
-                           ->where('address_string', 'like', $s)
-                           ->orWhere('name', 'like', $s)
-                           ->orWhere('phone', 'like', $s));
-                });
+                $words = array_values(array_filter(preg_split('/\s+/u', trim($request->search))));
+                foreach ($words as $word) {
+                    $like = '%' . $word . '%';
+                    $q->where(function ($qq) use ($like) {
+                        $qq->where('acts.number', 'like', $like)
+                           ->orWhere('tickets.number', 'like', $like)
+                           ->orWhere('tickets.apartment', 'like', $like)
+                           ->orWhere('addresses.city', 'like', $like)
+                           ->orWhere('addresses.street', 'like', $like)
+                           ->orWhere('addresses.building', 'like', $like)
+                           ->orWhere('addresses.apartment', 'like', $like)
+                           ->orWhere('connection_requests.address_string', 'like', $like)
+                           ->orWhere('connection_requests.name', 'like', $like)
+                           ->orWhere('connection_requests.phone', 'like', $like);
+                    });
+                }
             });
 
         if ($tab === 'archive') {
