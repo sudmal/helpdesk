@@ -144,6 +144,8 @@
             <tr v-for="t in tickets.data ?? []" :key="t.id"
                 class="cursor-pointer hover:brightness-95 transition-all"
                 :style="rowStyle(t)"
+                @mouseenter="e => showTooltip(e, ticketTooltipData(t))"
+                @mouseleave="hideTooltip"
                 @click="router.visit(route('tickets.show', t.id))">
 
               <td class="px-1.5 py-px text-center" @click.stop>
@@ -339,6 +341,8 @@
     </Modal>
 
   </AppLayout>
+
+  <EntityTooltip :show="tooltip.show" :x="tooltip.x" :y="tooltip.y" :data="tooltip.data" />
 </template>
 
 <script setup>
@@ -350,7 +354,11 @@ dayjs.locale('ru')
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Badge from '@/Components/UI/Badge.vue'
 import Modal from '@/Components/UI/Modal.vue'
+import EntityTooltip from '@/Components/EntityTooltip.vue'
+import { useHoverTooltip } from '@/Composables/useHoverTooltip'
 import axios from 'axios'
+
+const { tooltip, showTooltip, hideTooltip } = useHoverTooltip()
 
 const props = defineProps({
   tickets:      { type: Object, default: () => ({ data: [], total: 0, current_page: 1, last_page: 1 }) },
@@ -473,6 +481,19 @@ function fullAddress(t) {
 function rowStyle(t) {
   if (!t.status?.color) return {}
   return { backgroundColor: t.status.color + '18' }
+}
+
+function ticketTooltipData(t) {
+  return {
+    number: t.number,
+    type: t.type,
+    address: fullAddress(t),
+    description: t.description,
+    status: t.status,
+    act: t.act,
+    closeNotes: t.close_notes,
+    phone: t.phone,
+  }
 }
 
 // ── Фильтр по адресу (модалка) ──

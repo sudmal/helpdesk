@@ -123,7 +123,9 @@
             <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50"
                 :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at,
                           'ring-2 ring-inset ring-red-400': isOverdue(r),
-                          'ring-2 ring-inset ring-blue-400': !r.territory_id && r.status === 'pending' && !r.deleted_at }">
+                          'ring-2 ring-inset ring-blue-400': !r.territory_id && r.status === 'pending' && !r.deleted_at }"
+                @mouseenter="e => showTooltip(e, connectionTooltipData(r))"
+                @mouseleave="hideTooltip">
               <td class="px-1.5 py-px text-center whitespace-nowrap">
                 <button v-if="r.status === 'pending' || r.status === 'scheduled'"
                         @click="openEdit(r)" title="Редактировать"
@@ -714,6 +716,8 @@
 
 
   </AppLayout>
+
+  <EntityTooltip :show="tooltip.show" :x="tooltip.x" :y="tooltip.y" :data="tooltip.data" />
 </template>
 
 <script setup>
@@ -723,7 +727,11 @@ import { Head, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import TimePicker from '@/Components/UI/TimePicker.vue'
+import EntityTooltip from '@/Components/EntityTooltip.vue'
+import { useHoverTooltip } from '@/Composables/useHoverTooltip'
 import { useTour, hasSeenTour } from '@/Composables/useTour'
+
+const { tooltip, showTooltip, hideTooltip } = useHoverTooltip()
 
 const props = defineProps({
   requests:          Object,
@@ -770,6 +778,21 @@ function isOverdue(r) {
   if (r.status !== 'scheduled' || !r.scheduled_at) return false
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
   return new Date(r.scheduled_at) < startOfToday
+}
+
+function connectionTooltipData(r) {
+  return {
+    number: null,
+    type: r.service_type,
+    address: r.address_string,
+    subscriberName: r.name,
+    description: r.description,
+    lastComment: r.last_comment,
+    status: { is_final: r.status === 'closed' },
+    act: r.act,
+    closeNotes: r.notes,
+    phone: r.phone,
+  }
 }
 
 const f = ref({

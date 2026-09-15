@@ -39,7 +39,7 @@ class ConnectionRequestController extends Controller
         // Основной список тоже скоупится по территориям (2026-08-04) — раньше
         // фильтровались только счётчики/выпадающий список, сам список заявок
         // на подключение был виден целиком любому пользователю.
-        $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act'])
+        $query = ConnectionRequest::with(['assignee', 'creator', 'materials', 'territory', 'brigade', 'serviceType', 'act', 'logs:id,connection_request_id,notes,created_at'])
             // Заявки с сайта без территории -- "ничьи", видны всем операторам вне
             // обычного скоупа (пока оператор не проставит территорию), см. память
             // project-website-connection-intake. Как только территория выставлена --

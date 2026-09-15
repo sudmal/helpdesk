@@ -56,7 +56,9 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50">
+            <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50"
+                @mouseenter="e => showTooltip(e, serviceRequestTooltipData(r))"
+                @mouseleave="hideTooltip">
               <td class="px-3 py-2 whitespace-nowrap text-gray-400">{{ fmtDate(r.created_at) }}</td>
               <td class="px-3 py-2 whitespace-nowrap font-medium text-gray-800">{{ r.name }}</td>
               <td class="px-3 py-2 whitespace-nowrap font-mono text-gray-600">{{ r.phone }}</td>
@@ -310,12 +312,18 @@
 
 
   </AppLayout>
+
+  <EntityTooltip :show="tooltip.show" :x="tooltip.x" :y="tooltip.y" :data="tooltip.data" />
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
 import { router, Head } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
+import EntityTooltip from '@/Components/EntityTooltip.vue'
+import { useHoverTooltip } from '@/Composables/useHoverTooltip'
+
+const { tooltip, showTooltip, hideTooltip } = useHoverTooltip()
 
 const props = defineProps({
   requests:     Object,
@@ -324,6 +332,19 @@ const props = defineProps({
   totalPending: { type: Number, default: 0 },
   canProcess:   { type: Boolean, default: false },
 })
+
+function serviceRequestTooltipData(r) {
+  return {
+    number: null,
+    type: r.service_name ? { name: r.service_name, color: '#6366f1' } : null,
+    address: r.address_string,
+    subscriberName: r.name,
+    description: r.description,
+    status: { is_final: r.status === 'accepted' },
+    closeNotes: r.admin_comment,
+    phone: r.phone,
+  }
+}
 
 const f = ref({
   search: props.filters?.search ?? '',
