@@ -219,6 +219,9 @@
         <p v-if="tooltip.description" class="text-xs text-gray-400 border-t border-gray-700 pt-1 mt-1">
           {{ tooltip.description.slice(0, 100) }}{{ tooltip.description.length > 100 ? '…' : '' }}
         </p>
+        <p v-if="tooltip.lastComment" class="text-xs text-amber-300 mt-1">
+          💬 {{ tooltip.lastComment.slice(0, 100) }}{{ tooltip.lastComment.length > 100 ? '…' : '' }}
+        </p>
       </div>
     </Teleport>
 
@@ -253,6 +256,10 @@
             <p v-if="popup.description"
                class="text-gray-500 text-xs bg-gray-50 rounded-lg p-2 leading-relaxed">
               {{ popup.description }}
+            </p>
+            <p v-if="popup.lastComment"
+               class="text-amber-700 text-xs bg-amber-50 rounded-lg p-2 leading-relaxed">
+              💬 {{ popup.lastComment }}
             </p>
           </div>
           <div class="px-4 pb-4">
@@ -308,12 +315,14 @@ const overviewEvents      = ref({ overdue: [], today: [], tomorrow: [] })
 const tooltip = reactive({
   show: false, x: 0, y: 0,
   number: '', address: '', scheduled: '', type: '', phone: '', description: '', daysOverdue: null,
+  lastComment: '',
 })
 
 const popup = reactive({
   show: false, number: '', address: '',
   status: '', statusColor: '', type: '', typeColor: '',
   brigade: '', scheduled: '', phone: '', description: '', url: '',
+  lastComment: '',
 })
 
 // Split event title into { icon, type, address } for styled rendering
@@ -481,6 +490,7 @@ function onEventEnter(el, p) {
     phone:       p.phone,
     description: p.description,
     daysOverdue: p.daysOverdue,
+    lastComment: p.lastComment,
   })
 }
 
@@ -497,6 +507,7 @@ function openPopup(p) {
     scheduled:   p.scheduled,
     phone:       p.phone,
     description: p.description,
+    lastComment: p.lastComment,
     url:         p.url,
   })
 }

@@ -152,24 +152,28 @@ class DashboardController extends Controller
         // простая строка), поэтому запрос отдельный, но на фронте (Dashboard/
         // Index.vue, mergedTodayItems) сливается в общий список по времени
         // вместе с todayTickets -- см. память проекта, project-connection-feasibility.
-        $scheduledConnections = ConnectionRequest::with(['territory', 'serviceType'])
+        // logs — для тултипа при наведении на Дашборде (2026-09-15): раньше
+        // подключения в объединённом списке вообще не показывали тултип при
+        // наведении, description/last_comment (см. модель ConnectionRequest)
+        // подтягивают description заявки и последний комментарий из истории.
+        $scheduledConnections = ConnectionRequest::with(['territory', 'serviceType', 'logs:id,connection_request_id,notes,created_at'])
             ->where('status', 'scheduled')
             ->whereDate('scheduled_at', $date)
             ->when($territory,  fn($q) => $q->where('territory_id', $territory))
             ->when(!$territory, fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
             ->orderBy('scheduled_at')
-            ->get(['id', 'name', 'phone', 'address_string', 'scheduled_at', 'territory_id', 'service_type_id']);
+            ->get(['id', 'name', 'phone', 'address_string', 'description', 'scheduled_at', 'territory_id', 'service_type_id']);
 
         // То же самое, но для просроченных (дата подключения уже в прошлом,
         // статус всё ещё scheduled) -- сливается на фронте с overdue.
-        $overdueConnections = ConnectionRequest::with(['territory', 'serviceType'])
+        $overdueConnections = ConnectionRequest::with(['territory', 'serviceType', 'logs:id,connection_request_id,notes,created_at'])
             ->where('status', 'scheduled')
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<', $overdueThreshold)
             ->when($territory,  fn($q) => $q->where('territory_id', $territory))
             ->when(!$territory, fn($q) => $q->whereIn('territory_id', $userTerritories->pluck('id')))
             ->orderBy('scheduled_at')
-            ->get(['id', 'name', 'phone', 'address_string', 'scheduled_at', 'territory_id', 'service_type_id']);
+            ->get(['id', 'name', 'phone', 'address_string', 'description', 'scheduled_at', 'territory_id', 'service_type_id']);
 
         return Inertia::render('Dashboard/Index', [
             'todayTickets'      => $todayTickets,

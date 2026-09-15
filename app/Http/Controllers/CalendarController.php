@@ -103,7 +103,7 @@ class CalendarController extends Controller
         // тот же принцип и тот же цвет, запрос пользователя 2026-08-08).
         // territory_id у ConnectionRequest лежит прямо на записи (не через
         // address, как у Ticket), поэтому фильтр территории проще.
-        $connections = ConnectionRequest::with(['brigade', 'serviceType'])
+        $connections = ConnectionRequest::with(['brigade', 'serviceType', 'logs:id,connection_request_id,notes,created_at'])
             ->where('status', 'scheduled')
             ->whereBetween('scheduled_at', [$request->start, $request->end])
             ->when($userTerritories !== null, fn($q) => $q->whereIn('territory_id', $userTerritories))
@@ -130,7 +130,14 @@ class CalendarController extends Controller
                     'statusColor'  => '#3b82f6',
                     'brigade'      => $cr->brigade?->name,
                     'scheduled'    => $cr->scheduled_at->format('d.m.Y H:i'),
-                    'description'  => $cr->name,
+                    // Раньше здесь по ошибке было $cr->name (имя абонента) —
+                    // не то, что нужно монтажнику при наведении. description —
+                    // сам текст заявки (почти всегда заполнен), lastComment —
+                    // последний комментарий из истории (например, оставленный
+                    // при назначении даты — "Прозвонить заранее").
+                    'description'  => $cr->description,
+                    'lastComment'  => $cr->last_comment,
+                    'subscriberName' => $cr->name,
                     'phone'        => $cr->phone,
                     'url'          => route('connection-requests.index', ['open' => $cr->id]),
                     'isFinal'      => false,

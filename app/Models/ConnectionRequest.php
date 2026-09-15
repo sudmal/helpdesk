@@ -25,6 +25,11 @@ class ConnectionRequest extends Model
         'feasibility_at' => 'datetime',
     ];
 
+    // last_comment (2026-09-15) — виден на фронте автоматически только там,
+    // где logs явно eager-loaded (see getLastCommentAttribute()); в остальных
+    // местах просто null, лишней нагрузки не добавляет.
+    protected $appends = ['last_comment'];
+
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
@@ -71,5 +76,22 @@ class ConnectionRequest extends Model
         // записи лога в одну секунду иначе оказываются в непредсказуемом
         // порядке; id как тай-брейкер даёт стабильный порядок.
         return $this->hasMany(ConnectionRequestLog::class)->latest()->orderByDesc('id');
+    }
+
+    /**
+     * Последний непустой комментарий из истории (2026-09-15) — для тултипов
+     * в Календаре/Дашборде, где раньше по ошибке показывалось имя абонента
+     * вместо реально полезного комментария (например, оставленного при
+     * назначении даты — "Прозвонить заранее"). Работает только если
+     * relation logs уже eager-loaded (with('logs')) — иначе просто null,
+     * НЕ триггерит ленивую подгрузку (N+1 при массовой сериализации
+     * списков в Календаре/Дашборде).
+     */
+    public function getLastCommentAttribute(): ?string
+    {
+        if (!$this->relationLoaded('logs')) {
+            return null;
+        }
+        return $this->logs->first(fn($l) => filled($l->notes))?->notes;
     }
 }

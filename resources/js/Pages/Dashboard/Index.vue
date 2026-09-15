@@ -174,6 +174,7 @@
           </div>
           <p class="font-medium text-gray-800 text-sm mt-1 leading-snug">{{ c.address_string }}</p>
           <p class="text-blue-700 text-xs mt-0.5">{{ c.name }}</p>
+          <p v-if="c.last_comment" class="text-amber-700 text-xs mt-0.5">💬 {{ c.last_comment }}</p>
           <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">{{ c.service_type.name }}</span>
             <a v-if="c.phone" :href="'tel:' + c.phone" @click.stop class="text-xs text-gray-600 hover:text-blue-600">{{ c.phone }}</a>
@@ -289,6 +290,8 @@
                  клик ведёт в карточку подключения (?open=), не в Ticket -->
             <tr v-for="c in (item.kind === 'connection' ? [item.conn] : [])" :key="c.id"
                 class="cursor-pointer transition-colors bg-blue-50/50 hover:bg-blue-100/60"
+                @mouseenter="e => showTooltip(e, connectionTooltipData(c))"
+                @mouseleave="tooltip.show = false"
                 @click="router.visit(route('connection-requests.index', { open: c.id }))">
               <td class="pr-0 py-0 w-5 relative">
                 <div class="absolute inset-y-0 left-0 w-[3px] rounded-r bg-blue-500"></div>
@@ -402,6 +405,7 @@
             </div>
             <p class="font-medium text-gray-800 text-sm mt-1 leading-snug">{{ c.address_string }}</p>
             <p class="text-blue-700 text-xs mt-0.5">{{ c.name }}</p>
+            <p v-if="c.last_comment" class="text-amber-700 text-xs mt-0.5">💬 {{ c.last_comment }}</p>
             <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">{{ c.service_type.name }}</span>
               <a v-if="c.phone" :href="'tel:' + c.phone" @click.stop class="text-xs text-gray-600 hover:text-blue-600">{{ c.phone }}</a>
@@ -455,6 +459,8 @@
           <!-- Просроченная заявка на подключение -->
           <tr v-for="c in (item.kind === 'connection' ? [item.conn] : [])" :key="c.id"
               class="hover:bg-red-100/50 cursor-pointer transition-colors bg-blue-50/40"
+              @mouseenter="e => showTooltip(e, connectionTooltipData(c))"
+              @mouseleave="tooltip.show = false"
               @click="router.visit(route('connection-requests.index', { open: c.id }))">
             <td class="pl-2 pr-0 py-px text-center w-7"></td>
             <td class="pl-1 pr-1 py-px text-center w-6">🔌</td>
@@ -588,8 +594,12 @@
           </span>
         </div>
         <p class="font-semibold text-sm mb-1 leading-tight">{{ fullAddress(tooltip.ticket) }}</p>
+        <p v-if="tooltip.ticket.subscriberName" class="text-gray-400 mb-1">👤 {{ tooltip.ticket.subscriberName }}</p>
         <p v-if="tooltip.ticket.description" class="text-gray-300 mb-1.5 leading-snug">
           {{ tooltip.ticket.description }}
+        </p>
+        <p v-if="tooltip.ticket.lastComment" class="text-amber-300 mb-1.5 leading-snug">
+          💬 {{ tooltip.ticket.lastComment }}
         </p>
         <template v-if="tooltip.ticket.status?.is_final">
           <div class="border-t border-gray-700 pt-1.5 mt-1 flex flex-col gap-1">
@@ -838,11 +848,30 @@ function serviceIcon(name) {
 }
 
 function fullAddress(t) {
+  // Заявка на подключение -- адрес уже готовой строкой (address_string),
+  // структуры address.street/building у неё нет вообще (см. тултип).
+  if (t.address_string) return t.address_string
   const a = t.address
   if (!a) return '—'
   const apt = t.apartment || a.apartment
   return [a.street, a.building ? 'д.' + a.building : null, apt ? 'кв.' + apt : null]
     .filter(Boolean).join(' ')
+}
+
+// Приводит заявку на подключение к форме, которую понимает общий тултип
+// (тот же принцип, что и в Дашборде/Заявках для обычных заявок) — только
+// подмножество полей, которые у подключения реально есть (2026-09-15).
+function connectionTooltipData(c) {
+  return {
+    number: null,
+    type: c.service_type ? { name: c.service_type.name, color: c.service_type.color } : null,
+    address_string: c.address_string,
+    description: c.description,
+    lastComment: c.last_comment,
+    subscriberName: c.name,
+    status: null,
+    phone: c.phone,
+  }
 }
 // ── Массовые операции по просроченным ──
 const selectedOverdue          = ref(new Set())
