@@ -1,20 +1,29 @@
 <template>
-  <aside class="flex flex-col w-56 bg-[#141c2b] text-white shrink-0 h-full text-[13px]">
-    <div data-tour="tour-brand" class="flex items-center gap-2 px-4 py-2 border-b border-white/10 shrink-0">
+  <aside class="relative flex flex-col w-full h-full bg-[#141c2b] text-white shrink-0 text-[13px]">
+    <button @click="toggle" title="Свернуть/развернуть меню"
+            class="hidden md:flex absolute top-4 -right-3 w-6 h-6 items-center justify-center rounded-full
+                   bg-[#141c2b] border border-white/20 text-white/60 hover:text-white hover:border-white/40
+                   transition-colors z-10">
+      <Icon :name="collapsed ? 'chevron-right' : 'chevron-left'" class="w-3.5 h-3.5" />
+    </button>
+    <div data-tour="tour-brand"
+         :class="['flex items-center gap-2 py-2 border-b border-white/10 shrink-0', collapsed ? 'justify-center px-2' : 'px-4']">
       <img src="/logo.png" alt="Logo" class="w-6 h-6"/>
-      <span class="font-semibold text-sm tracking-tight">HelpDesk</span>
+      <span v-if="!collapsed" class="font-semibold text-sm tracking-tight">HelpDesk</span>
     </div>
-    <nav class="flex-1 px-2.5 py-2 space-y-px overflow-y-auto min-h-0">
+    <nav class="flex-1 px-2.5 py-2 space-y-px overflow-y-auto overflow-x-hidden min-h-0">
       <a v-if="can('tickets.create')" :href="route('tickets.create')" data-tour="tour-new-ticket"
-          class="flex items-center gap-2 px-2.5 py-1.5 mb-1 rounded-md
-                 bg-green-600 hover:bg-green-700 text-white font-medium text-[13px]
-                 transition-colors shadow-sm">
+          :title="collapsed ? 'Новая заявка' : undefined"
+          :class="['flex items-center mb-1 rounded-md',
+                   'bg-green-600 hover:bg-green-700 text-white font-medium text-[13px]',
+                   'transition-colors shadow-sm',
+                   collapsed ? 'justify-center px-2.5 py-1.5' : 'gap-2 px-2.5 py-1.5']">
         <span class="text-sm leading-none">+</span>
-        <span>Новая заявка</span>
+        <span v-if="!collapsed">Новая заявка</span>
       </a>
-      <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" data-tour="tour-nav-dashboard" />
-      <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" data-tour="tour-nav-tickets" />
-      <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения" data-tour="tour-nav-connections">
+      <NavItem :href="route('dashboard')"           icon="grid"     label="Дашборд" data-tour="tour-nav-dashboard" :collapsed="collapsed" />
+      <NavItem :href="route('tickets.index')"       icon="ticket"   label="Заявки" data-tour="tour-nav-tickets" :collapsed="collapsed" />
+      <NavItem :href="route('connection-requests.index')" icon="wifi" label="Подключения" data-tour="tour-nav-connections" :collapsed="collapsed">
         <span v-if="connectionAlerts.pending > 0 || connectionAlerts.needs_callback > 0 || connectionAlerts.needs_completion > 0"
               class="ml-auto flex items-center gap-1">
           <!-- Пульсирующий ! — есть необработанные (ждут монтажника) или назначенные (ждут выезда) -->
@@ -31,21 +40,21 @@
           </span>
         </span>
       </NavItem>
-      <NavItem :href="route('service-requests.index')" icon="tool" label="Запросы услуг">
+      <NavItem :href="route('service-requests.index')" icon="tool" label="Запросы услуг" :collapsed="collapsed">
         <span v-if="serviceRequestAlerts.pending > 0"
               class="ml-auto animate-pulse flex items-center justify-center w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold leading-none"
               title="Есть необработанные запросы">!</span>
       </NavItem>
-      <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" data-tour="tour-nav-calendar" />
+      <NavItem :href="route('calendar.index')"      icon="calendar" label="Календарь" data-tour="tour-nav-calendar" :collapsed="collapsed" />
       <NavItem v-if="isForeman && foremanBrigadeId"
                :href="route('brigades.show', foremanBrigadeId)"
-               icon="users" label="Моя бригада" />
+               icon="users" label="Моя бригада" :collapsed="collapsed" />
       <template v-if="canManageSettings">
-        <NavItem :href="route('brigades.index')"    icon="users"    label="Бригады" />
+        <NavItem :href="route('brigades.index')"    icon="users"    label="Бригады" :collapsed="collapsed" />
       </template>
-      <NavItem :href="route('addresses.index')"     icon="database" label="Адреса" />
-      <NavItem v-if="can('materials.view')" :href="route('materials.index')"    icon="package"  label="Материалы" />
-      <NavItem v-if="can('acts.view')" :href="route('acts.index')" icon="file-text" label="Акты">
+      <NavItem :href="route('addresses.index')"     icon="database" label="Адреса" :collapsed="collapsed" />
+      <NavItem v-if="can('materials.view')" :href="route('materials.index')"    icon="package"  label="Материалы" :collapsed="collapsed" />
+      <NavItem v-if="can('acts.view')" :href="route('acts.index')" icon="file-text" label="Акты" :collapsed="collapsed">
         <span v-if="actsAlerts.pending > 0"
               class="ml-auto animate-pulse flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none"
               :title="`Актов, требующих внимания: ${actsAlerts.pending}`">
@@ -53,18 +62,22 @@
         </span>
       </NavItem>
       <NavItem v-if="canManageSettings"
-               :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" />
+               :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" :collapsed="collapsed" />
       <NavItem v-if="can('calls.view')" :href="route('calls.index')" icon="phone" label="Звонки"
-               :icon-class="phoneIconClass" :title="phoneIconTitle" />
+               :icon-class="phoneIconClass" :title="phoneIconTitle" :collapsed="collapsed" />
       <NavItem v-if="canManageSettings"
-               :href="route('settings.index')"      icon="settings" label="Настройки" />
-      <NavItem :href="route('help')" icon="help-circle" label="Справка" data-tour="tour-nav-help" />
+               :href="route('settings.index')"      icon="settings" label="Настройки" :collapsed="collapsed" />
+      <NavItem :href="route('help')" icon="help-circle" label="Справка" data-tour="tour-nav-help" :collapsed="collapsed" />
     </nav>
     <div class="px-3 py-1.5 border-t border-white/10 shrink-0">
-      <div class="flex items-center justify-between gap-2">
-        <button @click="openProfile" title="Мои данные" class="min-w-0 text-left hover:bg-white/5 rounded-md -mx-1 px-1 py-0.5 transition-colors">
+      <div :class="['flex items-center gap-2', collapsed ? 'justify-center' : 'justify-between']">
+        <button v-if="!collapsed" @click="openProfile" title="Мои данные" class="min-w-0 text-left hover:bg-white/5 rounded-md -mx-1 px-1 py-0.5 transition-colors">
           <div class="text-xs font-medium truncate">{{ user.name }}</div>
           <div class="text-[11px] text-white/40 truncate">{{ user.email }}</div>
+        </button>
+        <button v-else @click="openProfile" title="Мои данные"
+                class="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+          <Icon name="users" class="w-4 h-4" />
         </button>
         <button @click="logout" title="Выход"
                 class="shrink-0 p-1 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
@@ -74,7 +87,7 @@
         </button>
       </div>
     </div>
-    <div v-if="apk" class="px-3 py-1.5 border-t border-white/10 shrink-0 flex items-center justify-between gap-2">
+    <div v-if="apk && !collapsed" class="px-3 py-1.5 border-t border-white/10 shrink-0 flex items-center justify-between gap-2">
       <a :href="apkStableUrl" target="_blank"
          title="Приложение для выездных сотрудников (Android 11+)"
          class="flex items-center gap-1.5 min-w-0 text-[12px] text-green-400 hover:text-green-300 transition-colors font-medium">
@@ -99,7 +112,7 @@
         </button>
       </div>
     </div>
-    <div class="px-3 py-1.5 border-t border-white/10 shrink-0">
+    <div v-if="!collapsed" class="px-3 py-1.5 border-t border-white/10 shrink-0">
       <a href="https://app.vega8.ru" target="_blank"
          title="Веб-версия приложения (PWA) — для iPhone или как альтернатива APK"
          class="flex items-center gap-1.5 min-w-0 text-[12px] text-blue-400 hover:text-blue-300 transition-colors font-medium">
@@ -195,9 +208,13 @@
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import NavItem from './NavItem.vue'
+import Icon from '@/Components/UI/Icon.vue'
 import QRCode from 'qrcode'
+import { useSidebarCollapsed } from '@/Composables/useSidebarCollapsed'
 
 const props = defineProps({ user: Object })
+
+const { collapsed, toggle } = useSidebarCollapsed()
 
 const apk = ref(null)
 

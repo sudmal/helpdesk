@@ -11,7 +11,8 @@
          @click="sidebarOpen = false" />
 
     <!-- Sidebar -->
-    <div :class="['print:hidden fixed md:relative flex flex-col w-56 bg-[#141c2b] text-white shrink-0 h-full z-40 transition-transform duration-200',
+    <div :class="['print:hidden fixed md:relative flex flex-col shrink-0 h-full z-40 transition-all duration-200',
+                  collapsed ? 'w-56 md:w-14' : 'w-56',
                   sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0']">
       <Sidebar :user="$page.props.auth.user" />
     </div>
@@ -83,6 +84,7 @@ import Sidebar from './Sidebar.vue'
 import PushNotifications from '@/Components/PushNotifications.vue'
 import TourOverlay from '@/Components/Onboarding/TourOverlay.vue'
 import { useTour } from '@/Composables/useTour'
+import { useSidebarCollapsed } from '@/Composables/useSidebarCollapsed'
 
 const props = defineProps({
   title:       { type: String, default: '' },
@@ -97,6 +99,7 @@ const props = defineProps({
 })
 
 const sidebarOpen = ref(false)
+const { collapsed } = useSidebarCollapsed()
 const page  = usePage()
 const flash = computed(() => page.props.flash ?? {})
 const tour  = useTour()
