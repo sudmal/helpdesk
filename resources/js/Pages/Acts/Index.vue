@@ -114,7 +114,7 @@
                   <td class="px-2 py-1 whitespace-nowrap font-mono font-medium text-gray-800">
                     {{ row.act.number }}
                     <span v-if="needsAck(row.act)" class="ml-1 text-red-600 font-bold"
-                          title="Бригадир изменил состав акта — есть неподтверждённые изменения">(!)</span>
+                          title="Состав акта изменён — есть неподтверждённые изменения">(!)</span>
                   </td>
                   <td class="px-2 py-1 whitespace-nowrap text-right font-medium">{{ amountLabel(row.act) }}</td>
                   <td class="px-2 py-1 whitespace-nowrap text-gray-600 max-w-[220px] truncate" :title="requestAddress(row.act)">{{ requestAddress(row.act) }}</td>

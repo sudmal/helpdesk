@@ -73,7 +73,7 @@
       </div>
 
       <div v-if="act.materials_changed_at" class="bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 text-sm text-red-700 flex items-center justify-between gap-3">
-        <span>⚠ Бригадир изменил состав акта — изменения отмечены красным ниже. Перепишите бумажный акт по факту изменений и переподпишите его у абонента, затем подтвердите.</span>
+        <span>⚠ Состав акта изменён — изменения отмечены красным ниже. Перепишите бумажный акт по факту изменений и переподпишите его у абонента, затем подтвердите.</span>
         <button v-if="can.acknowledge" @click="acknowledge" class="btn-act-primary shrink-0">Принято</button>
       </div>
 
