@@ -685,6 +685,7 @@ function ivrActionBadge(action) {
     pp_activated:        'bg-green-100 text-green-700',
     pp_declined:         'bg-red-100 text-red-700',
     transfer_to_support: 'bg-blue-100 text-blue-700',
+    transfer_to_subscriber_dept: 'bg-indigo-100 text-indigo-700',
     not_found:           'bg-gray-100 text-gray-500',
     api_error:           'bg-red-200 text-red-800',
   }
