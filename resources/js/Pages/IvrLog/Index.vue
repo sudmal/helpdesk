@@ -135,7 +135,7 @@ const ACTION_COLORS = {
   pp_activated:       'bg-green-100 text-green-700',
   pp_declined:        'bg-gray-100 text-gray-500',
   transfer_to_support:'bg-purple-100 text-purple-700',
-  transfer_to_subscriber_dept:'bg-indigo-100 text-indigo-700',
+  transfer_to_abon_dept:'bg-indigo-100 text-indigo-700',
   not_found:          'bg-orange-100 text-orange-600',
   api_error:          'bg-red-100 text-red-600',
 }
