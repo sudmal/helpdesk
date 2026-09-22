@@ -100,6 +100,8 @@ class ActController extends Controller
             // дом и квартира — разные колонки). tickets/addresses уже присоединены
             // выше (leftJoin) — можно обращаться к их колонкам напрямую, без under
             // whereHas-подзапросов на каждое слово.
+            ->when($request->date_from, fn($q) => $q->whereDate('acts.created_at', '>=', $request->date_from))
+            ->when($request->date_to, fn($q) => $q->whereDate('acts.created_at', '<=', $request->date_to))
             ->when($request->search, function ($q) use ($request) {
                 $words = array_values(array_filter(preg_split('/\s+/u', trim($request->search))));
                 foreach ($words as $word) {
@@ -146,7 +148,7 @@ class ActController extends Controller
         return Inertia::render('Acts/Index', [
             'tab'        => $tab,
             'acts'       => $acts,
-            'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir']),
+            'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir', 'date_from', 'date_to']),
             'authUserId' => $user->id,
             'brigades'   => Brigade::orderBy('name')->get(['id', 'name']),
         ]);
