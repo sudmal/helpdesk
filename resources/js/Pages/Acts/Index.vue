@@ -36,12 +36,8 @@
           </select>
         </div>
         <div>
-          <label class="field-label">Дата с</label>
-          <input v-model="f.date_from" @change="apply" type="date" class="field-input" />
-        </div>
-        <div>
-          <label class="field-label">Дата по</label>
-          <input v-model="f.date_to" @change="apply" type="date" class="field-input" />
+          <label class="field-label">Дата</label>
+          <input v-model="f.date" @change="apply" type="date" class="field-input" />
         </div>
         <div>
           <label class="field-label">Тип</label>
@@ -241,8 +237,7 @@ const f = reactive({
   search:   props.filters?.search   || '',
   sort:      props.filters?.sort      || 'completed_at',
   sort_dir:  props.filters?.sort_dir  || 'desc',
-  date_from: props.filters?.date_from || '',
-  date_to:   props.filters?.date_to   || '',
+  date:      props.filters?.date      || '',
 })
 
 function apply() {
