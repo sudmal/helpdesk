@@ -227,7 +227,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         // тот же паттерн, что уже был у reports.material-dynamics.
         Route::get('/report/consumption',    [App\Http\Controllers\MaterialReportController::class, 'consumption'])->name('report.consumption');
         Route::get('/report/monthly-matrix', [App\Http\Controllers\MaterialReportController::class, 'monthlyMatrix'])->name('report.monthly-matrix');
-        Route::get('/report/works-done',     [App\Http\Controllers\MaterialReportController::class, 'worksDone'])->name('report.works-done');
         Route::get('/report/forecast',       [App\Http\Controllers\MaterialReportController::class, 'forecast'])->name('report.forecast');
         Route::get('/report/export',         [App\Http\Controllers\MaterialReportController::class, 'exportCsv'])->name('report.export');
     });

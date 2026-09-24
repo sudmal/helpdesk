@@ -8,9 +8,6 @@
       </button>
     </div>
 
-    <!-- ── Выполнено работ за период (по типам и бригадам) ── -->
-    <WorkDoneReport v-if="activeSub === 'works'" />
-
     <!-- ── Расход материалов за период ── -->
     <div v-show="activeSub === 'consumption'" class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -292,7 +289,6 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount, h
 import axios from 'axios'
 import Chart from 'chart.js/auto'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
-import WorkDoneReport from '@/Components/Acts/WorkDoneReport.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
 // ── Sub-tabs ──
@@ -303,7 +299,6 @@ const subTabs = [
   { id: 'consumption', label: 'Расход материалов' },
   { id: 'revenue',     label: 'Поступления от абонентов' },
   { id: 'monthly',     label: 'По месяцам' },
-  { id: 'works',       label: 'Выполнено работ' },
 ]
 const activeSub = ref('consumption')
 

@@ -572,58 +572,6 @@ class MaterialReportController extends Controller
     }
 
     // ── Экспорт CSV текущей таблицы "Расход за период" (учитывает drill-down по бригаде/территории) ──
-    // Выполнено работ за период: сколько актов каждого типа заявки (Подключение,
-    // Ремонт, Настройка ...) всего и в разрезе бригад. Один акт = одна выполненная
-    // работа, период — по дате создания акта (acts.created_at, как в списке Актов).
-    // Акты заявок на подключение (connection_requests) типа заявки не имеют —
-    // считаем их как "Подключение", это та же работа, что и тикеты с типом
-    // "Подключение". Бригада — COALESCE(тикет, заявка на подключение), как в ActController.
-    public function worksDone(Request $request)
-    {
-        $this->authorizeReports($request);
-        [$from, $to] = $this->parseRange($request);
-
-        $rows = DB::table('acts as a')
-            ->leftJoin('tickets as t', 't.id', '=', 'a.ticket_id')
-            ->leftJoin('ticket_types as tt', 'tt.id', '=', 't.type_id')
-            ->leftJoin('connection_requests as cr', 'cr.id', '=', 'a.connection_request_id')
-            ->leftJoin('brigades as b', 'b.id', '=', DB::raw('COALESCE(t.brigade_id, cr.brigade_id)'))
-            ->whereNull('t.deleted_at')
-            ->whereBetween('a.created_at', [$from, $to])
-            ->selectRaw("COALESCE(tt.name, 'Подключение') as type_name, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt")
-            ->groupBy('type_name', 'b.id', 'brigade_name')
-            ->get();
-
-        $brigades = [];
-        $types    = [];
-        $total    = 0;
-
-        foreach ($rows as $r) {
-            $bKey = $r->brigade_id ?? 0;
-            $cnt  = (int) $r->cnt;
-
-            $brigades[$bKey] ??= ['key' => $bKey, 'name' => $r->brigade_name, 'total' => 0];
-            $brigades[$bKey]['total'] += $cnt;
-
-            $types[$r->type_name] ??= ['name' => $r->type_name, 'total' => 0, 'by_brigade' => []];
-            $types[$r->type_name]['total'] += $cnt;
-            $types[$r->type_name]['by_brigade'][$bKey] = ($types[$r->type_name]['by_brigade'][$bKey] ?? 0) + $cnt;
-
-            $total += $cnt;
-        }
-
-        $types    = array_values($types);
-        $brigades = array_values($brigades);
-        usort($types,    fn($x, $y) => $y['total'] <=> $x['total']);
-        usort($brigades, fn($x, $y) => $y['total'] <=> $x['total']);
-
-        return response()->json([
-            'types'    => $types,
-            'brigades' => $brigades,
-            'total'    => $total,
-        ]);
-    }
-
     public function exportCsv(Request $request)
     {
         $this->authorizeReports($request);
