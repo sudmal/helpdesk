@@ -42,28 +42,29 @@
               <td class="px-4 py-2.5 text-right whitespace-nowrap">{{ fmt(data.total) }}</td>
               <td v-for="b in data.brigades" :key="b.key" class="px-4 py-2.5 text-right whitespace-nowrap">{{ fmt(b) }}</td>
             </tr>
+            <!-- Соотношение работ с актами и без актов — столбик под каждой колонкой -->
+            <tr class="border-t border-gray-100 bg-white font-normal">
+              <td class="px-4 py-3 align-bottom text-xs text-gray-500">
+                <div class="font-medium text-gray-600 mb-1">Соотношение</div>
+                <div class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-500"></span> с актами</div>
+                <div class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-orange-500"></span> без актов</div>
+              </td>
+              <td class="px-4 py-3 align-bottom">
+                <RatioBar :all="data.total.all" :act="data.total.act" />
+              </td>
+              <td v-for="b in data.brigades" :key="b.key" class="px-4 py-3 align-bottom">
+                <RatioBar :all="b.all" :act="b.act" />
+              </td>
+            </tr>
           </tfoot>
         </table>
-      </div>
-    </div>
-
-    <!-- Соотношение работ с актами и без актов по бригадам -->
-    <div v-if="!range.state.loading && data.brigades.length" class="grid lg:grid-cols-2 gap-3">
-      <div class="bg-white rounded-2xl border border-gray-200 p-4">
-        <h3 class="text-sm font-medium text-gray-700 mb-2">Работы с актами и без актов — по бригадам</h3>
-        <div class="relative h-72"><canvas ref="absCanvas"></canvas></div>
-      </div>
-      <div class="bg-white rounded-2xl border border-gray-200 p-4">
-        <h3 class="text-sm font-medium text-gray-700 mb-2">Доля работ с актами, %</h3>
-        <div class="relative h-72"><canvas ref="pctCanvas"></canvas></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import Chart from 'chart.js/auto'
+import { computed, defineComponent, h, onMounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
 import { useReportRange } from '@/Composables/useReportRange'
@@ -117,73 +118,32 @@ const Cell = defineComponent({
   },
 })
 
-// ── Графики: с актом / без акта по бригадам ──
-const absCanvas = ref(null)
-const pctCanvas = ref(null)
-let absChart = null
-let pctChart = null
-const COLOR_ACT = '#22c55e'
-const COLOR_NO_ACT = '#f97316'
-
-function destroyCharts() {
-  absChart?.destroy(); absChart = null
-  pctChart?.destroy(); pctChart = null
-}
-
-function buildCharts() {
-  destroyCharts()
-  const bs = data.value.brigades
-  if (!bs.length || !absCanvas.value || !pctCanvas.value) return
-
-  const labels  = bs.map(b => b.name)
-  const withAct = bs.map(b => b.act)
-  const without = bs.map(b => b.all - b.act)
-  const pctAct  = bs.map(b => b.all ? (b.act / b.all) * 100 : 0)
-  const pctNo   = bs.map(b => b.all ? ((b.all - b.act) / b.all) * 100 : 0)
-
-  const common = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom' } },
-  }
-
-  absChart = new Chart(absCanvas.value, {
-    type: 'bar',
-    data: { labels, datasets: [
-      { label: 'С актом',   data: withAct, backgroundColor: COLOR_ACT },
-      { label: 'Без акта',  data: without, backgroundColor: COLOR_NO_ACT },
-    ] },
-    options: { ...common, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } },
-  })
-
-  pctChart = new Chart(pctCanvas.value, {
-    type: 'bar',
-    data: { labels, datasets: [
-      { label: 'С актом',  data: pctAct, backgroundColor: COLOR_ACT },
-      { label: 'Без акта', data: pctNo,  backgroundColor: COLOR_NO_ACT },
-    ] },
-    options: {
-      ...common,
-      scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: 100, ticks: { callback: v => v + '%' } } },
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: { callbacks: { label: (ctx) => {
-          const b = bs[ctx.dataIndex]
-          const cnt = ctx.datasetIndex === 0 ? b.act : b.all - b.act
-          return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}% (${cnt} из ${b.all})`
-        } } },
-      },
-    },
-  })
-}
-
-watch([() => range.state.data, () => range.state.loading], () => nextTick(buildCharts))
+// Столбик 100%: снизу зелёная часть — работы с актом, сверху оранжевая — без акта.
+// Подписи: число работ в сегменте (если сегмент достаточно высок) и % с актами под столбиком.
+const RatioBar = defineComponent({
+  props: { all: { type: Number, required: true }, act: { type: Number, required: true } },
+  setup(props) {
+    return () => {
+      const without = props.all - props.act
+      const pctAct = props.all ? (props.act / props.all) * 100 : 0
+      const pctNo  = props.all ? 100 - pctAct : 0
+      const seg = (cls, pct, n) => pct > 0
+        ? h('div', { class: `${cls} flex items-center justify-center text-[11px] font-semibold text-white`, style: { height: pct + '%' } }, pct >= 12 ? String(n) : '')
+        : null
+      return h('div', { class: 'flex flex-col items-end gap-1', title: `С актами: ${props.act} · без актов: ${without} · всего: ${props.all}` }, [
+        h('div', { class: 'w-14 h-40 rounded-md overflow-hidden bg-gray-100 flex flex-col-reverse' }, [
+          seg('bg-green-500', pctAct, props.act),
+          seg('bg-orange-500', pctNo, without),
+        ]),
+        h('div', { class: 'text-xs text-gray-500 font-medium' }, props.all ? `${Math.round(pctAct)}% с актами` : '—'),
+      ])
+    }
+  },
+})
 
 onMounted(() => {
-  Chart.defaults.animation = false
   range.state.periodMode = 'month'
   range.ensureLoaded()
 })
 
-onBeforeUnmount(destroyCharts)
 </script>
