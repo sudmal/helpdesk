@@ -18,18 +18,24 @@ class ActController extends Controller
     {
         $this->authorize('viewAny', Act::class);
         $user = auth()->user();
-        $tab  = in_array($request->tab, ['active', 'archive', 'reports', 'all']) ? $request->tab : 'active';
+        $tab  = in_array($request->tab, ['active', 'archive', 'reports', 'all', 'surveys', 'survey_settings']) ? $request->tab : 'active';
+        // Опросы абонентов (2026-09-24): вкладки видны только с правами surveys.conduct / surveys.manage
+        $surveyAccess = ['conduct' => $user->hasPermission('surveys.conduct'), 'manage' => $user->hasPermission('surveys.manage')];
+        if (($tab === 'surveys' && !$surveyAccess['conduct']) || ($tab === 'survey_settings' && !$surveyAccess['manage'])) {
+            $tab = 'active';
+        }
 
         // Отчёты — сама вкладка видна всем, кто видит Акты, но содержимое (пока
         // это перенесённый сюда "Расход материалов" из общих Отчётов) доступно
         // только тем, у кого reports.view/admin/head_support — ПЭО/Логистика/
         // Абонотдел получили reports.view ещё в миграции ролей 2026-07-15,
         // бригадир/монтажник — нет (см. память project-acts-feature).
-        if ($tab === 'reports') {
+        if (in_array($tab, ['reports', 'surveys', 'survey_settings'])) {
             return Inertia::render('Acts/Index', [
                 'tab'             => $tab,
                 'acts'            => null,
                 'filters'         => [],
+                'surveyAccess'    => $surveyAccess,
                 'authUserId'      => $user->id,
                 'canViewReports'  => $user->isAdmin() || $user->isHeadSupport() || $user->hasPermission('reports.view'),
             ]);
@@ -168,6 +174,7 @@ class ActController extends Controller
             'acts'       => $acts,
             'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir', 'date', 'ticket_type', 'kind', 'closed_from', 'closed_to']),
             'reportFilterLabel' => $this->reportFilterLabel($request),
+            'surveyAccess' => $surveyAccess,
             'authUserId' => $user->id,
             'brigades'   => Brigade::orderBy('name')->get(['id', 'name']),
         ]);

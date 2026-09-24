@@ -204,11 +204,27 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Не manage-settings — доступ теперь у reports.view (ПЭО/Логистика/Абонотдел) тоже, см. ReportsController::materialDynamicsData
     Route::middleware(['auth', 'active'])->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
     Route::middleware('can:manage-settings')->get('/reports/works-done', [App\Http\Controllers\ReportsController::class, 'worksDoneData'])->name('reports.works-done');
+    Route::middleware('can:manage-settings')->get('/reports/survey', [App\Http\Controllers\SurveyController::class, 'report'])->name('reports.survey');
     Route::middleware('can:manage-settings')->get('/reports/distribution', [App\Http\Controllers\ReportsController::class, 'distributionData'])->name('reports.distribution');
     Route::middleware('can:manage-settings')->get('/reports/call-stats', [App\Http\Controllers\ReportsController::class, 'callStatsData'])->name('reports.call-stats');
     Route::middleware('can:manage-settings')->get('/reports/operator-load', [App\Http\Controllers\ReportsController::class, 'operatorLoadData'])->name('reports.operator-load');
     Route::middleware(['auth', 'active'])->prefix('acts')->name('acts.')->group(function () {
         Route::get('/', [App\Http\Controllers\ActController::class, 'index'])->name('index');
+
+        // Опросные листы по актам (2026-09-24), права проверяются внутри SurveyController
+        Route::get('/surveys/queue',                        [App\Http\Controllers\SurveyController::class, 'queue'])->name('surveys.queue');
+        Route::get('/surveys/act/{act}',                    [App\Http\Controllers\SurveyController::class, 'showAct'])->name('surveys.act');
+        Route::post('/surveys/act/{act}/complete',          [App\Http\Controllers\SurveyController::class, 'complete'])->name('surveys.complete');
+        Route::post('/surveys/act/{act}/attempt',           [App\Http\Controllers\SurveyController::class, 'attempt'])->name('surveys.attempt');
+        Route::post('/surveys/act/{act}/decline',           [App\Http\Controllers\SurveyController::class, 'decline'])->name('surveys.decline');
+        Route::get('/surveys/settings',                     [App\Http\Controllers\SurveyController::class, 'settings'])->name('surveys.settings');
+        Route::post('/surveys/settings/questions',          [App\Http\Controllers\SurveyController::class, 'storeQuestion'])->name('surveys.questions.store');
+        Route::put('/surveys/settings/questions/{question}',  [App\Http\Controllers\SurveyController::class, 'updateQuestion'])->name('surveys.questions.update');
+        Route::delete('/surveys/settings/questions/{question}', [App\Http\Controllers\SurveyController::class, 'destroyQuestion'])->name('surveys.questions.destroy');
+        Route::post('/surveys/settings/reorder',            [App\Http\Controllers\SurveyController::class, 'reorderQuestions'])->name('surveys.questions.reorder');
+        Route::put('/surveys/settings/targets',             [App\Http\Controllers\SurveyController::class, 'updateTargets'])->name('surveys.targets');
+        Route::put('/surveys/settings/general',             [App\Http\Controllers\SurveyController::class, 'updateGeneral'])->name('surveys.general');
+
         Route::get('/{act}', [App\Http\Controllers\ActController::class, 'show'])->name('show');
         Route::get('/{act}/print', [App\Http\Controllers\ActController::class, 'print'])->name('print');
         Route::post('/{act}/approve', [App\Http\Controllers\ActController::class, 'approve'])->name('approve');

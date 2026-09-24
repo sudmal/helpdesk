@@ -19,6 +19,9 @@
       <MaterialsReport v-else />
     </div>
 
+    <SurveyQueue v-else-if="tab === 'surveys'" />
+    <SurveySettings v-else-if="tab === 'survey_settings'" />
+
     <template v-else>
       <!-- Фильтр, пришедший из отчёта "Выполнено работ" -->
       <div v-if="reportFilterLabel" class="mb-2">
@@ -202,6 +205,8 @@ import { reactive, computed, watch } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import MaterialsReport from '@/Components/Acts/MaterialsReport.vue'
+import SurveyQueue from '@/Components/Acts/SurveyQueue.vue'
+import SurveySettings from '@/Components/Acts/SurveySettings.vue'
 
 const props = defineProps({
   tab:             { type: String, default: 'active' },
@@ -211,6 +216,7 @@ const props = defineProps({
   canViewReports:  { type: Boolean, default: false },
   brigades:        { type: Array, default: () => [] },
   reportFilterLabel: { type: String, default: null },
+  surveyAccess:    { type: Object, default: () => ({ conduct: false, manage: false }) },
 })
 
 // "(!)" виден только тому, кто создал акт (обычно монтажник) — это к нему
@@ -219,11 +225,13 @@ function needsAck(act) {
   return !!act.materials_changed_at && act.created_by === props.authUserId
 }
 
-const tabs = [
+const tabs = computed(() => [
   { id: 'active',  label: 'Активные' },
   { id: 'archive', label: 'Архив' },
   { id: 'reports', label: 'Отчёты' },
-]
+  ...(props.surveyAccess.conduct ? [{ id: 'surveys', label: 'Опросы' }] : []),
+  ...(props.surveyAccess.manage ? [{ id: 'survey_settings', label: 'Настройки опроса' }] : []),
+])
 
 const statusLabels = {
   pending_foreman:          'Ждёт бригадира',

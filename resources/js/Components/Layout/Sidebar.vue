@@ -54,7 +54,7 @@
       </template>
       <NavItem :href="route('addresses.index')"     icon="database" label="Адреса" :collapsed="collapsed" />
       <NavItem v-if="can('materials.view')" :href="route('materials.index')"    icon="package"  label="Материалы" :collapsed="collapsed" />
-      <NavItem v-if="can('acts.view')" :href="route('acts.index')" icon="file-text" label="Акты" :collapsed="collapsed">
+      <NavItem v-if="can('acts.view') || can('surveys.conduct')" :href="route('acts.index')" icon="file-text" label="Акты" :collapsed="collapsed">
         <span v-if="actsAlerts.pending > 0"
               class="ml-auto animate-pulse flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none"
               :title="`Актов, требующих внимания: ${actsAlerts.pending}`">

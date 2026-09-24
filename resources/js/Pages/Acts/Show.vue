@@ -221,6 +221,9 @@
         </div>
       </div>
 
+      <!-- Опрос абонента (для актов, подпадающих под настройки опросов) -->
+      <ActSurveyBlock :act-id="act.id" />
+
       <!-- История -->
       <div v-if="act.history?.length" class="bg-white rounded-xl border border-gray-200 p-3.5">
         <h3 class="font-medium text-sm text-gray-700 mb-2.5">История</h3>
@@ -247,6 +250,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
+import ActSurveyBlock from '@/Components/Acts/ActSurveyBlock.vue'
 
 const props = defineProps({
   act: Object,
