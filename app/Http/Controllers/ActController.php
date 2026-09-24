@@ -14,12 +14,17 @@ class ActController extends Controller
 {
     public function __construct(private ActService $actService) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         $this->authorize('viewAny', Act::class);
         $user = auth()->user();
         $tab  = in_array($request->tab, ['active', 'archive', 'reports', 'all', 'surveys', 'survey_settings']) ? $request->tab : 'active';
         // Опросы абонентов (2026-09-24): вкладки видны только с правами surveys.conduct / surveys.manage
+        // Старые ссылки на вкладку "Отчёты" Актов ведут в общий раздел Отчёты (2026-09-24)
+        if ($tab === 'reports') {
+            return redirect()->route('reports.index', ['tab' => 'materials']);
+        }
+        $canViewReports = $user->isAdmin() || $user->isHeadSupport() || $user->hasPermission('reports.view');
         $surveyAccess = ['conduct' => $user->hasPermission('surveys.conduct'), 'manage' => $user->hasPermission('surveys.manage')];
         if (($tab === 'surveys' && !$surveyAccess['conduct']) || ($tab === 'survey_settings' && !$surveyAccess['manage'])) {
             $tab = 'active';
@@ -30,14 +35,14 @@ class ActController extends Controller
         // только тем, у кого reports.view/admin/head_support — ПЭО/Логистика/
         // Абонотдел получили reports.view ещё в миграции ролей 2026-07-15,
         // бригадир/монтажник — нет (см. память project-acts-feature).
-        if (in_array($tab, ['reports', 'surveys', 'survey_settings'])) {
+        if (in_array($tab, ['surveys', 'survey_settings'])) {
             return Inertia::render('Acts/Index', [
                 'tab'             => $tab,
                 'acts'            => null,
                 'filters'         => [],
                 'surveyAccess'    => $surveyAccess,
                 'authUserId'      => $user->id,
-                'canViewReports'  => $user->isAdmin() || $user->isHeadSupport() || $user->hasPermission('reports.view'),
+                'canViewReports'  => $canViewReports,
             ]);
         }
 
@@ -175,6 +180,7 @@ class ActController extends Controller
             'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir', 'date', 'ticket_type', 'kind', 'closed_from', 'closed_to']),
             'reportFilterLabel' => $this->reportFilterLabel($request),
             'surveyAccess' => $surveyAccess,
+            'canViewReports' => $canViewReports,
             'authUserId' => $user->id,
             'brigades'   => Brigade::orderBy('name')->get(['id', 'name']),
         ]);

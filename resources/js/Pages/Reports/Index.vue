@@ -207,9 +207,9 @@
       </div>
     </div>
 
-    <!-- Выполнено работ (закрытые заявки по типам и бригадам) -->
-    <div v-if="activeTab === 'works'" class="p-4">
-      <WorkDoneReport />
+    <!-- Работы/Материалы: выполнено работ, расход материалов, поступления, по месяцам -->
+    <div v-if="activeTab === 'materials'" class="p-4">
+      <MaterialsReport :initial-sub="initialSub" />
     </div>
 
     <!-- Оценки абонентов (опросные листы по актам) -->
@@ -336,24 +336,31 @@ import Chart from 'chart.js/auto'
 Chart.defaults.animation = false
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
-import WorkDoneReport from '@/Components/Reports/WorkDoneReport.vue'
+import MaterialsReport from '@/Components/Reports/MaterialsReport.vue'
 import SurveyReport from '@/Components/Reports/SurveyReport.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
-defineProps({
-  territories: { type: Array, default: () => [] },
+const props = defineProps({
+  territories:       { type: Array,   default: () => [] },
+  // Общие отчёты — только с manage-settings; вкладка "Работы/Материалы" доступна ещё
+  // и по reports.view (ПЭО/Логистика/Абонотдел), как раньше отчёты во вкладке Акты
+  canManageSettings: { type: Boolean, default: true },
+  initialTab:        { type: String,  default: '' },
+  initialSub:        { type: String,  default: 'works' },
 })
 
-const tabs = [
-  { id: 'brigade',      label: 'Эффективность бригад' },
-  { id: 'territory',    label: 'Территории' },
-  { id: 'distribution', label: 'Распределение по дням' },
-  { id: 'callcenter',   label: 'Обработка звонков' },
-  { id: 'works',        label: 'Выполнено работ' },
-  { id: 'survey',       label: 'Оценки абонентов' },
-]
+const tabs = computed(() => [
+  ...(props.canManageSettings ? [
+    { id: 'brigade',      label: 'Эффективность бригад' },
+    { id: 'territory',    label: 'Территории' },
+    { id: 'distribution', label: 'Распределение по дням' },
+    { id: 'callcenter',   label: 'Обработка звонков' },
+  ] : []),
+  { id: 'materials', label: 'Работы/Материалы' },
+  ...(props.canManageSettings ? [{ id: 'survey', label: 'Оценки абонентов' }] : []),
+])
 
-const activeTab = ref('brigade')
+const activeTab = ref(tabs.value.some(t => t.id === props.initialTab) ? props.initialTab : tabs.value[0].id)
 
 // ── Каждая вкладка — независимый диапазон дат + свой запрос данных ──
 // "Расход материалов" перенесён во вкладку "Отчёты" раздела Акты (2026-07-15,

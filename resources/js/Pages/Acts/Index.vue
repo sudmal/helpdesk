@@ -9,17 +9,14 @@
                        tab === t.id ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
         {{ t.label }}
       </button>
+      <!-- Отчёты по работам и материалам теперь в общем разделе Отчёты -->
+      <Link v-if="canViewReports" :href="route('reports.index', { tab: 'materials' })"
+            class="px-3 py-1 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
+        Отчёты →
+      </Link>
     </div>
 
-    <!-- Вкладка "Отчёты" -->
-    <div v-if="tab === 'reports'">
-      <div v-if="!canViewReports" class="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400">
-        Нет доступа к отчётам.
-      </div>
-      <MaterialsReport v-else />
-    </div>
-
-    <SurveyQueue v-else-if="tab === 'surveys'" />
+    <SurveyQueue v-if="tab === 'surveys'" />
     <SurveySettings v-else-if="tab === 'survey_settings'" />
 
     <template v-else>
@@ -202,9 +199,8 @@
 
 <script setup>
 import { reactive, computed, watch } from 'vue'
-import { Head, router } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
-import MaterialsReport from '@/Components/Acts/MaterialsReport.vue'
 import SurveyQueue from '@/Components/Acts/SurveyQueue.vue'
 import SurveySettings from '@/Components/Acts/SurveySettings.vue'
 
@@ -228,7 +224,6 @@ function needsAck(act) {
 const tabs = computed(() => [
   { id: 'active',  label: 'Активные' },
   { id: 'archive', label: 'Архив' },
-  { id: 'reports', label: 'Отчёты' },
   ...(props.surveyAccess.conduct ? [{ id: 'surveys', label: 'Опросы' }] : []),
   ...(props.surveyAccess.manage ? [{ id: 'survey_settings', label: 'Настройки опроса' }] : []),
 ])

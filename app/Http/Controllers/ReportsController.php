@@ -9,10 +9,22 @@ use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
 {
-    public function index()
+    /**
+     * Раздел Отчёты: общие вкладки — только manage-settings (админ/начальник ТП),
+     * вкладка "Работы/Материалы" (бывшие отчёты во вкладке Акты) — ещё и reports.view
+     * (ПЭО/Логистика/Абонотдел). Deep-link: ?tab=materials&sub=works|consumption|revenue|monthly.
+     */
+    public function index(Request $request)
     {
+        $user      = $request->user();
+        $canManage = $user->can('manage-settings');
+        abort_unless($canManage || $user->hasPermission('reports.view'), 403);
+
         return Inertia::render('Reports/Index', [
-            'territories' => DB::table('territories')->orderBy('name')->get(['id', 'name']),
+            'territories'       => DB::table('territories')->orderBy('name')->get(['id', 'name']),
+            'canManageSettings' => $canManage,
+            'initialTab'        => (string) $request->query('tab', ''),
+            'initialSub'        => (string) $request->query('sub', 'works'),
         ]);
     }
 
@@ -67,6 +79,9 @@ class ReportsController extends Controller
      */
     public function worksDoneData(Request $request)
     {
+        $user = $request->user();
+        abort_unless($user->can('manage-settings') || $user->hasPermission('reports.view'), 403);
+
         [$from, $to] = $this->parseRange($request);
 
         $tickets = DB::table('tickets as t')

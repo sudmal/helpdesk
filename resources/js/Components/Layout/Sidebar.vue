@@ -69,7 +69,7 @@
           </span>
         </span>
       </NavItem>
-      <NavItem v-if="canManageSettings"
+      <NavItem v-if="canManageSettings || can('reports.view')"
                :href="route('reports.index')"       icon="bar-chart-2" label="Отчёты" :collapsed="collapsed" />
       <NavItem v-if="can('calls.view')" :href="route('calls.index')" icon="phone" label="Звонки"
                :icon-class="phoneIconClass" :title="phoneIconTitle" :collapsed="collapsed" />
