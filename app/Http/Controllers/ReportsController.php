@@ -52,6 +52,72 @@ class ReportsController extends Controller
         return response()->json($this->materialDynamics($from, $to));
     }
 
+    /**
+     * Выполнено работ за период: закрытые заявки по типам и бригадам. В каждой
+     * ячейке две цифры: все закрытые заявки и, отдельно, сколько из них с актом
+     * (в UI — "N (M)"). Акт есть далеко не у всех заявок (акты введены в июле
+     * 2026), поэтому считаем все закрытые, а не только те, что с актом.
+     *
+     * Заявки: status = closed, период по closed_at. Заявки на подключение
+     * (connection_requests) closed_at не имеют — период по updated_at (у всех
+     * заявок с актом совпадает с датой акта); тип по kind: connection →
+     * "Подключение", switch → "Перекл. на PON".
+     */
+    public function worksDoneData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        $tickets = DB::table('tickets as t')
+            ->join('ticket_statuses as ts', 'ts.id', '=', 't.status_id')
+            ->join('ticket_types as tt', 'tt.id', '=', 't.type_id')
+            ->leftJoin('brigades as b', 'b.id', '=', 't.brigade_id')
+            ->where('ts.slug', 'closed')
+            ->whereNull('t.deleted_at')
+            ->whereBetween('t.closed_at', [$from, $to])
+            ->selectRaw("tt.name as type_name, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.ticket_id = t.id)) as with_act")
+            ->groupBy('tt.name', 'b.id', 'brigade_name')
+            ->get();
+
+        $requests = DB::table('connection_requests as cr')
+            ->leftJoin('brigades as b', 'b.id', '=', 'cr.brigade_id')
+            ->where('cr.status', 'closed')
+            ->whereNull('cr.deleted_at')
+            ->whereBetween('cr.updated_at', [$from, $to])
+            ->selectRaw("CASE cr.kind WHEN 'switch' THEN 'Перекл. на PON' ELSE 'Подключение' END as type_name, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.connection_request_id = cr.id)) as with_act")
+            ->groupBy('type_name', 'b.id', 'brigade_name')
+            ->get();
+
+        $brigades = [];
+        $types    = [];
+        $total    = ['all' => 0, 'act' => 0];
+
+        foreach ($tickets->concat($requests) as $r) {
+            $bKey = $r->brigade_id ?? 0;
+            $all  = (int) $r->cnt;
+            $act  = (int) $r->with_act;
+
+            $brigades[$bKey] ??= ['key' => $bKey, 'name' => $r->brigade_name, 'all' => 0, 'act' => 0];
+            $brigades[$bKey]['all'] += $all;
+            $brigades[$bKey]['act'] += $act;
+
+            $types[$r->type_name] ??= ['name' => $r->type_name, 'all' => 0, 'act' => 0, 'by_brigade' => []];
+            $types[$r->type_name]['all'] += $all;
+            $types[$r->type_name]['act'] += $act;
+            $cell = $types[$r->type_name]['by_brigade'][$bKey] ?? ['all' => 0, 'act' => 0];
+            $types[$r->type_name]['by_brigade'][$bKey] = ['all' => $cell['all'] + $all, 'act' => $cell['act'] + $act];
+
+            $total['all'] += $all;
+            $total['act'] += $act;
+        }
+
+        $types    = array_values($types);
+        $brigades = array_values($brigades);
+        usort($types,    fn($x, $y) => $y['all'] <=> $x['all']);
+        usort($brigades, fn($x, $y) => $y['all'] <=> $x['all']);
+
+        return response()->json(['types' => $types, 'brigades' => $brigades, 'total' => $total]);
+    }
+
     public function distributionData(Request $request)
     {
         [$from, $to] = $this->parseRange($request);

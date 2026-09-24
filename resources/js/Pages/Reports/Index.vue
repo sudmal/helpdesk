@@ -207,6 +207,11 @@
       </div>
     </div>
 
+    <!-- Выполнено работ (закрытые заявки по типам и бригадам) -->
+    <div v-if="activeTab === 'works'" class="p-4">
+      <WorkDoneReport />
+    </div>
+
     <!-- Работа ТП -->
     <div v-show="activeTab === 'callcenter'" class="p-4 space-y-3">
       <RangePicker :range="callcenter" />
@@ -326,6 +331,7 @@ import Chart from 'chart.js/auto'
 Chart.defaults.animation = false
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
+import WorkDoneReport from '@/Components/Reports/WorkDoneReport.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
 defineProps({
@@ -337,6 +343,7 @@ const tabs = [
   { id: 'territory',    label: 'Территории' },
   { id: 'distribution', label: 'Распределение по дням' },
   { id: 'callcenter',   label: 'Обработка звонков' },
+  { id: 'works',        label: 'Выполнено работ' },
 ]
 
 const activeTab = ref('brigade')
