@@ -58,6 +58,17 @@
         </button>
       </div>
 
+      <!-- Фильтр из отчёта "Выполнено работ" (бригада / период закрытия) -->
+      <div v-if="f.brigade || f.closed_from || f.closed_to" class="px-3 pt-3 flex flex-wrap gap-1.5">
+        <span class="inline-flex items-center gap-1 bg-blue-100 border border-blue-200 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+          Из отчёта:
+          <template v-if="f.brigade === 'none'">без бригады · </template>
+          <template v-else-if="f.brigade">{{ brigades.find(b => String(b.id) === String(f.brigade))?.name || 'бригада' }} · </template>
+          <template v-if="f.closed_from || f.closed_to">закрыто {{ fmtFilterDate(f.closed_from) }}{{ f.closed_to && f.closed_to !== f.closed_from ? ' — ' + fmtFilterDate(f.closed_to) : '' }}</template>
+          <button @click="clearReportFilter" class="hover:text-blue-900">✕</button>
+        </span>
+      </div>
+
       <!-- Фильтры -->
       <div class="p-3 flex flex-wrap gap-2.5 items-end">
         <div class="flex-1 min-w-48">
@@ -801,7 +812,19 @@ const f = ref({
   kind:         props.filters?.kind         ?? '',
   service_type: props.filters?.service_type ? Number(props.filters.service_type) : null,
   trashed:      !!props.filters?.trashed,
+  brigade:      props.filters?.brigade      ?? '',
+  closed_from:  props.filters?.closed_from  ?? '',
+  closed_to:    props.filters?.closed_to    ?? '',
 })
+
+const fmtFilterDate = (d) => d ? d.split('-').reverse().join('.') : ''
+
+function clearReportFilter() {
+  f.value.brigade = ''
+  f.value.closed_from = ''
+  f.value.closed_to = ''
+  apply()
+}
 
 const SERVICE_ICONS = { 'интернет': '🌐', 'inet': '🌐', 'ктв': '📺', 'ctv': '📺', 'волс': '🔆', 'подключ': '🟢' }
 function serviceIcon(name) {

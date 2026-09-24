@@ -19,7 +19,7 @@
     </template>
 
     <!-- Плашки активных фильтров -->
-    <div v-if="localFilters.overdue || localFilters.closed_today || localFilters.address_id || localFilters.street || localFilters.apartment"
+    <div v-if="localFilters.overdue || localFilters.closed_today || localFilters.closed_from || localFilters.closed_to || localFilters.brigade === 'none' || localFilters.address_id || localFilters.street || localFilters.apartment"
          class="flex flex-wrap gap-1.5 mb-2">
       <span v-if="localFilters.overdue"
             class="inline-flex items-center gap-1 bg-red-100 border border-red-200 text-red-700
@@ -32,6 +32,18 @@
                    text-xs px-2 py-0.5 rounded-full">
         {{ localFilters.closed_today === 'auto' ? '🟠 Просрочено сегодня' : '✅ Закрыто сегодня' }}
         <button @click="localFilters.closed_today=''; applyFilters()" class="hover:text-green-900">✕</button>
+      </span>
+      <span v-if="localFilters.closed_from || localFilters.closed_to"
+            class="inline-flex items-center gap-1 bg-green-100 border border-green-200 text-green-700
+                   text-xs px-2 py-0.5 rounded-full">
+        ✅ Закрыто {{ fmtDate(localFilters.closed_from) }}{{ localFilters.closed_to && localFilters.closed_to !== localFilters.closed_from ? ' — ' + fmtDate(localFilters.closed_to) : '' }}
+        <button @click="localFilters.closed_from=''; localFilters.closed_to=''; applyFilters()" class="hover:text-green-900">✕</button>
+      </span>
+      <span v-if="localFilters.brigade === 'none'"
+            class="inline-flex items-center gap-1 bg-gray-100 border border-gray-200 text-gray-700
+                   text-xs px-2 py-0.5 rounded-full">
+        Без бригады
+        <button @click="localFilters.brigade=''; applyFilters()" class="hover:text-gray-900">✕</button>
       </span>
       <span v-if="localFilters.address_id || localFilters.street"
             class="inline-flex items-center gap-1 bg-blue-100 border border-blue-200 text-blue-700
@@ -385,12 +397,16 @@ const localFilters = ref({
   sortDir:      props.filters?.sortDir      ?? 'desc',
   overdue:      props.filters?.overdue      ?? '',
   closed_today: props.filters?.closed_today ?? '',
+  closed_from:  props.filters?.closed_from  ?? '',
+  closed_to:    props.filters?.closed_to    ?? '',
   address_id:   props.filters?.address_id   ?? '',
   city:         props.filters?.city         ?? '',
   street:       props.filters?.street       ?? '',
   building:     props.filters?.building     ?? '',
   apartment:    props.filters?.apartment    ?? '',
 })
+
+const fmtDate = (d) => d ? d.split('-').reverse().join('.') : ''
 
 // Автообновление каждые 60 сек
 let refreshTimer = null

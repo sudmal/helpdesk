@@ -20,6 +20,14 @@
     </div>
 
     <template v-else>
+      <!-- Фильтр, пришедший из отчёта "Выполнено работ" -->
+      <div v-if="reportFilterLabel" class="mb-2">
+        <span class="inline-flex items-center gap-1 bg-blue-100 border border-blue-200 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+          Из отчёта: {{ reportFilterLabel }}
+          <button @click="clearReportFilter" class="hover:text-blue-900">✕</button>
+        </span>
+      </div>
+
       <!-- Фильтры -->
       <div class="bg-white rounded-xl border border-gray-200 p-3 mb-3 flex flex-wrap gap-2.5 items-end">
         <div class="flex-1 min-w-48">
@@ -202,6 +210,7 @@ const props = defineProps({
   authUserId:      { type: Number, default: null },
   canViewReports:  { type: Boolean, default: false },
   brigades:        { type: Array, default: () => [] },
+  reportFilterLabel: { type: String, default: null },
 })
 
 // "(!)" виден только тому, кто создал акт (обычно монтажник) — это к нему
@@ -238,6 +247,10 @@ const f = reactive({
   sort:      props.filters?.sort      || 'completed_at',
   sort_dir:  props.filters?.sort_dir  || 'desc',
   date:      props.filters?.date      || '',
+  ticket_type: props.filters?.ticket_type || '',
+  kind:        props.filters?.kind        || '',
+  closed_from: props.filters?.closed_from || '',
+  closed_to:   props.filters?.closed_to   || '',
 })
 
 function apply() {
@@ -253,6 +266,10 @@ watch(() => f.search, () => {
   clearTimeout(searchDebounce)
   searchDebounce = setTimeout(apply, 350)
 })
+
+function clearReportFilter() {
+  router.get(route('acts.index'), { tab: 'active' }, { preserveState: false })
+}
 
 function switchTab(id) {
   router.get(route('acts.index'), { tab: id }, { preserveState: false })

@@ -51,7 +51,10 @@ class TicketController extends Controller
             ->when($request->search, fn($q) => $q->search($request->search))
             ->when($request->status, fn($q) => $q->where('status_id', $request->status))
             ->when($request->type,   fn($q) => $q->where('type_id', $request->type))
-            ->when($request->brigade,      fn($q) => $q->where('brigade_id', $request->brigade))
+            ->when($request->brigade,      fn($q) => $request->brigade === 'none' ? $q->whereNull('brigade_id') : $q->where('brigade_id', $request->brigade))
+            // Период закрытия (2026-09-24) -- ссылки из отчёта "Выполнено работ"
+            ->when($request->closed_from, fn($q) => $q->where('closed_at', '>=', $request->closed_from))
+            ->when($request->closed_to,   fn($q) => $q->where('closed_at', '<=', $request->closed_to . ' 23:59:59'))
             ->when($request->service_type, fn($q) => $q->where('service_type_id', $request->service_type))
             ->when($request->overdue, fn($q) => $q->whereIn('status_id', $nonFinalStatusIds)
                 ->whereNotNull('scheduled_at')
@@ -94,7 +97,7 @@ class TicketController extends Controller
 
         return Inertia::render('Tickets/Index', [
             'tickets'  => $tickets,
-            'filters'  => $request->only(['search', 'status', 'type', 'brigade', 'priority', 'date_from', 'date_to', 'address_id', 'city', 'street', 'building', 'apartment', 'service_type', 'overdue', 'closed_today', 'sort', 'sortDir']),
+            'filters'  => $request->only(['search', 'status', 'type', 'brigade', 'priority', 'date_from', 'date_to', 'address_id', 'city', 'street', 'building', 'apartment', 'service_type', 'overdue', 'closed_today', 'closed_from', 'closed_to', 'sort', 'sortDir']),
             'addressFilterLabel' => $request->address_id ? \App\Models\Address::find($request->address_id)?->full_address : null,
             'statuses' => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
             'types'    => TicketType::active()->get(['id', 'name', 'color']),

@@ -18,7 +18,7 @@ class ActController extends Controller
     {
         $this->authorize('viewAny', Act::class);
         $user = auth()->user();
-        $tab  = in_array($request->tab, ['active', 'archive', 'reports']) ? $request->tab : 'active';
+        $tab  = in_array($request->tab, ['active', 'archive', 'reports', 'all']) ? $request->tab : 'active';
 
         // Отчёты — сама вкладка видна всем, кто видит Акты, но содержимое (пока
         // это перенесённый сюда "Расход материалов" из общих Отчётов) доступно
@@ -85,9 +85,25 @@ class ActController extends Controller
                 $q->whereIn(DB::raw('COALESCE(addresses.territory_id, connection_requests.territory_id)'), $userTerritories)
             )
             ->when($request->type, fn($q) => $q->where('acts.type', $request->type))
-            ->when($request->brigade, fn($q) =>
-                $q->where(DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'), $request->brigade)
+            ->when($request->brigade, fn($q) => $request->brigade === 'none'
+                ? $q->whereNull(DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'))
+                : $q->where(DB::raw('COALESCE(tickets.brigade_id, connection_requests.brigade_id)'), $request->brigade)
             )
+            // Ссылки из отчёта "Выполнено работ" (2026-09-24): тип обычной заявки /
+            // вид заявки на подключение и период закрытия. Период -- по closed_at
+            // заявки, для заявок на подключение (closed_at нет) -- по updated_at,
+            // ровно как считает сам отчёт.
+            ->when($request->ticket_type, fn($q) => $q->where('tickets.type_id', $request->ticket_type))
+            ->when($request->kind, fn($q) => $q->where('connection_requests.kind', $request->kind))
+            ->when($request->closed_from || $request->closed_to, function ($q) use ($request) {
+                $from = $request->closed_from ? $request->closed_from . ' 00:00:00' : '1970-01-01 00:00:00';
+                $to   = $request->closed_to   ? $request->closed_to   . ' 23:59:59' : '2999-12-31 23:59:59';
+                $q->where(function ($qq) use ($from, $to) {
+                    $qq->whereBetween('tickets.closed_at', [$from, $to])
+                       ->orWhere(fn($x) => $x->whereNotNull('acts.connection_request_id')
+                                               ->whereBetween('connection_requests.updated_at', [$from, $to]));
+                });
+            })
             // Поиск (2026-09-14) — раньше работал только в Архиве, теперь одинаково
             // на обеих вкладках: находит акт независимо от того, завершён он или
             // ещё в работе, не нужно заранее гадать/переключать вкладку.
@@ -133,6 +149,9 @@ class ActController extends Controller
             $sortColumn = $sortable[$request->sort] ?? $sortable['completed_at'];
             $sortDir    = $request->sort_dir === 'asc' ? 'asc' : 'desc';
             $query->orderBy($sortColumn, $sortDir);
+        } elseif ($tab === 'all') {
+            // Все акты независимо от статуса -- открывается только по ссылкам из отчёта
+            $query->orderByDesc('acts.created_at');
         } else {
             $query->where('acts.status', '!=', 'completed')
                 ->when($request->status, fn($q) => $q->where('acts.status', $request->status))
@@ -147,10 +166,35 @@ class ActController extends Controller
         return Inertia::render('Acts/Index', [
             'tab'        => $tab,
             'acts'       => $acts,
-            'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir', 'date']),
+            'filters'    => $request->only(['status', 'type', 'brigade', 'search', 'sort', 'sort_dir', 'date', 'ticket_type', 'kind', 'closed_from', 'closed_to']),
+            'reportFilterLabel' => $this->reportFilterLabel($request),
             'authUserId' => $user->id,
             'brigades'   => Brigade::orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    // Подпись фильтра, пришедшего из отчёта "Выполнено работ" (плашка над списком)
+    private function reportFilterLabel(Request $request): ?string
+    {
+        if (!$request->ticket_type && !$request->kind && !$request->closed_from && !$request->closed_to) {
+            return null;
+        }
+        $parts = [];
+        if ($request->ticket_type) {
+            $parts[] = DB::table('ticket_types')->where('id', $request->ticket_type)->value('name');
+        }
+        if ($request->kind) {
+            $parts[] = $request->kind === 'switch' ? 'Заявка: Перекл. на PON' : 'Заявка на подключение';
+        }
+        if ($request->brigade) {
+            $parts[] = $request->brigade === 'none' ? 'Без бригады' : DB::table('brigades')->where('id', $request->brigade)->value('name');
+        }
+        if ($request->closed_from || $request->closed_to) {
+            $f = $request->closed_from ? \Carbon\Carbon::parse($request->closed_from)->format('d.m.Y') : '';
+            $t = $request->closed_to   ? \Carbon\Carbon::parse($request->closed_to)->format('d.m.Y')   : '';
+            $parts[] = 'закрыто ' . ($f === $t || !$t ? $f : "$f — $t");
+        }
+        return implode(' · ', array_filter($parts));
     }
 
     public function show(Act $act): Response

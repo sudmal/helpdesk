@@ -58,10 +58,12 @@ class ReportsController extends Controller
      * (в UI — "N (M)"). Акт есть далеко не у всех заявок (акты введены в июле
      * 2026), поэтому считаем все закрытые, а не только те, что с актом.
      *
-     * Заявки: status = closed, период по closed_at. Заявки на подключение
-     * (connection_requests) closed_at не имеют — период по updated_at (у всех
-     * заявок с актом совпадает с датой акта); тип по kind: connection →
-     * "Подключение", switch → "Перекл. на PON".
+     * Строки разделены по источнику, чтобы каждая цифра открывала ровно свой
+     * список (кликабельные ячейки): обычные заявки — по типу заявки, заявки на
+     * подключение (connection_requests) — отдельными строками по виду
+     * (connection / switch). Заявки: status = closed, период по closed_at.
+     * У заявок на подключение closed_at нет — период по updated_at (у всех
+     * заявок с актом совпадает с датой акта).
      */
     public function worksDoneData(Request $request)
     {
@@ -74,8 +76,8 @@ class ReportsController extends Controller
             ->where('ts.slug', 'closed')
             ->whereNull('t.deleted_at')
             ->whereBetween('t.closed_at', [$from, $to])
-            ->selectRaw("tt.name as type_name, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.ticket_id = t.id)) as with_act")
-            ->groupBy('tt.name', 'b.id', 'brigade_name')
+            ->selectRaw("tt.id as type_id, tt.name as label, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.ticket_id = t.id)) as with_act")
+            ->groupBy('tt.id', 'tt.name', 'b.id', 'brigade_name')
             ->get();
 
         $requests = DB::table('connection_requests as cr')
@@ -83,15 +85,15 @@ class ReportsController extends Controller
             ->where('cr.status', 'closed')
             ->whereNull('cr.deleted_at')
             ->whereBetween('cr.updated_at', [$from, $to])
-            ->selectRaw("CASE cr.kind WHEN 'switch' THEN 'Перекл. на PON' ELSE 'Подключение' END as type_name, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.connection_request_id = cr.id)) as with_act")
-            ->groupBy('type_name', 'b.id', 'brigade_name')
+            ->selectRaw("cr.kind as kind, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.connection_request_id = cr.id)) as with_act")
+            ->groupBy('cr.kind', 'b.id', 'brigade_name')
             ->get();
 
         $brigades = [];
-        $types    = [];
+        $rows     = [];
         $total    = ['all' => 0, 'act' => 0];
 
-        foreach ($tickets->concat($requests) as $r) {
+        $add = function (string $rowKey, array $rowMeta, $r) use (&$brigades, &$rows, &$total) {
             $bKey = $r->brigade_id ?? 0;
             $all  = (int) $r->cnt;
             $act  = (int) $r->with_act;
@@ -100,22 +102,40 @@ class ReportsController extends Controller
             $brigades[$bKey]['all'] += $all;
             $brigades[$bKey]['act'] += $act;
 
-            $types[$r->type_name] ??= ['name' => $r->type_name, 'all' => 0, 'act' => 0, 'by_brigade' => []];
-            $types[$r->type_name]['all'] += $all;
-            $types[$r->type_name]['act'] += $act;
-            $cell = $types[$r->type_name]['by_brigade'][$bKey] ?? ['all' => 0, 'act' => 0];
-            $types[$r->type_name]['by_brigade'][$bKey] = ['all' => $cell['all'] + $all, 'act' => $cell['act'] + $act];
+            $rows[$rowKey] ??= $rowMeta + ['all' => 0, 'act' => 0, 'by_brigade' => []];
+            $rows[$rowKey]['all'] += $all;
+            $rows[$rowKey]['act'] += $act;
+            $cell = $rows[$rowKey]['by_brigade'][$bKey] ?? ['all' => 0, 'act' => 0];
+            $rows[$rowKey]['by_brigade'][$bKey] = ['all' => $cell['all'] + $all, 'act' => $cell['act'] + $act];
 
             $total['all'] += $all;
             $total['act'] += $act;
+        };
+
+        foreach ($tickets as $r) {
+            $add('t' . $r->type_id, ['key' => 't' . $r->type_id, 'label' => $r->label, 'source' => 'ticket', 'type_id' => (int) $r->type_id, 'kind' => null], $r);
+        }
+        foreach ($requests as $r) {
+            $label = $r->kind === 'switch' ? 'Перекл. на PON (заявки на подключение)' : 'Подключение (заявки на подключение)';
+            $add('c' . $r->kind, ['key' => 'c' . $r->kind, 'label' => $label, 'source' => 'request', 'type_id' => null, 'kind' => $r->kind], $r);
         }
 
-        $types    = array_values($types);
+        // Обычные заявки — по убыванию, заявки на подключение — отдельным блоком в конце
+        $ticketRows  = array_values(array_filter($rows, fn($x) => $x['source'] === 'ticket'));
+        $requestRows = array_values(array_filter($rows, fn($x) => $x['source'] === 'request'));
+        usort($ticketRows,  fn($x, $y) => $y['all'] <=> $x['all']);
+        usort($requestRows, fn($x, $y) => $y['all'] <=> $x['all']);
+
         $brigades = array_values($brigades);
-        usort($types,    fn($x, $y) => $y['all'] <=> $x['all']);
         usort($brigades, fn($x, $y) => $y['all'] <=> $x['all']);
 
-        return response()->json(['types' => $types, 'brigades' => $brigades, 'total' => $total]);
+        return response()->json([
+            'rows'             => array_merge($ticketRows, $requestRows),
+            'brigades'         => $brigades,
+            'total'            => $total,
+            'period'           => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'closed_status_id' => (int) DB::table('ticket_statuses')->where('slug', 'closed')->value('id'),
+        ]);
     }
 
     public function distributionData(Request $request)

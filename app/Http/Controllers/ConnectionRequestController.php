@@ -69,6 +69,19 @@ class ConnectionRequestController extends Controller
         if ($request->filled('kind')) {
             $query->where('kind', $request->kind);
         }
+        // Ссылки из отчёта "Выполнено работ" (2026-09-24): бригада и период закрытия
+        // (у заявок на подключение closed_at нет -- период по updated_at, как в отчёте).
+        if ($request->filled('brigade')) {
+            $request->brigade === 'none'
+                ? $query->whereNull('brigade_id')
+                : $query->where('brigade_id', $request->brigade);
+        }
+        if ($request->filled('closed_from')) {
+            $query->where('updated_at', '>=', $request->closed_from . ' 00:00:00');
+        }
+        if ($request->filled('closed_to')) {
+            $query->where('updated_at', '<=', $request->closed_to . ' 23:59:59');
+        }
         if ($request->filled('search')) {
             $s = '%' . $request->search . '%';
             $query->where(function ($q) use ($s) {
@@ -101,7 +114,7 @@ class ConnectionRequestController extends Controller
 
         return Inertia::render('ConnectionRequests/Index', [
             'requests'           => $query->paginate(50)->withQueryString(),
-            'filters'            => $request->only(['status', 'search', 'territory', 'service_type', 'kind', 'trashed']),
+            'filters'            => $request->only(['status', 'search', 'territory', 'service_type', 'kind', 'trashed', 'brigade', 'closed_from', 'closed_to']),
             'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
             'brigades'           => Brigade::with('territories:id,name')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'serviceTypes'       => ServiceType::active()->get(['id', 'name', 'color']),
