@@ -123,7 +123,9 @@ class SurveyController extends Controller
 
         DB::transaction(function () use ($act, $data, $request, $questions) {
             $survey = ActSurvey::firstOrCreate(['act_id' => $act->id]);
-            $survey->answers()->delete();
+            // Заменяем только ответы на вопросы, присланные формой. Ответы на вопросы,
+            // которые с тех пор отключили/удалили, остаются нетронутыми — история не теряется.
+            $survey->answers()->whereIn('question_id', collect($data['answers'])->pluck('question_id'))->delete();
             foreach ($data['answers'] as $a) {
                 ActSurveyAnswer::create([
                     'survey_id'     => $survey->id,
@@ -301,8 +303,9 @@ class SurveyController extends Controller
 
         $qKey = "COALESCE(CAST(an.question_id AS CHAR), an.question_text)";
 
-        $cells = $base()->whereNotNull('an.rating')
-            ->selectRaw("COALESCE(b.id, 0) as bkey, COALESCE(b.name, 'Без бригады') as brigade_name, {$qKey} as qkey, MAX(an.question_text) as qtext, AVG(an.rating) as avg, COUNT(*) as n")
+        // Подпись колонки — актуальный текст вопроса (если вопрос ещё существует), иначе снимок из ответа
+        $cells = $base()->leftJoin('survey_questions as sq', 'sq.id', '=', 'an.question_id')->whereNotNull('an.rating')
+            ->selectRaw("COALESCE(b.id, 0) as bkey, COALESCE(b.name, 'Без бригады') as brigade_name, {$qKey} as qkey, COALESCE(MAX(sq.text), MAX(an.question_text)) as qtext, AVG(an.rating) as avg, COUNT(*) as n")
             ->groupBy('bkey', 'brigade_name', 'qkey')->get();
 
         $surveyCounts = $base()->selectRaw("COALESCE(b.id, 0) as bkey, COUNT(DISTINCT s.id) as surveys")
