@@ -70,6 +70,20 @@ class HandleInertiaRequests extends Middleware
                     'needs_completion' => (clone $base)->where('status', 'scheduled')->count(),
                 ];
             },
+            // Опросы абонентов (2026-09-24): сколько актов ждут звонка -- значок телефона у пункта "Акты"
+            'surveyAlerts' => function () use ($request) {
+                $user = $request->user();
+                if (!$user || !$user->hasPermission('surveys.conduct')) return ['due' => 0];
+
+                return ['due' => \Illuminate\Support\Facades\Cache::remember('survey_due:' . $user->id, 60, function () use ($user) {
+                    $svc = app(\App\Services\SurveyService::class);
+                    $q   = $svc->eligibleQuery();
+                    if (!$user->isAdmin()) {
+                        $q->whereIn(\Illuminate\Support\Facades\DB::raw('COALESCE(ad.territory_id, cr.territory_id)'), $user->territoryScopeIds());
+                    }
+                    return $svc->applyStatus($q, 'due')->count();
+                })];
+            },
             'actsAlerts' => function () use ($request) {
                 $user = $request->user();
                 if (!$user) return ['pending' => 0];
