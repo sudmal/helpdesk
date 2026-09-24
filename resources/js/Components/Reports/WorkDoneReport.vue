@@ -46,11 +46,24 @@
         </table>
       </div>
     </div>
+
+    <!-- Соотношение работ с актами и без актов по бригадам -->
+    <div v-if="!range.state.loading && data.brigades.length" class="grid lg:grid-cols-2 gap-3">
+      <div class="bg-white rounded-2xl border border-gray-200 p-4">
+        <h3 class="text-sm font-medium text-gray-700 mb-2">Работы с актами и без актов — по бригадам</h3>
+        <div class="relative h-72"><canvas ref="absCanvas"></canvas></div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-200 p-4">
+        <h3 class="text-sm font-medium text-gray-700 mb-2">Доля работ с актами, %</h3>
+        <div class="relative h-72"><canvas ref="pctCanvas"></canvas></div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, defineComponent, h, onMounted } from 'vue'
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import Chart from 'chart.js/auto'
 import { Link } from '@inertiajs/vue3'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
 import { useReportRange } from '@/Composables/useReportRange'
@@ -104,8 +117,73 @@ const Cell = defineComponent({
   },
 })
 
+// ── Графики: с актом / без акта по бригадам ──
+const absCanvas = ref(null)
+const pctCanvas = ref(null)
+let absChart = null
+let pctChart = null
+const COLOR_ACT = '#22c55e'
+const COLOR_NO_ACT = '#f97316'
+
+function destroyCharts() {
+  absChart?.destroy(); absChart = null
+  pctChart?.destroy(); pctChart = null
+}
+
+function buildCharts() {
+  destroyCharts()
+  const bs = data.value.brigades
+  if (!bs.length || !absCanvas.value || !pctCanvas.value) return
+
+  const labels  = bs.map(b => b.name)
+  const withAct = bs.map(b => b.act)
+  const without = bs.map(b => b.all - b.act)
+  const pctAct  = bs.map(b => b.all ? (b.act / b.all) * 100 : 0)
+  const pctNo   = bs.map(b => b.all ? ((b.all - b.act) / b.all) * 100 : 0)
+
+  const common = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom' } },
+  }
+
+  absChart = new Chart(absCanvas.value, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'С актом',   data: withAct, backgroundColor: COLOR_ACT },
+      { label: 'Без акта',  data: without, backgroundColor: COLOR_NO_ACT },
+    ] },
+    options: { ...common, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } },
+  })
+
+  pctChart = new Chart(pctCanvas.value, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'С актом',  data: pctAct, backgroundColor: COLOR_ACT },
+      { label: 'Без акта', data: pctNo,  backgroundColor: COLOR_NO_ACT },
+    ] },
+    options: {
+      ...common,
+      scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: 100, ticks: { callback: v => v + '%' } } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { callbacks: { label: (ctx) => {
+          const b = bs[ctx.dataIndex]
+          const cnt = ctx.datasetIndex === 0 ? b.act : b.all - b.act
+          return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}% (${cnt} из ${b.all})`
+        } } },
+      },
+    },
+  })
+}
+
+watch([() => range.state.data, () => range.state.loading], () => nextTick(buildCharts))
+
 onMounted(() => {
+  Chart.defaults.animation = false
   range.state.periodMode = 'month'
   range.ensureLoaded()
 })
+
+onBeforeUnmount(destroyCharts)
 </script>
