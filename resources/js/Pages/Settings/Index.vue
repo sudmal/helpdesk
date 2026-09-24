@@ -1531,6 +1531,13 @@ const permissionGroups = [
     ]
   },
   {
+    key: 'surveys', icon: '📞', label: 'Опросы абонентов', badgeClass: 'bg-teal-50 border-teal-100 text-teal-700',
+    permissions: [
+      { key: 'surveys.conduct', label: 'Проведение опросов',  desc: 'Вкладка «Опросы» в Актах: звонить абонентам после подключения, ставить оценки, отмечать «не дозвонился»/отказ' },
+      { key: 'surveys.manage',  label: 'Настройка опросов',   desc: 'Вкладка «Настройки опроса» в Актах: вопросы, к каким актам нужен опрос, срок звонка' },
+    ]
+  },
+  {
     key: 'reports', icon: '📊', label: 'Отчёты', badgeClass: 'bg-pink-50 border-pink-100 text-pink-700',
     permissions: [
       { key: 'reports.view', label: 'Просмотр отчётов', desc: 'Видеть раздел Отчёты, включая отчёт по расходу материалов во вкладке Акты' },
