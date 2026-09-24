@@ -18,9 +18,9 @@
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
               <th class="text-left px-4 py-2.5 whitespace-nowrap">Тип работ</th>
-              <th class="text-right px-4 py-2.5 whitespace-nowrap">Всего</th>
+              <th class="text-right px-4 py-2.5 whitespace-nowrap">Всего (с актами)</th>
               <th v-for="b in data.brigades" :key="b.key"
-                  class="text-right px-4 py-2.5 whitespace-nowrap">{{ b.name }}</th>
+                  class="text-right px-4 py-2.5 whitespace-nowrap">{{ b.name }} (с актами)</th>
             </tr>
           </thead>
           <tbody>
