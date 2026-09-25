@@ -144,8 +144,9 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
-            <tr v-for="r in requests.data" :key="r.id" class="hover:bg-gray-50"
-                :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at,
+            <tr v-for="(r, i) in requests.data" :key="r.id" class="hover:bg-gray-50"
+                :class="{ '!border-t-2 !border-t-slate-400': i > 0 && sortGroup(r) !== sortGroup(requests.data[i - 1]),
+                          'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at,
                           'ring-2 ring-inset ring-red-400': isOverdue(r),
                           'ring-2 ring-inset ring-blue-400': !r.territory_id && r.status === 'pending' && !r.deleted_at }"
                 @mouseenter="hoverInfo = connectionTooltipData(r)"
@@ -801,6 +802,13 @@ function isOverdue(r) {
   if (r.status !== 'scheduled' || !r.scheduled_at) return false
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
   return new Date(r.scheduled_at) < startOfToday
+}
+
+// Группа сортировки — зеркало ORDER BY в ConnectionRequestController::index
+function sortGroup(r) {
+  if (r.needs_callback || (!r.territory_id && r.status === 'pending')) return 0
+  if (['closed', 'rejected', 'cancelled'].includes(r.status)) return 2
+  return 1
 }
 
 function connectionTooltipData(r) {
