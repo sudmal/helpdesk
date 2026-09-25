@@ -197,6 +197,7 @@
                   @click="sortBy('number')">
                 № {{ sortIcon('number') }}
               </th>
+              <th class="w-7 px-0 py-1.5"></th>
               <th class="px-2 py-1.5 text-left">Адрес / Описание</th>
               <th class="px-2 py-1.5 text-left hidden md:table-cell w-32">Тип</th>
               <th class="px-2 py-1.5 text-left hidden lg:table-cell w-40">Телефон</th>
@@ -211,7 +212,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="!mergedTodayItems.length">
-              <td colspan="11" class="text-center py-10 text-gray-400">
+              <td colspan="12" class="text-center py-10 text-gray-400">
                 Заявок на {{ formatDateLabel(selectedDate) }} нет
               </td>
             </tr>
@@ -221,8 +222,8 @@
             <tr v-for="t in (item.kind === 'ticket' ? [item.ticket] : [])" :key="t.id"
                 :class="['cursor-pointer transition-all', t.status?.is_final ? 'opacity-60' : '']"
                 :style="{ backgroundColor: (t.status?.color ?? '#6b7280') + '1a' }"
-                @mouseenter="e => { e.currentTarget.style.filter='brightness(0.93)'; showTooltip(e, t) }"
-                @mouseleave="e => { e.currentTarget.style.filter=''; tooltip.show = false }"
+                @mouseenter="e => { e.currentTarget.style.filter='brightness(0.93)' }"
+                @mouseleave="e => { e.currentTarget.style.filter='' }"
                 @click="router.visit(route('tickets.show', t.id))">
 
               <!-- Полоска типа / галочка для закрытых -->
@@ -242,6 +243,10 @@
               </td>
               <td class="px-2 py-0.5">
                 <span class="font-mono text-blue-600 font-medium text-xs">{{ t.number }}</span>
+              </td>
+              <td class="px-0 py-0.5 text-center">
+                <span class="cursor-help text-sm leading-none text-gray-500 hover:text-blue-600"
+                      @mouseenter="e => showTooltip(e, t)" @mouseleave="tooltip.show = false">💬</span>
               </td>
               <td class="px-2 py-0.5">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ fullAddress(t) }}</p>
@@ -290,8 +295,6 @@
                  клик ведёт в карточку подключения (?open=), не в Ticket -->
             <tr v-for="c in (item.kind === 'connection' ? [item.conn] : [])" :key="c.id"
                 class="cursor-pointer transition-colors bg-blue-50/50 hover:bg-blue-100/60"
-                @mouseenter="e => showTooltip(e, connectionTooltipData(c))"
-                @mouseleave="tooltip.show = false"
                 @click="router.visit(route('connection-requests.index', { open: c.id }))">
               <td class="pr-0 py-0 w-5 relative">
                 <div class="absolute inset-y-0 left-0 w-[3px] rounded-r bg-blue-500"></div>
@@ -302,6 +305,10 @@
               </td>
               <td class="px-2 py-0.5">
                 <span class="font-mono text-blue-600 font-medium text-xs">—</span>
+              </td>
+              <td class="px-0 py-0.5 text-center">
+                <span class="cursor-help text-sm leading-none text-gray-500 hover:text-blue-600"
+                      @mouseenter="e => showTooltip(e, connectionTooltipData(c))" @mouseleave="tooltip.show = false">💬</span>
               </td>
               <td class="px-2 py-0.5">
                 <p class="font-medium text-gray-800 truncate text-xs leading-tight">{{ c.address_string }}</p>
