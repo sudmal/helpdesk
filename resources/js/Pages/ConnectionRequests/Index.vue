@@ -1,9 +1,10 @@
 <template>
   <Head title="Подключения" />
   <AppLayout title="Подключения" help-tab="dispatcher" help-section="connections" tour-key="connections">
+    <div class="flex flex-col h-full min-h-0">
 
     <!-- Вкладки территорий + Фильтры -->
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3 shrink-0">
 
       <!-- Вкладки -->
       <div data-tour="tour-conn-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2.5 pt-1.5 flex-wrap">
@@ -106,17 +107,29 @@
     </div>
 
     <!-- Таблица -->
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-        <span class="text-sm text-gray-500">Всего: {{ requests.total }}</span>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col flex-1 min-h-0">
+      <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
+        <span class="text-sm text-gray-500 whitespace-nowrap">Всего: {{ requests.total }}</span>
+        <!-- Подсказка по строке под курсором — всегда в одном месте -->
+        <div class="flex-1 min-w-0 h-6 flex items-center gap-2 text-xs overflow-hidden whitespace-nowrap">
+          <template v-if="hoverInfo">
+            <span v-if="hoverInfo.type" class="px-1.5 py-0.5 rounded font-medium shrink-0"
+                  :style="{ backgroundColor: (hoverInfo.type.color || '#6b7280') + '33', color: hoverInfo.type.color || '#374151' }">{{ hoverInfo.type.name }}</span>
+            <span class="font-semibold text-gray-800 shrink-0">{{ hoverInfo.address }}</span>
+            <span v-if="hoverInfo.subscriberName" class="text-gray-500 shrink-0">👤 {{ hoverInfo.subscriberName }}</span>
+            <span v-if="hoverInfo.phone" class="text-gray-500 shrink-0">📞 {{ hoverInfo.phone }}</span>
+            <span v-if="hoverInfo.description" class="text-gray-600 truncate">{{ hoverInfo.description }}</span>
+            <span v-if="hoverInfo.lastComment" class="text-amber-600 truncate">💬 {{ hoverInfo.lastComment }}</span>
+          </template>
+        </div>
         <button @click="openCreate" data-tour="tour-conn-create"
-                class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors">
+                class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors shrink-0">
           + Новая заявка
         </button>
       </div>
-      <div data-tour="tour-conn-table" class="overflow-x-auto">
+      <div data-tour="tour-conn-table" class="overflow-auto flex-1 min-h-0">
         <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+          <thead class="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0 z-10 shadow-[0_1px_0_0_#e5e7eb]">
             <tr>
               <th class="px-2 py-1 text-center w-7"></th>
               <th class="px-1 py-1 text-center w-6"></th>
@@ -135,8 +148,8 @@
                 :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100 text-gray-400': r.status === 'cancelled' && !r.deleted_at,
                           'ring-2 ring-inset ring-red-400': isOverdue(r),
                           'ring-2 ring-inset ring-blue-400': !r.territory_id && r.status === 'pending' && !r.deleted_at }"
-                @mouseenter="e => showTooltip(e, connectionTooltipData(r))"
-                @mouseleave="hideTooltip">
+                @mouseenter="hoverInfo = connectionTooltipData(r)"
+                @mouseleave="hoverInfo = null">
               <td class="px-1.5 py-px text-center whitespace-nowrap">
                 <button v-if="r.status === 'pending' || r.status === 'scheduled'"
                         @click="openEdit(r)" title="Редактировать"
@@ -197,7 +210,7 @@
 
       <!-- Пагинация -->
       <div v-if="requests.last_page > 1"
-           class="px-4 py-2.5 border-t border-gray-100 flex items-center gap-2">
+           class="px-4 py-2.5 border-t border-gray-100 flex items-center gap-2 shrink-0">
         <button v-for="link in requests.links" :key="link.label"
                 :disabled="!link.url || link.active"
                 @click="link.url && router.get(link.url, {}, { preserveState: true })"
@@ -205,6 +218,8 @@
                 :class="['px-3 py-0.5 rounded-lg text-sm transition-colors',
                          link.active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600 disabled:opacity-40 disabled:cursor-default']" />
       </div>
+    </div>
+
     </div>
 
     <!-- Модал: Создать заявку -->
@@ -728,7 +743,6 @@
 
   </AppLayout>
 
-  <EntityTooltip :show="tooltip.show" :x="tooltip.x" :y="tooltip.y" :data="tooltip.data" />
 </template>
 
 <script setup>
@@ -738,11 +752,9 @@ import { Head, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import TimePicker from '@/Components/UI/TimePicker.vue'
-import EntityTooltip from '@/Components/EntityTooltip.vue'
-import { useHoverTooltip } from '@/Composables/useHoverTooltip'
 import { useTour, hasSeenTour } from '@/Composables/useTour'
 
-const { tooltip, showTooltip, hideTooltip } = useHoverTooltip()
+const hoverInfo = ref(null)
 
 const props = defineProps({
   requests:          Object,
