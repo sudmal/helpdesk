@@ -245,8 +245,8 @@
         </div>
         <div class="flex items-center gap-3 shrink-0 pt-0.5">
           <div class="flex items-center gap-1.5"
-               :title="trunkTitle(trunkStatus, qDetail.trunk?.rtt_ms)">
-            <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', trunkDotClass(trunkStatus)]"></span>
+               :title="trunkTitle(qDetail.trunk)">
+            <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', trunkDotClass(trunkStatus, qDetail.trunk?.probe)]"></span>
             <span class="text-xs text-gray-500 font-medium whitespace-nowrap">PHOENIX SIP</span>
           </div>
           <button @click="sendCmd('fix_dialing')" :disabled="cmdSending !== null"
@@ -932,7 +932,14 @@ function sipTitle(ext) {
   return 'SIP: Неизвестно'
 }
 const trunkStatus = computed(() => qDetail.value.trunk?.status ?? null)
-function trunkDotClass(s) {
+// Потери на любом из участков (шлюз оператора / SIP-сервер / коммутатор Феникс) за последнюю минуту — жёлтый
+const PROBE_HOSTS = [['gw', 'Шлюз оператора'], ['sip', 'SIP-сервер оператора'], ['phx', 'Коммутатор Феникс']]
+function probeHasLoss(p) {
+  return !!p && PROBE_HOSTS.some(([k]) => (p[k]?.loss_last ?? 0) > 0)
+}
+function trunkDotClass(s, probe) {
+  if (s === 'Unreachable') return 'bg-red-400'
+  if (probeHasLoss(probe)) return 'bg-yellow-400'
   if (s === 'Avail')       return 'bg-green-400'
   if (s === 'Unreachable') return 'bg-red-400'
   return 'bg-gray-300'
@@ -942,10 +949,26 @@ function trunkLabel(s) {
   if (s === 'Unreachable') return 'Недоступен'
   return 'Нет данных'
 }
-function trunkTitle(s, rtt) {
-  if (s === 'Avail')       return `PHOENIX SIP: подключён (${rtt} мс)`
-  if (s === 'Unreachable') return 'PHOENIX SIP: недоступен'
-  return 'PHOENIX SIP: нет данных'
+function trunkTitle(t) {
+  const s = t?.status
+  let head = 'PHOENIX SIP: нет данных'
+  if (s === 'Avail')       head = `PHOENIX SIP: подключён (${t.rtt_ms} мс)`
+  if (s === 'Unreachable') head = 'PHOENIX SIP: недоступен'
+  const p = t?.probe
+  if (!p) return head
+  const lines = [head, '']
+  for (const [k, name] of PROBE_HOSTS) {
+    const h = p[k]
+    if (!h) continue
+    const lossNow = h.loss_last > 0 ? `потери ${h.loss_last}%` : 'доступен, без потерь'
+    lines.push(`${name} (${h.ip}): ${lossNow}, ${h.rtt_avg} мс · за час потерь ${h.loss_1h}%`)
+  }
+  lines.push('')
+  lines.push(`Регистрация транка: ${p.reg === 'Registered' ? 'есть' : (p.reg || 'нет данных')}`)
+  lines.push(`За час: перерегистраций ${p.rereg_1h}, обрывов звонков без звука ${p.rtp_drops_1h}`)
+  if (p.ts) lines.push(`Обновлено ${new Date(p.ts * 1000).toLocaleTimeString('ru-RU')}`)
+  return lines.join('
+')
 }
 const sortedMembers = computed(() =>
   [...qDetail.value.members].sort((a, b) => a.ext.localeCompare(b.ext, undefined, { numeric: true }))
