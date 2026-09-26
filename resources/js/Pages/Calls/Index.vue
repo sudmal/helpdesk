@@ -967,8 +967,7 @@ function trunkTitle(t) {
   lines.push(`Регистрация транка: ${p.reg === 'Registered' ? 'есть' : (p.reg || 'нет данных')}`)
   lines.push(`За час: перерегистраций ${p.rereg_1h}, обрывов звонков без звука ${p.rtp_drops_1h}`)
   if (p.ts) lines.push(`Обновлено ${new Date(p.ts * 1000).toLocaleTimeString('ru-RU')}`)
-  return lines.join('
-')
+  return lines.join('\n')
 }
 const sortedMembers = computed(() =>
   [...qDetail.value.members].sort((a, b) => a.ext.localeCompare(b.ext, undefined, { numeric: true }))
