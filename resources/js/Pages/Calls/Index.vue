@@ -934,11 +934,13 @@ function sipTitle(ext) {
 const trunkStatus = computed(() => qDetail.value.trunk?.status ?? null)
 // Потери на любом из участков (шлюз оператора / SIP-сервер / коммутатор Феникс) за последнюю минуту — жёлтый
 const PROBE_HOSTS = [['gw', 'Шлюз оператора'], ['sip', 'SIP-сервер оператора'], ['phx', 'Коммутатор Феникс']]
+// Asterisk отдаёт Unavail (qualify не проходит) или Unreachable — для оператора это одно: транк недоступен
+function isTrunkDown(s) { return s === 'Unavail' || s === 'Unreachable' }
 function probeHasLoss(p) {
   return !!p && PROBE_HOSTS.some(([k]) => (p[k]?.loss_last ?? 0) > 0)
 }
 function trunkDotClass(s, probe) {
-  if (s === 'Unreachable') return 'bg-red-400'
+  if (isTrunkDown(s))      return 'bg-red-400'
   if (probeHasLoss(probe)) return 'bg-yellow-400'
   if (s === 'Avail')       return 'bg-green-400'
   if (s === 'Unreachable') return 'bg-red-400'
@@ -953,7 +955,7 @@ function trunkTitle(t) {
   const s = t?.status
   let head = 'PHOENIX SIP: нет данных'
   if (s === 'Avail')       head = `PHOENIX SIP: подключён (${t.rtt_ms} мс)`
-  if (s === 'Unreachable') head = 'PHOENIX SIP: недоступен'
+  if (isTrunkDown(s))      head = 'PHOENIX SIP: недоступен (нет ответа на проверку связи)'
   const p = t?.probe
   if (!p) return head
   const lines = [head, '']
