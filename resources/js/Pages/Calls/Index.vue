@@ -385,20 +385,22 @@
               <span class="inline-block w-2.5 h-2.5 rounded-full" :style="{background: item.color}"></span>{{ item.label }}
             </div>
           </div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-2 text-xs text-gray-500"
+               title="Тонкая полоска над графиком — потери до вышестоящего SIP-сервера оператора в это время">
+            <span class="text-gray-400">PHOENIX SIP:</span>
+            <div class="flex items-center gap-1.5"><span class="inline-block w-2 h-2 rounded-sm" style="background:#9ca3af"></span>нет регистрации</div>
+            <div class="flex items-center gap-1.5"><span class="inline-block w-2 h-2 rounded-sm" style="background:#22c55e"></span>норма</div>
+            <div class="flex items-center gap-1.5"><span class="inline-block w-2 h-2 rounded-sm" style="background:#eab308"></span>потери &lt;10%</div>
+            <div class="flex items-center gap-1.5"><span class="inline-block w-2 h-2 rounded-sm" style="background:#f97316"></span>10-30%</div>
+            <div class="flex items-center gap-1.5"><span class="inline-block w-2 h-2 rounded-sm" style="background:#ef4444"></span>&gt;30%</div>
+          </div>
           <div :style="{height: Math.max(120, 28 * qTimeline.extensions.length + 10) + 'px'}">
             <canvas ref="timelineCanvas"></canvas>
           </div>
           <div class="border-t border-gray-100 my-3"></div>
-          <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-1 text-xs text-gray-500">
+          <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-3 text-xs text-gray-500">
             <div class="flex items-center gap-1.5">
               <span class="inline-block w-5 h-0.5 rounded" style="background:#f59e0b"></span>Ожидают в очереди
-            </div>
-            <div class="flex items-center gap-1.5" title="Тонкая полоска над графиком — потери до вышестоящего SIP-сервера оператора в это время">
-              <span class="inline-block w-2 h-2 rounded-sm" style="background:#9ca3af"></span>нет регистрации
-              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#eab308"></span>потери <10%
-              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#f97316"></span>10-30%
-              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#ef4444"></span>>30%
-              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#22c55e"></span>норма
             </div>
           </div>
           <canvas ref="queueCanvas" style="max-height:220px"></canvas>
@@ -1039,6 +1041,36 @@ function trunkStripColor(row) {
 const TRUNK_STRIP_HEIGHT = 6
 const TRUNK_STRIP_GAP    = 4
 
+// Тонкая полоска статуса SIP-провайдера в отступе НАД таймлайном операторов
+// (сам отступ резервируется через layout.padding.top в renderTimeline()) --
+// один прямоугольник на замер очереди, от его времени до времени следующего
+// замера (последний -- до правого края графика). Именно на таймлайне
+// операторов, а не на графике "Ожидают в очереди" -- по просьбе
+// пользователя 2026-09-27 (там полоска терялась среди пиков очереди).
+const trunkStripPlugin = {
+  id: 'trunkStrip',
+  afterDraw(chart) {
+    const xScale = chart.scales.x
+    const area   = chart.chartArea
+    if (!xScale || !area) return
+    const ctx = chart.ctx
+    const y = area.top - TRUNK_STRIP_GAP - TRUNK_STRIP_HEIGHT
+    ctx.save()
+    for (let i = 0; i < qHistory.value.length; i++) {
+      const row = qHistory.value[i]
+      const color = trunkStripColor(row)
+      if (!color) continue
+      const x1 = Math.max(area.left,  xScale.getPixelForValue(new Date(row.recorded_at).getTime()))
+      const nextMs = i + 1 < qHistory.value.length ? new Date(qHistory.value[i + 1].recorded_at).getTime() : xScale.max
+      const x2 = Math.min(area.right, xScale.getPixelForValue(nextMs))
+      if (x2 <= x1) continue
+      ctx.fillStyle = color
+      ctx.fillRect(x1, y, x2 - x1, TRUNK_STRIP_HEIGHT)
+    }
+    ctx.restore()
+  },
+}
+
 function renderChart() {
   if (!queueCanvas.value || qHistory.value.length === 0) return
   if (qChart) { qChart.destroy(); qChart = null }
@@ -1046,34 +1078,6 @@ function renderChart() {
   const minMs = qWindow.value.from ? new Date(qWindow.value.from).getTime() : undefined
   const maxMs = qWindow.value.to   ? new Date(qWindow.value.to).getTime()   : undefined
   const points = qHistory.value.map(r => ({ x: new Date(r.recorded_at).getTime(), y: r.waiting, row: r }))
-
-  // Тонкая полоска статуса SIP-провайдера в отступе над графиком (сам
-  // отступ резервируем через layout.padding.top ниже) -- один прямоугольник
-  // на замер, от его времени до времени следующего замера (последний -- до
-  // правого края графика).
-  const trunkStripPlugin = {
-    id: 'trunkStrip',
-    afterDraw(chart) {
-      const xScale = chart.scales.x
-      const area   = chart.chartArea
-      if (!xScale || !area) return
-      const ctx = chart.ctx
-      const y = area.top - TRUNK_STRIP_GAP - TRUNK_STRIP_HEIGHT
-      ctx.save()
-      for (let i = 0; i < qHistory.value.length; i++) {
-        const row = qHistory.value[i]
-        const color = trunkStripColor(row)
-        if (!color) continue
-        const x1 = Math.max(area.left,  xScale.getPixelForValue(new Date(row.recorded_at).getTime()))
-        const nextMs = i + 1 < qHistory.value.length ? new Date(qHistory.value[i + 1].recorded_at).getTime() : xScale.max
-        const x2 = Math.min(area.right, xScale.getPixelForValue(nextMs))
-        if (x2 <= x1) continue
-        ctx.fillStyle = color
-        ctx.fillRect(x1, y, x2 - x1, TRUNK_STRIP_HEIGHT)
-      }
-      ctx.restore()
-    },
-  }
 
   const missedPlugin = {
     id: 'missedMarkers',
@@ -1109,7 +1113,6 @@ function renderChart() {
     },
     options: {
       responsive: true, maintainAspectRatio: true, animation: false,
-      layout: { padding: { top: TRUNK_STRIP_GAP + TRUNK_STRIP_HEIGHT } },
       interaction: { mode: 'nearest', intersect: false, axis: 'x' },
       plugins: {
         legend: { display: false },
@@ -1160,7 +1163,7 @@ function renderChart() {
         },
       },
     },
-    plugins: [missedPlugin, trunkStripPlugin],
+    plugins: [missedPlugin],
   })
 }
 
@@ -1243,6 +1246,7 @@ function renderTimeline() {
     options: {
       indexAxis: 'y',
       responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: TRUNK_STRIP_GAP + TRUNK_STRIP_HEIGHT } },
       scales: {
         x: {
           type: 'linear', min: minMs, max: maxMs,
@@ -1273,7 +1277,7 @@ function renderTimeline() {
         },
       },
     },
-    plugins: [queueHeatPlugin],
+    plugins: [queueHeatPlugin, trunkStripPlugin],
   })
 }
 
