@@ -389,9 +389,16 @@
             <canvas ref="timelineCanvas"></canvas>
           </div>
           <div class="border-t border-gray-100 my-3"></div>
-          <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-3 text-xs text-gray-500">
+          <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mb-1 text-xs text-gray-500">
             <div class="flex items-center gap-1.5">
               <span class="inline-block w-5 h-0.5 rounded" style="background:#f59e0b"></span>Ожидают в очереди
+            </div>
+            <div class="flex items-center gap-1.5" title="Тонкая полоска над графиком — статус SIP-провайдера PHOENIX в это время">
+              <span class="inline-block w-2 h-2 rounded-sm" style="background:#9ca3af"></span>нет регистрации
+              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#eab308"></span>потери <10%
+              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#f97316"></span>10-30%
+              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#ef4444"></span>>30%
+              <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#22c55e"></span>норма
             </div>
           </div>
           <canvas ref="queueCanvas" style="max-height:220px"></canvas>
@@ -1013,6 +1020,23 @@ function renderPie() {
 // "Активных операторов"/"В DND" переехали в отдельный таймлайн операторов
 // renderTimeline() ниже, там же где они и понятнее видны). Ось X -- реальное
 // время (линейная шкала в мс), чтобы пиксель-в-пиксель совпадать с таймлайном.
+// Цвет полоски статуса провайдера по одному замеру очереди: null (замер до
+// появления этого поля) -- не рисуем совсем; не в норме (Unavail/Unreachable/
+// иное) -- серый ("нет регистрации" в терминах пользователя); иначе цвет по
+// тяжести потерь (0 -- зелёный, дальше жёлтый/оранжевый/красный).
+function trunkStripColor(row) {
+  if (!row.trunk_status) return null
+  if (row.trunk_status !== 'Avail') return '#9ca3af'
+  const loss = row.trunk_loss_pct ?? 0
+  if (loss <= 0)  return '#22c55e'
+  if (loss <= 10) return '#eab308'
+  if (loss <= 30) return '#f97316'
+  return '#ef4444'
+}
+
+const TRUNK_STRIP_HEIGHT = 6
+const TRUNK_STRIP_GAP    = 4
+
 function renderChart() {
   if (!queueCanvas.value || qHistory.value.length === 0) return
   if (qChart) { qChart.destroy(); qChart = null }
@@ -1020,6 +1044,34 @@ function renderChart() {
   const minMs = qWindow.value.from ? new Date(qWindow.value.from).getTime() : undefined
   const maxMs = qWindow.value.to   ? new Date(qWindow.value.to).getTime()   : undefined
   const points = qHistory.value.map(r => ({ x: new Date(r.recorded_at).getTime(), y: r.waiting, row: r }))
+
+  // Тонкая полоска статуса SIP-провайдера в отступе над графиком (сам
+  // отступ резервируем через layout.padding.top ниже) -- один прямоугольник
+  // на замер, от его времени до времени следующего замера (последний -- до
+  // правого края графика).
+  const trunkStripPlugin = {
+    id: 'trunkStrip',
+    afterDraw(chart) {
+      const xScale = chart.scales.x
+      const area   = chart.chartArea
+      if (!xScale || !area) return
+      const ctx = chart.ctx
+      const y = area.top - TRUNK_STRIP_GAP - TRUNK_STRIP_HEIGHT
+      ctx.save()
+      for (let i = 0; i < qHistory.value.length; i++) {
+        const row = qHistory.value[i]
+        const color = trunkStripColor(row)
+        if (!color) continue
+        const x1 = Math.max(area.left,  xScale.getPixelForValue(new Date(row.recorded_at).getTime()))
+        const nextMs = i + 1 < qHistory.value.length ? new Date(qHistory.value[i + 1].recorded_at).getTime() : xScale.max
+        const x2 = Math.min(area.right, xScale.getPixelForValue(nextMs))
+        if (x2 <= x1) continue
+        ctx.fillStyle = color
+        ctx.fillRect(x1, y, x2 - x1, TRUNK_STRIP_HEIGHT)
+      }
+      ctx.restore()
+    },
+  }
 
   const missedPlugin = {
     id: 'missedMarkers',
@@ -1055,6 +1107,7 @@ function renderChart() {
     },
     options: {
       responsive: true, maintainAspectRatio: true, animation: false,
+      layout: { padding: { top: TRUNK_STRIP_GAP + TRUNK_STRIP_HEIGHT } },
       interaction: { mode: 'nearest', intersect: false, axis: 'x' },
       plugins: {
         legend: { display: false },
@@ -1069,12 +1122,18 @@ function renderChart() {
             },
             label(item) {
               const row = item.raw.row
-              return [
+              const lines = [
                 `Ожидают в очереди: ${row.waiting}`,
                 `Разговаривают: ${row.talking}`,
                 `Активных операторов: ${row.active_members}`,
                 `В DND: ${row.dnd_active ?? 0}`,
               ]
+              if (row.trunk_status) {
+                lines.push(row.trunk_status !== 'Avail'
+                  ? 'PHOENIX SIP: нет регистрации'
+                  : `PHOENIX SIP: потери ${row.trunk_loss_pct ?? 0}%`)
+              }
+              return lines
             },
             afterBody(items) {
               if (!items.length) return []
@@ -1099,7 +1158,7 @@ function renderChart() {
         },
       },
     },
-    plugins: [missedPlugin],
+    plugins: [missedPlugin, trunkStripPlugin],
   })
 }
 

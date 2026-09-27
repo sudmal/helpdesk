@@ -255,12 +255,32 @@ class PbxController extends Controller
             'trunk'          => 'nullable|array',
         ]);
 
+        // Статус транка на этот момент — для полоски статуса провайдера над
+        // графиком "Ожидают в очереди" (Calls/Index.vue, вкладка "Очередь
+        // АТС"). Худшие потери среди шлюза/SIP-сервера/коммутатора Феникс
+        // (см. trunk_probe.sh на MikoPBX) — оценка тяжести, не привязана к
+        // конкретному участку.
+        $trunk = $data['trunk'] ?? null;
+        $trunkStatus  = $trunk['status'] ?? null;
+        $trunkLossPct = null;
+        if (!empty($trunk['probe']) && is_array($trunk['probe'])) {
+            $losses = array_filter(array_map(
+                fn($k) => $trunk['probe'][$k]['loss_last'] ?? null,
+                ['gw', 'sip', 'phx']
+            ), fn($v) => $v !== null);
+            if ($losses) {
+                $trunkLossPct = max($losses);
+            }
+        }
+
         QueueStat::create([
             'queue_name'     => $data['queue'],
             'waiting'        => $data['waiting'],
             'talking'        => $data['talking'],
             'active_members' => $data['active_members'],
             'total_members'  => $data['total_members'],
+            'trunk_status'   => $trunkStatus,
+            'trunk_loss_pct' => $trunkLossPct,
             'recorded_at'    => now(),
         ]);
 
@@ -324,7 +344,7 @@ class PbxController extends Controller
             $query->where('queue_name', $queue);
         }
 
-        $rows = $query->get(['recorded_at', 'waiting', 'talking', 'active_members', 'total_members']);
+        $rows = $query->get(['recorded_at', 'waiting', 'talking', 'active_members', 'total_members', 'trunk_status', 'trunk_loss_pct']);
         $this->attachDndCounts($rows, $hours);
 
         $latest = QueueStat::orderByDesc('recorded_at')->first();
