@@ -393,7 +393,7 @@
             <div class="flex items-center gap-1.5">
               <span class="inline-block w-5 h-0.5 rounded" style="background:#f59e0b"></span>Ожидают в очереди
             </div>
-            <div class="flex items-center gap-1.5" title="Тонкая полоска над графиком — статус SIP-провайдера PHOENIX в это время">
+            <div class="flex items-center gap-1.5" title="Тонкая полоска над графиком — потери до вышестоящего SIP-сервера оператора в это время">
               <span class="inline-block w-2 h-2 rounded-sm" style="background:#9ca3af"></span>нет регистрации
               <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#eab308"></span>потери <10%
               <span class="inline-block w-2 h-2 rounded-sm ml-1" style="background:#f97316"></span>10-30%
@@ -1023,7 +1023,9 @@ function renderPie() {
 // Цвет полоски статуса провайдера по одному замеру очереди: null (замер до
 // появления этого поля) -- не рисуем совсем; не в норме (Unavail/Unreachable/
 // иное) -- серый ("нет регистрации" в терминах пользователя); иначе цвет по
-// тяжести потерь (0 -- зелёный, дальше жёлтый/оранжевый/красный).
+// тяжести потерь ДО САМОГО ДАЛЬНЕГО ХОСТА -- вышестоящего SIP-сервера
+// оператора, не до промежуточного шлюза/своего коммутатора (0 -- зелёный,
+// дальше жёлтый/оранжевый/красный).
 function trunkStripColor(row) {
   if (!row.trunk_status) return null
   if (row.trunk_status !== 'Avail') return '#9ca3af'
@@ -1131,7 +1133,7 @@ function renderChart() {
               if (row.trunk_status) {
                 lines.push(row.trunk_status !== 'Avail'
                   ? 'PHOENIX SIP: нет регистрации'
-                  : `PHOENIX SIP: потери ${row.trunk_loss_pct ?? 0}%`)
+                  : `PHOENIX SIP: потери до SIP-сервера оператора ${row.trunk_loss_pct ?? 0}%`)
               }
               return lines
             },

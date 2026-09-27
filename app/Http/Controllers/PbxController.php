@@ -257,21 +257,13 @@ class PbxController extends Controller
 
         // Статус транка на этот момент — для полоски статуса провайдера над
         // графиком "Ожидают в очереди" (Calls/Index.vue, вкладка "Очередь
-        // АТС"). Худшие потери среди шлюза/SIP-сервера/коммутатора Феникс
-        // (см. trunk_probe.sh на MikoPBX) — оценка тяжести, не привязана к
-        // конкретному участку.
+        // АТС"). Потери — именно до самого дальнего хоста (вышестоящий
+        // SIP-сервер оператора), не до промежуточного шлюза или своего же
+        // коммутатора Феникс: это конец всего пути, самый честный индикатор
+        // (см. trunk_probe.sh на MikoPBX).
         $trunk = $data['trunk'] ?? null;
         $trunkStatus  = $trunk['status'] ?? null;
-        $trunkLossPct = null;
-        if (!empty($trunk['probe']) && is_array($trunk['probe'])) {
-            $losses = array_filter(array_map(
-                fn($k) => $trunk['probe'][$k]['loss_last'] ?? null,
-                ['gw', 'sip', 'phx']
-            ), fn($v) => $v !== null);
-            if ($losses) {
-                $trunkLossPct = max($losses);
-            }
-        }
+        $trunkLossPct = $trunk['probe']['sip']['loss_last'] ?? null;
 
         QueueStat::create([
             'queue_name'     => $data['queue'],
