@@ -352,6 +352,32 @@ class PbxController extends Controller
         ]);
     }
 
+    /**
+     * Статус SIP-провайдера (PHOENIX) — общая для ВСЕХ очередей сущность
+     * (это про сам транк, не про то, кто именно его опросил), поэтому живёт
+     * отдельно от queueHistory() и рисуется в "Журнале звонков" одним общим
+     * виджетом (Calls/Index.vue), а не дублируется на вкладках каждой
+     * очереди. Лёгкий запрос — только нужные для полоски поля, без тяжёлого
+     * таймлайна операторов/DND, который тянет queueHistory().
+     */
+    public function trunkHistory(Request $request): JsonResponse
+    {
+        $hours = min((int) $request->input('hours', 3), 24);
+
+        $rows = QueueStat::where('recorded_at', '>=', now()->subHours($hours))
+            ->whereNotNull('trunk_status')
+            ->orderBy('recorded_at')
+            ->get(['recorded_at', 'trunk_status', 'trunk_loss_pct']);
+
+        $latest = QueueStat::whereNotNull('trunk_status')
+            ->orderByDesc('recorded_at')->first(['recorded_at', 'trunk_status', 'trunk_loss_pct']);
+
+        return response()->json([
+            'latest'  => $latest,
+            'history' => $rows,
+        ]);
+    }
+
     public function queueHistory(Request $request): JsonResponse
     {
         $queueKey  = $request->input('queue', 'techsupport');

@@ -122,6 +122,7 @@ class CallLogController extends Controller
         }
 
         return Inertia::render('Calls/Index', [
+            'canViewReports'  => $request->user()->isAdmin() || $request->user()->isHeadSupport() || $request->user()->hasPermission('reports.view'),
             'calls'   => $calls,
             'stats'   => $stats,
             'filters' => array_merge(
