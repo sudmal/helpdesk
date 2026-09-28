@@ -2,9 +2,10 @@
   <div class="space-y-3">
     <div class="flex flex-wrap items-center gap-3">
       <RangePicker :range="range" />
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Участок</label>
-        <select v-model="serviceType" @change="range.refresh()" class="field-input">
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-500 whitespace-nowrap">Участок</label>
+        <select v-model="serviceType" @change="range.refresh()"
+                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option :value="null">Все</option>
           <option v-for="st in data.service_types" :key="st.id" :value="st.id">{{ st.name }}</option>
         </select>
