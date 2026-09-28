@@ -461,7 +461,12 @@ class PbxController extends Controller
 
         $since = now()->subHours($hours);
         $now   = now();
-        $operatorTimeline = $this->buildOperatorTimeline($since, $now, $detail['members'] ?? []);
+        // Добавочные конкретной очереди — OperatorStatusLog сам по себе не
+        // знает про очереди (см. комментарий в buildOperatorTimeline), поэтому
+        // белый список из реестра обязателен, иначе на таймлайне одной
+        // очереди попадают номера другой.
+        $allowedExts = array_map('strval', config("pbx_queues.$queueKey.extensions", []));
+        $operatorTimeline = $this->buildOperatorTimeline($since, $now, $detail['members'] ?? [], $allowedExts);
 
         return response()->json([
             'latest'            => $latest,
@@ -482,14 +487,24 @@ class PbxController extends Controller
      * снэпшота) -- не хардкодим список, чтобы новые/удалённые добавочные
      * появлялись/пропадали сами по себе.
      */
-    private function buildOperatorTimeline(\Carbon\Carbon $since, \Carbon\Carbon $now, array $liveMembers): array
+    /**
+     * $allowedExts — белый список добавочных ЭТОЙ очереди (см.
+     * config/pbx_queues.php). OperatorStatusLog не хранит очередь вообще —
+     * только номер добавочного, поэтому без фильтра таймлайн одной очереди
+     * показывал бы номера другой (замечено пользователем 2026-09-28, как
+     * только Абонотдел реально заработал и его добавочные обзавелись
+     * записями в том же общем логе).
+     */
+    private function buildOperatorTimeline(\Carbon\Carbon $since, \Carbon\Carbon $now, array $liveMembers, array $allowedExts = []): array
     {
         $initialIds = OperatorStatusLog::where('created_at', '<', $since)
+            ->when($allowedExts, fn($q) => $q->whereIn('extension', $allowedExts))
             ->select('extension', \DB::raw('MAX(id) as max_id'))
             ->groupBy('extension')->pluck('max_id');
         $initialByExt = OperatorStatusLog::whereIn('id', $initialIds)->get()->keyBy('extension');
 
         $eventsInWindow = OperatorStatusLog::where('created_at', '>=', $since)
+            ->when($allowedExts, fn($q) => $q->whereIn('extension', $allowedExts))
             ->orderBy('created_at')->get(['extension', 'status', 'created_at']);
         $eventsByExt = $eventsInWindow->groupBy('extension');
 
