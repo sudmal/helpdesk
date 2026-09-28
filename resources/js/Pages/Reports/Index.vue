@@ -220,7 +220,7 @@
     <!-- Работа ТП -->
     <div v-show="activeTab === 'callcenter'" class="p-4 space-y-3">
       <div class="flex flex-wrap items-center gap-3">
-        <RangePicker :range="callcenter" />
+        <RangePicker :range="callcenter" class="!mb-0" />
         <select v-model="callQueueKey" @change="callcenter.refresh(); staffing.refresh()"
                 class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option v-for="q in (callcenter.state.data.queues ?? [])" :key="q.key" :value="q.key">{{ q.label }}</option>

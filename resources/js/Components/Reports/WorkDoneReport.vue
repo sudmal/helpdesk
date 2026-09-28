@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-3">
     <div class="flex flex-wrap items-center gap-3">
-      <RangePicker :range="range" />
+      <RangePicker :range="range" class="!mb-0" />
       <select v-model="serviceType" @change="range.refresh()"
               class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option :value="null">Все</option>
