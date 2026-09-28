@@ -46,31 +46,35 @@ class ShiftReportService
         $definitions = ShiftDefinition::where('is_active', true)->get();
         $today = Carbon::today();
 
-        foreach ($definitions as $def) {
-            for ($daysAgo = self::CATCH_UP_DAYS; $daysAgo >= 0; $daysAgo--) {
-                $date = $today->copy()->subDays($daysAgo)->toDateString();
-                [$start, $end] = $def->boundsFor($date);
+        foreach (array_keys(config('pbx_queues', [])) as $queueKey) {
+            foreach ($definitions as $def) {
+                for ($daysAgo = self::CATCH_UP_DAYS; $daysAgo >= 0; $daysAgo--) {
+                    $date = $today->copy()->subDays($daysAgo)->toDateString();
+                    [$start, $end] = $def->boundsFor($date);
 
-                if ($end->isFuture()) continue; // смена ещё не закончилась
+                    if ($end->isFuture()) continue; // смена ещё не закончилась
 
-                $exists = ShiftReport::where('shift_date', $date)
-                    ->where('shift_definition_id', $def->id)
-                    ->exists();
-                if ($exists) continue;
+                    $exists = ShiftReport::where('shift_date', $date)
+                        ->where('shift_definition_id', $def->id)
+                        ->where('queue_key', $queueKey)
+                        ->exists();
+                    if ($exists) continue;
 
-                $this->generate($def, $date, $start, $end);
-                $generated++;
+                    $this->generate($def, $date, $start, $end, $queueKey);
+                    $generated++;
+                }
             }
         }
 
         return $generated;
     }
 
-    public function regenerate(ShiftDefinition $def, string $date): ShiftReport
+    public function regenerate(ShiftDefinition $def, string $date, string $queueKey = 'techsupport'): ShiftReport
     {
         [$start, $end] = $def->boundsFor($date);
-        ShiftReport::where('shift_date', $date)->where('shift_definition_id', $def->id)->delete();
-        return $this->generate($def, $date, $start, $end);
+        ShiftReport::where('shift_date', $date)->where('shift_definition_id', $def->id)
+            ->where('queue_key', $queueKey)->delete();
+        return $this->generate($def, $date, $start, $end, $queueKey);
     }
 
     /**
@@ -78,7 +82,7 @@ class ShiftReportService
      * заново на каждый вызов. Возвращает null, если прямо сейчас ни одна
      * активная смена не идёт (например, смены настроены с разрывом).
      */
-    public function current(): ?array
+    public function current(string $queueKey = 'techsupport'): ?array
     {
         $now = now();
         foreach (ShiftDefinition::where('is_active', true)->orderBy('sort_order')->get() as $def) {
@@ -96,8 +100,8 @@ class ShiftReportService
                         'as_of'               => $now->toIso8601String(),
                         'is_current'          => true,
                     ],
-                    $this->computeTotals($start, $now),
-                    ['extensions' => $this->computeExtensionRows($start, $now)]
+                    $this->computeTotals($start, $now, $queueKey),
+                    ['extensions' => $this->computeExtensionRows($start, $now, $queueKey)]
                 );
             }
         }
@@ -124,12 +128,13 @@ class ShiftReportService
         }, $this->statusSegments($ext, $start, $end));
     }
 
-    private function generate(ShiftDefinition $def, string $date, Carbon $start, Carbon $end): ShiftReport
+    private function generate(ShiftDefinition $def, string $date, Carbon $start, Carbon $end, string $queueKey): ShiftReport
     {
-        $totals = $this->computeTotals($start, $end);
+        $totals = $this->computeTotals($start, $end, $queueKey);
 
         $report = ShiftReport::create(array_merge($totals, [
             'shift_definition_id' => $def->id,
+            'queue_key'           => $queueKey,
             'shift_date'          => $date,
             'shift_name'          => $def->name,
             'shift_start_at'      => $start,
@@ -137,7 +142,7 @@ class ShiftReportService
             'generated_at'        => now(),
         ]));
 
-        foreach ($this->computeExtensionRows($start, $end) as $row) {
+        foreach ($this->computeExtensionRows($start, $end, $queueKey) as $row) {
             ShiftReportExtension::create(array_merge($row, ['shift_report_id' => $report->id]));
         }
 
@@ -145,9 +150,10 @@ class ShiftReportService
     }
 
     /** Звонки/SLA/ожидание по очереди целиком за окно */
-    private function computeTotals(Carbon $start, Carbon $end): array
+    private function computeTotals(Carbon $start, Carbon $end, string $queueKey): array
     {
-        $callsQuery = fn() => Call::whereBetween('called_at', [$start, $end])->whereNotNull('queue_status');
+        $callsQuery = fn() => Call::whereBetween('called_at', [$start, $end])
+            ->whereNotNull('queue_status')->where('queue_key', $queueKey);
 
         $total    = $callsQuery()->count();
         $answered = $callsQuery()->where('queue_status', 'answered')->count();
@@ -176,10 +182,10 @@ class ShiftReportService
     }
 
     /** Разбивка по добавочным (DND/офлайн/ожидание/разговор + звонки) за окно */
-    private function computeExtensionRows(Carbon $start, Carbon $end): array
+    private function computeExtensionRows(Carbon $start, Carbon $end, string $queueKey): array
     {
         $rows = [];
-        foreach ($this->extensionsInWindow($start, $end) as $ext) {
+        foreach ($this->extensionsInWindow($start, $end, $queueKey) as $ext) {
             $segments = $this->smoothShortDndBlips($this->statusSegments($ext, $start, $end));
 
             $seconds = ['offline' => 0, 'idle' => 0, 'in_call' => 0, 'dnd' => 0];
@@ -194,6 +200,7 @@ class ShiftReportService
 
             $answeredCalls = Call::where('operator_ext', $ext)
                 ->where('queue_status', 'answered')
+                ->where('queue_key', $queueKey)
                 ->whereBetween('called_at', [$start, $end]);
 
             $rows[] = [
@@ -241,16 +248,23 @@ class ShiftReportService
     }
 
     /** Все добавочные, реально присутствовавшие в очереди за окно */
-    private function extensionsInWindow(Carbon $start, Carbon $end): array
+    private function extensionsInWindow(Carbon $start, Carbon $end, string $queueKey): array
     {
+        // OperatorStatusLog не хранит очередь вообще -- полагаемся на то, что
+        // добавочные очередей не пересекаются (см. config/pbx_queues.php).
+        $allowed = array_map('strval', config("pbx_queues.$queueKey.extensions", []));
+
         $fromLogs = OperatorStatusLog::whereBetween('created_at', [$start, $end])
+            ->whereIn('extension', $allowed)
             ->distinct()->pluck('extension');
         $initialLogs = OperatorStatusLog::where('created_at', '<', $start)
+            ->whereIn('extension', $allowed)
             ->select('extension', DB::raw('MAX(id) as max_id'))
             ->groupBy('extension')->pluck('max_id');
         $fromInitial = OperatorStatusLog::whereIn('id', $initialLogs)->pluck('extension');
         $fromCalls = Call::whereBetween('called_at', [$start, $end])
             ->where('queue_status', 'answered')
+            ->where('queue_key', $queueKey)
             ->whereNotNull('operator_ext')->where('operator_ext', '!=', '')
             ->distinct()->pluck('operator_ext');
 

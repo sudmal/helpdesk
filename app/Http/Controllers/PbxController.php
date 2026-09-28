@@ -236,6 +236,21 @@ class PbxController extends Controller
 
     // ── Состояние очереди АТС ───────────────────────────────────────────
 
+    /** Короткий ключ очереди ('techsupport'/'abonotdel', см. config/pbx_queues.php) -> реальное имя в Asterisk. По умолчанию — техподдержка (обратная совместимость со старыми ссылками/кэшем фронта). */
+    private function queueNameByKey(?string $key): string
+    {
+        return config("pbx_queues.$key.queue_name") ?? config('pbx_queues.techsupport.queue_name');
+    }
+
+    /** Обратный поиск: реальное имя очереди в Asterisk -> короткий ключ, либо null, если очередь не в реестре. */
+    private function queueKeyByName(string $queueName): ?string
+    {
+        foreach (config('pbx_queues', []) as $key => $q) {
+            if (($q['queue_name'] ?? null) === $queueName) return $key;
+        }
+        return null;
+    }
+
     public function queueStatus(Request $request): JsonResponse
     {
         $token = $request->bearerToken() ?? $request->input('token');
@@ -288,9 +303,10 @@ class PbxController extends Controller
             $this->trackOperatorStatusLog($data['queue'], $detail);
         }
 
-        $cmd = \Cache::get('queue:pending_cmd');
+        $cmdKey = 'queue:pending_cmd:' . $data['queue'];
+        $cmd = \Cache::get($cmdKey);
         if ($cmd) {
-            \Cache::forget('queue:pending_cmd');
+            \Cache::forget($cmdKey);
         }
 
         return response()->json(array_filter(['status' => 'ok', 'cmd' => $cmd]));
@@ -303,7 +319,8 @@ class PbxController extends Controller
         if (!in_array($cmd, $allowed, true)) {
             return response()->json(['error' => 'Invalid cmd'], 422);
         }
-        \Cache::put('queue:pending_cmd', $cmd, 120);
+        $queueName = $this->queueNameByKey($request->input('queue'));
+        \Cache::put('queue:pending_cmd:' . $queueName, $cmd, 120);
         return response()->json(['status' => 'ok']);
     }
 
@@ -315,34 +332,46 @@ class PbxController extends Controller
      */
     public function queueLatest(): JsonResponse
     {
-        $latest = QueueStat::orderByDesc('recorded_at')->first(['waiting', 'talking', 'recorded_at']);
+        $waiting = 0;
+        $talking = 0;
+        $recordedAt = null;
+
+        foreach (config('pbx_queues', []) as $q) {
+            $latest = QueueStat::where('queue_name', $q['queue_name'])
+                ->orderByDesc('recorded_at')->first(['waiting', 'talking', 'recorded_at']);
+            if (!$latest) continue;
+            $waiting += (int) $latest->waiting;
+            $talking += (int) $latest->talking;
+            if (!$recordedAt || $latest->recorded_at->gt($recordedAt)) $recordedAt = $latest->recorded_at;
+        }
 
         return response()->json([
-            'waiting'      => $latest->waiting ?? 0,
-            'talking'      => $latest->talking ?? 0,
-            'recorded_at'  => $latest->recorded_at,
+            'waiting'     => $waiting,
+            'talking'     => $talking,
+            'recorded_at' => $recordedAt,
         ]);
     }
 
     public function queueHistory(Request $request): JsonResponse
     {
-        $queue = $request->input('queue');
+        $queueKey  = $request->input('queue', 'techsupport');
+        $queueName = $this->queueNameByKey($queueKey);
         $hours = min((int) $request->input('hours', 3), 24);
 
         $query = QueueStat::where('recorded_at', '>=', now()->subHours($hours))
+            ->where('queue_name', $queueName)
             ->orderBy('recorded_at');
-
-        if ($queue) {
-            $query->where('queue_name', $queue);
-        }
 
         $rows = $query->get(['recorded_at', 'waiting', 'talking', 'active_members', 'total_members', 'trunk_status', 'trunk_loss_pct']);
         $this->attachDndCounts($rows, $hours);
 
-        $latest = QueueStat::orderByDesc('recorded_at')->first();
+        // Раньше тут "угадывалась" очередь по последней записи в QueueStat --
+        // пока была одна очередь, это работало случайно; со второй очередью
+        // так делать нельзя, используем именно ту, что запросили ($queueName
+        // уже resolved выше).
+        $latest = QueueStat::where('queue_name', $queueName)->orderByDesc('recorded_at')->first();
 
-        $queueName = $queue ?: QueueStat::orderByDesc('recorded_at')->value('queue_name');
-        $detail = $queueName ? \Cache::get('queue:detail:' . $queueName) : null;
+        $detail = \Cache::get('queue:detail:' . $queueName);
         $detail = $detail ?? ['members' => [], 'callers' => []];
         $detail['members'] = $this->attachDndStatus($detail['members'] ?? []);
         $detail['members'] = $this->attachReliableDuration($detail['members']);
@@ -394,6 +423,7 @@ class PbxController extends Controller
         }
 
         $missedCalls = \App\Models\Call::where('queue_status', 'missed')
+            ->where('queue_key', $queueKey)
             ->where('called_at', '>=', now()->subHours($hours))
             ->orderBy('called_at')
             ->pluck('called_at');
@@ -786,6 +816,12 @@ class PbxController extends Controller
 
     private function trackCallEvents(string $queueName, array $detail): void
     {
+        // К какой очереди относится звонок -- нужно даже для ПРОПУЩЕННЫХ
+        // (operator_ext у них пустой, так что отчёты по сменам не смогут
+        // понять, чья это очередь, без этого поля). Если очередь не в
+        // реестре (config/pbx_queues.php) -- не подписываем звонок ничем,
+        // чем гадать/подставлять чужой ключ.
+        $queueKey  = $this->queueKeyByName($queueName);
         $cacheKey  = 'queue:callers_state:' . $queueName;
         $prevState = \Cache::get($cacheKey, []);
 
@@ -834,6 +870,7 @@ class PbxController extends Controller
                     'queue_status' => $status,
                     'operator_ext' => $operatorExt,
                     'wait_seconds' => $waitSec,
+                    'queue_key'    => $queueKey,
                 ]);
             } else {
                 Call::create([
@@ -843,6 +880,7 @@ class PbxController extends Controller
                     'queue_status' => $status,
                     'operator_ext' => $operatorExt,
                     'wait_seconds' => $waitSec,
+                    'queue_key'    => $queueKey,
                 ]);
             }
         }
@@ -884,6 +922,7 @@ class PbxController extends Controller
                     'queue_status' => 'answered',
                     'operator_ext' => $ext,
                     'wait_seconds' => 0,
+                    'queue_key'    => $queueKey,
                 ]);
             }
         }

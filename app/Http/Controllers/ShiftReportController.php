@@ -10,9 +10,9 @@ use Illuminate\Http\Request;
 
 class ShiftReportController extends Controller
 {
-    public function current(ShiftReportService $service): JsonResponse
+    public function current(Request $request, ShiftReportService $service): JsonResponse
     {
-        return response()->json($service->current());
+        return response()->json($service->current($request->input('queue', 'techsupport')));
     }
 
     /**
@@ -109,7 +109,9 @@ class ShiftReportController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo   = $request->input('date_to');
 
-        $query = ShiftReport::query()->orderByDesc('shift_date')->orderByDesc('shift_start_at');
+        $query = ShiftReport::query()
+            ->where('queue_key', $request->input('queue', 'techsupport'))
+            ->orderByDesc('shift_date')->orderByDesc('shift_start_at');
         if ($dateFrom) $query->whereDate('shift_date', '>=', $dateFrom);
         if ($dateTo)   $query->whereDate('shift_date', '<=', $dateTo);
 
@@ -136,10 +138,11 @@ class ShiftReportController extends Controller
         $data = $request->validate([
             'definition_id' => 'required|exists:shift_definitions,id',
             'date'          => 'required|date_format:Y-m-d',
+            'queue'         => 'nullable|string',
         ]);
 
         $definition = ShiftDefinition::findOrFail($data['definition_id']);
-        $report = $service->regenerate($definition, $data['date']);
+        $report = $service->regenerate($definition, $data['date'], $data['queue'] ?? 'techsupport');
 
         return response()->json($report);
     }
