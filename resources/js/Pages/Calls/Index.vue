@@ -92,6 +92,12 @@
         </div>
         <div class="bg-white rounded-xl border border-gray-200 px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm flex-1">
           <canvas ref="pieCanvas" width="44" height="44" class="shrink-0"></canvas>
+          <Teleport to="body">
+            <div v-if="pieTooltip.show" :style="{ position: 'fixed', left: pieTooltip.x + 'px', top: pieTooltip.y + 'px' }"
+                 class="bg-gray-900 text-white rounded-lg shadow-xl px-2.5 py-1.5 text-xs pointer-events-none z-50 whitespace-nowrap">
+              {{ pieTooltip.label }}: {{ pieTooltip.value }}
+            </div>
+          </Teleport>
           <div class="flex items-baseline gap-1.5">
             <span class="font-semibold text-gray-700">{{ stats.total }}</span>
             <span class="text-xs text-gray-400">всего</span>
@@ -232,7 +238,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { router, Head, Link } from '@inertiajs/vue3'
 import Chart from 'chart.js/auto'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
@@ -384,6 +390,14 @@ const pieCanvas = ref(null)
 let pieChart = null
 let callsRefreshTimer = null
 
+// Стандартный тултип Chart.js рисуется НА САМОМ canvas -- у этого графика
+// он крошечный (44×44, декоративный значок рядом со статистикой), поэтому
+// подсказка обрезалась по границе canvas, не помещаясь текстом (замечено
+// пользователем 2026-09-28). "external"-тултип вместо canvas-рисования --
+// обычный HTML-элемент через Teleport, как и остальные тултипы в проекте
+// (см. EntityTooltip.vue/useHoverTooltip) -- не ограничен размером canvas.
+const pieTooltip = reactive({ show: false, x: 0, y: 0, label: '', value: 0 })
+
 function renderPie() {
   if (!pieCanvas.value || !props.stats) return
   if (pieChart) { pieChart.destroy(); pieChart = null }
@@ -398,7 +412,22 @@ function renderPie() {
     options: {
       responsive: false,
       cutout: '65%',
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external(context) {
+            const tt = context.tooltip
+            if (!tt || tt.opacity === 0 || !tt.dataPoints?.length) { pieTooltip.show = false; return }
+            const rect = context.chart.canvas.getBoundingClientRect()
+            pieTooltip.label = tt.dataPoints[0].label
+            pieTooltip.value = tt.dataPoints[0].parsed
+            pieTooltip.x = rect.left + tt.caretX + 10
+            pieTooltip.y = rect.top + tt.caretY - 10
+            pieTooltip.show = true
+          },
+        },
+      },
     },
   })
 }
