@@ -319,8 +319,20 @@ class PbxController extends Controller
         if (!in_array($cmd, $allowed, true)) {
             return response()->json(['error' => 'Invalid cmd'], 422);
         }
-        $queueName = $this->queueNameByKey($request->input('queue'));
-        \Cache::put('queue:pending_cmd:' . $queueName, $cmd, 120);
+        // Действия тут (module reload res_pjsip.so, dialplan reload, queue
+        // reload all, pjsip qualify all) -- PBX-глобальные, не про конкретную
+        // очередь, поэтому кнопка "Почини дозвон" переехала в общий виджет
+        // на "Журнале звонков" (2026-09-28) и не передаёт queue. Без явного
+        // queue шлём команду на пуллеры ВСЕХ очередей разом -- исполнится тот,
+        // что успеет опросить AMI первым (обычно в течение ~15с), не ждём,
+        // пока проснётся именно нужный.
+        $queueParam = $request->input('queue');
+        $queueNames = $queueParam
+            ? [$this->queueNameByKey($queueParam)]
+            : array_column(config('pbx_queues', []), 'queue_name');
+        foreach ($queueNames as $queueName) {
+            \Cache::put('queue:pending_cmd:' . $queueName, $cmd, 120);
+        }
         return response()->json(['status' => 'ok']);
     }
 

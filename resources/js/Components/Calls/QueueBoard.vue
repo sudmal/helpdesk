@@ -42,14 +42,6 @@
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-3 shrink-0 pt-0.5">
-          <button @click="sendCmd('fix_dialing')" :disabled="cmdSending !== null"
-                  :class="['flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors flex-shrink-0 text-xs font-bold leading-none',
-                           cmdSending === 'fix_dialing' ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-orange-400 text-orange-600 hover:bg-orange-100']"
-                  title="Починить дозвон: pjsip reload + dialplan reload + queue reload + qualify all">
-            {{ cmdSending === 'fix_dialing' ? '…' : '↻' }}
-          </button>
-        </div>
       </div>
 
       <!-- Очередь + Операторы -->
@@ -532,7 +524,6 @@ function shortTime(val) {
   return new Date(val).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
-const cmdSending  = ref(null)
 const qLatest     = ref(null)
 const qHistory    = ref([])
 const qDetail     = ref({ members: [], callers: [], phones: [] })
@@ -579,14 +570,6 @@ async function loadQueue() {
   } catch (e) {}
   qLoading.value = false
 }
-async function sendCmd(cmd) {
-  cmdSending.value = cmd
-  try {
-    await axios.post(route('pbx.trigger-cmd'), { cmd, queue: props.queueKey })
-  } catch (e) {}
-  setTimeout(() => { cmdSending.value = null }, 800)
-}
-
 const sipByExt = computed(() => {
   const map = {}
   for (const p of (qDetail.value.phones ?? [])) map[p.extension] = p
