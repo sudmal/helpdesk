@@ -50,7 +50,9 @@ class TicketController extends Controller
             )
             ->when($request->search, fn($q) => $q->search($request->search))
             ->when($request->status, fn($q) => $q->where('status_id', $request->status))
-            ->when($request->type,   fn($q) => $q->where('type_id', $request->type))
+            // type может быть списком через запятую ("3,8") -- слияние похожих типов
+            // в отчёте "Выполнено работ" (2026-09-28), см. ReportsController::worksDoneData.
+            ->when($request->type,   fn($q) => $q->whereIn('type_id', explode(',', (string) $request->type)))
             ->when($request->brigade,      fn($q) => $request->brigade === 'none' ? $q->whereNull('brigade_id') : $q->where('brigade_id', $request->brigade))
             // Период закрытия (2026-09-24) -- ссылки из отчёта "Выполнено работ"
             ->when($request->closed_from, fn($q) => $q->where('closed_at', '>=', $request->closed_from))

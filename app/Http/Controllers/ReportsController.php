@@ -83,6 +83,7 @@ class ReportsController extends Controller
         abort_unless($user->can('manage-settings') || $user->hasPermission('reports.view'), 403);
 
         [$from, $to] = $this->parseRange($request);
+        $serviceType = $request->filled('service_type') ? (int) $request->service_type : null;
 
         $tickets = DB::table('tickets as t')
             ->join('ticket_statuses as ts', 'ts.id', '=', 't.status_id')
@@ -91,6 +92,7 @@ class ReportsController extends Controller
             ->where('ts.slug', 'closed')
             ->whereNull('t.deleted_at')
             ->whereBetween('t.closed_at', [$from, $to])
+            ->when($serviceType, fn($q) => $q->where('t.service_type_id', $serviceType))
             ->selectRaw("tt.id as type_id, tt.name as label, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.ticket_id = t.id)) as with_act")
             ->groupBy('tt.id', 'tt.name', 'b.id', 'brigade_name')
             ->get();
@@ -100,6 +102,7 @@ class ReportsController extends Controller
             ->where('cr.status', 'closed')
             ->whereNull('cr.deleted_at')
             ->whereBetween('cr.updated_at', [$from, $to])
+            ->when($serviceType, fn($q) => $q->where('cr.service_type_id', $serviceType))
             ->selectRaw("cr.kind as kind, b.id as brigade_id, COALESCE(b.name, 'Без бригады') as brigade_name, COUNT(*) as cnt, SUM(EXISTS(SELECT 1 FROM acts a WHERE a.connection_request_id = cr.id)) as with_act")
             ->groupBy('cr.kind', 'b.id', 'brigade_name')
             ->get();
@@ -135,8 +138,60 @@ class ReportsController extends Controller
             $add('c' . $r->kind, ['key' => 'c' . $r->kind, 'label' => $label, 'source' => 'request', 'type_id' => null, 'kind' => $r->kind], $r);
         }
 
-        // Обычные заявки — по убыванию, заявки на подключение — отдельным блоком в конце
-        $ticketRows  = array_values(array_filter($rows, fn($x) => $x['source'] === 'ticket'));
+        // Слияние строк, которые по сути одна и та же работа, заведённая
+        // разными путями:
+        //  - "Подключение" (заявка) + заявка на подключение kind=connection
+        //  - "Перекл. на PON" (заявка) + заявка на подключение kind=switch
+        // Это РАЗНЫЕ источники (tickets vs connection_requests) — объединённая
+        // строка, как и Итого, не кликается ни по одной цифре.
+        $mergeCrossSource = function (string $ticketKey, string $requestKey, string $label) use (&$rows) {
+            if (!isset($rows[$ticketKey]) && !isset($rows[$requestKey])) return;
+            $a = $rows[$ticketKey] ?? ['all' => 0, 'act' => 0, 'by_brigade' => []];
+            $b = $rows[$requestKey] ?? ['all' => 0, 'act' => 0, 'by_brigade' => []];
+            $byBrigade = $a['by_brigade'];
+            foreach ($b['by_brigade'] as $bk => $cell) {
+                $ex = $byBrigade[$bk] ?? ['all' => 0, 'act' => 0];
+                $byBrigade[$bk] = ['all' => $ex['all'] + $cell['all'], 'act' => $ex['act'] + $cell['act']];
+            }
+            unset($rows[$ticketKey], $rows[$requestKey]);
+            $rows['m_' . $ticketKey] = [
+                'key' => 'm_' . $ticketKey, 'label' => $label, 'source' => 'merged',
+                'type_id' => null, 'kind' => null,
+                'all' => $a['all'] + $b['all'], 'act' => $a['act'] + $b['act'], 'by_brigade' => $byBrigade,
+            ];
+        };
+        $mergeCrossSource('t1', 'cconnection', 'Подключение');
+        $mergeCrossSource('t10', 'cswitch', 'Перекл. на PON');
+
+        // "Восстановление" + "Восстановление+замена кабеля" — ОБА обычные
+        // заявки (один источник), поэтому строка остаётся кликабельной:
+        // type_id хранит список через запятую, TicketController/ActController
+        // понимают его как IN(...) наравне с одиночным id.
+        $mergeSameSource = function (array $keys, string $label, string $typeIds) use (&$rows) {
+            $present = array_values(array_filter($keys, fn($k) => isset($rows[$k])));
+            if (!$present) return;
+            $all = 0; $act = 0; $byBrigade = [];
+            foreach ($present as $k) {
+                $all += $rows[$k]['all'];
+                $act += $rows[$k]['act'];
+                foreach ($rows[$k]['by_brigade'] as $bk => $cell) {
+                    $ex = $byBrigade[$bk] ?? ['all' => 0, 'act' => 0];
+                    $byBrigade[$bk] = ['all' => $ex['all'] + $cell['all'], 'act' => $ex['act'] + $cell['act']];
+                }
+                unset($rows[$k]);
+            }
+            $rows['m_' . $keys[0]] = [
+                'key' => 'm_' . $keys[0], 'label' => $label, 'source' => 'ticket',
+                'type_id' => $typeIds, 'kind' => null,
+                'all' => $all, 'act' => $act, 'by_brigade' => $byBrigade,
+            ];
+        };
+        $mergeSameSource(['t3', 't8'], 'Восстановление', '3,8');
+
+        // Обычные заявки (включая однотипные слияния) — по убыванию вместе,
+        // заявки на подключение — отдельным блоком в конце (после кросс-
+        // источникового слияния там, как правило, ничего не остаётся).
+        $ticketRows  = array_values(array_filter($rows, fn($x) => in_array($x['source'], ['ticket', 'merged'], true)));
         $requestRows = array_values(array_filter($rows, fn($x) => $x['source'] === 'request'));
         usort($ticketRows,  fn($x, $y) => $y['all'] <=> $x['all']);
         usort($requestRows, fn($x, $y) => $y['all'] <=> $x['all']);
@@ -150,6 +205,8 @@ class ReportsController extends Controller
             'total'            => $total,
             'period'           => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
             'closed_status_id' => (int) DB::table('ticket_statuses')->where('slug', 'closed')->value('id'),
+            'service_type'     => $serviceType,
+            'service_types'    => DB::table('service_types')->orderBy('id')->get(['id', 'name']),
         ]);
     }
 

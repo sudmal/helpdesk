@@ -1,11 +1,27 @@
 <template>
   <div class="space-y-3">
-    <RangePicker :range="range" />
+    <div class="flex flex-wrap items-center gap-3">
+      <RangePicker :range="range" />
+      <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
+        <button @click="selectServiceType(null)"
+                :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                         !serviceType ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+          Все
+        </button>
+        <button v-for="st in data.service_types" :key="st.id" @click="selectServiceType(st.id)"
+                :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                         serviceType === st.id ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
+          {{ st.name }}
+        </button>
+      </div>
+    </div>
 
     <p class="text-xs text-gray-400">
       Закрытые заявки за период по типам и бригадам. В скобках — сколько из них оформлено актом.
       Первая цифра открывает список заявок, цифра в скобках — список актов.
-      Итоговая строка складывает обычные заявки и заявки на подключение, поэтому не кликается.
+      Строки «Подключение» и «Перекл. на PON» складывают обычные заявки и заявки на подключение —
+      как и итоговая строка, они не кликаются. «Восстановление» объединяет заявки с заменой кабеля и без,
+      клик по нему открывает оба типа сразу.
     </p>
 
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -27,11 +43,15 @@
             <tr v-for="r in data.rows" :key="r.key" class="border-b border-gray-50 hover:bg-gray-50">
               <td class="px-4 py-2 text-gray-800 whitespace-nowrap">{{ r.label }}</td>
               <td class="px-4 py-2 text-right font-semibold text-gray-800 whitespace-nowrap">
-                <Cell :row="r" :cell="r" :period="data.period" :closed-status-id="data.closed_status_id" />
+                <span v-if="r.source === 'merged'">{{ fmt(r) }}</span>
+                <Cell v-else :row="r" :cell="r" :period="data.period" :closed-status-id="data.closed_status_id" />
               </td>
               <td v-for="b in data.brigades" :key="b.key" class="px-4 py-2 text-right text-gray-600 whitespace-nowrap">
-                <Cell v-if="r.by_brigade[b.key]" :row="r" :cell="r.by_brigade[b.key]" :brigade-key="b.key"
-                      :period="data.period" :closed-status-id="data.closed_status_id" />
+                <template v-if="r.by_brigade[b.key]">
+                  <span v-if="r.source === 'merged'">{{ fmt(r.by_brigade[b.key]) }}</span>
+                  <Cell v-else :row="r" :cell="r.by_brigade[b.key]" :brigade-key="b.key"
+                        :period="data.period" :closed-status-id="data.closed_status_id" />
+                </template>
                 <span v-else>—</span>
               </td>
             </tr>
@@ -64,22 +84,37 @@
 </template>
 
 <script setup>
-import { computed, defineComponent, h, onMounted } from 'vue'
+import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
-const range = useReportRange('reports.works-done', {
-  rows: [], brigades: [], total: { all: 0, act: 0 }, period: null, closed_status_id: null,
-})
+// Переключатель "Все / Интернет / КТВ / ..." — список участков приходит из
+// самого ответа отчёта (data.service_types), чтобы не дублировать справочник
+// на фронте; сам фильтр — обычный доп.параметр запроса (getExtraParams).
+const serviceType = ref(null)
+
+const range = useReportRange(
+  'reports.works-done',
+  { rows: [], brigades: [], total: { all: 0, act: 0 }, period: null, closed_status_id: null, service_types: [] },
+  () => (serviceType.value ? { service_type: serviceType.value } : {}),
+)
 const data = computed(() => range.state.data)
+
+function selectServiceType(id) {
+  serviceType.value = id
+  range.refresh()
+}
 
 // "N (M)": N — все закрытые заявки, M — из них с актом
 const fmt = (c) => `${c.all} (${c.act})`
 
 // Ячейка "N (M)": N → список заявок (или заявок на подключение), M → список актов.
 // brigadeKey не задан — колонка "Всего" по строке (без фильтра по бригаде);
-// brigadeKey === 0 — "Без бригады".
+// brigadeKey === 0 — "Без бригады". row.type_id может быть строкой со
+// списком id через запятую ("3,8") — у слитых однотипных строк (см.
+// ReportsController::worksDoneData); Tickets/Acts controllers понимают это
+// как IN(...) наравне с одиночным id.
 const Cell = defineComponent({
   props: {
     row:            { type: Object, required: true },

@@ -104,7 +104,8 @@ class ActController extends Controller
             // вид заявки на подключение и период закрытия. Период -- по closed_at
             // заявки, для заявок на подключение (closed_at нет) -- по updated_at,
             // ровно как считает сам отчёт.
-            ->when($request->ticket_type, fn($q) => $q->where('tickets.type_id', $request->ticket_type))
+            // ticket_type может быть списком через запятую -- см. TicketController::index.
+            ->when($request->ticket_type, fn($q) => $q->whereIn('tickets.type_id', explode(',', (string) $request->ticket_type)))
             ->when($request->kind, fn($q) => $q->where('connection_requests.kind', $request->kind))
             ->when($request->closed_from || $request->closed_to, function ($q) use ($request) {
                 $from = $request->closed_from ? $request->closed_from . ' 00:00:00' : '1970-01-01 00:00:00';
@@ -194,7 +195,8 @@ class ActController extends Controller
         }
         $parts = [];
         if ($request->ticket_type) {
-            $parts[] = DB::table('ticket_types')->where('id', $request->ticket_type)->value('name');
+            $ids = explode(',', (string) $request->ticket_type);
+            $parts[] = DB::table('ticket_types')->whereIn('id', $ids)->orderByRaw('FIELD(id, ' . implode(',', $ids) . ')')->pluck('name')->implode(' + ');
         }
         if ($request->kind) {
             $parts[] = $request->kind === 'switch' ? 'Заявка: Перекл. на PON' : 'Заявка на подключение';
