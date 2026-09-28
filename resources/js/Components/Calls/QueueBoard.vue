@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 space-y-3">
+  <div class="p-3 space-y-2">
     <div class="flex bg-gray-100 rounded-lg p-1 gap-0.5 w-fit">
       <button @click="subTab = 'queue'"
               :class="['px-3 py-1 rounded-md text-sm font-medium transition-colors',
@@ -14,8 +14,8 @@
     </div>
 
     <div v-if="subTab === 'queue'">
-      <div class="bg-white rounded-xl border border-gray-200 px-4 py-2.5 flex items-start gap-3 text-sm mb-3">
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 min-w-0">
+      <div class="bg-white rounded-xl border border-gray-200 px-4 py-1.5 flex items-center gap-3 text-sm mb-2">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-1 min-w-0">
           <div class="flex items-baseline gap-1.5">
             <span class="text-lg font-bold" :class="qLatest?.waiting > 0 ? 'text-amber-500' : 'text-gray-300'">{{ qLatest?.waiting ?? '—' }}</span>
             <span class="text-xs text-gray-400">ожидают</span>
