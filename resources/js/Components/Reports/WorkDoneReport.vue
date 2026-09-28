@@ -2,17 +2,12 @@
   <div class="space-y-3">
     <div class="flex flex-wrap items-center gap-3">
       <RangePicker :range="range" />
-      <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
-        <button @click="selectServiceType(null)"
-                :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                         !serviceType ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-          Все
-        </button>
-        <button v-for="st in data.service_types" :key="st.id" @click="selectServiceType(st.id)"
-                :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                         serviceType === st.id ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700']">
-          {{ st.name }}
-        </button>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Участок</label>
+        <select v-model="serviceType" @change="range.refresh()" class="field-input">
+          <option :value="null">Все</option>
+          <option v-for="st in data.service_types" :key="st.id" :value="st.id">{{ st.name }}</option>
+        </select>
       </div>
     </div>
 
@@ -92,7 +87,8 @@ import { useReportRange } from '@/Composables/useReportRange'
 // Переключатель "Все / Интернет / КТВ / ..." — список участков приходит из
 // самого ответа отчёта (data.service_types), чтобы не дублировать справочник
 // на фронте; сам фильтр — обычный доп.параметр запроса (getExtraParams).
-const serviceType = ref(null)
+// По умолчанию "Интернет" — самый частый случай, не "Все"
+const serviceType = ref(1)
 
 const range = useReportRange(
   'reports.works-done',
@@ -100,11 +96,6 @@ const range = useReportRange(
   () => (serviceType.value ? { service_type: serviceType.value } : {}),
 )
 const data = computed(() => range.state.data)
-
-function selectServiceType(id) {
-  serviceType.value = id
-  range.refresh()
-}
 
 // "N (M)": N — все закрытые заявки, M — из них с актом
 const fmt = (c) => `${c.all} (${c.act})`
