@@ -25,7 +25,16 @@ class AggregateCallStats extends Command
         return 0;
     }
 
+    // Отчёт "Обработка звонков" делится по очередям (2026-09-28) — каждая
+    // очередь агрегируется отдельно, своей строкой на (дата, час, queue_key).
     private function aggregate(string $date): void
+    {
+        foreach (config('pbx_queues', []) as $queueKey => $queueCfg) {
+            $this->aggregateForQueue($date, $queueKey, $queueCfg['queue_name']);
+        }
+    }
+
+    private function aggregateForQueue(string $date, string $queueKey, string $queueName): void
     {
         // Звонки: ответившие, пропущенные, ожидание
         $callRows = DB::table('calls')
@@ -39,6 +48,7 @@ class AggregateCallStats extends Command
             ")
             ->whereDate('called_at', $date)
             ->whereNotNull('queue_status')
+            ->where('queue_key', $queueKey)
             ->groupByRaw('HOUR(called_at)')
             ->get()
             ->keyBy('hour');
@@ -49,13 +59,15 @@ class AggregateCallStats extends Command
             ->selectRaw('HOUR(called_at) as hour, COUNT(DISTINCT operator_ext) as op_count')
             ->whereDate('called_at', $date)
             ->where('queue_status', 'answered')
+            ->where('queue_key', $queueKey)
             ->whereNotNull('operator_ext')
             ->where('operator_ext', '!=', '')
             ->groupByRaw('HOUR(called_at)')
             ->get()
             ->keyBy('hour');
 
-        // Очередь: из queue_stats (хранится только 24ч, используется пока есть)
+        // Очередь: из queue_stats (хранится только 24ч, используется пока есть) —
+        // конкретно ЭТА очередь, по её queue_name в Asterisk.
         $queueRows = DB::table('queue_stats')
             ->selectRaw("
                 HOUR(recorded_at) as hour,
@@ -63,6 +75,7 @@ class AggregateCallStats extends Command
                 ROUND(AVG(waiting), 1) as avg_queue_depth
             ")
             ->whereDate('recorded_at', $date)
+            ->where('queue_name', $queueName)
             ->groupByRaw('HOUR(recorded_at)')
             ->get()
             ->keyBy('hour');
@@ -87,6 +100,7 @@ class AggregateCallStats extends Command
             $rows[] = [
                 'stat_date'       => $date,
                 'hour'            => (int)$h,
+                'queue_key'       => $queueKey,
                 'total_calls'     => (int)($c?->total_calls ?? 0),
                 'answered'        => (int)($c?->answered    ?? 0),
                 'missed'          => (int)($c?->missed      ?? 0),
@@ -106,7 +120,7 @@ class AggregateCallStats extends Command
             $updateCols[] = 'avg_queue_depth';
         }
 
-        DB::table('call_daily_stats')->upsert($rows, ['stat_date', 'hour'], $updateCols);
+        DB::table('call_daily_stats')->upsert($rows, ['stat_date', 'hour', 'queue_key'], $updateCols);
     }
 
     private function backfill(): int

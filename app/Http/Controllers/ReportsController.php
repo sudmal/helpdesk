@@ -220,13 +220,18 @@ class ReportsController extends Controller
     public function callStatsData(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
-        return response()->json($this->callStats($from, $to));
+        $queueKey = $request->input('queue', 'techsupport');
+        return response()->json($this->callStats($from, $to, $queueKey) + [
+            'queues' => collect(config('pbx_queues', []))
+                ->map(fn($q, $k) => ['key' => $k, 'label' => $q['label']])->values(),
+        ]);
     }
 
     public function operatorLoadData(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
-        return response()->json($this->operatorLoad($from, $to));
+        $queueKey = $request->input('queue', 'techsupport');
+        return response()->json($this->operatorLoad($from, $to, $queueKey));
     }
 
     /**
@@ -504,10 +509,11 @@ class ReportsController extends Controller
         ];
     }
 
-    private function callStats(Carbon $from, Carbon $to): array
+    private function callStats(Carbon $from, Carbon $to, string $queueKey = 'techsupport'): array
     {
         $rows = DB::table('call_daily_stats')
             ->whereBetween('stat_date', [$from->toDateString(), $to->toDateString()])
+            ->where('queue_key', $queueKey)
             ->selectRaw('
                 hour,
                 SUM(total_calls)                  as total_calls,
@@ -630,10 +636,11 @@ class ReportsController extends Controller
         return $maxN; // не должно происходить в реальных диапазонах нагрузки
     }
 
-    private function operatorLoad(Carbon $from, Carbon $to): array
+    private function operatorLoad(Carbon $from, Carbon $to, string $queueKey = 'techsupport'): array
     {
         $rows = DB::table('call_daily_stats')
             ->whereBetween('stat_date', [$from->toDateString(), $to->toDateString()])
+            ->where('queue_key', $queueKey)
             ->selectRaw('
                 hour,
                 COUNT(*) as days,

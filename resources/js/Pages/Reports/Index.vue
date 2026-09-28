@@ -219,7 +219,16 @@
 
     <!-- Работа ТП -->
     <div v-show="activeTab === 'callcenter'" class="p-4 space-y-3">
-      <RangePicker :range="callcenter" />
+      <div class="flex flex-wrap items-center gap-3">
+        <RangePicker :range="callcenter" />
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Очередь</label>
+          <select v-model="callQueueKey" @change="callcenter.refresh(); staffing.refresh()"
+                  class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option v-for="q in (callcenter.state.data.queues ?? [])" :key="q.key" :value="q.key">{{ q.label }}</option>
+          </select>
+        </div>
+      </div>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div class="bg-white rounded-xl border border-gray-200 p-3 text-center"><p class="text-2xl font-bold text-gray-800">{{ callcenter.state.data.summary?.total ?? 0 }}</p><p class="text-xs text-gray-500 mt-0.5">Всего звонков</p></div>
         <div class="bg-green-50 rounded-xl border border-green-200 p-3 text-center"><p class="text-2xl font-bold text-green-700">{{ callcenter.state.data.summary?.answer_rate ?? 0 }}%</p><p class="text-xs text-gray-500 mt-0.5">Отвечено</p></div>
@@ -367,7 +376,13 @@ const activeTab = ref(tabs.value.some(t => t.id === props.initialTab) ? props.in
 // см. память project-acts-feature) — здесь больше не запрашивается.
 const brigade    = useReportRange('reports.brigade-efficiency',  { rows: [], summary: { closed: 0, pct_on_time: null, material_cost: 0, per_man_day: null } })
 const territory  = useReportRange('reports.territory-frequency', { labels: [], values: [], addresses: [], per100: [] })
-const callcenter = useReportRange('reports.call-stats',          { hours: [], summary: {} })
+// Общий выбор очереди (Техподдержка/Абонотдел) для ОБОИХ отчётов в этой
+// вкладке — "Обработка звонков" и "Оптимизация расписания операторов"
+// (2026-09-28, см. project_calls_abonotdel_queue). Список самих очередей
+// приходит в ответе callcenter (queues), чтобы не дублировать справочник
+// на фронте, как и с "Участок" в отчёте "Выполнено работ".
+const callQueueKey = ref('techsupport')
+const callcenter = useReportRange('reports.call-stats', { hours: [], summary: {}, queues: [] }, () => ({ queue: callQueueKey.value }))
 
 // ── Оптимизация расписания операторов: отдельный от callcenter источник —
 // не трогает существующий отчёт по звонкам ни данными, ни диапазоном дат.
@@ -379,7 +394,7 @@ const staffing = useReportRange('reports.operator-load', {
     calls_per_operator: null, miss_rate: null, overload_pct: null, verdict: 'no_data', required_operators: null,
   })),
   baseline: null, understaffed: [], overstaffed: [],
-})
+}, () => ({ queue: callQueueKey.value }))
 staffing.state.periodMode = 'quarter'
 
 function verdictLabel(v) {
