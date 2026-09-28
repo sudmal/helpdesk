@@ -221,13 +221,10 @@
     <div v-show="activeTab === 'callcenter'" class="p-4 space-y-3">
       <div class="flex flex-wrap items-center gap-3">
         <RangePicker :range="callcenter" />
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">Очередь</label>
-          <select v-model="callQueueKey" @change="callcenter.refresh(); staffing.refresh()"
-                  class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option v-for="q in (callcenter.state.data.queues ?? [])" :key="q.key" :value="q.key">{{ q.label }}</option>
-          </select>
-        </div>
+        <select v-model="callQueueKey" @change="callcenter.refresh(); staffing.refresh()"
+                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option v-for="q in (callcenter.state.data.queues ?? [])" :key="q.key" :value="q.key">{{ q.label }}</option>
+        </select>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div class="bg-white rounded-xl border border-gray-200 p-3 text-center"><p class="text-2xl font-bold text-gray-800">{{ callcenter.state.data.summary?.total ?? 0 }}</p><p class="text-xs text-gray-500 mt-0.5">Всего звонков</p></div>
