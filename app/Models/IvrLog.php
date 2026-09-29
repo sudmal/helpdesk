@@ -28,7 +28,7 @@ class IvrLog extends Model
         'pp_offered'          => 'Предложен кредит',
         'pp_activated'        => 'Кредит активирован',
         'pp_declined'         => 'Кредит отклонён',
-        'transfer_to_support' => 'Переход к оператору',
+        'transfer_to_support' => 'Переход в Техподдержку',
         'transfer_to_abon_dept' => 'Переход в Абонотдел',
         'not_found'           => 'Не найден в биллинге',
         'api_error'           => 'Ошибка API',
