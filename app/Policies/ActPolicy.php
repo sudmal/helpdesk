@@ -178,9 +178,20 @@ class ActPolicy
         $territoryId = $act->ticket?->address?->territory_id ?? $act->connectionRequest?->territory_id;
 
         if ($user->isTechnician() || $user->isForeman()) {
+            // Своя бригада — всегда достаточно (материальная ответственность
+            // за неё). ДОПОЛНИТЕЛЬНО (2026-09-29, по просьбе пользователя) —
+            // любая ЛИЧНО назначенная территория из профиля, даже если она не
+            // связана ни с одной его бригадой. Раньше личная территория
+            // учитывалась ТОЛЬКО когда бригады не было вообще — теперь это
+            // независимое дополнительное право, а не запасной вариант.
+            // Территории, унаследованные от СВОЕЙ бригады (Brigade::territories),
+            // сюда не подмешиваются — только то, что реально лежит в
+            // user_territory (см. форму пользователя в Settings/Index.vue,
+            // где унаследованные от бригады территории показаны отдельно,
+            // заблокированы и НЕ попадают в это личное множество при сохранении).
             $brigadeIds = $user->brigades->pluck('id');
-            if ($brigadeIds->isNotEmpty()) {
-                return $brigadeIds->contains($brigadeId);
+            if ($brigadeId && $brigadeIds->contains($brigadeId)) {
+                return true;
             }
             return $territoryId && $user->territories->pluck('id')->contains($territoryId);
         }

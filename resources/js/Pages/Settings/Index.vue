@@ -1023,9 +1023,16 @@
             </div>
             <div v-else class="border border-gray-200 rounded-xl p-3 overflow-y-auto space-y-1 flex-1 min-h-48">
               <label v-for="t in territories" :key="t.id"
-                     class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
-                <input type="checkbox" :value="t.id" v-model="userForm.territory_ids" class="rounded" />
+                     class="flex items-center gap-2 text-sm p-1 hover:bg-gray-50 rounded"
+                     :class="inheritedTerritoryIds.has(t.id) ? 'cursor-help' : 'cursor-pointer'"
+                     :title="inheritedTerritoryIds.has(t.id) ? `Унаследовано от бригады «${inheritedBrigadeName}» — снять галочку нельзя, пока состоит в этой бригаде` : ''">
+                <input type="checkbox"
+                       :checked="userForm.territory_ids.includes(t.id) || inheritedTerritoryIds.has(t.id)"
+                       :disabled="inheritedTerritoryIds.has(t.id)"
+                       @change="toggleTerritory(t.id, $event.target.checked)"
+                       class="rounded" />
                 {{ t.name }}
+                <span v-if="inheritedTerritoryIds.has(t.id)" class="text-[10px] text-gray-400">(от бригады)</span>
               </label>
               <p v-if="!territories.length" class="text-xs text-gray-400">Нет территорий</p>
             </div>
@@ -1400,6 +1407,23 @@ const roleSeesEverything = computed(() => {
   const role = props.roles.find(r => r.id === userForm.role_id)
   return ROLE_SLUGS_SEE_EVERYTHING.includes(role?.slug)
 })
+
+// Территории выбранной в форме бригады — показываются в списке личных
+// территорий отмеченными и заблокированными для снятия (2026-09-29, по
+// просьбе пользователя): доступ к ним и так есть через бригаду
+// (ActPolicy::scopeMatch), дублировать его отдельной личной записью не
+// нужно — при сохранении эти id НЕ попадают в userForm.territory_ids
+// (см. toggleTerritory), только реально личные остаются в payload.
+const selectedBrigade = computed(() => props.brigades.find(b => b.id === userForm.brigade_id))
+const inheritedTerritoryIds = computed(() => new Set((selectedBrigade.value?.territories ?? []).map(t => t.id)))
+const inheritedBrigadeName = computed(() => selectedBrigade.value?.name ?? '')
+
+function toggleTerritory(id, checked) {
+  if (inheritedTerritoryIds.value.has(id)) return // заблокированный чекбокс, сюда не дойдёт, но на всякий случай
+  const idx = userForm.territory_ids.indexOf(id)
+  if (checked && idx === -1) userForm.territory_ids.push(id)
+  if (!checked && idx !== -1) userForm.territory_ids.splice(idx, 1)
+}
 
 function openUserModal(u = null) {
   editingUser.value = u

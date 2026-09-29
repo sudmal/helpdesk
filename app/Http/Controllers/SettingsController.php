@@ -121,7 +121,10 @@ class SettingsController extends Controller
                 ->orderBy('sort_order')->orderBy('name')
                 ->get(),
             'territoryAccessMatrix' => $this->territoryAccessMatrixUsers(),
-            'brigades'         => Brigade::orderBy('name')->get(['id', 'name']),
+            // territories:id,name — нужны в форме пользователя, чтобы при
+            // выборе бригады показать/заблокировать её территории в списке
+            // личных (2026-09-29, см. ActPolicy::scopeMatch).
+            'brigades'         => Brigade::with('territories:id,name')->orderBy('name')->get(['id', 'name']),
             'serviceRequestServices' => $this->getServiceRequestServices(),
             'lanbillingEnabled' => (bool) SystemSetting::get('lanbilling_enabled', true),
             'lanbillingConfig' => [
