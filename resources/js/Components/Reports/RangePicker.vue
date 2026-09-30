@@ -32,6 +32,13 @@
       </button>
     </template>
 
+    <!-- Неделя/Месяц/Квартал сами не спрашивают даты (в отличие от День и
+         Период выше) -- без явного показа границ непонятно, что вообще за
+         период сейчас выбран. Общий компонент -- правится тут один раз для
+         всех отчётов (2026-09-30). -->
+    <span v-if="['week', 'month', 'quarter'].includes(range.state.periodMode) && rangeLabel"
+          class="text-sm text-gray-500 whitespace-nowrap">{{ rangeLabel }}</span>
+
     <span v-if="range.state.loading" class="text-xs text-gray-400">Загрузка…</span>
   </div>
 </template>
@@ -59,4 +66,17 @@ const allModes = [
 ]
 
 const visibleModes = computed(() => allModes.filter(m => props.modes.includes(m.key)))
+
+function formatRu(iso) {
+  const [y, m, d] = iso.split('-')
+  return `${d}.${m}.${y}`
+}
+const rangeLabel = computed(() => {
+  // periodMode как зависимость -- currentRange() сам по себе не реактивен
+  // (просто функция), пересчитываем явно при смене режима.
+  void props.range.state.periodMode
+  const r = props.range.currentRange()
+  if (!r.from || !r.to) return ''
+  return r.from === r.to ? formatRu(r.from) : `${formatRu(r.from)} – ${formatRu(r.to)}`
+})
 </script>
