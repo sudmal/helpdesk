@@ -50,11 +50,6 @@
 
           <ConnectionCard v-for="r in currentList" :key="r.id" :request="r"
                            @open="$router.push({ name: 'connection-detail', params: { id: r.id } })" />
-
-          <button v-if="canLoadMore" @click="loadMore" :disabled="loadingMore"
-                  class="w-full h-10 rounded-lg text-[#9E9E9E] text-sm border border-white/10 mt-1 disabled:opacity-50">
-            {{ loadingMore ? '...' : 'Показать ещё' }}
-          </button>
         </div>
       </PullToRefresh>
     </div>
@@ -78,12 +73,9 @@ const items = ref([])
 const territories = ref([])
 const territoryFilter = ref('')
 const loading = ref(false)
-const loadingMore = ref(false)
 const hasLoadedOnce = ref(false)
 const lastSyncLabel = ref('Ещё не синхронизировано')
 const activeTab = ref('approved')
-const page = ref(1)
-const lastPage = ref(1)
 
 // Видимые монтажнику заявки: rejected и feasibility=impossible исчезают
 // сразу (дальше это только портал/оператор), закрытые -- в течение окна
@@ -125,39 +117,39 @@ const tabs = computed(() => [
 ])
 
 const currentList = computed(() => activeTab.value === 'waiting' ? waitingList.value : approvedList.value)
-const canLoadMore = computed(() => page.value < lastPage.value)
 
+// Раньше грузили только первую страницу (50 заявок) и ждали, пока монтажник
+// сам нажмёт «Показать ещё» -- при этом счётчики на вкладках считались от
+// уже подгруженного и выглядели как полные, хотя им не были. У бригадира с
+// несколькими территориями в скоупе легко набирается 200+ заявок (старые
+// pending, давние rejected/closed) -- без домотки до конца часть из них
+// просто не появлялась. Теперь вычитываем все страницы сразу при загрузке,
+// тот же фикс, что и в Android (SyncWorker/ConnectionsFragment, билд 155-156).
 async function load() {
   loading.value = true
-  page.value = 1
   try {
-    const { data } = await api.get('/connection-requests', {
-      params: { territory_id: territoryFilter.value || undefined, page: 1 },
-    })
-    items.value = data.data
-    territories.value = data.territories || []
-    lastPage.value = data.last_page
+    const allItems = []
+    let page = 1
+    let lastPage = 1
+    let loadedTerritories = []
+    do {
+      const { data } = await api.get('/connection-requests', {
+        params: { territory_id: territoryFilter.value || undefined, page, per_page: 100 },
+      })
+      allItems.push(...data.data)
+      lastPage = data.last_page
+      loadedTerritories = data.territories || loadedTerritories
+      page++
+    } while (page <= lastPage)
+
+    items.value = allItems
+    territories.value = loadedTerritories
     lastSyncLabel.value = 'Обновлено в ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   } catch {
     lastSyncLabel.value = 'Нет соединения, показаны кешированные данные'
   } finally {
     loading.value = false
     hasLoadedOnce.value = true
-  }
-}
-
-async function loadMore() {
-  if (!canLoadMore.value) return
-  loadingMore.value = true
-  try {
-    const { data } = await api.get('/connection-requests', {
-      params: { territory_id: territoryFilter.value || undefined, page: page.value + 1 },
-    })
-    items.value = [...items.value, ...data.data]
-    page.value = data.current_page
-    lastPage.value = data.last_page
-  } finally {
-    loadingMore.value = false
   }
 }
 
