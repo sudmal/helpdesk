@@ -128,19 +128,19 @@
         </button>
       </div>
       <div data-tour="tour-conn-table" class="overflow-auto flex-1 min-h-0">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm table-fixed">
           <thead class="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0 z-10 shadow-[0_1px_0_0_#e5e7eb]">
             <tr>
               <th class="px-2 py-1 text-center w-7"></th>
               <th class="px-1 py-1 text-center w-6"></th>
-              <th class="px-2 py-1 text-left">Дата</th>
-              <th class="px-2 py-1 text-left">Имя</th>
-              <th class="px-2 py-1 text-left">Телефон</th>
-              <th class="px-2 py-1 text-left">Адрес</th>
-              <th class="px-2 py-1 text-left">Описание</th>
-              <th class="px-2 py-1 text-left" data-tour="tour-conn-status-col">Статус</th>
-              <th class="px-2 py-1 text-left">Дата подкл.</th>
-              <th class="px-2 py-1 text-left" data-tour="tour-conn-act-col">Примечания / Акт</th>
+              <th class="px-2 py-1 text-left w-16 sm:w-20">Дата</th>
+              <!-- Адрес/имя/телефон/описание слиты в одну колонку (как на странице Заявок) --
+                   на узком экране это единственная "смысловая" колонка, остальные скрыты по
+                   брейкпоинтам ниже, чтобы не было горизонтального скролла на телефоне. -->
+              <th class="px-2 py-1 text-left">Адрес / Описание</th>
+              <th class="px-2 py-1 text-left w-32 sm:w-40" data-tour="tour-conn-status-col">Статус</th>
+              <th class="px-2 py-1 text-left hidden sm:table-cell w-28">Дата подкл.</th>
+              <th class="px-2 py-1 text-left hidden lg:table-cell w-36" data-tour="tour-conn-act-col">Примечания / Акт</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-xs">
@@ -151,7 +151,7 @@
                           'ring-2 ring-inset ring-blue-400': !r.territory_id && r.status === 'pending' && !r.deleted_at }"
                 @mouseenter="hoverInfo = connectionTooltipData(r)"
                 @mouseleave="hoverInfo = null">
-              <td class="px-1.5 py-px text-center whitespace-nowrap">
+              <td class="px-1.5 py-1 text-center whitespace-nowrap align-top">
                 <button v-if="r.status === 'pending' || r.status === 'scheduled'"
                         @click="openEdit(r)" title="Редактировать"
                         class="text-gray-400 hover:text-blue-600 transition-colors">
@@ -161,18 +161,31 @@
                   </svg>
                 </button>
               </td>
-              <td class="px-1 py-px text-center text-sm leading-none" :title="r.service_type?.name">{{ serviceIcon(r.service_type?.name) }}</td>
-              <td class="px-2 py-px whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
-              <td class="px-2 py-px font-medium truncate max-w-24">{{ r.name }}</td>
-              <td class="px-2 py-px font-mono whitespace-nowrap">{{ r.phone }}</td>
-              <td class="px-2 py-px text-blue-600 hover:underline cursor-pointer truncate max-w-36"
-                  @click="openDetail(r)">
-                <span v-if="r.source === 'website'" title="Заявка с сайта">🌐</span>
-                {{ r.address_string }}
+              <td class="px-1 py-1 text-center text-sm leading-none align-top" :title="r.service_type?.name">{{ serviceIcon(r.service_type?.name) }}</td>
+              <td class="px-2 py-1 whitespace-nowrap text-gray-500 align-top">{{ fmtDate(r.created_at) }}</td>
+              <td class="px-2 py-1 min-w-0 align-top">
+                <p class="font-medium text-blue-600 hover:underline cursor-pointer truncate text-xs leading-tight" @click="openDetail(r)">
+                  <span v-if="r.source === 'website'" title="Заявка с сайта">🌐</span>
+                  {{ r.address_string }}
+                </p>
+                <p class="text-gray-700 text-xs leading-tight truncate">
+                  <span class="font-medium">{{ r.name }}</span>
+                  <span v-if="r.phone" class="font-mono text-gray-500 ml-1.5">{{ r.phone }}</span>
+                </p>
+                <p v-if="r.description" class="text-gray-500 text-xs leading-tight truncate" :title="r.description">{{ r.description }}</p>
+                <!-- На узких экранах дата подкл. и примечания/акт скрыты как отдельные
+                     колонки -- дублируем их короткой строкой здесь, чтобы не терять видимость. -->
+                <p class="text-gray-500 text-xs leading-tight sm:hidden" v-if="r.scheduled_at">
+                  <span :class="isOverdue(r) ? 'text-red-600 font-semibold' : ''">📅 {{ fmtDateTime(r.scheduled_at) }}</span>
+                </p>
+                <p class="text-gray-500 text-xs leading-tight truncate lg:hidden" v-if="r.notes || r.act">
+                  <button v-if="r.act" @click.stop="router.get(route('acts.show', r.act.id))"
+                          class="mr-1 text-blue-600 hover:underline font-medium">[{{ r.act.number }}]</button>
+                  {{ r.notes }}
+                </p>
               </td>
-              <td class="px-2 py-px text-gray-500 max-w-32 truncate" :title="r.description">{{ r.description || '—' }}</td>
-              <td class="px-2 py-px">
-                <div class="flex items-center gap-1.5">
+              <td class="px-2 py-1 align-top">
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="w-4 shrink-0 text-center">
                     <span v-if="r.feasibility === 'possible'" class="text-green-600" title="Монтажник: возможно">✅</span>
                     <span v-else-if="r.feasibility === 'impossible'" class="text-red-600"
@@ -194,8 +207,8 @@
                   </span>
                 </div>
               </td>
-              <td class="px-2 py-px whitespace-nowrap" :class="isOverdue(r) ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
-              <td class="px-2 py-px text-gray-600 max-w-36 truncate" :title="r.notes">
+              <td class="px-2 py-1 whitespace-nowrap hidden sm:table-cell align-top" :class="isOverdue(r) ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ r.scheduled_at ? fmtDateTime(r.scheduled_at) : '—' }}</td>
+              <td class="px-2 py-1 text-gray-600 truncate hidden lg:table-cell align-top" :title="r.notes">
                 <button v-if="r.act"
                         @click="router.get(route('acts.show', r.act.id))"
                         class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act.number }}]</button>
@@ -203,7 +216,7 @@
               </td>
             </tr>
             <tr v-if="!requests.data.length">
-              <td colspan="9" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
+              <td colspan="6" class="px-4 py-8 text-center text-gray-400">Нет записей</td>
             </tr>
           </tbody>
         </table>
