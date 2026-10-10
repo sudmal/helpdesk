@@ -69,6 +69,12 @@
 
             <template v-if="view === 'overview'">
         <div class="overflow-x-auto">
+          <!-- Те же 3 колонки (Просроченные/Сегодня/Завтра) на flex-1 без
+               min-width сжимались на телефоне до нечитаемой ширины -- общий
+               min-width держит колонки header'а и тела грида одинаковыми и
+               достаточно широкими, остальное скроллится вбок (.overflow-x-auto
+               уже есть снаружи). -->
+          <div class="min-w-[640px]">
           <!-- Sticky header -->
           <div class="flex sticky top-0 bg-white z-10 border-b border-gray-200">
             <div class="flex-shrink-0 border-r border-gray-100" style="width: 60px"></div>
@@ -187,6 +193,7 @@
             </div>
 
           </div>
+          </div>
         </div>
       </template>
 
@@ -201,7 +208,14 @@
           <span class="text-sm text-gray-500">Загрузка событий…</span>
         </div>
       </div>
-      <FullCalendar :key="calFullKey" ref="calRef" :options="calOptions" />
+      <!-- FullCalendar сам ужимает колонки под ширину контейнера (table без
+           min-width), поэтому на телефоне 7 колонок недели/месяца схлопываются
+           в нечитаемую кашу вместо того, чтобы включить скролл обёртки выше
+           (.overflow-x-auto и так уже есть, но сжатие побеждает её -- скроллить
+           нечего). min-width заставляет колонки держать минимальную ширину. -->
+      <div class="min-w-[700px]">
+        <FullCalendar :key="calFullKey" ref="calRef" :options="calOptions" />
+      </div>
       </div>
 
     </div><!-- end main card -->
