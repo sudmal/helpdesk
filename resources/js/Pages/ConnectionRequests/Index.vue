@@ -1,7 +1,15 @@
 <template>
   <Head title="Подключения" />
   <AppLayout title="Подключения" help-tab="dispatcher" help-section="connections" tour-key="connections">
-    <div class="flex flex-col h-full min-h-0">
+    <!-- На мобильном эта секция НЕ занимает фиксированную высоту экрана со своим
+         внутренним скроллом -- блок фильтров сам по себе высокий (поля идут
+         вертикально друг под другом), и список внутри оставшейся узкой полосы
+         скроллился отдельно от страницы ("скролл в скролле"), из-за чего
+         было видно 1 запись за раз. От md и шире сохранена прежняя раскладка
+         (фикс. высота + собственный скролл таблицы), на мобильном -- просто
+         обычный поток документа, скроллит вся страница целиком (<main> в
+         AppLayout и так уже overflow-y-auto). -->
+    <div class="flex flex-col md:h-full md:min-h-0">
 
     <!-- Вкладки территорий + Фильтры -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3 shrink-0">
@@ -107,7 +115,7 @@
     </div>
 
     <!-- Таблица -->
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col flex-1 min-h-0">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col md:flex-1 md:min-h-0">
       <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
         <span class="text-sm text-gray-500 whitespace-nowrap">Всего: {{ requests.total }}</span>
         <!-- Подсказка по строке под курсором — всегда в одном месте -->
@@ -227,7 +235,7 @@
       </div>
 
       <!-- Мобильный список карточками (виден только < sm, таблица выше скрыта). -->
-      <div class="sm:hidden overflow-auto flex-1 min-h-0 divide-y divide-gray-100">
+      <div class="sm:hidden divide-y divide-gray-100">
         <div v-for="r in requests.data" :key="'m-' + r.id"
              class="p-3 active:bg-gray-50"
              :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100': r.status === 'cancelled' && !r.deleted_at,
