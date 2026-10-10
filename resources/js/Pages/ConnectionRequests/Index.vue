@@ -127,7 +127,11 @@
           + Новая заявка
         </button>
       </div>
-      <div data-tour="tour-conn-table" class="overflow-auto flex-1 min-h-0">
+      <!-- Таблица оказалась ненадёжной на мобильных браузерах (table-fixed странно вёл
+           себя в некоторых WebView — колонки сжимались в узкую полосу вместо того, чтобы
+           занять всю ширину). Поэтому на узких экранах таблица скрыта полностью, вместо
+           неё ниже отдельный список карточками (тот же источник данных). -->
+      <div data-tour="tour-conn-table" class="hidden sm:block overflow-auto flex-1 min-h-0">
         <table class="w-full text-sm table-fixed">
           <thead class="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0 z-10 shadow-[0_1px_0_0_#e5e7eb]">
             <tr>
@@ -220,6 +224,67 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Мобильный список карточками (виден только < sm, таблица выше скрыта). -->
+      <div class="sm:hidden overflow-auto flex-1 min-h-0 divide-y divide-gray-100">
+        <div v-for="r in requests.data" :key="'m-' + r.id"
+             class="p-3 active:bg-gray-50"
+             :class="{ 'opacity-50': r.deleted_at, 'bg-gray-100': r.status === 'cancelled' && !r.deleted_at,
+                       'ring-2 ring-inset ring-red-400': isOverdue(r),
+                       'ring-2 ring-inset ring-blue-400': !r.territory_id && r.status === 'pending' && !r.deleted_at }">
+          <div class="flex items-start justify-between gap-2">
+            <p class="font-medium text-blue-600 text-sm leading-snug min-w-0 flex-1" @click="openDetail(r)">
+              <span v-if="r.source === 'website'" title="Заявка с сайта">🌐</span>
+              {{ r.address_string }}
+            </p>
+            <button v-if="r.status === 'pending' || r.status === 'scheduled'"
+                    @click="openEdit(r)" title="Редактировать"
+                    class="text-gray-400 shrink-0 p-1 -m-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          </div>
+          <p class="text-gray-700 text-xs mt-0.5" @click="openDetail(r)">
+            <span class="font-medium">{{ r.name }}</span>
+            <span v-if="r.phone" class="font-mono text-gray-500 ml-1.5">{{ r.phone }}</span>
+          </p>
+          <p v-if="r.description" class="text-gray-500 text-xs mt-0.5" @click="openDetail(r)">{{ r.description }}</p>
+
+          <div class="flex items-center gap-1.5 flex-wrap mt-1.5">
+            <span v-if="r.feasibility === 'possible'" class="text-green-600" title="Монтажник: возможно">✅</span>
+            <span v-else-if="r.feasibility === 'impossible'" class="text-red-600"
+                  :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
+            <span v-if="r.kind === 'switch'" class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-semibold" title="Переключение на PON">ПЕРЕКЛ</span>
+            <span :class="statusClass(r.status, r.feasibility)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+              {{ statusLabel(r.status, r.feasibility) }}
+            </span>
+            <span v-if="r.deleted_at" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">Удалена</span>
+            <span v-if="r.needs_callback" class="animate-bounce text-amber-500" title="Требуется прозвон">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+              </svg>
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between gap-2 mt-1.5 text-xs text-gray-500">
+            <span class="flex items-center gap-1">
+              <span :title="r.service_type?.name">{{ serviceIcon(r.service_type?.name) }}</span>
+              {{ fmtDate(r.created_at) }}
+            </span>
+            <span v-if="r.scheduled_at" :class="isOverdue(r) ? 'text-red-600 font-semibold' : ''">
+              📅 {{ fmtDateTime(r.scheduled_at) }}
+            </span>
+          </div>
+          <p v-if="r.notes || r.act" class="text-xs text-gray-500 mt-1">
+            <button v-if="r.act" @click.stop="router.get(route('acts.show', r.act.id))"
+                    class="mr-1 text-blue-600 hover:underline font-medium">[{{ r.act.number }}]</button>
+            {{ r.notes }}
+          </p>
+        </div>
+        <div v-if="!requests.data.length" class="px-4 py-8 text-center text-gray-400 text-sm">Нет записей</div>
       </div>
 
       <!-- Пагинация -->
