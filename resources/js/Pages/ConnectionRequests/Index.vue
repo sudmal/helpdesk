@@ -14,40 +14,41 @@
     <!-- Вкладки территорий + Фильтры -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-2 shrink-0">
 
-      <!-- Вкладки -->
-      <div data-tour="tour-conn-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2.5 pt-1 flex-wrap">
+      <!-- Вкладки -- мельче шрифт/паддинги, чтобы длинные названия территорий
+           (напр. "Ждановка_Домолинк") помещались в одну строку без переноса. -->
+      <div data-tour="tour-conn-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2 pt-1 flex-wrap">
         <button @click="selectTerritory(null)"
-                :class="['px-2.5 py-1.5 text-sm font-medium flex items-center gap-1.5 rounded-t-lg transition-colors relative',
+                :class="['px-2 py-1 text-xs font-medium flex items-center gap-1 rounded-t-lg transition-colors relative',
                          selectedTerritory === null
                            ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
           Все
           <span v-if="totalPending > 0"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
+                class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold bg-orange-500 text-white leading-none">
             {{ totalPending }}
           </span>
           <span v-if="totalOverdue > 0"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
+                class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold bg-red-500 text-white leading-none">
             {{ totalOverdue }}
           </span>
           <span v-if="newFromWebsite > 0" title="Новые заявки с сайта -- нужно проставить территорию"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-blue-500 text-white leading-none">
+                class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold bg-blue-500 text-white leading-none">
             🌐{{ newFromWebsite }}
           </span>
         </button>
         <button v-for="t in territories" :key="t.id"
                 @click="selectTerritory(t.id)"
-                :class="['px-2.5 py-1.5 text-sm font-medium flex items-center gap-1.5 rounded-t-lg transition-colors relative',
+                :class="['px-2 py-1 text-xs font-medium flex items-center gap-1 rounded-t-lg transition-colors relative',
                          selectedTerritory === t.id
                            ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
           {{ t.name }}
           <span v-if="pendingByTerritory[t.id]"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-orange-500 text-white leading-none">
+                class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold bg-orange-500 text-white leading-none">
             {{ pendingByTerritory[t.id] }}
           </span>
           <span v-if="overdueByTerritory[t.id]"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold bg-red-500 text-white leading-none">
+                class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[10px] font-bold bg-red-500 text-white leading-none">
             {{ overdueByTerritory[t.id] }}
           </span>
         </button>
@@ -64,11 +65,11 @@
         </span>
       </div>
 
-      <!-- Участок + поиск + статус/вид + показать удалённые + кнопки -- было
-           3 отдельных строки (Участок/Фильтры с лейблами над полями), слито в
-           одну: Статус/Вид получили лейбл слева вместо отдельной строки сверху,
-           у Поиска лейбл убран (плейсхолдер и так понятен). Экономит ~2 строки
-           высоты, приоритет отдан самой таблице заявок ниже. -->
+      <!-- Участок + поиск + статус/вид + кнопки. Лейблы Статус/Вид убраны --
+           слово "Все" у значения по умолчанию само несёт смысл поля
+           ("Статус: Все" / "Вид: Все"), у остальных опций лейбл не нужен,
+           они самоописательны. Чекбокс "Показать удалённые" убран из
+           интерфейса по просьбе пользователя. -->
       <div class="px-3 py-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <div class="flex gap-1.5 flex-wrap">
           <button @click="selectServiceType(null)"
@@ -85,56 +86,46 @@
 
         <input v-model="f.search" @keydown.enter="apply" class="field-input flex-1 min-w-40 sm:max-w-xs" placeholder="Имя, телефон, адрес..." />
 
-        <div class="flex items-center gap-1.5">
-          <span class="text-xs text-gray-500 shrink-0">Статус</span>
-          <select v-model="f.status" class="field-input w-auto">
-            <option value="">Все</option>
-            <option value="pending">Ожидает</option>
-            <option value="scheduled">Назначено</option>
-            <option value="rejected">Отклонено</option>
-            <option value="cancelled">Отказ</option>
-            <option value="closed">Выполнено</option>
-          </select>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-xs text-gray-500 shrink-0">Вид</span>
-          <select v-model="f.kind" @change="apply" class="field-input w-auto">
-            <option value="">Все</option>
-            <option value="connection">Подключение</option>
-            <option value="switch">Переключение на PON</option>
-          </select>
-        </div>
-        <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none shrink-0">
-          <input type="checkbox" v-model="f.trashed" @change="apply" class="rounded border-gray-300" />
-          Показать удалённые
-        </label>
+        <select v-model="f.status" class="field-input w-auto">
+          <option value="">Статус: Все</option>
+          <option value="pending">Ожидает</option>
+          <option value="scheduled">Назначено</option>
+          <option value="rejected">Отклонено</option>
+          <option value="cancelled">Отказ</option>
+          <option value="closed">Выполнено</option>
+        </select>
+        <select v-model="f.kind" @change="apply" class="field-input w-auto">
+          <option value="">Вид: Все</option>
+          <option value="connection">Подключение</option>
+          <option value="switch">Переключение на PON</option>
+        </select>
         <div class="flex gap-2 shrink-0">
           <button @click="apply" class="btn-primary text-sm">Найти</button>
           <button @click="reset" class="btn-outline text-sm">Сброс</button>
         </div>
+
+        <!-- Всего/+Новая заявка -- были отдельной строкой над таблицей (чистый
+             вайтспейс, когда подсказка по наведению пуста), перенесены сюда. -->
+        <span class="text-sm text-gray-500 whitespace-nowrap ml-auto">Всего: {{ requests.total }}</span>
+        <button @click="openCreate" data-tour="tour-conn-create"
+                class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors shrink-0">
+          + Новая заявка
+        </button>
       </div>
     </div>
 
     <!-- Таблица -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col md:flex-1 md:min-h-0">
-      <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
-        <span class="text-sm text-gray-500 whitespace-nowrap">Всего: {{ requests.total }}</span>
-        <!-- Подсказка по строке под курсором — всегда в одном месте -->
-        <div class="flex-1 min-w-0 h-6 flex items-center gap-2 text-xs overflow-hidden whitespace-nowrap">
-          <template v-if="hoverInfo">
-            <span v-if="hoverInfo.type" class="px-1.5 py-0.5 rounded font-medium shrink-0"
-                  :style="{ backgroundColor: (hoverInfo.type.color || '#6b7280') + '33', color: hoverInfo.type.color || '#374151' }">{{ hoverInfo.type.name }}</span>
-            <span class="font-semibold text-gray-800 shrink-0">{{ hoverInfo.address }}</span>
-            <span v-if="hoverInfo.subscriberName" class="text-gray-500 shrink-0">👤 {{ hoverInfo.subscriberName }}</span>
-            <span v-if="hoverInfo.phone" class="text-gray-500 shrink-0">📞 {{ hoverInfo.phone }}</span>
-            <span v-if="hoverInfo.description" class="text-gray-600 truncate">{{ hoverInfo.description }}</span>
-            <span v-if="hoverInfo.lastComment" class="text-amber-600 truncate">💬 {{ hoverInfo.lastComment }}</span>
-          </template>
-        </div>
-        <button @click="openCreate" data-tour="tour-conn-create"
-                class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors shrink-0">
-          + Новая заявка
-        </button>
+      <!-- Подсказка по строке под курсором -- тонкая строка прямо над таблицей,
+           пустая вне наведения (компактнее прежнего бара с Всего/+Новая заявка). -->
+      <div v-if="hoverInfo" class="px-3 py-1 border-b border-gray-100 flex items-center gap-2 text-xs overflow-hidden whitespace-nowrap shrink-0">
+        <span v-if="hoverInfo.type" class="px-1.5 py-0.5 rounded font-medium shrink-0"
+              :style="{ backgroundColor: (hoverInfo.type.color || '#6b7280') + '33', color: hoverInfo.type.color || '#374151' }">{{ hoverInfo.type.name }}</span>
+        <span class="font-semibold text-gray-800 shrink-0">{{ hoverInfo.address }}</span>
+        <span v-if="hoverInfo.subscriberName" class="text-gray-500 shrink-0">👤 {{ hoverInfo.subscriberName }}</span>
+        <span v-if="hoverInfo.phone" class="text-gray-500 shrink-0">📞 {{ hoverInfo.phone }}</span>
+        <span v-if="hoverInfo.description" class="text-gray-600 truncate">{{ hoverInfo.description }}</span>
+        <span v-if="hoverInfo.lastComment" class="text-amber-600 truncate">💬 {{ hoverInfo.lastComment }}</span>
       </div>
       <!-- Десктопная таблица -- ровно исходная вёрстка (10 колонок, без table-fixed,
            без ограничений ширины), видна только от sm и выше. Мобильный список
