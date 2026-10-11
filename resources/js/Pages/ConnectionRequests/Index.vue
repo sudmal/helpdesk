@@ -12,10 +12,10 @@
     <div class="flex flex-col md:h-full md:min-h-0">
 
     <!-- Вкладки территорий + Фильтры -->
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3 shrink-0">
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-2 shrink-0">
 
       <!-- Вкладки -->
-      <div data-tour="tour-conn-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2.5 pt-1.5 flex-wrap">
+      <div data-tour="tour-conn-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2.5 pt-1 flex-wrap">
         <button @click="selectTerritory(null)"
                 :class="['px-2.5 py-1.5 text-sm font-medium flex items-center gap-1.5 rounded-t-lg transition-colors relative',
                          selectedTerritory === null
@@ -53,22 +53,8 @@
         </button>
       </div>
 
-      <!-- Фильтр по участку -->
-      <div class="px-3 pt-2.5 flex flex-wrap gap-1.5">
-        <button @click="selectServiceType(null)"
-                :class="['px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-                         !f.service_type ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
-          Все
-        </button>
-        <button v-for="st in serviceTypes" :key="st.id" @click="selectServiceType(st.id)"
-                :class="['px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-                         f.service_type === st.id ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
-          {{ serviceIcon(st.name) }} {{ st.name }}
-        </button>
-      </div>
-
       <!-- Фильтр из отчёта "Выполнено работ" (бригада / период закрытия) -->
-      <div v-if="f.brigade || f.closed_from || f.closed_to" class="px-3 pt-3 flex flex-wrap gap-1.5">
+      <div v-if="f.brigade || f.closed_from || f.closed_to" class="px-3 pt-2 flex flex-wrap gap-1.5">
         <span class="inline-flex items-center gap-1 bg-blue-100 border border-blue-200 text-blue-700 text-xs px-2 py-0.5 rounded-full">
           Из отчёта:
           <template v-if="f.brigade === 'none'">без бригады · </template>
@@ -78,15 +64,30 @@
         </span>
       </div>
 
-      <!-- Фильтры -->
-      <div class="p-3 flex flex-wrap gap-2.5 items-end">
-        <div class="flex-1 min-w-48">
-          <label class="field-label">Поиск</label>
-          <input v-model="f.search" @keydown.enter="apply" class="field-input w-full" placeholder="Имя, телефон, адрес..." />
+      <!-- Участок + поиск + статус/вид + показать удалённые + кнопки -- было
+           3 отдельных строки (Участок/Фильтры с лейблами над полями), слито в
+           одну: Статус/Вид получили лейбл слева вместо отдельной строки сверху,
+           у Поиска лейбл убран (плейсхолдер и так понятен). Экономит ~2 строки
+           высоты, приоритет отдан самой таблице заявок ниже. -->
+      <div class="px-3 py-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <div class="flex gap-1.5 flex-wrap">
+          <button @click="selectServiceType(null)"
+                  :class="['px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                           !f.service_type ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
+            Все
+          </button>
+          <button v-for="st in serviceTypes" :key="st.id" @click="selectServiceType(st.id)"
+                  :class="['px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                           f.service_type === st.id ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-50']">
+            {{ serviceIcon(st.name) }} {{ st.name }}
+          </button>
         </div>
-        <div>
-          <label class="field-label">Статус</label>
-          <select v-model="f.status" class="field-input">
+
+        <input v-model="f.search" @keydown.enter="apply" class="field-input flex-1 min-w-40 sm:max-w-xs" placeholder="Имя, телефон, адрес..." />
+
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-gray-500 shrink-0">Статус</span>
+          <select v-model="f.status" class="field-input w-auto">
             <option value="">Все</option>
             <option value="pending">Ожидает</option>
             <option value="scheduled">Назначено</option>
@@ -95,19 +96,19 @@
             <option value="closed">Выполнено</option>
           </select>
         </div>
-        <div>
-          <label class="field-label">Вид</label>
-          <select v-model="f.kind" @change="apply" class="field-input">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-gray-500 shrink-0">Вид</span>
+          <select v-model="f.kind" @change="apply" class="field-input w-auto">
             <option value="">Все</option>
             <option value="connection">Подключение</option>
             <option value="switch">Переключение на PON</option>
           </select>
         </div>
-        <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+        <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none shrink-0">
           <input type="checkbox" v-model="f.trashed" @change="apply" class="rounded border-gray-300" />
           Показать удалённые
         </label>
-        <div class="flex gap-2">
+        <div class="flex gap-2 shrink-0">
           <button @click="apply" class="btn-primary text-sm">Найти</button>
           <button @click="reset" class="btn-outline text-sm">Сброс</button>
         </div>
@@ -116,7 +117,7 @@
 
     <!-- Таблица -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col md:flex-1 md:min-h-0">
-      <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
+      <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
         <span class="text-sm text-gray-500 whitespace-nowrap">Всего: {{ requests.total }}</span>
         <!-- Подсказка по строке под курсором — всегда в одном месте -->
         <div class="flex-1 min-w-0 h-6 flex items-center gap-2 text-xs overflow-hidden whitespace-nowrap">
