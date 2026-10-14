@@ -944,12 +944,19 @@ const statusFilterLabel = computed(() => {
   return `Статус: выбрано ${n}`
 })
 
+// "trashed" сознательно НЕ читается из props.filters сюда (2026-10-14) --
+// чекбокс "Показать удалённые" убрали из UI раньше (7d3e99e), но если бы
+// значение продолжало зеркалиться из URL в f.value, apply() молча слал бы
+// его в каждом следующем запросе навсегда -- у кого в URL/закладке уже был
+// ?trashed=1, застревал бы только на удалённых заявках без единого способа
+// это увидеть или снять через интерфейс (список выглядел просто "почти
+// пустым", а не как ошибка). Бэкенд параметр ?trashed=1 всё ещё понимает,
+// но фронт больше никогда не читает и не пересылает его сам.
 const f = ref({
   search:       props.filters?.search       ?? '',
   statuses:     initialStatuses(),
   kind:         props.filters?.kind         ?? '',
   service_type: props.filters?.service_type ? Number(props.filters.service_type) : null,
-  trashed:      !!props.filters?.trashed,
   brigade:      props.filters?.brigade      ?? '',
   closed_from:  props.filters?.closed_from  ?? '',
   closed_to:    props.filters?.closed_to    ?? '',
@@ -991,7 +998,7 @@ function apply() {
 }
 
 function reset() {
-  f.value = { search: '', statuses: [], kind: '', service_type: null, trashed: false }
+  f.value = { search: '', statuses: [], kind: '', service_type: null }
   router.get(route('connection-requests.index'), { territory: props.selectedTerritory }, { preserveState: true })
 }
 
