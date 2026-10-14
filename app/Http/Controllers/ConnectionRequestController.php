@@ -65,9 +65,11 @@ class ConnectionRequestController extends Controller
         // которые и так видны в UI отдельными бейджами (statusLabel()):
         // техвозможность ещё не оценена (feasibility пуст) vs оценена и
         // ждём прозвона абонента (feasibility проставлен, не важно каким).
-        // "switch" -- это не status, а kind=switch (бейдж ПЕРЕКЛ) -- добавлен
-        // сюда же по просьбе пользователя как ещё один вариант той же кнопки,
-        // а не только через отдельный select "Вид".
+        // "Переключение на PON" (kind=switch, бейдж ПЕРЕКЛ) сюда сознательно
+        // НЕ включён (2026-10-14, был и убран) -- это независимое от статуса
+        // поле, добавление его как ещё одного токена сюда путало: бейдж
+        // показывается у заявки независимо от того, что отмечено в этом
+        // фильтре. Фильтр по виду -- отдельный select "Вид" рядом.
         // Бэклинки из Дашборда (?status=pending) и отчёта "Выполнено работ"
         // (?status=closed) шлют старый одиночный параметр -- принимаем оба.
         $statusTokens = $request->input('statuses', []);
@@ -93,9 +95,6 @@ class ConnectionRequestController extends Controller
                         case 'cancelled':
                         case 'closed':
                             $q->orWhere('status', $token);
-                            break;
-                        case 'switch':
-                            $q->orWhere('kind', 'switch');
                             break;
                     }
                 }

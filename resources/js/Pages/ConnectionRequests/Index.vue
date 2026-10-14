@@ -90,10 +90,14 @@
 
         <input v-model="f.search" @keydown.enter="apply" class="field-input flex-1 min-w-40 sm:max-w-xs" placeholder="Имя, телефон, адрес..." />
 
-        <!-- Статус -- множественный выбор чекбоксами (включая оба подвида
-             "ожидает" и отдельно "Переключение на PON", см. badge ПЕРЕКЛ в
-             таблице) -- раньше select был одиночного выбора и не различал
-             "ожидает техвозможность" от "ожидает прозвон". -->
+        <!-- Статус -- множественный выбор чекбоксами, различает оба подвида
+             "ожидает" -- раньше select был одиночного выбора и не отличал
+             "ожидает техвозможность" от "ожидает прозвон". "Переключение на
+             PON" сюда НЕ включён сознательно (2026-10-14) -- это отдельное
+             поле kind, а не статус, тут оно только путало: бейдж ПЕРЕКЛ в
+             таблице показывается у любой заявки на переключение независимо
+             от статуса, а не только когда галочка отмечена. Фильтр по виду --
+             select "Вид" рядом. -->
         <div class="relative">
           <button type="button" @click="statusMenuOpen = !statusMenuOpen"
                   class="field-input w-auto flex items-center gap-1.5 cursor-pointer">
@@ -931,7 +935,6 @@ const STATUS_OPTIONS = [
   { key: 'rejected',         label: 'Отклонено' },
   { key: 'cancelled',        label: 'Отказ' },
   { key: 'closed',           label: 'Выполнено' },
-  { key: 'switch',           label: 'Переключение на PON' },
 ]
 const statusMenuOpen = ref(false)
 const statusFilterLabel = computed(() => {
