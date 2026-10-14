@@ -60,8 +60,46 @@ class ConnectionRequestController extends Controller
             ")
             ->latest();
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        // Статус -- множественный выбор (чекбоксы на фронте), OR между
+        // отмеченными вариантами. "Ожидает" разбит на два реальных подвида,
+        // которые и так видны в UI отдельными бейджами (statusLabel()):
+        // техвозможность ещё не оценена (feasibility пуст) vs оценена и
+        // ждём прозвона абонента (feasibility проставлен, не важно каким).
+        // "switch" -- это не status, а kind=switch (бейдж ПЕРЕКЛ) -- добавлен
+        // сюда же по просьбе пользователя как ещё один вариант той же кнопки,
+        // а не только через отдельный select "Вид".
+        // Бэклинки из Дашборда (?status=pending) и отчёта "Выполнено работ"
+        // (?status=closed) шлют старый одиночный параметр -- принимаем оба.
+        $statusTokens = $request->input('statuses', []);
+        if (!is_array($statusTokens)) {
+            $statusTokens = [$statusTokens];
+        }
+        if (!$statusTokens && $request->filled('status')) {
+            $statusTokens = [$request->status];
+        }
+        if ($statusTokens) {
+            $query->where(function ($q) use ($statusTokens) {
+                foreach ($statusTokens as $token) {
+                    switch ($token) {
+                        case 'pending_tech':
+                            $q->orWhere(fn($q2) => $q2->where('status', 'pending')->whereNull('feasibility'));
+                            break;
+                        case 'pending_callback':
+                            $q->orWhere(fn($q2) => $q2->where('status', 'pending')->whereNotNull('feasibility'));
+                            break;
+                        case 'pending':
+                        case 'scheduled':
+                        case 'rejected':
+                        case 'cancelled':
+                        case 'closed':
+                            $q->orWhere('status', $token);
+                            break;
+                        case 'switch':
+                            $q->orWhere('kind', 'switch');
+                            break;
+                    }
+                }
+            });
         }
         if ($request->filled('service_type')) {
             $query->where('service_type_id', $request->service_type);
@@ -114,7 +152,7 @@ class ConnectionRequestController extends Controller
 
         return Inertia::render('ConnectionRequests/Index', [
             'requests'           => $query->paginate(50)->withQueryString(),
-            'filters'            => $request->only(['status', 'search', 'territory', 'service_type', 'kind', 'trashed', 'brigade', 'closed_from', 'closed_to']),
+            'filters'            => $request->only(['status', 'statuses', 'search', 'territory', 'service_type', 'kind', 'trashed', 'brigade', 'closed_from', 'closed_to']),
             'territories'        => $userTerritories->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
             'brigades'           => Brigade::with('territories:id,name')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'serviceTypes'       => ServiceType::active()->get(['id', 'name', 'color']),

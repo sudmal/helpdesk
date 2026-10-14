@@ -86,14 +86,31 @@
 
         <input v-model="f.search" @keydown.enter="apply" class="field-input flex-1 min-w-40 sm:max-w-xs" placeholder="Имя, телефон, адрес..." />
 
-        <select v-model="f.status" class="field-input w-auto">
-          <option value="">Статус: Все</option>
-          <option value="pending">Ожидает</option>
-          <option value="scheduled">Назначено</option>
-          <option value="rejected">Отклонено</option>
-          <option value="cancelled">Отказ</option>
-          <option value="closed">Выполнено</option>
-        </select>
+        <!-- Статус -- множественный выбор чекбоксами (включая оба подвида
+             "ожидает" и отдельно "Переключение на PON", см. badge ПЕРЕКЛ в
+             таблице) -- раньше select был одиночного выбора и не различал
+             "ожидает техвозможность" от "ожидает прозвон". -->
+        <div class="relative">
+          <button type="button" @click="statusMenuOpen = !statusMenuOpen"
+                  class="field-input w-auto flex items-center gap-1.5 cursor-pointer">
+            {{ statusFilterLabel }}
+            <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div v-if="statusMenuOpen" class="fixed inset-0 z-10" @click="statusMenuOpen = false"></div>
+          <div v-if="statusMenuOpen" class="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-52">
+            <label v-for="opt in STATUS_OPTIONS" :key="opt.key"
+                   class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer select-none">
+              <input type="checkbox" :value="opt.key" v-model="f.statuses" class="rounded border-gray-300" />
+              {{ opt.label }}
+            </label>
+            <div class="border-t border-gray-100 mt-1 pt-1 px-3 flex items-center justify-between">
+              <button @click="f.statuses = []" class="text-xs text-gray-400 hover:text-gray-600">Сбросить</button>
+              <button @click="statusMenuOpen = false; apply()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Готово</button>
+            </div>
+          </div>
+        </div>
         <select v-model="f.kind" @change="apply" class="field-input w-auto">
           <option value="">Вид: Все</option>
           <option value="connection">Подключение</option>
@@ -891,9 +908,38 @@ function connectionTooltipData(r) {
   }
 }
 
+// Статус теперь множественный выбор (OR между отмеченными вариантами).
+// Бэкенд принимает массив `statuses` с токенами pending_tech/pending_callback/
+// scheduled/rejected/cancelled/closed/switch -- см. ConnectionRequestController.
+// Бэклинки из Дашборда/Отчёта "Выполнено работ" шлют старый одиночный `status`
+// (pending/closed) -- тут приводим его к массиву для совместимости.
+function initialStatuses() {
+  if (Array.isArray(props.filters?.statuses)) return props.filters.statuses
+  if (props.filters?.statuses) return [props.filters.statuses]
+  if (props.filters?.status) return [props.filters.status]
+  return []
+}
+
+const STATUS_OPTIONS = [
+  { key: 'pending_tech',     label: 'Ожидает техвозм.' },
+  { key: 'pending_callback', label: 'Ожидает прозвон' },
+  { key: 'scheduled',        label: 'Назначено' },
+  { key: 'rejected',         label: 'Отклонено' },
+  { key: 'cancelled',        label: 'Отказ' },
+  { key: 'closed',           label: 'Выполнено' },
+  { key: 'switch',           label: 'Переключение на PON' },
+]
+const statusMenuOpen = ref(false)
+const statusFilterLabel = computed(() => {
+  const n = f.value.statuses.length
+  if (n === 0) return 'Статус: Все'
+  if (n === 1) return STATUS_OPTIONS.find(o => o.key === f.value.statuses[0])?.label ?? 'Статус'
+  return `Статус: выбрано ${n}`
+})
+
 const f = ref({
   search:       props.filters?.search       ?? '',
-  status:       props.filters?.status       ?? '',
+  statuses:     initialStatuses(),
   kind:         props.filters?.kind         ?? '',
   service_type: props.filters?.service_type ? Number(props.filters.service_type) : null,
   trashed:      !!props.filters?.trashed,
@@ -938,7 +984,7 @@ function apply() {
 }
 
 function reset() {
-  f.value = { search: '', status: '', kind: '', service_type: null, trashed: false }
+  f.value = { search: '', statuses: [], kind: '', service_type: null, trashed: false }
   router.get(route('connection-requests.index'), { territory: props.selectedTerritory }, { preserveState: true })
 }
 
