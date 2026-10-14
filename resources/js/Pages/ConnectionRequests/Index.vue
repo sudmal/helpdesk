@@ -12,11 +12,15 @@
     <div class="flex flex-col md:h-full md:min-h-0">
 
     <!-- Вкладки территорий + Фильтры -->
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-2 shrink-0">
+    <!-- overflow-hidden здесь раньше обрезал выпадающий список "Статус" ниже --
+         он абсолютно спозиционирован и выходит за нижнюю границу карточки.
+         Клип убран с самой карточки, верхние скруглённые углы вкладок теперь
+         держит rounded-t-xl на самой полоске вкладок (см. ниже). -->
+    <div class="bg-white rounded-xl border border-gray-200 mb-2 shrink-0">
 
       <!-- Вкладки -- мельче шрифт/паддинги, чтобы длинные названия территорий
            (напр. "Ждановка_Домолинк") помещались в одну строку без переноса. -->
-      <div data-tour="tour-conn-tabs" class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-2 pt-1 flex-wrap">
+      <div data-tour="tour-conn-tabs" class="bg-gray-50 rounded-t-xl border-b border-gray-200 flex items-end gap-0.5 px-2 pt-1 flex-wrap">
         <button @click="selectTerritory(null)"
                 :class="['px-2 py-1 text-xs font-medium flex items-center gap-1 rounded-t-lg transition-colors relative',
                          selectedTerritory === null
