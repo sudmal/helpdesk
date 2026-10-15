@@ -41,6 +41,21 @@
         <p v-else class="text-sm text-gray-400">Не назначены</p>
       </div>
 
+      <!-- Участки обслуживания -->
+      <div class="bg-white rounded-xl border border-gray-200 p-3.5">
+        <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
+          Участки обслуживания
+          <Tip>Назначаются администратором. Если пусто — бригада доступна для всех участков при создании заявки.</Tip>
+        </h3>
+        <div v-if="brigade.service_types?.length" class="flex flex-wrap gap-2">
+          <span v-for="s in brigade.service_types" :key="s.id"
+                class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-50 text-blue-700 border border-blue-100">
+            {{ s.name }}
+          </span>
+        </div>
+        <p v-else class="text-sm text-gray-400">Все участки</p>
+      </div>
+
       <!-- Состав -->
       <div class="bg-white rounded-xl border border-gray-200 p-3.5">
         <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">

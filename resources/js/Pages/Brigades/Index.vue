@@ -12,6 +12,7 @@
           <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-medium">
             <th class="text-left px-4 py-2">Название</th>
             <th class="text-left px-4 py-2">Территории</th>
+            <th class="text-left px-4 py-2">Участки</th>
             <th class="text-left px-4 py-2">Бригадир</th>
             <th class="text-center px-3 py-2 w-24">Участников</th>
             <th class="px-3 py-2 w-48"></th>
@@ -19,7 +20,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
           <tr v-if="!brigades.length">
-            <td colspan="5" class="text-center py-8 text-gray-400 text-xs">Бригады не найдены</td>
+            <td colspan="6" class="text-center py-8 text-gray-400 text-xs">Бригады не найдены</td>
           </tr>
           <tr v-for="b in brigades" :key="b.id" class="hover:bg-gray-50 transition-colors" :class="!b.is_active ? 'opacity-60' : ''">
             <td class="px-4 py-2 font-medium text-gray-800">
@@ -27,6 +28,7 @@
               <span v-if="!b.is_active" class="ml-2 inline-block px-1.5 py-0.5 rounded text-[11px] font-normal bg-gray-100 text-gray-500 align-middle">Неактивна</span>
             </td>
             <td class="px-4 py-2 text-xs text-gray-400">{{ b.territories?.map(t => t.name).join(', ') || '—' }}</td>
+            <td class="px-4 py-2 text-xs text-gray-400">{{ b.service_types?.length ? b.service_types.map(s => s.name).join(', ') : 'Все' }}</td>
             <td class="px-4 py-2 text-gray-700">{{ b.foreman?.name ?? '—' }}</td>
             <td class="px-3 py-2 text-center text-gray-600">{{ b.members_count ?? 0 }}</td>
             <td class="px-3 py-2 text-right whitespace-nowrap">
@@ -112,18 +114,34 @@
             </div>
           </div>
 
-          <!-- Правая колонка: территории -->
-          <div class="flex flex-col">
-            <label class="field-label flex items-center gap-1">
-              Территории
-              <Tip>Участки обслуживания бригады. Влияют на фильтрацию уведомлений и заявок.</Tip>
-            </label>
-            <div class="flex-1 overflow-y-auto border border-gray-200 rounded-xl p-2 min-h-48 space-y-1">
-              <label v-for="t in territories" :key="t.id"
-                     class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
-                <input type="checkbox" :value="t.id" v-model="form.territory_ids" class="rounded" />
-                {{ t.name }}
+          <!-- Правая колонка: территории + участки обслуживания -->
+          <div class="flex flex-col space-y-3">
+            <div class="flex flex-col">
+              <label class="field-label flex items-center gap-1">
+                Территории
+                <Tip>Участки работы бригады. Влияют на фильтрацию уведомлений и заявок.</Tip>
               </label>
+              <div class="overflow-y-auto border border-gray-200 rounded-xl p-2 min-h-32 max-h-40 space-y-1">
+                <label v-for="t in territories" :key="t.id"
+                       class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
+                  <input type="checkbox" :value="t.id" v-model="form.territory_ids" class="rounded" />
+                  {{ t.name }}
+                </label>
+              </div>
+            </div>
+
+            <div class="flex flex-col">
+              <label class="field-label flex items-center gap-1">
+                Участки
+                <Tip>Какие виды услуг обслуживает бригада (Интернет/КТВ/Прочее). Если ничего не отмечено — бригада доступна для любого участка при создании заявки.</Tip>
+              </label>
+              <div class="overflow-y-auto border border-gray-200 rounded-xl p-2 min-h-16 max-h-32 space-y-1">
+                <label v-for="s in serviceTypes" :key="s.id"
+                       class="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
+                  <input type="checkbox" :value="s.id" v-model="form.service_type_ids" class="rounded" />
+                  {{ s.name }}
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -148,10 +166,10 @@ import AppLayout from '@/Components/Layout/AppLayout.vue'
 import Modal from '@/Components/UI/Modal.vue'
 import Tip from '@/Components/UI/Tip.vue'
 
-const props = defineProps({ brigades: Array, territories: Array, technicians: Array })
+const props = defineProps({ brigades: Array, territories: Array, serviceTypes: Array, technicians: Array })
 const showModal = ref(false)
 const editing   = ref(null)
-const form = useForm({ name: '', foreman_id: '', territory_ids: [], member_ids: [] })
+const form = useForm({ name: '', foreman_id: '', territory_ids: [], service_type_ids: [], member_ids: [] })
 
 const editingId = computed(() => editing.value?.id ?? null)
 
@@ -173,8 +191,9 @@ function edit(b) {
   editing.value = b
   form.name = b.name
   form.foreman_id = b.foreman_id ?? ''
-  form.territory_ids = b.territories?.map(t => t.id) ?? []
-  form.member_ids    = b.members?.map(m => m.id) ?? []
+  form.territory_ids    = b.territories?.map(t => t.id) ?? []
+  form.service_type_ids = b.service_types?.map(s => s.id) ?? []
+  form.member_ids       = b.members?.map(m => m.id) ?? []
   showModal.value = true
 }
 function close() { showModal.value = false; editing.value = null; form.reset() }

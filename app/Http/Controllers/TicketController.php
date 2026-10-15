@@ -148,7 +148,7 @@ class TicketController extends Controller
             'types'        => TicketType::active()->get(['id', 'name', 'color']),
             'serviceTypes' => ServiceType::active()->get(['id', 'name', 'color']),
             'statuses'     => TicketStatus::active()->get(['id', 'name', 'color', 'slug']),
-            'brigades'     => Brigade::with('territories')->where('is_active', true)->orderBy('name')->get(),
+            'brigades'     => Brigade::with(['territories', 'serviceTypes'])->where('is_active', true)->orderBy('name')->get(),
             'address'      => $address,
             'addressHistory' => $addressHistory,
             'initialPhone'    => $request->input('phone', ''),

@@ -19,6 +19,20 @@ class Brigade extends Model
         return $this->belongsToMany(Territory::class, 'brigade_territory');
     }
 
+    /**
+     * Участки обслуживания (Интернет/КТВ/Прочее и т.п.) -- в отличие от
+     * territories, пустой список здесь означает "обслуживает все участки",
+     * а не "не обслуживает ничего" (см. комментарий в миграции
+     * create_brigade_service_type_table). Так старые бригады, у которых
+     * это поле ещё не настроено, не исчезают из списков назначения при
+     * создании заявки -- ограничение появляется только когда админ явно
+     * отметил конкретные участки в Настройках бригад.
+     */
+    public function serviceTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceType::class, 'brigade_service_type');
+    }
+
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'brigade_user')

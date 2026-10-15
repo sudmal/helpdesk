@@ -1012,21 +1012,23 @@ const createForm  = reactive({ name: '', phone: '', address_string: '', descript
 const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection' })
 const editErrors  = ref('')
 
-// Бригады, обслуживающие выбранную территорию (пустая территория = все бригады)
-const createAvailableBrigades = computed(() => {
-  if (!createForm.territory_id) return props.brigades ?? []
-  return (props.brigades ?? []).filter(b =>
-    b.territories?.some(t => t.id == createForm.territory_id)
-  )
-})
-const editAvailableBrigades = computed(() => {
-  if (!editForm.territory_id) return props.brigades ?? []
-  return (props.brigades ?? []).filter(b =>
-    b.territories?.some(t => t.id == editForm.territory_id)
-  )
-})
+// Бригады, обслуживающие выбранную территорию (пустая территория = все
+// бригады) и выбранный участок -- но у бригады, в отличие от территорий,
+// пустой список service_types означает "обслуживает все участки", а не
+// "не обслуживает ничего" (см. Brigade::serviceTypes()), иначе бригады без
+// настроенных участков разом пропали бы из формы.
+function filterBrigadesFor(territoryId, serviceTypeId) {
+  return (props.brigades ?? []).filter(b => {
+    const byTerritory = !territoryId || b.territories?.some(t => t.id == territoryId)
+    const byService    = !serviceTypeId || !b.service_types?.length ||
+                          b.service_types.some(s => s.id == serviceTypeId)
+    return byTerritory && byService
+  })
+}
+const createAvailableBrigades = computed(() => filterBrigadesFor(createForm.territory_id, createForm.service_type_id))
+const editAvailableBrigades   = computed(() => filterBrigadesFor(editForm.territory_id, editForm.service_type_id))
 
-// Если смена территории делает выбранную бригаду недоступной — сбросить выбор
+// Если смена территории/участка делает выбранную бригаду недоступной — сбросить выбор
 watch(() => createForm.territory_id, (territoryId) => {
   if (createForm.brigade_id && territoryId && !createAvailableBrigades.value.some(b => b.id == createForm.brigade_id)) {
     createForm.brigade_id = null
@@ -1034,6 +1036,16 @@ watch(() => createForm.territory_id, (territoryId) => {
 })
 watch(() => editForm.territory_id, (territoryId) => {
   if (editForm.brigade_id && territoryId && !editAvailableBrigades.value.some(b => b.id == editForm.brigade_id)) {
+    editForm.brigade_id = null
+  }
+})
+watch(() => createForm.service_type_id, () => {
+  if (createForm.brigade_id && !createAvailableBrigades.value.some(b => b.id == createForm.brigade_id)) {
+    createForm.brigade_id = null
+  }
+})
+watch(() => editForm.service_type_id, () => {
+  if (editForm.brigade_id && !editAvailableBrigades.value.some(b => b.id == editForm.brigade_id)) {
     editForm.brigade_id = null
   }
 })

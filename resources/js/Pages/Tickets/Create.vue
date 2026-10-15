@@ -502,6 +502,14 @@ onMounted(() => fetchFreeSlot(form.brigade_id || null, todayDate()))
 // получится, см. TicketController::freeSlot().
 watch(() => form.brigade_id, (id) => { if (id) fetchFreeSlot(id, scheduledDatePart(), true) })
 
+// Сменили участок -- если уже выбранная бригада его не обслуживает, сбросить
+// выбор (та же логика, что в selectAddress() для смены территории).
+watch(() => form.service_type_id, () => {
+  if (form.brigade_id && !availableBrigades.value.some(b => b.id == form.brigade_id)) {
+    form.brigade_id = ''
+  }
+})
+
 // Пользователь вручную поменял дату выезда (бригада уже выбрана) — сразу предлагаем
 // первый свободный слот на этот день и подставляем его время, вместо того чтобы
 // узнавать о занятости только после попытки сохранить заявку.
@@ -535,12 +543,19 @@ const scheduledDayOff = computed(() => {
   return workDays.includes(iso) ? null : WEEKDAY_RU[iso - 1]
 })
 
-// Бригады по территории адреса (пустой адрес = все бригады)
+// Бригады по территории адреса (пустая территория у заявки = все бригады)
+// и по участку обслуживания (service_type_id) -- но у бригады, в отличие
+// от территорий, пустой список service_types означает "обслуживает все
+// участки", а не "не обслуживает ничего" (см. Brigade::serviceTypes()) --
+// иначе все бригады, которым ещё не настроили участки, разом пропали бы
+// из формы создания заявки.
 const availableBrigades = computed(() => {
-  if (!form.territory_id) return props.brigades ?? []
-  return (props.brigades ?? []).filter(b =>
-    b.territories?.some(t => t.id == form.territory_id)
-  )
+  return (props.brigades ?? []).filter(b => {
+    const byTerritory = !form.territory_id || b.territories?.some(t => t.id == form.territory_id)
+    const byService    = !form.service_type_id || !b.service_types?.length ||
+                          b.service_types.some(s => s.id == form.service_type_id)
+    return byTerritory && byService
+  })
 })
 
 // Проверка заполненности всех обязательных полей

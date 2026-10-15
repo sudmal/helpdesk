@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Brigade, Territory, User};
+use App\Models\{Brigade, ServiceType, Territory, User};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,12 +12,13 @@ class BrigadeController extends Controller
     public function index()
     {
         return Inertia::render('Brigades/Index', [
-            'brigades'    => Brigade::with(['foreman', 'territories', 'members'])
+            'brigades'    => Brigade::with(['foreman', 'territories', 'serviceTypes', 'members'])
                                 ->withCount(['members', 'tickets', 'connectionRequests'])
                                 ->orderByDesc('is_active')
                                 ->orderBy('name')
                                 ->get(),
-            'territories' => Territory::orderBy('name')->get(['id', 'name']),
+            'territories'  => Territory::orderBy('name')->get(['id', 'name']),
+            'serviceTypes' => ServiceType::active()->get(['id', 'name']),
             'technicians' => (function () {
                     $bmap = DB::table('brigade_user')
                         ->join('brigades', 'brigade_user.brigade_id', '=', 'brigades.id')
@@ -41,6 +42,8 @@ class BrigadeController extends Controller
             'foreman_id'    => ['nullable', 'exists:users,id', $this->foremanRoleRule($request)],
             'territory_ids' => 'array',
             'territory_ids.*' => 'exists:territories,id',
+            'service_type_ids'   => 'array',
+            'service_type_ids.*' => 'exists:service_types,id',
             'member_ids'    => 'array',
             'member_ids.*'  => 'exists:users,id',
         ]);
@@ -67,6 +70,9 @@ class BrigadeController extends Controller
         if (!empty($data['territory_ids'])) {
             $brigade->territories()->sync($data['territory_ids']);
         }
+        if (!empty($data['service_type_ids'])) {
+            $brigade->serviceTypes()->sync($data['service_type_ids']);
+        }
         if (!empty($data['member_ids'])) {
             $brigade->members()->sync($data['member_ids']);
         }
@@ -81,6 +87,8 @@ class BrigadeController extends Controller
             'foreman_id'      => ['nullable', 'exists:users,id', $this->foremanRoleRule($request)],
             'territory_ids'   => 'array',
             'territory_ids.*' => 'exists:territories,id',
+            'service_type_ids'   => 'array',
+            'service_type_ids.*' => 'exists:service_types,id',
             'member_ids'      => 'array',
             'member_ids.*'    => 'exists:users,id',
         ]);
@@ -116,6 +124,7 @@ class BrigadeController extends Controller
         ]);
 
         $brigade->territories()->sync($data['territory_ids'] ?? []);
+        $brigade->serviceTypes()->sync($data['service_type_ids'] ?? []);
         $brigade->members()->sync($data['member_ids'] ?? []);
 
         return back()->with('success', 'Бригада обновлена');
@@ -127,7 +136,7 @@ class BrigadeController extends Controller
         if (!$user->canManageSettings() && $brigade->foreman_id !== $user->id) {
             abort(403);
         }
-        $brigade->load(['foreman', 'territories', 'members.role']);
+        $brigade->load(['foreman', 'territories', 'serviceTypes', 'members.role']);
         $otherBrigadeNames = DB::table('brigade_user')
             ->join('brigades', 'brigade_user.brigade_id', '=', 'brigades.id')
             ->where('brigade_user.brigade_id', '!=', $brigade->id)
@@ -215,6 +224,7 @@ class BrigadeController extends Controller
             return back()->with('error', 'Нельзя удалить бригаду — на неё ссылаются заявки. Деактивируйте бригаду вместо удаления, чтобы сохранить историю.');
         }
         $brigade->territories()->detach();
+        $brigade->serviceTypes()->detach();
         $brigade->members()->detach();
         $brigade->delete();
         return back()->with('success', 'Бригада удалена');
