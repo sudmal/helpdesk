@@ -43,6 +43,7 @@ class ActController extends Controller
                 'surveyAccess'    => $surveyAccess,
                 'authUserId'      => $user->id,
                 'canViewReports'  => $canViewReports,
+                'canBulkArchive'  => $user->isSuperAdmin(),
             ]);
         }
 
@@ -182,6 +183,7 @@ class ActController extends Controller
             'reportFilterLabel' => $this->reportFilterLabel($request),
             'surveyAccess' => $surveyAccess,
             'canViewReports' => $canViewReports,
+            'canBulkArchive' => $user->isSuperAdmin(),
             'authUserId' => $user->id,
             'brigades'   => Brigade::orderBy('name')->get(['id', 'name']),
         ]);
@@ -504,5 +506,86 @@ class ActController extends Controller
             'new_value'           => $new,
             'related_material_id' => $relatedMaterialId,
         ]);
+    }
+
+    /**
+     * Массовая отправка в архив за период — только для User::isSuperAdmin()
+     * (2026-10-16, прямая просьба пользователя после ручной разовой чистки
+     * сентябрьского бэклога). Делает ровно то же, что тогда делалось скриптом
+     * вручную: сперва пересчитывает статус у 'processing' актов периода (вдруг
+     * сторона перестала требоваться из-за выключенного acts.process_* у роли,
+     * см. recomputeAfterProcessing/sideRequired), затем отправляет в архив все
+     * акты периода, оказавшиеся в pending_subscriber_dept. Акты, которым
+     * реально не хватает чьей-то визы (право включено, но никто не отметил),
+     * не трогает.
+     */
+    public function bulkArchivePreview(Request $request)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+        $data = $request->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from']);
+
+        [$ready, $blocked] = $this->bulkArchiveScope($data['from'], $data['to']);
+
+        return response()->json([
+            'ready'   => $ready->count(),
+            'blocked' => [
+                'peo'             => $blocked->filter(fn($a) => $a->peo_processed_at === null && $a->type === 'regular')->count(),
+                'logistics'       => $blocked->filter(fn($a) => $a->logistics_processed_at === null)->count(),
+                'subscriber_dept' => $blocked->filter(fn($a) => $a->subscriber_dept_processed_at === null)->count(),
+            ],
+        ]);
+    }
+
+    public function bulkArchive(Request $request): RedirectResponse
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+        $data = $request->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from']);
+        $user = auth()->user();
+
+        $archived = 0;
+        DB::transaction(function () use ($data, $user, &$archived) {
+            [$ready] = $this->bulkArchiveScope($data['from'], $data['to']);
+            foreach ($ready as $act) {
+                $act->update([
+                    'status'                       => 'completed',
+                    'subscriber_dept_completed_by' => $user->id,
+                    'subscriber_dept_completed_at' => now(),
+                ]);
+                $this->logHistory($act, $user->id, 'completed');
+                $archived++;
+            }
+        });
+
+        return back()->with('success', "Отправлено в архив: {$archived}");
+    }
+
+    /**
+     * @return array{0: \Illuminate\Support\Collection<Act>, 1: \Illuminate\Support\Collection<Act>}
+     *   [готовые к архиву (с учётом пересчёта по текущим правам ролей),
+     *    всё ещё заблокированные акты периода — для статистики "чего не хватает"]
+     */
+    private function bulkArchiveScope(string $from, string $to): array
+    {
+        $range = [$from . ' 00:00:00', $to . ' 23:59:59'];
+        $fields = [
+            'peo'             => 'peo_processed_at',
+            'logistics'       => 'logistics_processed_at',
+            'subscriber_dept' => 'subscriber_dept_processed_at',
+        ];
+
+        $processing = Act::whereBetween('created_at', $range)->where('status', 'processing')->get();
+
+        $ready   = collect();
+        $blocked = collect();
+        foreach ($processing as $act) {
+            $candidates = $act->type === 'regular' ? ['peo', 'logistics', 'subscriber_dept'] : ['logistics', 'subscriber_dept'];
+            $required = array_filter($candidates, fn($s) => $this->sideRequired($s));
+            $done = collect($required)->every(fn($s) => $act->{$fields[$s]} !== null);
+            $done ? $ready->push($act) : $blocked->push($act);
+        }
+
+        $alreadyPending = Act::whereBetween('created_at', $range)->where('status', 'pending_subscriber_dept')->get();
+
+        return [$ready->merge($alreadyPending), $blocked];
     }
 }

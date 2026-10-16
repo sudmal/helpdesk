@@ -31,6 +31,7 @@ class User extends Authenticatable
         'notify_max'         => 'boolean',
         'notify_on_days_off' => 'boolean',
         'is_active'          => 'boolean',
+        'is_superadmin'      => 'boolean',
         'last_web_seen_at'   => 'datetime',
         'onboarding_seen'    => 'array',
     ];
@@ -86,6 +87,16 @@ class User extends Authenticatable
     public function canManageSettings(): bool
     {
         return $this->isAdmin() || $this->isHeadSupport();
+    }
+
+    // Отдельно от роли "admin" (которая сейчас у нескольких сотрудников) --
+    // узкий флаг для действий, которые должны быть доступны буквально одной
+    // учётке, а не всем админам (2026-10-16, прямая просьба пользователя:
+    // массовая отправка актов в архив). Нарочно не в $fillable — включается
+    // только миграцией/прямым скриптом, не через обычную форму пользователя.
+    public function isSuperAdmin(): bool
+    {
+        return (bool) $this->is_superadmin;
     }
 
     // Единая формула видимости сущностей (заявки/акты/адреса/заявки на

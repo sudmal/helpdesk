@@ -14,7 +14,60 @@
             class="px-3 py-1 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
         Отчёты →
       </Link>
+      <button v-if="canBulkArchive" @click="openBulkArchive"
+              class="ml-auto px-3 py-1 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
+        Массово в архив...
+      </button>
     </div>
+
+    <!-- Модалка массовой архивации — только superadmin (см. canBulkArchive) -->
+    <Modal v-if="bulkArchive.show" @close="closeBulkArchive" size="md">
+      <template #title>Массовая отправка в архив</template>
+      <div class="space-y-3">
+        <p class="text-xs text-gray-500">
+          Отправляет в архив все акты за период, у которых есть все требуемые подписи
+          (ПЭО/Логистика/Абонотдел — с учётом того, что отдел с выключенным правом
+          обработки актов в Настройках → Роли в расчёт не берётся). Акты, которым
+          реально не хватает чьей-то визы, не трогает.
+        </p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="field-label">С</label>
+            <input v-model="bulkArchive.from" type="date" class="field-input w-full" />
+          </div>
+          <div>
+            <label class="field-label">По</label>
+            <input v-model="bulkArchive.to" type="date" class="field-input w-full" />
+          </div>
+        </div>
+
+        <button @click="previewBulkArchive" :disabled="!bulkArchive.from || !bulkArchive.to || bulkArchive.loading"
+                class="btn-outline text-sm w-full">
+          {{ bulkArchive.loading ? 'Считаю...' : 'Посчитать' }}
+        </button>
+
+        <div v-if="bulkArchive.preview" class="bg-gray-50 rounded-xl p-3 text-sm space-y-1">
+          <p class="font-medium text-gray-800">Готовы к архиву: {{ bulkArchive.preview.ready }}</p>
+          <p v-if="blockedTotal" class="text-gray-500 text-xs">
+            Не хватает подписи и останутся как есть:
+            <span v-if="bulkArchive.preview.blocked.peo">ПЭО — {{ bulkArchive.preview.blocked.peo }}; </span>
+            <span v-if="bulkArchive.preview.blocked.logistics">Логистика — {{ bulkArchive.preview.blocked.logistics }}; </span>
+            <span v-if="bulkArchive.preview.blocked.subscriber_dept">Абонотдел — {{ bulkArchive.preview.blocked.subscriber_dept }}</span>
+          </p>
+        </div>
+
+        <div v-if="bulkArchive.error" class="text-sm text-red-600">{{ bulkArchive.error }}</div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <button @click="closeBulkArchive" class="btn-outline text-sm">Отмена</button>
+          <button @click="confirmBulkArchive"
+                  :disabled="!bulkArchive.preview || !bulkArchive.preview.ready || bulkArchive.submitting"
+                  class="btn-primary text-sm">
+            {{ bulkArchive.submitting ? 'Отправляю...' : `Отправить ${bulkArchive.preview?.ready ?? ''} в архив` }}
+          </button>
+        </div>
+      </div>
+    </Modal>
 
     <SurveyQueue v-if="tab === 'surveys'" />
     <SurveySettings v-else-if="tab === 'survey_settings'" />
@@ -200,7 +253,9 @@
 <script setup>
 import { reactive, computed, watch } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
+import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
+import Modal from '@/Components/UI/Modal.vue'
 import SurveyQueue from '@/Components/Acts/SurveyQueue.vue'
 import SurveySettings from '@/Components/Acts/SurveySettings.vue'
 
@@ -210,10 +265,52 @@ const props = defineProps({
   filters:         { type: Object, default: () => ({}) },
   authUserId:      { type: Number, default: null },
   canViewReports:  { type: Boolean, default: false },
+  canBulkArchive:  { type: Boolean, default: false },
   brigades:        { type: Array, default: () => [] },
   reportFilterLabel: { type: String, default: null },
   surveyAccess:    { type: Object, default: () => ({ conduct: false, manage: false }) },
 })
+
+// Массовая архивация за период — см. canBulkArchive (только superadmin)
+const bulkArchive = reactive({
+  show: false, from: '', to: '', loading: false, submitting: false, preview: null, error: '',
+})
+const blockedTotal = computed(() => {
+  const b = bulkArchive.preview?.blocked
+  return b ? (b.peo + b.logistics + b.subscriber_dept) : 0
+})
+function openBulkArchive() {
+  const now = new Date()
+  const first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  const today = now.toISOString().slice(0, 10)
+  Object.assign(bulkArchive, { show: true, from: first, to: today, preview: null, error: '' })
+}
+function closeBulkArchive() {
+  bulkArchive.show = false
+}
+async function previewBulkArchive() {
+  bulkArchive.loading = true
+  bulkArchive.error = ''
+  bulkArchive.preview = null
+  try {
+    const { data } = await axios.get(route('acts.bulk-archive.preview'), { params: { from: bulkArchive.from, to: bulkArchive.to } })
+    bulkArchive.preview = data
+  } catch (e) {
+    bulkArchive.error = e.response?.data?.message ?? 'Ошибка при расчёте'
+  } finally {
+    bulkArchive.loading = false
+  }
+}
+function confirmBulkArchive() {
+  if (!confirm(`Отправить ${bulkArchive.preview.ready} акт(ов) в архив за период ${bulkArchive.from} — ${bulkArchive.to}?`)) return
+  bulkArchive.submitting = true
+  router.post(route('acts.bulk-archive'), { from: bulkArchive.from, to: bulkArchive.to }, {
+    preserveScroll: true,
+    onSuccess: () => { closeBulkArchive(); router.reload() },
+    onError: () => { bulkArchive.error = 'Ошибка при отправке в архив' },
+    onFinish: () => { bulkArchive.submitting = false },
+  })
+}
 
 // "(!)" виден только тому, кто создал акт (обычно монтажник) — это к нему
 // относятся неподтверждённые правки бригадира в составе акта.

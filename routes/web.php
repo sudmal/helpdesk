@@ -214,6 +214,11 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['auth', 'active'])->prefix('acts')->name('acts.')->group(function () {
         Route::get('/', [App\Http\Controllers\ActController::class, 'index'])->name('index');
 
+        // Массовая отправка в архив за период — только User::isSuperAdmin() (2026-10-16),
+        // проверяется внутри самих методов ActController.
+        Route::get('/bulk-archive/preview', [App\Http\Controllers\ActController::class, 'bulkArchivePreview'])->name('bulk-archive.preview');
+        Route::post('/bulk-archive',        [App\Http\Controllers\ActController::class, 'bulkArchive'])->name('bulk-archive');
+
         // Опросные листы по актам (2026-09-24), права проверяются внутри SurveyController
         Route::get('/surveys/queue',                        [App\Http\Controllers\SurveyController::class, 'queue'])->name('surveys.queue');
         Route::get('/surveys/act/{act}',                    [App\Http\Controllers\SurveyController::class, 'showAct'])->name('surveys.act');
