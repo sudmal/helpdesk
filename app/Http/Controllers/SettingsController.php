@@ -574,7 +574,11 @@ class SettingsController extends Controller
             'created_at'   => $a->created_at->format('d.m.Y H:i:s'),
         ]);
 
-        return response()->json(['blocked' => $blocked, 'attempts' => $attempts]);
+        return response()->json([
+            'blocked'   => $blocked,
+            'attempts'  => $attempts,
+            'whitelist' => $throttle->getWhitelistRaw(),
+        ]);
     }
 
     public function unblockIp(\Illuminate\Http\Request $request)
@@ -585,6 +589,28 @@ class SettingsController extends Controller
         app(\App\Services\LoginThrottleService::class)->unblock($request->input('ip'));
 
         return response()->json(['ok' => true]);
+    }
+
+    // Белый список сетей для логин-троттлинга (никогда не блокируются,
+    // см. App\Services\LoginThrottleService) -- редактируется прямо из
+    // той же модалки "Безопасность входа", что и список блокировок.
+    public function updateSecurityWhitelist(\Illuminate\Http\Request $request)
+    {
+        $this->authorize('manage-settings');
+        $data = $request->validate(['whitelist' => 'nullable|string|max:2000']);
+
+        $throttle = app(\App\Services\LoginThrottleService::class);
+        $lines = preg_split('/[\s,]+/', trim($data['whitelist'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+
+        foreach ($lines as $cidr) {
+            if (!$throttle->isValidCidr($cidr)) {
+                return response()->json(['message' => "Некорректный CIDR/IP: {$cidr}"], 422);
+            }
+        }
+
+        \App\Models\SystemSetting::set('login_ip_whitelist', implode("\n", $lines));
+
+        return response()->json(['ok' => true, 'whitelist' => $throttle->getWhitelistRaw()]);
     }
 
     // ── Здоровье сервера ──────────────────────────────────────────────

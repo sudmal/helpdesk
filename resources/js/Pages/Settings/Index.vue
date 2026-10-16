@@ -1180,6 +1180,11 @@
                 :class="securityModal.tab === 'log' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'">
           Журнал попыток
         </button>
+        <button @click="securityModal.tab = 'whitelist'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                :class="securityModal.tab === 'whitelist' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'">
+          Белый список
+        </button>
       </div>
       <div v-if="securityModal.loading" class="py-10 text-center text-gray-400">Загрузка...</div>
       <div v-else-if="securityModal.tab === 'blocked'">
@@ -1224,6 +1229,28 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+      <div v-else-if="securityModal.tab === 'whitelist'">
+        <p class="text-xs text-gray-500 mb-2">
+          Эти сети/адреса никогда не блокируются и не учитываются в счётчике неудачных попыток входа —
+          по одному CIDR или IP на строку (или через запятую). Например: <code class="font-mono">192.168.1.0/24</code>.
+        </p>
+        <textarea v-model="securityModal.whitelistDraft" rows="8"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono resize-none
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  placeholder="193.233.140.0/22&#10;212.66.43.0/24&#10;10.0.0.0/8"></textarea>
+        <p v-if="securityModal.whitelistError" class="text-xs text-red-600 mt-1">{{ securityModal.whitelistError }}</p>
+        <div class="flex justify-end gap-2 mt-3">
+          <button @click="securityModal.whitelistDraft = securityModal.data.whitelist"
+                  class="px-3 py-1.5 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600">
+            Отменить изменения
+          </button>
+          <button @click="saveWhitelist"
+                  :disabled="securityModal.whitelistSaving"
+                  class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50">
+            {{ securityModal.whitelistSaving ? 'Сохранение...' : 'Сохранить' }}
+          </button>
         </div>
       </div>
     </Modal>
@@ -1987,7 +2014,10 @@ function fmtLoad(value) {
   return Number(value).toFixed(2)
 }
 
-const securityModal = ref({ show: false, tab: 'blocked', loading: false, data: null })
+const securityModal = ref({
+  show: false, tab: 'blocked', loading: false, data: null,
+  whitelistDraft: '', whitelistSaving: false, whitelistError: '',
+})
 
 async function openSecurityModal() {
   securityModal.value.show    = true
@@ -1996,10 +2026,28 @@ async function openSecurityModal() {
   try {
     const { data } = await axios.get(route('settings.security.data'))
     securityModal.value.data = data
+    securityModal.value.whitelistDraft = data.whitelist
+    securityModal.value.whitelistError = ''
   } catch (e) {
     console.error('Security data load failed', e)
   } finally {
     securityModal.value.loading = false
+  }
+}
+
+async function saveWhitelist() {
+  securityModal.value.whitelistSaving = true
+  securityModal.value.whitelistError  = ''
+  try {
+    const { data } = await axios.post(route('settings.security.whitelist.update'), {
+      whitelist: securityModal.value.whitelistDraft,
+    })
+    securityModal.value.data.whitelist = data.whitelist
+    securityModal.value.whitelistDraft = data.whitelist
+  } catch (e) {
+    securityModal.value.whitelistError = e.response?.data?.message ?? 'Ошибка сохранения'
+  } finally {
+    securityModal.value.whitelistSaving = false
   }
 }
 

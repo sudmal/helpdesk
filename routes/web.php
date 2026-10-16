@@ -194,6 +194,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('/service-request-services', [SettingsController::class, 'updateServiceRequestServices'])->name('service-request-services.update');
 
         Route::post('/security/unblock', [SettingsController::class, 'unblockIp'])->name('security.unblock');
+        Route::post('/security/whitelist', [SettingsController::class, 'updateSecurityWhitelist'])->name('security.whitelist.update');
 
         Route::get('/health/data', [SettingsController::class, 'healthData'])->name('health.data');
     });
@@ -205,6 +206,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['auth', 'active'])->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
     // Доступ проверяется внутри метода: manage-settings ИЛИ reports.view (вкладка Работы/Материалы)
     Route::get('/reports/works-done', [App\Http\Controllers\ReportsController::class, 'worksDoneData'])->name('reports.works-done');
+    Route::get('/reports/works-done/detail', [App\Http\Controllers\ReportsController::class, 'worksDoneDetailData'])->name('reports.works-done-detail');
     Route::middleware('can:manage-settings')->get('/reports/survey', [App\Http\Controllers\SurveyController::class, 'report'])->name('reports.survey');
     Route::middleware('can:manage-settings')->get('/reports/distribution', [App\Http\Controllers\ReportsController::class, 'distributionData'])->name('reports.distribution');
     Route::middleware('can:manage-settings')->get('/reports/call-stats', [App\Http\Controllers\ReportsController::class, 'callStatsData'])->name('reports.call-stats');
