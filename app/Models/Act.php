@@ -14,6 +14,15 @@ class Act extends Model
      * project-acts-feature. Бэкфилл старых ticket_materials сознательно
      * оставляет type=null и обходит эту проверку — это исторические данные
      * до появления самого workflow.
+     *
+     * Сторона дополнительно не требуется, если у её роли сейчас нет права
+     * на обработку актов (Настройки → Роли → acts.process_*) — тот же
+     * принцип, что и в ActController::recomputeAfterProcessing()/
+     * sideRequired(), продублирован здесь, потому что это НЕЗАВИСИМЫЙ гейт
+     * на уровне модели (срабатывает при любом save(), не только через
+     * контроллер). Живой кейс (2026-10-16): роль "Логистика" лишилась
+     * acts.process_logistics — без этого исключения массовая архивация
+     * сентябрьских актов упиралась бы в эту же проверку.
      */
     protected static function booted(): void
     {
@@ -43,9 +52,9 @@ class Act extends Model
                 return;
             }
 
-            $logisticsDone = $act->logistics_processed_at !== null;
-            $peoDone       = $act->type !== 'regular' || $act->peo_processed_at !== null;
-            $aoDone        = $act->subscriber_dept_processed_at !== null;
+            $logisticsDone = !static::sideRequired('logistics') || $act->logistics_processed_at !== null;
+            $peoDone       = $act->type !== 'regular' || !static::sideRequired('peo') || $act->peo_processed_at !== null;
+            $aoDone        = !static::sideRequired('subscriber_dept') || $act->subscriber_dept_processed_at !== null;
 
             if (!$logisticsDone || !$peoDone || !$aoDone) {
                 throw new \RuntimeException(
@@ -53,6 +62,17 @@ class Act extends Model
                 );
             }
         });
+    }
+
+    /** Нужна ли виза этой стороны вообще — есть ли у её роли право её ставить. См. booted() выше. */
+    private static function sideRequired(string $side): bool
+    {
+        static $cache = [];
+        if (!array_key_exists($side, $cache)) {
+            $role = Role::where('slug', $side)->first();
+            $cache[$side] = $role ? $role->hasPermission("acts.process_{$side}") : true;
+        }
+        return $cache[$side];
     }
 
     protected $fillable = [

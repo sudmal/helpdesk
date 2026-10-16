@@ -449,16 +449,25 @@ class ActController extends Controller
      * Требуемые для гейта "отправить в архив" стороны зависят от типа акта:
      * regular — ПЭО + Логистика + виза Абонотдела, repair — Логистика + виза
      * Абонотдела (ПЭО не участвует, см. память project-acts-feature). Каждая
-     * из трёх сторон отмечается независимо, в любом порядке — статус
+     * из сторон отмечается независимо, в любом порядке — статус
      * становится pending_subscriber_dept, как только обработаны ВСЕ
      * требуемые стороны (включая саму визу Абонотдела), и только тогда у
      * Абонотдела появляется кнопка "Отправить в архив" (complete).
+     *
+     * Сторона дополнительно исключается из требуемых, если у её роли сейчас
+     * НЕТ права на обработку актов (Настройки → Роли → acts.process_*) —
+     * иначе акт застревал бы навсегда в processing, ожидая отметку, которую
+     * структурно некому поставить. Живой кейс (2026-10-16): роль "Логистика"
+     * лишилась acts.process_logistics, и 409 актов за сентябрь зависли в
+     * processing. См. Role::hasPermission().
      */
     private function recomputeAfterProcessing(Act $act): void
     {
-        $required = $act->type === 'regular'
+        $candidates = $act->type === 'regular'
             ? ['peo', 'logistics', 'subscriber_dept']
             : ['logistics', 'subscriber_dept'];
+
+        $required = array_values(array_filter($candidates, fn(string $side) => $this->sideRequired($side)));
 
         $fields = [
             'peo'             => 'peo_processed_at',
@@ -469,6 +478,17 @@ class ActController extends Controller
         $done = collect($required)->every(fn(string $side) => $act->{$fields[$side]} !== null);
 
         $act->status = $done ? 'pending_subscriber_dept' : 'processing';
+    }
+
+    /** Нужна ли виза этой стороны вообще — есть ли у её роли право её ставить */
+    private function sideRequired(string $side): bool
+    {
+        static $cache = [];
+        if (!array_key_exists($side, $cache)) {
+            $role = \App\Models\Role::where('slug', $side)->first();
+            $cache[$side] = $role ? $role->hasPermission("acts.process_{$side}") : true;
+        }
+        return $cache[$side];
     }
 
     private function logHistory(

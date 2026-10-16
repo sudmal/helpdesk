@@ -67,23 +67,12 @@ class User extends Authenticatable
     }
 
     // === Permission helpers ===
+    // Логика (включая wildcard "module.*") вынесена в Role::hasPermission()
+    // (2026-10-16) — нужна была и без конкретного пользователя, по роли
+    // напрямую, см. её докблок.
     public function hasPermission(string $permission): bool
     {
-        $permissions = $this->role?->permissions ?? [];
-
-        if (in_array('*', $permissions)) {
-            return true;
-        }
-
-        foreach ($permissions as $p) {
-            if ($p === $permission) return true;
-            // wildcard: tickets.* matches tickets.view, tickets.close etc.
-            if (str_ends_with($p, '.*')) {
-                $prefix = rtrim($p, '.*');
-                if (str_starts_with($permission, $prefix . '.')) return true;
-            }
-        }
-        return false;
+        return $this->role?->hasPermission($permission) ?? false;
     }
 
     public function isAdmin(): bool       { return $this->role?->slug === 'admin'; }
