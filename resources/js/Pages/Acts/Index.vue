@@ -329,7 +329,7 @@ const statusLabels = {
   pending_foreman:          'Ждёт бригадира',
   approved:                 'Утверждён',
   processing:               'В обработке',
-  pending_subscriber_dept:  'Ждёт Абонотдел',
+  pending_subscriber_dept:  'К Архивации',
   completed:                'Завершён',
 }
 
