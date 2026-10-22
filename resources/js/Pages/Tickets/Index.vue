@@ -117,9 +117,9 @@
       </div>
     </div>
 
-    <!-- Таблица -->
+    <!-- Таблица (десктоп) -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto hidden md:block">
         <table class="w-full table-fixed">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/80 text-xs text-gray-500 font-medium">
@@ -222,6 +222,56 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Карточки (мобильный) -->
+      <div class="md:hidden">
+        <div v-if="tickets.data?.length" class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-100 bg-gray-50/50">
+          <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded border-gray-300 cursor-pointer" />
+          <span class="text-[11px] text-gray-400">Выбрать все</span>
+        </div>
+        <div v-if="!tickets.data?.length" class="text-center py-8 text-xs text-gray-400">Заявок не найдено</div>
+        <div class="divide-y divide-gray-100">
+          <div v-for="t in tickets.data ?? []" :key="t.id"
+               class="p-3 active:bg-gray-50"
+               :style="rowStyle(t)"
+               @click="router.visit(route('tickets.show', t.id))">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <input type="checkbox" :checked="selected.has(t.id)" @change="toggleSelect(t.id)" @click.stop
+                       class="rounded border-gray-300 cursor-pointer shrink-0" />
+                <span class="text-sm leading-none shrink-0" :title="t.service_type?.name">{{ serviceIcon(t.service_type?.name) }}</span>
+                <span v-if="t.priority === 'urgent'" class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <span v-else-if="t.priority === 'high'" class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                <span class="font-mono text-blue-600 font-medium text-xs truncate">{{ t.number }}</span>
+              </div>
+              <span class="text-[11px] text-gray-400 tabular-nums shrink-0">{{ formatDate(t.created_at) }}</span>
+            </div>
+
+            <p class="font-medium text-gray-800 text-xs leading-tight mb-0.5">{{ fullAddress(t) }}</p>
+            <p class="text-gray-600 text-xs leading-tight mb-1.5" :class="expandedDesc.has(t.id) ? 'whitespace-normal' : 'truncate'">
+              <span v-if="t.phone" class="text-gray-600 mr-1.5">{{ t.phone }}</span>
+              <span>{{ expandedDesc.has(t.id) ? t.description : t.description?.slice(0, 100) }}</span>
+              <button v-if="(t.description?.length ?? 0) > 100" @click.stop="toggleDesc(t.id)"
+                      class="ml-0.5 text-blue-400 hover:text-blue-600 font-medium text-[10px] leading-none align-middle">
+                {{ expandedDesc.has(t.id) ? '[↑]' : '[…]' }}
+              </button>
+              <span v-if="t.comments_count" class="ml-1 text-blue-400">💬{{ t.comments_count }}</span>
+              <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
+            </p>
+
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1 min-w-0 overflow-hidden">
+                <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="shrink-0" />
+                <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="truncate" />
+              </div>
+              <span class="text-[11px] whitespace-nowrap shrink-0"
+                    :class="isOverdue(t) ? 'text-red-500 font-medium' : 'text-gray-400'">
+                {{ t.brigade?.name ? t.brigade.name + ' · ' : '' }}{{ formatDate(t.scheduled_at) }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Пагинация -->
