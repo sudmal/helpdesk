@@ -141,16 +141,21 @@
 
     <!-- Таблица -->
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col md:flex-1 md:min-h-0">
-      <!-- Подсказка по строке под курсором -- тонкая строка прямо над таблицей,
-           пустая вне наведения (компактнее прежнего бара с Всего/+Новая заявка). -->
-      <div v-if="hoverInfo" class="px-3 py-1 border-b border-gray-100 flex items-center gap-2 text-xs overflow-hidden whitespace-nowrap shrink-0">
-        <span v-if="hoverInfo.type" class="px-1.5 py-0.5 rounded font-medium shrink-0"
-              :style="{ backgroundColor: (hoverInfo.type.color || '#6b7280') + '33', color: hoverInfo.type.color || '#374151' }">{{ hoverInfo.type.name }}</span>
-        <span class="font-semibold text-gray-800 shrink-0">{{ hoverInfo.address }}</span>
-        <span v-if="hoverInfo.subscriberName" class="text-gray-500 shrink-0">👤 {{ hoverInfo.subscriberName }}</span>
-        <span v-if="hoverInfo.phone" class="text-gray-500 shrink-0">📞 {{ hoverInfo.phone }}</span>
-        <span v-if="hoverInfo.description" class="text-gray-600 truncate">{{ hoverInfo.description }}</span>
-        <span v-if="hoverInfo.lastComment" class="text-amber-600 truncate">💬 {{ hoverInfo.lastComment }}</span>
+      <!-- Подсказка по строке под курсором -- тонкая строка прямо над таблицей.
+           Рендерится ВСЕГДА (фиксированная высота h-7), вне наведения показывает
+           плейсхолдер -- иначе при фильтрации в один результат таблица "прыгает"
+           из-за появляющейся/пропадающей строки, и по нему тяжело попасть курсором. -->
+      <div class="px-3 h-7 border-b border-gray-100 flex items-center gap-2 text-xs overflow-hidden whitespace-nowrap shrink-0">
+        <template v-if="hoverInfo">
+          <span v-if="hoverInfo.type" class="px-1.5 py-0.5 rounded font-medium shrink-0"
+                :style="{ backgroundColor: (hoverInfo.type.color || '#6b7280') + '33', color: hoverInfo.type.color || '#374151' }">{{ hoverInfo.type.name }}</span>
+          <span class="font-semibold text-gray-800 shrink-0">{{ hoverInfo.address }}</span>
+          <span v-if="hoverInfo.subscriberName" class="text-gray-500 shrink-0">👤 {{ hoverInfo.subscriberName }}</span>
+          <span v-if="hoverInfo.phone" class="text-gray-500 shrink-0">📞 {{ hoverInfo.phone }}</span>
+          <span v-if="hoverInfo.description" class="text-gray-600 truncate">{{ hoverInfo.description }}</span>
+          <span v-if="hoverInfo.lastComment" class="text-amber-600 truncate">💬 {{ hoverInfo.lastComment }}</span>
+        </template>
+        <span v-else class="text-gray-300">Наведите курсор на заявку для подробностей</span>
       </div>
       <!-- Десктопная таблица -- ровно исходная вёрстка (10 колонок, без table-fixed,
            без ограничений ширины), видна только от sm и выше. Мобильный список
