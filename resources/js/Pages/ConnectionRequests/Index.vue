@@ -169,7 +169,7 @@
               <th class="px-1 py-1 text-center w-6"></th>
               <th class="px-2 py-1 text-left">Дата</th>
               <th class="px-2 py-1 text-left">Имя</th>
-              <th class="px-2 py-1 text-left">Телефон</th>
+              <th class="px-2 py-1 text-left w-28">Телефон</th>
               <th class="px-2 py-1 text-left">Адрес</th>
               <th class="px-2 py-1 text-left">Описание</th>
               <th class="px-2 py-1 text-left" data-tour="tour-conn-status-col">Статус</th>
@@ -204,7 +204,7 @@
                 <span v-if="r.source === 'website'" title="Заявка с сайта">🌐</span>
                 {{ r.address_string }}
               </td>
-              <td class="px-2 py-px text-gray-500 max-w-32 truncate" :title="r.description">{{ r.description || '—' }}</td>
+              <td class="px-2 py-px text-gray-500 max-w-56 truncate" :title="r.description">{{ r.description || '—' }}</td>
               <td class="px-2 py-px">
                 <div class="flex items-center gap-1.5">
                   <span class="w-4 shrink-0 text-center">
