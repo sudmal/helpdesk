@@ -1199,9 +1199,24 @@ const addActMaterialsTotal = computed(() =>
 function addAddActMaterialRow()       { addActForm.materials.push({ material_id: null, quantity: '' }) }
 function removeAddActMaterialRow(idx) { addActForm.materials.splice(idx, 1) }
 
+// Телефон только из цифр/+/-/()/пробелов -- ловит частую ошибку "вставили
+// адрес не в то поле" (см. фикс несовпадающего Телефон/Адрес в карточке
+// заявки) ещё на клиенте, не дожидаясь ответа сервера.
+const PHONE_RE = /^\+?[0-9\s\-()]{10,30}$/
+function isValidPhone(phone) {
+  return PHONE_RE.test(phone?.trim() ?? '')
+}
+function firstBackendError(errors) {
+  return Object.values(errors ?? {})[0] ?? 'Не удалось сохранить, проверьте поля'
+}
+
 function submitCreate() {
   if (!createForm.name || !createForm.phone || !createForm.address_string) {
     createErrors.value = 'Заполните обязательные поля'
+    return
+  }
+  if (!isValidPhone(createForm.phone)) {
+    createErrors.value = 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер)'
     return
   }
   if (!createForm.territory_id) {
@@ -1219,6 +1234,7 @@ function submitCreate() {
   submitting.value = true
   router.post(route('connection-requests.store'), { ...createForm }, {
     onSuccess: () => { modals.create = false },
+    onError:   (errors) => { createErrors.value = firstBackendError(errors) },
     onFinish:  () => { submitting.value = false },
   })
 }
@@ -1228,9 +1244,14 @@ function submitEdit() {
     editErrors.value = 'Заполните обязательные поля'
     return
   }
+  if (!isValidPhone(editForm.phone)) {
+    editErrors.value = 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер)'
+    return
+  }
   submitting.value = true
   router.put(route('connection-requests.update', activeRecord.value.id), { ...editForm }, {
     onSuccess: () => { modals.edit = false },
+    onError:   (errors) => { editErrors.value = firstBackendError(errors) },
     onFinish:  () => { submitting.value = false },
   })
 }

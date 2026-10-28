@@ -175,7 +175,7 @@ class ConnectionRequestController extends Controller
     {
         $data = $request->validate([
             'name'           => 'required|string|max:100',
-            'phone'          => 'required|string|max:30',
+            'phone'          => ['required', 'string', 'max:30', 'regex:/^\+?[0-9\s\-\(\)]{10,30}$/'],
             'address_string' => 'required|string|max:255',
             'description'    => 'nullable|string|max:2000',
             'territory_id'   => 'required|exists:territories,id',
@@ -186,6 +186,8 @@ class ConnectionRequestController extends Controller
             // при закрытии для номера акта (in-/cn-) вместо повторного вопроса.
             'service_type_id' => 'required|exists:service_types,id',
             'kind'            => 'nullable|in:connection,switch',
+        ], [
+            'phone.regex' => 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер телефона)',
         ]);
         $data['created_by'] = $request->user()->id;
         $data['status']     = 'pending';
@@ -211,7 +213,7 @@ class ConnectionRequestController extends Controller
 
         $data = $request->validate([
             'name'           => 'sometimes|required|string|max:100',
-            'phone'          => 'sometimes|required|string|max:30',
+            'phone'          => ['sometimes', 'required', 'string', 'max:30', 'regex:/^\+?[0-9\s\-\(\)]{10,30}$/'],
             'address_string' => 'sometimes|required|string|max:255',
             'description'    => 'nullable|string|max:2000',
             'status'         => 'sometimes|in:pending,scheduled,rejected,closed',
@@ -221,6 +223,8 @@ class ConnectionRequestController extends Controller
             'territory_id'   => 'nullable|exists:territories,id',
             'brigade_id'     => 'nullable|exists:brigades,id',
             'service_type_id' => 'nullable|exists:service_types,id',
+        ], [
+            'phone.regex' => 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер телефона)',
         ]);
 
         if (isset($data['status'])) {
