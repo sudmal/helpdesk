@@ -204,7 +204,7 @@
                 <span v-if="r.source === 'website'" title="Заявка с сайта">🌐</span>
                 {{ r.address_string }}
               </td>
-              <td class="px-2 py-px text-gray-500 max-w-56 truncate" :title="r.description">{{ r.description || '—' }}</td>
+              <td class="px-2 py-px text-gray-500 max-w-md truncate" :title="r.description">{{ r.description || '—' }}</td>
               <td class="px-2 py-px">
                 <div class="flex items-center gap-1.5">
                   <span class="w-4 shrink-0 text-center">
