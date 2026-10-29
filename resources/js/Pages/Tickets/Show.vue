@@ -100,6 +100,10 @@
                       @click="router.get(route('acts.show', ticket.act.id))">
                 {{ ticket.act.number }}
               </button>
+              <span v-if="ticket.act.status !== 'completed'" :class="actStatusClass(ticket.act.status)"
+                    class="ml-1 px-1.5 py-0.5 rounded text-[11px] font-medium align-middle">
+                {{ actStatusLabel(ticket.act.status) }}
+              </span>
             </p>
           </div>
 
@@ -482,6 +486,30 @@ const createdBy = computed(() => {
 const totalMaterials = computed(() =>
   (props.ticket.act?.materials ?? []).reduce((s, m) => s + m.price_at_time * m.quantity, 0).toFixed(2)
 )
+
+// Статус акта рядом с его номером -- та же разметка, что на Acts/Show.vue и
+// Acts/Index.vue (см. память project-acts-feature, "Отмена акта"): completed
+// не подсвечиваем (ожидаемый итог), остальные статусы, особенно cancelled,
+// должны быть видны прямо на заявке, не только на карточке акта.
+function actStatusLabel(status) {
+  return {
+    pending_foreman:          'Ждёт бригадира',
+    approved:                 'Утверждён',
+    processing:               'В обработке',
+    pending_subscriber_dept:  'К архивации',
+    cancelled:                'Отменён',
+  }[status] || status
+}
+
+function actStatusClass(status) {
+  return {
+    pending_foreman:         'bg-amber-100 text-amber-700',
+    approved:                'bg-indigo-100 text-indigo-700',
+    processing:              'bg-indigo-100 text-indigo-700',
+    pending_subscriber_dept: 'bg-indigo-100 text-indigo-700',
+    cancelled:                'bg-red-100 text-red-700',
+  }[status] || 'bg-gray-100 text-gray-600'
+}
 
 const mapAddress = computed(() => {
   const a = props.ticket?.address
