@@ -25,8 +25,35 @@
         <button v-if="can.processLogistics" @click="post('acts.process-logistics')" class="btn-act-primary">Отметить проведённым (Логистика)</button>
         <button v-if="can.processSubscriberDept" @click="post('acts.process-subscriber-dept')" class="btn-act-primary">Отметить проведённым (Абонотдел)</button>
         <button v-if="can.complete" @click="post('acts.complete')" class="btn-act-primary">Отправить в архив</button>
+        <button v-if="can.cancel" @click="cancelModal.show = true"
+                class="btn-act-outline !text-red-600 !border-red-200 hover:!bg-red-50">Отменить акт</button>
       </div>
     </template>
+
+    <!-- Отмена акта -->
+    <Modal v-if="cancelModal.show" @close="cancelModal.show = false" size="md">
+      <template #title>Отменить акт {{ act.number }}</template>
+      <div class="space-y-3">
+        <p class="text-xs text-gray-500">
+          Акт перейдёт в статус «Отменён» и больше не будет обрабатываться
+          отделами — данные о работах и материалах останутся в карточке.
+          Это действие нельзя отменить обратно.
+        </p>
+        <div>
+          <label class="field-label">Причина отмены</label>
+          <textarea v-model="cancelModal.comment" rows="3" class="field-input w-full"
+                    placeholder="Например: абонент отказался от оплаты и услуг после выполнения работ"></textarea>
+        </div>
+        <div v-if="cancelModal.error" class="text-sm text-red-600">{{ cancelModal.error }}</div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <button @click="cancelModal.show = false" class="btn-outline text-sm">Закрыть</button>
+          <button @click="submitCancel" :disabled="!cancelModal.comment.trim() || cancelModal.submitting"
+                  class="btn-primary text-sm !bg-red-600 hover:!bg-red-700 disabled:opacity-40">
+            {{ cancelModal.submitting ? 'Отменяю...' : 'Отменить акт' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
 
     <div class="max-w-3xl mx-auto space-y-3">
 
@@ -70,6 +97,11 @@
           </p>
           <p><span class="text-xs text-gray-400">Монтажник (автор): </span><span class="font-medium text-gray-700">{{ act.creator?.name || '—' }}</span></p>
         </div>
+      </div>
+
+      <div v-if="act.status === 'cancelled'" class="bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 text-sm text-red-700 space-y-1">
+        <p>✕ Акт отменён{{ act.canceller ? ', ' + act.canceller.name : '' }}{{ act.cancelled_at ? ' — ' + fmtDateTime(act.cancelled_at) : '' }}.</p>
+        <p v-if="act.cancel_comment" class="text-red-600">Причина: {{ act.cancel_comment }}</p>
       </div>
 
       <div v-if="act.materials_changed_at" class="bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5 text-sm text-red-700 flex items-center justify-between gap-3">
@@ -251,6 +283,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import ActSurveyBlock from '@/Components/Acts/ActSurveyBlock.vue'
+import Modal from '@/Components/UI/Modal.vue'
 
 const props = defineProps({
   act: Object,
@@ -265,6 +298,7 @@ const statusLabels = {
   processing:               'В обработке',
   pending_subscriber_dept:  'К Архивации',
   completed:                'Завершён',
+  cancelled:                'Отменён',
 }
 
 const totalMaterials = computed(() =>
@@ -282,6 +316,7 @@ function statusClass(status) {
     processing:              'bg-indigo-100 text-indigo-700',
     pending_subscriber_dept: 'bg-indigo-100 text-indigo-700',
     completed:                'bg-green-100 text-green-700',
+    cancelled:                'bg-red-100 text-red-700',
   }[status] || 'bg-gray-100 text-gray-600'
 }
 
@@ -297,6 +332,7 @@ function actionLabel(action) {
     material_changed:     'Бригадир изменил количество',
     material_removed:     'Бригадир удалил материал',
     acknowledged:         'Изменения подтверждены монтажником',
+    cancelled:             'Акт отменён',
   }[action] || action
 }
 
@@ -319,6 +355,19 @@ function ticketFullAddress(ticket) {
 
 function post(routeName) {
   router.post(route(routeName, props.act.id), {}, { preserveScroll: true })
+}
+
+const cancelModal = reactive({ show: false, comment: '', submitting: false, error: '' })
+
+function submitCancel() {
+  cancelModal.submitting = true
+  cancelModal.error = ''
+  router.post(route('acts.cancel', props.act.id), { comment: cancelModal.comment }, {
+    preserveScroll: true,
+    onSuccess: () => { cancelModal.show = false; cancelModal.comment = '' },
+    onError:   (errors) => { cancelModal.error = Object.values(errors)[0] ?? 'Не удалось отменить акт' },
+    onFinish:  () => { cancelModal.submitting = false },
+  })
 }
 
 // Возврат к списку актов — именно к той вкладке/фильтру/странице, откуда

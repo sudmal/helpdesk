@@ -92,6 +92,7 @@ class ActController extends Controller
                 'logisticsProcessor:id,name',
                 'subscriberDeptProcessor:id,name',
                 'subscriberDeptCompleter:id,name',
+                'canceller:id,name',
             ])
             ->when($scopeToTerritory, fn($q) =>
                 $q->whereIn(DB::raw('COALESCE(addresses.territory_id, connection_requests.territory_id)'), $userTerritories)
@@ -150,23 +151,26 @@ class ActController extends Controller
             });
 
         if ($tab === 'archive') {
-            // Полностью завершённые акты уходят сюда с главной вкладки и здесь
-            // ищутся/сортируются как обычный архив, а не очередь на согласование.
-            $query->where('acts.status', 'completed');
+            // Полностью завершённые + отменённые акты уходят сюда с главной
+            // вкладки -- для обоих статусов больше ничего не требуется делать,
+            // разница видна по бейджу статуса в строке (см. Acts/Index.vue).
+            $query->whereIn('acts.status', ['completed', 'cancelled']);
 
             $sortable = [
-                'completed_at' => 'acts.subscriber_dept_completed_at',
+                // COALESCE -- у отменённого акта нет subscriber_dept_completed_at,
+                // сортируем по факту его собственной "финальной" даты.
+                'completed_at' => 'COALESCE(acts.subscriber_dept_completed_at, acts.cancelled_at)',
                 'created_at'   => 'acts.created_at',
                 'number'       => 'acts.number',
             ];
             $sortColumn = $sortable[$request->sort] ?? $sortable['completed_at'];
             $sortDir    = $request->sort_dir === 'asc' ? 'asc' : 'desc';
-            $query->orderBy($sortColumn, $sortDir);
+            $query->orderByRaw("{$sortColumn} {$sortDir}");
         } elseif ($tab === 'all') {
             // Все акты независимо от статуса -- открывается только по ссылкам из отчёта
             $query->orderByDesc('acts.created_at');
         } else {
-            $query->where('acts.status', '!=', 'completed')
+            $query->whereNotIn('acts.status', ['completed', 'cancelled'])
                 ->when($request->status, fn($q) => $q->where('acts.status', $request->status))
                 ->orderBy('territories.sort_order')
                 ->orderBy('territories.name')
@@ -224,7 +228,7 @@ class ActController extends Controller
             'materials.material',
             'history.user',
             'creator', 'foremanReviewer', 'peoProcessor', 'logisticsProcessor',
-            'subscriberDeptProcessor', 'subscriberDeptCompleter',
+            'subscriberDeptProcessor', 'subscriberDeptCompleter', 'canceller',
         ]);
 
         $user = auth()->user();
@@ -239,6 +243,7 @@ class ActController extends Controller
                 'complete'              => $user->can('complete', $act),
                 'editMaterials'    => $user->can('editMaterials', $act),
                 'acknowledge'      => $user->can('acknowledge', $act),
+                'cancel'           => $user->can('cancel', $act),
             ],
             'materialsCatalog' => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
             'promotions'      => \App\Models\Promotion::active()->get(['id', 'name', 'price']),
@@ -309,6 +314,30 @@ class ActController extends Controller
         $this->actService->approve($act, auth()->user());
 
         return back()->with('success', 'Акт утверждён');
+    }
+
+    /**
+     * Отмена акта — абонент отказался оплачивать/отказался от услуг уже
+     * после выполнения работ. Акт не удаляется (данные о работах/материалах
+     * остаются), просто уходит в терминальный статус рядом с completed.
+     * Причина обязательна — то же самое, что foreman_return_comment у
+     * возврата бригадиром, только здесь это решение более высокого уровня.
+     */
+    public function cancel(Request $request, Act $act): RedirectResponse
+    {
+        $this->authorize('cancel', $act);
+        $request->validate(['comment' => 'required|string|max:1000']);
+
+        $user = auth()->user();
+        $act->update([
+            'status'         => 'cancelled',
+            'cancelled_by'   => $user->id,
+            'cancelled_at'   => now(),
+            'cancel_comment' => $request->comment,
+        ]);
+        $this->logHistory($act, $user->id, 'cancelled', null, null, $request->comment);
+
+        return back()->with('success', 'Акт отменён');
     }
 
     public function processPeo(Act $act): RedirectResponse

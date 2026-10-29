@@ -84,6 +84,7 @@ class Act extends Model
         'subscriber_dept_completed_by', 'subscriber_dept_completed_at',
         'materials_changed_at', 'materials_corrected_at',
         'promotion_id', 'promotion_name', 'promotion_price',
+        'cancelled_by', 'cancelled_at', 'cancel_comment',
     ];
 
     protected $casts = [
@@ -95,6 +96,7 @@ class Act extends Model
         'materials_changed_at'         => 'datetime',
         'materials_corrected_at'       => 'datetime',
         'promotion_price'              => 'float',
+        'cancelled_at'                 => 'datetime',
     ];
 
     public function ticket(): BelongsTo             { return $this->belongsTo(Ticket::class); }
@@ -102,6 +104,7 @@ class Act extends Model
     public function promotion(): BelongsTo          { return $this->belongsTo(Promotion::class); }
     public function materials(): HasMany  { return $this->hasMany(ActMaterial::class); }
     public function history(): HasMany    { return $this->hasMany(ActHistory::class)->latest(); }
+    public function canceller(): BelongsTo { return $this->belongsTo(User::class, 'cancelled_by'); }
     public function creator(): BelongsTo  { return $this->belongsTo(User::class, 'created_by'); }
     public function foremanReviewer(): BelongsTo         { return $this->belongsTo(User::class, 'foreman_reviewed_by'); }
     public function peoProcessor(): BelongsTo            { return $this->belongsTo(User::class, 'peo_processed_by'); }

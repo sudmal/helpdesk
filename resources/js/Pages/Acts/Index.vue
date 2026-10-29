@@ -160,8 +160,9 @@
                 <th class="px-2 py-1 text-left whitespace-nowrap">Тип</th>
                 <th class="px-2 py-1 text-left whitespace-nowrap">Территория / адрес</th>
                 <th class="px-2 py-1 text-right whitespace-nowrap">Материалы</th>
-                <th class="px-2 py-1 text-left whitespace-nowrap">Завершил</th>
-                <th class="px-2 py-1 text-left whitespace-nowrap">Завершён</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Статус</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Завершил / отменил</th>
+                <th class="px-2 py-1 text-left whitespace-nowrap">Дата</th>
               </tr>
             </thead>
 
@@ -225,11 +226,14 @@
                   <span v-if="requestTerritoryName(act)">{{ requestTerritoryName(act) }} · </span>{{ requestAddress(act) }}
                 </td>
                 <td class="px-2 py-1 whitespace-nowrap text-right font-medium">{{ materialsTotal(act) }} ₽</td>
-                <td class="px-2 py-1 whitespace-nowrap">{{ act.subscriber_dept_completer?.name || '—' }}</td>
-                <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(act.subscriber_dept_completed_at) }}</td>
+                <td class="px-2 py-1 whitespace-nowrap">
+                  <span :class="statusClass(act.status)" class="px-1.5 py-0.5 rounded font-medium">{{ statusLabels[act.status] || act.status }}</span>
+                </td>
+                <td class="px-2 py-1 whitespace-nowrap">{{ (act.status === 'cancelled' ? act.canceller?.name : act.subscriber_dept_completer?.name) || '—' }}</td>
+                <td class="px-2 py-1 whitespace-nowrap text-gray-400">{{ fmtDate(act.status === 'cancelled' ? act.cancelled_at : act.subscriber_dept_completed_at) }}</td>
               </tr>
               <tr v-if="!acts.data.length">
-                <td colspan="7" class="px-4 py-8 text-center text-gray-400">Ничего не найдено</td>
+                <td colspan="8" class="px-4 py-8 text-center text-gray-400">Ничего не найдено</td>
               </tr>
             </tbody>
           </table>
@@ -331,12 +335,13 @@ const statusLabels = {
   processing:               'В обработке',
   pending_subscriber_dept:  'К Архивации',
   completed:                'Завершён',
+  cancelled:                'Отменён',
 }
 
-// В "Активных" завершённые не показываются вовсе (они в Архиве) — статус
-// "Завершён" в фильтре этой вкладки не нужен.
+// В "Активных" завершённые/отменённые не показываются вовсе (они в Архиве) —
+// эти статусы в фильтре этой вкладки не нужны.
 const activeStatusLabels = Object.fromEntries(
-  Object.entries(statusLabels).filter(([key]) => key !== 'completed')
+  Object.entries(statusLabels).filter(([key]) => key !== 'completed' && key !== 'cancelled')
 )
 
 const f = reactive({
@@ -461,6 +466,7 @@ function statusClass(status) {
     processing:              'bg-indigo-100 text-indigo-700',
     pending_subscriber_dept: 'bg-indigo-100 text-indigo-700',
     completed:               'bg-green-100 text-green-700',
+    cancelled:               'bg-red-100 text-red-700',
   }[status] || 'bg-gray-100 text-gray-600'
 }
 

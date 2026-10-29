@@ -236,6 +236,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/{act}', [App\Http\Controllers\ActController::class, 'show'])->name('show');
         Route::get('/{act}/print', [App\Http\Controllers\ActController::class, 'print'])->name('print');
         Route::post('/{act}/approve', [App\Http\Controllers\ActController::class, 'approve'])->name('approve');
+        Route::post('/{act}/cancel', [App\Http\Controllers\ActController::class, 'cancel'])->name('cancel');
         Route::post('/{act}/process-peo', [App\Http\Controllers\ActController::class, 'processPeo'])->name('process-peo');
         Route::post('/{act}/process-logistics', [App\Http\Controllers\ActController::class, 'processLogistics'])->name('process-logistics');
         Route::post('/{act}/process-subscriber-dept', [App\Http\Controllers\ActController::class, 'processSubscriberDept'])->name('process-subscriber-dept');

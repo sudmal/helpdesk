@@ -42,7 +42,7 @@ class ActController extends Controller
         $territoryIds     = $scopeToTerritory ? $user->territoryScopeIds() : collect();
 
         $acts = Act::query()
-            ->where('acts.status', '!=', 'completed')
+            ->whereNotIn('acts.status', ['completed', 'cancelled'])
             ->with(['ticket.address', 'connectionRequest', 'creator'])
             ->when($scopeToTerritory, fn($q) => $q->where(function ($qq) use ($territoryIds) {
                 $qq->whereHas('ticket.address', fn($a) => $a->whereIn('territory_id', $territoryIds))

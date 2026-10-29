@@ -144,7 +144,7 @@ class ActPolicy
      */
     public function editMaterials(User $user, Act $act): bool
     {
-        if ($act->status === 'completed') return false;
+        if (in_array($act->status, ['completed', 'cancelled'], true)) return false;
 
         if ($user->isAdmin()) return true;
 
@@ -152,6 +152,25 @@ class ActPolicy
         if (!in_array($act->status, ['pending_foreman', 'approved'], true)) return false;
 
         if ($act->created_by === $user->id) return true;
+
+        return $this->scopeMatch($user, $act);
+    }
+
+    /**
+     * Отмена акта (2026-10-29) — абонент отказался от оплаты/услуг уже после
+     * выполнения работ. Терминальное состояние, как и complete(), поэтому
+     * недоступно из completed/cancelled. admin/head_support/operator — тот же
+     * оверсайт-байпас, что и в viewAny()/view() (управленческий уровень,
+     * решает спорные вопросы с абонентом). Остальным ролям доступ даётся
+     * точечно через acts.cancel (по умолчанию выдано Абонотделу — см.
+     * миграцию add_cancel_permission_to_acts), со стандартным territory/
+     * brigade-скоупом scopeMatch(), как и у остальных действий цепочки.
+     */
+    public function cancel(User $user, Act $act): bool
+    {
+        if (in_array($act->status, ['completed', 'cancelled'], true)) return false;
+        if ($user->isAdmin() || $user->isHeadSupport() || $user->isOperator()) return true;
+        if (!$user->hasPermission('acts.cancel')) return false;
 
         return $this->scopeMatch($user, $act);
     }
