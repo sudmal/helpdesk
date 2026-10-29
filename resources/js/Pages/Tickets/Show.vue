@@ -94,17 +94,6 @@
             <p><span class="text-xs text-gray-400">Создана: </span><span class="font-medium text-gray-700 break-words">{{ formatDate(ticket.created_at) ?? '—' }}</span></p>
             <p><span class="text-xs text-gray-400">Запланирован: </span><span class="font-medium text-gray-700 break-words">{{ ticket.scheduled_at ? formatDateTime(ticket.scheduled_at) : '—' ?? '—' }}</span></p>
             <p v-if="ticket.closed_at"><span class="text-xs text-gray-400">Закрыта: </span><span class="font-medium text-gray-700 break-words">{{ formatDate(ticket.closed_at) ?? '—' }}</span></p>
-            <p v-if="ticket.act?.number">
-              <span class="text-xs text-gray-400">Акт: </span>
-              <button type="button" class="font-medium text-blue-600 hover:underline break-words"
-                      @click="router.get(route('acts.show', ticket.act.id))">
-                {{ ticket.act.number }}
-              </button>
-              <span v-if="ticket.act.status !== 'completed'" :class="actStatusClass(ticket.act.status)"
-                    class="ml-1 px-1.5 py-0.5 rounded text-[11px] font-medium align-middle">
-                {{ actStatusLabel(ticket.act.status) }}
-              </span>
-            </p>
           </div>
 
           <div data-tour="tour-ticket-description" class="mt-2.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
@@ -153,8 +142,12 @@
           <AttachmentList :attachments="ticket.attachments" />
         </div>
 
-        <!-- Расходные материалы (просмотр) -->
-        <div v-if="ticket.act?.materials?.length"
+        <!-- Расходные материалы (просмотр) -- сам акт (номер+статус) показан
+             тут же в заголовке; блок виден, даже если позиций материалов нет,
+             иначе при пустом акте информация об акте пропадала бы совсем
+             (строку "Акт:" из верхней сетки убрали 2026-10-29, перенесли сюда
+             по просьбе пользователя). -->
+        <div v-if="ticket.act"
              class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3">
           <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100">
             <h3 class="font-medium text-sm text-gray-700 flex items-center gap-2">
@@ -163,6 +156,10 @@
                       @click="router.get(route('acts.show', ticket.act.id))">
                 {{ ticket.act.number }}
               </button>
+              <span v-if="ticket.act.status !== 'completed'" :class="actStatusClass(ticket.act.status)"
+                    class="px-1.5 py-0.5 rounded text-[11px] font-medium">
+                {{ actStatusLabel(ticket.act.status) }}
+              </span>
             </h3>
             <span class="text-sm font-semibold text-blue-600">
               Итого: {{ totalMaterials }} ₽
