@@ -50,6 +50,11 @@ class MaterialReportController extends Controller
     // project-acts-feature), фильтр там факту не мешает, но джойн на acts всё равно нужен, чтобы
     // тип вообще было откуда взять единообразно с тикетной веткой.
     //
+    // Отменённые акты (2026-10-29): материалы реально израсходованы (списаны на объекте), поэтому
+    // "Расход" (onlyBillable=false) их продолжает учитывать как есть. А вот "Поступления от
+    // абонентов" (onlyBillable=true) — это именно оплата, абонент по отменённому акту не платит,
+    // поэтому такие акты исключаются ТОЛЬКО из billable-ветки.
+    //
     // Акции (2026-07-17): если у акта заявки на подключение задана акция
     // (acts.promotion_price не null), абонент платит фиксированную сумму, а не
     // сумму материалов — реальные материалы при этом ВСЕГДА остаются как есть в
@@ -86,13 +91,14 @@ class MaterialReportController extends Controller
         $ticketPromoSide = null;
 
         if ($onlyBillable) {
-            $ticketSide->where('a.type', 'regular')->whereNull('a.promotion_price');
-            $crMaterialsSide->where('a2.type', 'regular')->whereNull('a2.promotion_price');
+            $ticketSide->where('a.type', 'regular')->whereNull('a.promotion_price')->where('a.status', '!=', 'cancelled');
+            $crMaterialsSide->where('a2.type', 'regular')->whereNull('a2.promotion_price')->where('a2.status', '!=', 'cancelled');
 
             $crPromoSide = DB::table('acts as a3')
                 ->join('connection_requests as cr2', 'a3.connection_request_id', '=', 'cr2.id')
                 ->where('a3.type', 'regular')
                 ->whereNotNull('a3.promotion_price')
+                ->where('a3.status', '!=', 'cancelled')
                 ->whereBetween('a3.created_at', [$from, $to]);
 
             // Акции на обычных заявках (2026-08-11) — тот же приём, что и у
@@ -108,6 +114,7 @@ class MaterialReportController extends Controller
                 ->whereNull('t2.deleted_at')
                 ->where('a4.type', 'regular')
                 ->whereNotNull('a4.promotion_price')
+                ->where('a4.status', '!=', 'cancelled')
                 ->whereBetween('a4.created_at', [$from, $to]);
         }
 
