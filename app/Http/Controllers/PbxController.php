@@ -612,8 +612,20 @@ class PbxController extends Controller
         // DND по звонку: серия missed_dnd, ещё не прерванная ответившим звонком
         // этого же добавочного -- считаем активной на начало окна, если
         // последний missed_dnd до $since новее последнего ответа этого добавочного.
+        //
+        // Нижняя граница по dnd_call_streak_timeout_min (2026-10-31) -- та же
+        // настройка, что и в attachDndStatus() ниже, но раньше тут её не было
+        // вообще: lastMissedBefore ловил ЛЮБОЙ missed_dnd, даже многомесячной
+        // давности, и затем гонял по нему 3 exists()-запроса в диапазоне
+        // "с той древней даты до $since" (до нескольких сотен мс каждый, см.
+        // живой кейс -- вкладки "Очередь АТС" открывались по 4+ секунды).
+        // Стрик старше таймаута в любом случае не может быть активным на
+        // $since (та же проверка diffInMinutes ниже, в attachDndStatus), так
+        // что такие события можно сразу не рассматривать.
+        $callStreakTimeoutMin = (int) SystemSetting::get('dnd_call_streak_timeout_min', 5);
         $streakState = [];
         $lastMissedBefore = DndLog::where('created_at', '<', $since)
+            ->where('created_at', '>=', $since->copy()->subMinutes($callStreakTimeoutMin))
             ->where('state', 'missed_dnd')
             ->select('extension', \DB::raw('MAX(created_at) as last_at'))
             ->groupBy('extension')
@@ -750,11 +762,6 @@ class PbxController extends Controller
             ->groupBy('operator_ext')
             ->pluck('last_answered_at', 'operator_ext');
 
-        $allMissed = DndLog::whereIn('extension', $exts)
-            ->where('state', 'missed_dnd')
-            ->orderBy('created_at')
-            ->get(['extension', 'created_at']);
-
         // Стрик "по звонку" держится, пока не появится опровергающее событие
         // (ringing/ответ) -- но если после последнего missed_dnd долго вообще
         // НИЧЕГО не происходило (queue просто не звонила этому добавочному),
@@ -766,17 +773,29 @@ class PbxController extends Controller
         // разумного без НОВОГО подтверждения.
         $callStreakTimeoutMin = (int) SystemSetting::get('dnd_call_streak_timeout_min', 5);
 
+        // Было: один DndLog::whereIn(...)->get() без границы по дате (тянул
+        // ВСЮ историю missed_dnd добавочных -- 2026-10-31, на живых данных
+        // больше 10 тыс. строк на 6 добавочных, из них PHP ->groupBy()
+        // собирал $streaks) + ручной перебор в PHP. $start/$last по смыслу --
+        // это ровно MIN/MAX created_at после $lastAnswered, без какой-либо
+        // другой логики разрыва серии -- считаем агрегатами в БД по каждому
+        // добавочному (их мало, запрос по индексу (extension, created_at)
+        // почти мгновенный), вместо вытягивания и группировки в PHP тысяч
+        // строк. Граница (lastAnswered) и таймаут -- те же, что и раньше,
+        // семантика не меняется, меняется только КАК это считается.
         $streaks = [];
-        foreach ($allMissed->groupBy('extension') as $ext => $evList) {
+        foreach ($exts as $ext) {
             $lastAnswered = $lastAnsweredByExt->get($ext);
-            $start = null;
-            $last  = null;
-            foreach ($evList as $ev) {
-                if ($lastAnswered && $ev->created_at <= $lastAnswered) continue;
-                if ($start === null) $start = $ev->created_at;
-                $last = $ev->created_at;
-            }
-            if ($start !== null && $last->diffInMinutes(now()) <= $callStreakTimeoutMin) {
+            $agg = DndLog::where('extension', $ext)
+                ->where('state', 'missed_dnd')
+                ->when($lastAnswered, fn($q) => $q->where('created_at', '>', $lastAnswered))
+                ->selectRaw('MIN(created_at) as start, MAX(created_at) as last')
+                ->first();
+            if (!$agg || $agg->start === null) continue;
+
+            $start = \Carbon\Carbon::parse($agg->start);
+            $last  = \Carbon\Carbon::parse($agg->last);
+            if ($last->diffInMinutes(now()) <= $callStreakTimeoutMin) {
                 $streaks[$ext] = ['start' => $start, 'last' => $last];
             }
         }
