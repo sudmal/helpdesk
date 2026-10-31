@@ -120,20 +120,26 @@ class HandleInertiaRequests extends Middleware
 
                     // Для бригадира/ПЭО/Логистики/Абонотдела — только их этап (см. память project-acts-feature).
                     // Для admin/head_support — оверсайт-счётчик по всей цепочке, без territory-скоупа.
+                    //
+                    // cancelled добавлен в статусы наравне с approved/processing (2026-10-31) —
+                    // отменённый акт уходит в архив сразу, минуя цепочку, но свою визу
+                    // ПЭО/Логистика/Абонотдел всё равно должны поставить (см. ActPolicy::
+                    // processLogistics) -- иначе он просто не загорится в бейдже и
+                    // потеряется для них насовсем.
                     $pending += match (true) {
                         $user->isForeman()       => (clone $base)->where('status', 'pending_foreman')->count(),
-                        $user->isPeo()           => (clone $base)->whereIn('status', ['approved', 'processing'])->where('type', 'regular')->whereNull('peo_processed_at')->count(),
-                        $user->isLogistics()     => (clone $base)->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at')->count(),
+                        $user->isPeo()           => (clone $base)->whereIn('status', ['approved', 'processing', 'cancelled'])->where('type', 'regular')->whereNull('peo_processed_at')->count(),
+                        $user->isLogistics()     => (clone $base)->whereIn('status', ['approved', 'processing', 'cancelled'])->whereNull('logistics_processed_at')->count(),
                         $user->isSubscriberDept() => (clone $base)->where(function ($q) {
                             $q->where('status', 'pending_subscriber_dept')
-                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('subscriber_dept_processed_at'); });
+                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing', 'cancelled'])->whereNull('subscriber_dept_processed_at'); });
                         })->count(),
                         default => (clone $base)->where(function ($q) {
                             $q->where('status', 'pending_foreman')
                               ->orWhere('status', 'pending_subscriber_dept')
-                              ->orWhere(function ($q2) { $q2->where('type', 'regular')->whereIn('status', ['approved', 'processing'])->whereNull('peo_processed_at'); })
-                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('logistics_processed_at'); })
-                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing'])->whereNull('subscriber_dept_processed_at'); });
+                              ->orWhere(function ($q2) { $q2->where('type', 'regular')->whereIn('status', ['approved', 'processing', 'cancelled'])->whereNull('peo_processed_at'); })
+                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing', 'cancelled'])->whereNull('logistics_processed_at'); })
+                              ->orWhere(function ($q2) { $q2->whereIn('status', ['approved', 'processing', 'cancelled'])->whereNull('subscriber_dept_processed_at'); });
                         })->count(),
                     };
                 }

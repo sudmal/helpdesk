@@ -63,7 +63,7 @@ class ActPolicy
     public function processPeo(User $user, Act $act): bool
     {
         if ($act->type !== 'regular') return false;
-        if (!in_array($act->status, ['approved', 'processing'])) return false;
+        if (!in_array($act->status, ['approved', 'processing', 'cancelled'])) return false;
         if ($act->peo_processed_at !== null) return false;
         if (!$user->isPeo()) return false;
         if (!$user->hasPermission('acts.process_peo')) return false;
@@ -71,10 +71,20 @@ class ActPolicy
         return $this->scopeMatch($user, $act);
     }
 
-    /** Логистика: только сотрудники Логистики (роль logistics), любой тип акта */
+    /**
+     * Логистика: только сотрудники Логистики (роль logistics), любой тип акта.
+     *
+     * cancelled допущен к статусам наравне с approved/processing (2026-10-31) —
+     * отменённый акт (см. cancel() ниже) уходит в архив сразу, минуя цепочку
+     * согласования, но материалы по нему физически списаны (отчёты их всё
+     * равно считают в "Расходе"). Без этого исключения ПЭО/Логистика/
+     * Абонотдел теряли отменённые акты из своей очереди навсегда — никто не
+     * мог отметить расход у себя, хотя он реально был, при этом акт сразу
+     * выглядел полностью обработанным (ушёл в архив).
+     */
     public function processLogistics(User $user, Act $act): bool
     {
-        if (!in_array($act->status, ['approved', 'processing'])) return false;
+        if (!in_array($act->status, ['approved', 'processing', 'cancelled'])) return false;
         if ($act->logistics_processed_at !== null) return false;
         if (!$user->isLogistics()) return false;
         if (!$user->hasPermission('acts.process_logistics')) return false;
@@ -85,11 +95,12 @@ class ActPolicy
     /**
      * Абонотдел: собственная "виза", независимая от ПЭО/Логистики и от
      * финальной отправки в архив (complete ниже) — ставится в любом порядке
-     * относительно них, как и processPeo/processLogistics.
+     * относительно них, как и processPeo/processLogistics. cancelled допущен
+     * по той же причине, см. processLogistics() выше.
      */
     public function processSubscriberDept(User $user, Act $act): bool
     {
-        if (!in_array($act->status, ['approved', 'processing'])) return false;
+        if (!in_array($act->status, ['approved', 'processing', 'cancelled'])) return false;
         if ($act->subscriber_dept_processed_at !== null) return false;
         if (!$user->isSubscriberDept()) return false;
         if (!$user->hasPermission('acts.process_subscriber_dept')) return false;

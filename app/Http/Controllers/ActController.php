@@ -494,6 +494,12 @@ class ActController extends Controller
      */
     private function recomputeAfterProcessing(Act $act): void
     {
+        // Отменённый акт (2026-10-31) обрабатывается ПЭО/Логистикой/Абонотделом
+        // уже постфактум (см. ActPolicy::processLogistics) -- статус должен
+        // остаться cancelled, а не улететь обратно в processing/pending_subscriber_dept,
+        // иначе акт "воскресает" из архива в активную очередь.
+        if ($act->status === 'cancelled') return;
+
         $candidates = $act->type === 'regular'
             ? ['peo', 'logistics', 'subscriber_dept']
             : ['logistics', 'subscriber_dept'];
