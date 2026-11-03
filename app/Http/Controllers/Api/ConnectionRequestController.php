@@ -160,6 +160,15 @@ class ConnectionRequestController extends Controller
 
         $connectionRequest->update($data);
 
+        // Номер присваивается один раз, при первом переводе в "Назначено" --
+        // монтажник получает его сразу, ещё до выезда, чтобы вписать в бумажный
+        // акт на месте, не дожидаясь закрытия заявки в системе. При закрытии
+        // (close() ниже) этот же номер становится номером самого Act. См.
+        // ConnectionRequest::assignNumber() и веб-версию этого же контроллера.
+        if ($connectionRequest->status === 'scheduled' && !$connectionRequest->number) {
+            DB::transaction(fn() => $connectionRequest->assignNumber());
+        }
+
         $scheduledAtChanged = isset($data['scheduled_at'])
             && optional($oldScheduledAt)->format('Y-m-d H:i:s') !== \Carbon\Carbon::parse($data['scheduled_at'])->format('Y-m-d H:i:s');
 
@@ -196,6 +205,10 @@ class ConnectionRequestController extends Controller
      * project-acts-feature) — раньше здесь писался только плоский текстовый
      * act_number, из-за чего заявки на подключение, закрытые с телефона,
      * не попадали в workflow согласования Бригадир→ПЭО/Логистика→Абонотдел.
+     *
+     * Номер акта к этому моменту почти всегда уже есть (ConnectionRequest::number,
+     * присвоенный при назначении даты, см. update() выше) — здесь он просто
+     * копируется в Act. assignNumber() вызывается только как подстраховка.
      */
     public function close(Request $request, ConnectionRequest $connectionRequest): JsonResponse
     {
@@ -239,6 +252,10 @@ class ConnectionRequestController extends Controller
             ]);
 
             if (!empty($request->materials)) {
+                if (!$connectionRequest->number) {
+                    $connectionRequest->assignNumber();
+                }
+
                 $act = Act::createWithGeneratedNumber([
                     'connection_request_id' => $connectionRequest->id,
                     'type'                  => 'regular',
@@ -247,7 +264,7 @@ class ConnectionRequestController extends Controller
                     'promotion_id'    => $promotion?->id,
                     'promotion_name'  => $promotion?->name,
                     'promotion_price' => $promotion?->price,
-                ], fn() => Act::generateNumberForConnectionRequest($connectionRequest));
+                ], fn() => $connectionRequest->number);
                 $actNumber = $act->number;
 
                 foreach ($request->materials as $item) {
@@ -402,6 +419,10 @@ class ConnectionRequestController extends Controller
     {
         $data = [
             'id'             => $r->id,
+            // Номер заявки (<in|cn>-YYMMDDNN) -- присваивается при назначении
+            // даты (ConnectionRequest::assignNumber()), виден монтажнику уже до
+            // выезда. После закрытия совпадает с act.number (тот же номер).
+            'number'         => $r->number,
             'name'           => $r->name,
             'phone'          => $r->phone,
             'address_string' => $r->address_string,

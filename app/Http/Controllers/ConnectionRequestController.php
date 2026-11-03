@@ -266,6 +266,15 @@ class ConnectionRequestController extends Controller
         $oldScheduledAt = $connectionRequest->scheduled_at;
         $connectionRequest->update($data);
 
+        // Номер присваивается один раз, при первом переводе в "Назначено" --
+        // монтажник получает его сразу, ещё до выезда, чтобы вписать в бумажный
+        // акт на месте, не дожидаясь закрытия заявки в системе. При закрытии
+        // (close()/addAct() ниже) этот же номер становится номером самого Act.
+        // См. ConnectionRequest::assignNumber().
+        if ($connectionRequest->status === 'scheduled' && !$connectionRequest->number) {
+            DB::transaction(fn() => $connectionRequest->assignNumber());
+        }
+
         $scheduledAtChanged = isset($data['scheduled_at'])
             && optional($oldScheduledAt)->format('Y-m-d H:i:s') !== \Carbon\Carbon::parse($data['scheduled_at'])->format('Y-m-d H:i:s');
 
@@ -303,6 +312,12 @@ class ConnectionRequestController extends Controller
      * это всегда новое подключение) — участок (тип услуги) влияет только на
      * префикс номера акта (in-/cn-) и теперь берётся из самой заявки
      * (service_type_id, выбирается при создании), а не спрашивается заново здесь.
+     *
+     * Номер акта к этому моменту почти всегда уже есть (ConnectionRequest::number,
+     * присвоенный при назначении даты, см. update() выше) — здесь он просто
+     * копируется в Act. assignNumber() вызывается только как подстраховка для
+     * старых/нетипичных заявок, у которых своего номера по какой-то причине
+     * не оказалось (например, закрытых без промежуточного "Назначено").
      */
     public function close(Request $request, ConnectionRequest $connectionRequest)
     {
@@ -344,6 +359,10 @@ class ConnectionRequestController extends Controller
             ]);
 
             if (!empty($request->materials)) {
+                if (!$connectionRequest->number) {
+                    $connectionRequest->assignNumber();
+                }
+
                 $act = Act::createWithGeneratedNumber([
                     'connection_request_id' => $connectionRequest->id,
                     'type'                  => 'regular',
@@ -355,7 +374,7 @@ class ConnectionRequestController extends Controller
                     'promotion_id'    => $promotion?->id,
                     'promotion_name'  => $promotion?->name,
                     'promotion_price' => $promotion?->price,
-                ], fn() => Act::generateNumberForConnectionRequest($connectionRequest));
+                ], fn() => $connectionRequest->number);
                 $actNumber = $act->number;
 
                 foreach ($request->materials as $item) {
@@ -397,6 +416,9 @@ class ConnectionRequestController extends Controller
      * не утверждён). Созданный акт идёт по обычному циклу согласования
      * (pending_foreman -> ...), включая самоутверждение тем же бригадиром --
      * см. память project-connection-feasibility, это осознанно разрешено.
+     *
+     * Номер (см. close() выше) к этому моменту почти всегда уже есть на самой
+     * заявке — assignNumber() здесь тоже чисто подстраховка.
      */
     public function addAct(Request $request, ConnectionRequest $connectionRequest)
     {
@@ -426,6 +448,10 @@ class ConnectionRequestController extends Controller
         $actNumber = null;
 
         DB::transaction(function () use ($connectionRequest, $request, $promotion, &$actNumber) {
+            if (!$connectionRequest->number) {
+                $connectionRequest->assignNumber();
+            }
+
             $act = Act::createWithGeneratedNumber([
                 'connection_request_id' => $connectionRequest->id,
                 'type'                  => 'regular',
@@ -434,7 +460,7 @@ class ConnectionRequestController extends Controller
                 'promotion_id'    => $promotion?->id,
                 'promotion_name'  => $promotion?->name,
                 'promotion_price' => $promotion?->price,
-            ], fn() => Act::generateNumberForConnectionRequest($connectionRequest));
+            ], fn() => $connectionRequest->number);
             $actNumber = $act->number;
 
             foreach ($request->materials as $item) {

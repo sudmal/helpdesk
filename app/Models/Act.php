@@ -126,6 +126,13 @@ class Act extends Model
      * см. память project-acts-feature, "Заявки на подключение" — регулярный/
      * ремонтный акт как ось не относится к новым подключениям, только к участку
      * в номере.
+     *
+     * С 2026-11-03 это уже не единственный источник номера -- при закрытии акт
+     * почти всегда просто копирует готовый ConnectionRequest::number (см.
+     * ConnectionRequest::assignNumber(), присваивается при назначении даты).
+     * Этот метод остаётся как генератор самой схемы номера (prefix+
+     * nextNumberForPrefix) и как резервный путь для заявок, у которых по
+     * какой-то причине своего номера ещё нет (см. контроллеры close()/addAct()).
      */
     public static function generateNumberForConnectionRequest(ConnectionRequest $connectionRequest): string
     {
@@ -159,21 +166,39 @@ class Act extends Model
      * связка "блокировка + retry на дубликат" целиком закрывает и обычный случай
      * (есть что блокировать), и редкий (первый акт дня с этим префиксом — блокировать
      * ещё нечего, тогда сработает retry на ошибке уникальности number).
+     *
+     * С 2026-11-03 префиксы in-/cn- общие на ДВА столбца: acts.number и
+     * connection_requests.number — номер заявке на подключение присваивается
+     * раньше, при назначении даты (см. ConnectionRequest::assignNumber()), и
+     * только позже копируется в сам Act при закрытии. Пока акта ещё нет,
+     * "забронированный" номер существует только в connection_requests —
+     * поэтому кандидат ищется по максимуму и проверке занятости в обеих
+     * таблицах, иначе два параллельных процесса (назначение даты одной
+     * заявке и закрытие другой) могли бы выбрать один и тот же номер.
      */
     private static function nextNumberForPrefix(string $prefix): string
     {
         $searchPrefix = $prefix . '-' . now()->format('ymd');
         $searchLen    = mb_strlen($searchPrefix);
+        $numericExpr  = 'CAST(SUBSTRING(number, ' . ($searchLen + 1) . ') AS UNSIGNED)';
 
         $lastNumber = static::where('number', 'LIKE', $searchPrefix . '%')
-            ->orderByRaw('CAST(SUBSTRING(number, ' . ($searchLen + 1) . ') AS UNSIGNED) DESC')
+            ->orderByRaw($numericExpr . ' DESC')
             ->lockForUpdate()
             ->value('number');
-
         $lastNum = $lastNumber ? (int) mb_substr($lastNumber, $searchLen) : 0;
 
-        $candidate = $lastNum + 1;
-        while (static::where('number', $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT))->exists()) {
+        $lastFromRequests = ConnectionRequest::where('number', 'LIKE', $searchPrefix . '%')
+            ->orderByRaw($numericExpr . ' DESC')
+            ->lockForUpdate()
+            ->value('number');
+        $lastNumFromRequests = $lastFromRequests ? (int) mb_substr($lastFromRequests, $searchLen) : 0;
+
+        $candidate = max($lastNum, $lastNumFromRequests) + 1;
+        while (
+            static::where('number', $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT))->exists()
+            || ConnectionRequest::where('number', $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT))->exists()
+        ) {
             $candidate++;
         }
 

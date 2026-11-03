@@ -13,6 +13,7 @@ class ConnectionRequest extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'number',
         'name', 'phone', 'address_string', 'description',
         'status', 'scheduled_at', 'notes', 'act_number',
         'assigned_to', 'created_by', 'source', 'territory_id', 'brigade_id', 'service_type_id', 'kind', 'needs_callback',
@@ -93,5 +94,37 @@ class ConnectionRequest extends Model
             return null;
         }
         return $this->logs->first(fn($l) => filled($l->notes))?->notes;
+    }
+
+    /**
+     * Присвоить заявке номер (<in|cn>-YYMMDDNN, схема Act::generateNumberForConnectionRequest())
+     * один раз, при первом назначении даты подключения/переключения на PON —
+     * см. ConnectionRequestController::update(). Монтажник получает номер уже
+     * на руках до выезда и может сразу писать его на бумажный акт, не дожидаясь
+     * закрытия заявки. При закрытии этот же номер становится номером самого
+     * Act (см. close()/addAct() в обоих контроллерах) — тот же принцип, что и
+     * Ticket::number -> Act::number у обычных заявок.
+     *
+     * Вызывающий код сам решает, вызывать ли этот метод внутри транзакции —
+     * здесь это не требуется: retry на дубликате номера (как в
+     * Act::createWithGeneratedNumber()) покрывает редкую гонку без блокировки
+     * на уровне вызова, а nextNumberForPrefix() внутри Act уже лочит нужные
+     * строки сама.
+     */
+    public function assignNumber(int $maxAttempts = 5): string
+    {
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $number = Act::generateNumberForConnectionRequest($this);
+            try {
+                $this->update(['number' => $number]);
+                return $number;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($e->getCode() !== '23000' || $attempt === $maxAttempts) {
+                    throw $e;
+                }
+                // Коллизия по уникальному number — конкурент забронировал этот
+                // номер первым между нашим чтением и записью. Пробуем следующий.
+            }
+        }
     }
 }

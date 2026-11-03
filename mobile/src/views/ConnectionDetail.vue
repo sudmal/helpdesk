@@ -38,6 +38,7 @@
 
       <!-- Контакты / адрес -->
       <div class="bg-[#1E1E1E] rounded-lg p-3 space-y-2">
+        <div v-if="request.number" class="text-[#E0E0E0] text-sm">Номер: <span class="font-medium">{{ request.number }}</span></div>
         <div class="text-[#E0E0E0] text-sm">Адрес: {{ request.address_string || '—' }}</div>
         <a v-if="request.phone" :href="'tel:' + request.phone" class="text-[#3B82F6] text-sm block">Тел: {{ request.phone }}</a>
         <div v-if="request.scheduled_at" class="text-[#9E9E9E] text-xs">Дата выезда: {{ formatDate(request.scheduled_at) }}</div>

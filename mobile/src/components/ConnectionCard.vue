@@ -33,6 +33,7 @@
 
       <div class="flex items-center gap-1.5 mt-1">
         <span class="text-[#9E9E9E] text-xs flex-1 truncate">{{ request.territory?.name || '' }}</span>
+        <span v-if="request.number" class="text-[#9E9E9E] text-[12px] font-mono shrink-0">{{ request.number }}</span>
         <span class="text-[#9E9E9E] text-[12px] shrink-0">{{ createdLabel }}</span>
       </div>
 

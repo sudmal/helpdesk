@@ -233,6 +233,7 @@
                 <button v-if="r.act"
                         @click="router.get(route('acts.show', r.act.id))"
                         class="mr-1 text-blue-600 hover:underline font-medium text-xs">[{{ r.act.number }}]</button>
+                <span v-else-if="r.number" class="mr-1 text-gray-500 font-medium text-xs" title="Номер заявки (акт будет под этим же номером)">[{{ r.number }}]</span>
                 {{ r.notes || '—' }}
               </td>
             </tr>
@@ -295,9 +296,10 @@
               📅 {{ fmtDateTime(r.scheduled_at) }}
             </span>
           </div>
-          <p v-if="r.notes || r.act" class="text-xs text-gray-500 mt-1">
+          <p v-if="r.notes || r.act || r.number" class="text-xs text-gray-500 mt-1">
             <button v-if="r.act" @click.stop="router.get(route('acts.show', r.act.id))"
                     class="mr-1 text-blue-600 hover:underline font-medium">[{{ r.act.number }}]</button>
+            <span v-else-if="r.number" class="mr-1 text-gray-500 font-medium">[{{ r.number }}]</span>
             {{ r.notes }}
           </p>
         </div>
@@ -749,6 +751,10 @@
               <span class="text-xs text-gray-400">Акт: </span>
               <button @click="router.get(route('acts.show', detailData.act.id))"
                       class="font-medium text-blue-600 hover:underline">{{ detailData.act.number }} →</button>
+            </p>
+            <p v-else-if="detailData.number">
+              <span class="text-xs text-gray-400">Номер: </span>
+              <span class="font-medium font-mono">{{ detailData.number }}</span>
             </p>
             <div v-if="detailData.description" class="col-span-2">
               <p class="text-xs text-gray-400 mb-0.5">Описание</p>
