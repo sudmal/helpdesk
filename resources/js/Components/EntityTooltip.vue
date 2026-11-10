@@ -23,7 +23,7 @@
           </div>
           <div v-if="data.closeNotes" class="flex gap-1.5">
             <span class="text-gray-500 shrink-0">Итог:</span>
-            <span class="text-gray-300">{{ data.closeNotes }}</span>
+            <span class="text-gray-300">{{ data.closeNotes }}<span v-if="data.closedBy" class="text-gray-500"> — {{ data.closedBy }}</span></span>
           </div>
           <div v-if="data.act?.materials?.length" class="flex gap-1.5">
             <span class="text-gray-500 shrink-0">Матер.:</span>
@@ -42,7 +42,7 @@
 // в каждую страницу отдельно. Ожидаемая форма data (все поля опциональны,
 // кроме address): { number, type:{name,color}, address, subscriberName,
 // description, lastComment, status:{is_final}, act:{number,materials},
-// closeNotes, phone }. Строит эту форму сама вызывающая страница под свою
+// closeNotes, closedBy, phone }. Строит эту форму сама вызывающая страница под свою
 // сущность (заявка/подключение/запрос услуги) — компонент про конкретную
 // модель ничего не знает.
 defineProps({

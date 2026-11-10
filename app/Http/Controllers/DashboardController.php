@@ -51,7 +51,7 @@ class DashboardController extends Controller
         $onlyOpen = $request->boolean('only_open', false);
 
         $todayTickets = (clone $scoped)
-            ->with(['address', 'type', 'serviceType', 'status', 'brigade', 'act.materials'])
+            ->with(['address', 'type', 'serviceType', 'status', 'brigade', 'closedBy:id,name', 'act.materials'])
             ->withCount('attachments')
             ->whereDate('scheduled_at', $date)
             ->when($onlyOpen, fn($q) => $q->whereIn('status_id', $openIds))

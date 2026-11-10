@@ -558,6 +558,7 @@ function ticketTooltipData(t) {
     status: t.status,
     act: t.act,
     closeNotes: t.close_notes,
+    closedBy: t.closed_by?.name,
     phone: t.phone,
   }
 }

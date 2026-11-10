@@ -923,6 +923,7 @@ function connectionTooltipData(r) {
     status: { is_final: r.status === 'closed' },
     act: r.act,
     closeNotes: r.notes,
+    closedBy: r.closed_by,
     phone: r.phone,
   }
 }

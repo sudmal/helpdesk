@@ -342,6 +342,7 @@ function serviceRequestTooltipData(r) {
     description: r.description,
     status: { is_final: r.status === 'accepted' },
     closeNotes: r.admin_comment,
+    closedBy: r.processor?.name,
     phone: r.phone,
   }
 }

@@ -29,7 +29,7 @@ class ConnectionRequest extends Model
     // last_comment (2026-09-15) — виден на фронте автоматически только там,
     // где logs явно eager-loaded (see getLastCommentAttribute()); в остальных
     // местах просто null, лишней нагрузки не добавляет.
-    protected $appends = ['last_comment'];
+    protected $appends = ['last_comment', 'closed_by'];
 
     public function assignee(): BelongsTo
     {
@@ -94,6 +94,20 @@ class ConnectionRequest extends Model
             return null;
         }
         return $this->logs->first(fn($l) => filled($l->notes))?->notes;
+    }
+
+    /**
+     * Автор итогового комментария (closeNotes в тултипах) -- имя того, кто
+     * закрыл/отклонил/отказал по заявке, из лога событий (2026-11-10).
+     * Работает только если logs уже eager-loaded с user -- иначе null, без
+     * лишнего запроса (тот же принцип, что у getLastCommentAttribute()).
+     */
+    public function getClosedByAttribute(): ?string
+    {
+        if (!$this->relationLoaded('logs')) {
+            return null;
+        }
+        return $this->logs->first(fn($l) => in_array($l->action, ['closed', 'rejected', 'cancelled']))?->user?->name;
     }
 
     /**

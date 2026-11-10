@@ -616,7 +616,7 @@
             </div>
             <div v-if="tooltip.ticket.close_notes" class="flex gap-1.5">
               <span class="text-gray-500 shrink-0">Итог:</span>
-              <span class="text-gray-300">{{ tooltip.ticket.close_notes }}</span>
+              <span class="text-gray-300">{{ tooltip.ticket.close_notes }}<span v-if="tooltip.ticket.closed_by" class="text-gray-500"> — {{ tooltip.ticket.closed_by.name }}</span></span>
             </div>
             <div v-if="tooltip.ticket.act?.materials?.length" class="flex gap-1.5">
               <span class="text-gray-500 shrink-0">Матер.:</span>
