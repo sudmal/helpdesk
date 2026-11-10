@@ -135,7 +135,7 @@
                   @click="sortBy('number')">
                 № <span class="text-gray-400">{{ sortIcon('number') }}</span>
               </th>
-              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-12">Автор</th>
+              <th class="text-left px-2 py-0.5 hidden sm:table-cell w-20">Автор</th>
               <th class="text-left px-2 py-0.5">Адрес / Описание</th>
               <th class="text-left px-2 py-0.5 hidden md:table-cell w-28">Тип</th>
               <th class="text-left px-2 py-0.5 hidden lg:table-cell w-36">Бригада</th>
