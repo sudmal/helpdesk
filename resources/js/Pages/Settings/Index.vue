@@ -330,19 +330,19 @@
         </select>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full text-xs">
+        <table class="w-full text-xs table-fixed">
           <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">Пользователь</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">Роль</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">Телефон</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">TG</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">MAX</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">Бригада</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">Территории</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">Активность</th>
-              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium">Статус</th>
-              <th class="px-2 py-1"></th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-40">Пользователь</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-20">Роль</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-28">Телефон</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-14">TG</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-14">MAX</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-20">Бригада</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-28">Территории</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-28">Активность</th>
+              <th class="text-left px-2 py-1 text-xs text-gray-500 font-medium w-20">Статус</th>
+              <th class="px-2 py-1 w-20"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -350,45 +350,45 @@
               <td colspan="10" class="text-center py-10 text-gray-400">Нет пользователей</td>
             </tr>
             <tr v-for="u in filteredUsers" :key="u.id" class="hover:bg-gray-50">
-              <td class="px-2 py-1">
-                <p class="font-medium leading-tight">{{ u.name }}</p>
-                <p class="text-[11px] text-gray-400 leading-tight">{{ u.email }}</p>
+              <td class="px-2 py-1 overflow-hidden">
+                <p class="font-medium leading-tight truncate" :title="u.name">{{ u.name }}</p>
+                <p class="text-[11px] text-gray-400 leading-tight truncate" :title="u.email">{{ u.email }}</p>
               </td>
-              <td class="px-2 py-1">
-                <span class="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">{{ u.role?.name }}</span>
+              <td class="px-2 py-1 overflow-hidden">
+                <span class="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full truncate block w-fit max-w-full">{{ u.role?.name }}</span>
               </td>
-              <td class="px-2 py-1 text-gray-600 whitespace-nowrap">{{ u.phone ?? '—' }}</td>
-              <td class="px-2 py-1 text-gray-500 font-mono whitespace-nowrap">{{ u.telegram_chat_id ?? '—' }}</td>
-              <td class="px-2 py-1 text-gray-500 font-mono whitespace-nowrap">{{ u.max_chat_id ?? '—' }}</td>
-              <td class="px-2 py-1 text-gray-500 whitespace-nowrap">{{ u.brigades?.[0]?.name ?? '—' }}</td>
-              <td class="px-2 py-1 text-gray-500 max-w-[130px] truncate" :title="u.territories?.map(t => t.name).join(', ') || '—'">
+              <td class="px-2 py-1 text-gray-600 truncate" :title="u.phone ?? '—'">{{ u.phone ?? '—' }}</td>
+              <td class="px-2 py-1 text-gray-500 font-mono truncate" :title="u.telegram_chat_id ?? '—'">{{ u.telegram_chat_id ?? '—' }}</td>
+              <td class="px-2 py-1 text-gray-500 font-mono truncate" :title="u.max_chat_id ?? '—'">{{ u.max_chat_id ?? '—' }}</td>
+              <td class="px-2 py-1 text-gray-500 truncate" :title="u.brigades?.[0]?.name ?? '—'">{{ u.brigades?.[0]?.name ?? '—' }}</td>
+              <td class="px-2 py-1 text-gray-500 truncate" :title="u.territories?.map(t => t.name).join(', ') || '—'">
                 {{ u.territories?.map(t => t.name).join(', ') || '—' }}
               </td>
-              <td class="px-2 py-1 whitespace-nowrap">
+              <td class="px-2 py-1 overflow-hidden whitespace-nowrap">
                 <span v-for="ch in activityChannels" :key="ch.key"
-                      class="inline-flex items-center gap-0.5 mr-1.5"
+                      class="inline-flex items-center gap-0.5 mr-1"
                       :class="u.activity?.[ch.key]?.online ? 'text-green-700 font-medium' : 'text-gray-400'"
                       :title="`${ch.label}: ${u.activity?.[ch.key]?.online ? 'сейчас' : (formatLastSeen(u.activity?.[ch.key]?.last) ?? 'нет данных')}`">
                   <span class="w-1.5 h-1.5 rounded-full shrink-0"
                         :class="u.activity?.[ch.key]?.online ? 'bg-green-500' : 'bg-gray-300'"></span>{{ ch.icon }}{{ u.activity?.[ch.key]?.online ? '' : (formatLastSeen(u.activity?.[ch.key]?.last) ?? '—') }}
                 </span>
               </td>
-              <td class="px-2 py-1">
-                <span :class="['text-[11px] px-1.5 py-0.5 rounded-full whitespace-nowrap',
+              <td class="px-2 py-1 overflow-hidden">
+                <span :class="['text-[11px] px-1.5 py-0.5 rounded-full truncate block w-fit max-w-full',
                                u.is_active
                                  ? 'bg-green-100 text-green-700'
                                  : 'bg-red-100 text-red-600']">
                   {{ u.is_active ? 'Активен' : 'Заблокирован' }}
                 </span>
               </td>
-              <td class="px-2 py-1 text-right whitespace-nowrap">
-                <button @click="openUserModal(u)"   class="p-1 text-gray-400 hover:text-blue-600 rounded-lg">✏️</button>
+              <td class="px-1 py-1 text-right whitespace-nowrap">
+                <button @click="openUserModal(u)"   class="p-0.5 text-gray-400 hover:text-blue-600 rounded-lg">✏️</button>
                 <button @click="toggleBlock(u)"
-                        class="p-1 rounded-lg"
+                        class="p-0.5 rounded-lg"
                         :class="u.is_active ? 'text-gray-400 hover:text-amber-500' : 'text-gray-400 hover:text-green-500'">
                   {{ u.is_active ? '🔒' : '🔓' }}
                 </button>
-                <button @click="deleteUser(u)"      class="p-1 text-gray-400 hover:text-red-500 rounded-lg">🗑</button>
+                <button @click="deleteUser(u)"      class="p-0.5 text-gray-400 hover:text-red-500 rounded-lg">🗑</button>
               </td>
             </tr>
           </tbody>
