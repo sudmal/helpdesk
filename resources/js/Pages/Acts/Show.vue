@@ -307,7 +307,7 @@ const totalMaterials = computed(() =>
 )
 
 function typeLabel(type) {
-  return type === 'repair' ? 'Ремонт/Восстановление' : type === 'regular' ? 'Обычный' : '—'
+  return type === 'repair' ? '🛠️ Ремонт/Восстановление' : type === 'regular' ? '💰 Обычный' : '—'
 }
 
 function statusClass(status) {

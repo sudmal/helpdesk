@@ -456,7 +456,7 @@ function requestAddress(act) {
 }
 
 function typeLabel(type) {
-  return type === 'repair' ? 'Ремонт' : type === 'regular' ? 'Обычный' : '—'
+  return type === 'repair' ? '🛠️ Ремонт' : type === 'regular' ? '💰 Обычный' : '—'
 }
 
 function statusClass(status) {
