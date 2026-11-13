@@ -96,6 +96,7 @@
             </span>
           </p>
           <p><span class="text-xs text-gray-400">Монтажник (автор): </span><span class="font-medium text-gray-700">{{ act.creator?.name || '—' }}</span></p>
+          <p v-if="act.ticket"><span class="text-xs text-gray-400">Тип заявки: </span><span class="font-medium text-gray-700">{{ act.ticket.type?.name || '—' }}</span></p>
         </div>
       </div>
 
@@ -333,6 +334,7 @@ function actionLabel(action) {
     material_removed:     'Бригадир удалил материал',
     acknowledged:         'Изменения подтверждены монтажником',
     cancelled:             'Акт отменён',
+    type_corrected:       'Тип акта исправлен администратором',
   }[action] || action
 }
 
