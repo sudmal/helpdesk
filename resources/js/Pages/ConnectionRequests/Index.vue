@@ -365,6 +365,13 @@
               <option value="switch">Переключение на PON</option>
             </select>
           </div>
+          <div class="field-row">
+            <label class="field-label">Откуда узнали <span class="text-red-400">*</span></label>
+            <select v-model="createForm.referral_source" class="field-input">
+              <option :value="null">— выберите вариант —</option>
+              <option v-for="opt in REFERRAL_SOURCE_OPTIONS" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
+            </select>
+          </div>
           <div>
             <label class="field-label">Описание</label>
             <textarea v-model="createForm.description" class="field-input resize-y min-h-[6rem] leading-relaxed" rows="4"
@@ -422,6 +429,13 @@
             <select v-model="editForm.kind" class="field-input">
               <option value="connection">Подключение</option>
               <option value="switch">Переключение на PON</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label class="field-label">Откуда узнали</label>
+            <select v-model="editForm.referral_source" class="field-input">
+              <option :value="null">— не указано —</option>
+              <option v-for="opt in REFERRAL_SOURCE_OPTIONS" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
             </select>
           </div>
           <div>
@@ -746,6 +760,7 @@
             <p v-if="detailData.brigade"><span class="text-xs text-gray-400">Бригада: </span>{{ detailData.brigade.name }}</p>
             <p v-if="detailData.service_type"><span class="text-xs text-gray-400">Участок: </span>{{ detailData.service_type.name }}</p>
             <p><span class="text-xs text-gray-400">Вид: </span>{{ detailData.kind === 'switch' ? 'Переключение на PON' : 'Подключение' }}</p>
+            <p v-if="detailData.referral_source"><span class="text-xs text-gray-400">Откуда узнали: </span>{{ referralSourceLabel(detailData.referral_source) }}</p>
             <p v-if="detailData.scheduled_at"><span class="text-xs text-gray-400">Дата подключения: </span>{{ fmtDateTime(detailData.scheduled_at) }}</p>
             <p v-if="detailData.act">
               <span class="text-xs text-gray-400">Акт: </span>
@@ -940,6 +955,17 @@ function initialStatuses() {
   return []
 }
 
+const REFERRAL_SOURCE_OPTIONS = [
+  { key: 'subscriber', label: 'Был нашим абонентом' },
+  { key: 'social',     label: 'Узнал из соцсети' },
+  { key: 'flyer',       label: 'Флаер (магазин, Озон)' },
+  { key: 'referral',   label: 'Знакомые, соседи, родственники' },
+  { key: 'installer',  label: 'От монтажников' },
+]
+function referralSourceLabel(key) {
+  return REFERRAL_SOURCE_OPTIONS.find(o => o.key === key)?.label ?? key ?? '—'
+}
+
 const STATUS_OPTIONS = [
   { key: 'pending_tech',     label: 'Ожидает техвозм.' },
   { key: 'pending_callback', label: 'Ожидает прозвон' },
@@ -1020,8 +1046,8 @@ const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')
 
-const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection' })
-const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection' })
+const createForm  = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection', referral_source: null })
+const editForm    = reactive({ name: '', phone: '', address_string: '', description: '', territory_id: null, brigade_id: null, service_type_id: null, kind: 'connection', referral_source: null })
 const editErrors  = ref('')
 
 // Бригады, обслуживающие выбранную территорию (пустая территория = все
@@ -1105,7 +1131,7 @@ const addActErrors = ref('')
 function openCreate() {
   Object.assign(createForm, {
     name: '', phone: '', address_string: '', description: '',
-    territory_id: props.selectedTerritory ?? null, brigade_id: null, service_type_id: null,
+    territory_id: props.selectedTerritory ?? null, brigade_id: null, service_type_id: null, referral_source: null,
   })
   createErrors.value = ''
   modals.create = true
@@ -1122,6 +1148,7 @@ function openEdit(r) {
     brigade_id:     r.brigade_id ?? null,
     service_type_id: r.service_type_id ?? null,
     kind:           r.kind ?? 'connection',
+    referral_source: r.referral_source ?? null,
   })
   editErrors.value = ''
   modals.edit = true
@@ -1236,6 +1263,10 @@ function submitCreate() {
   }
   if (!createForm.service_type_id) {
     createErrors.value = 'Выберите участок'
+    return
+  }
+  if (!createForm.referral_source) {
+    createErrors.value = 'Укажите, откуда абонент узнал о компании'
     return
   }
   submitting.value = true

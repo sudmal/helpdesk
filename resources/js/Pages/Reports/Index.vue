@@ -217,6 +217,16 @@
       <SurveyReport />
     </div>
 
+    <!-- Speedtest: результаты внутреннего speed.vega8.ru -->
+    <div v-if="activeTab === 'speedtest'" class="p-4">
+      <SpeedtestReport />
+    </div>
+
+    <!-- Источники привлечения -->
+    <div v-if="activeTab === 'referral'" class="p-4">
+      <ReferralSourceReport />
+    </div>
+
     <!-- Работа ТП -->
     <div v-show="activeTab === 'callcenter'" class="p-4 space-y-3">
       <div class="flex flex-wrap items-center gap-3">
@@ -344,6 +354,8 @@ import AppLayout from '@/Components/Layout/AppLayout.vue'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
 import MaterialsReport from '@/Components/Reports/MaterialsReport.vue'
 import SurveyReport from '@/Components/Reports/SurveyReport.vue'
+import SpeedtestReport from '@/Components/Reports/SpeedtestReport.vue'
+import ReferralSourceReport from '@/Components/Reports/ReferralSourceReport.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
 const props = defineProps({
@@ -361,9 +373,11 @@ const tabs = computed(() => [
     { id: 'territory',    label: 'Территории' },
     { id: 'distribution', label: 'Распределение по дням' },
     { id: 'callcenter',   label: 'Обработка звонков' },
+    { id: 'referral',     label: 'Источники привлечения' },
   ] : []),
   { id: 'materials', label: 'Работы/Материалы' },
   ...(props.canManageSettings ? [{ id: 'survey', label: 'Оценки абонентов' }] : []),
+  ...(props.canManageSettings ? [{ id: 'speedtest', label: 'Speedtest' }] : []),
 ])
 
 const activeTab = ref(tabs.value.some(t => t.id === props.initialTab) ? props.initialTab : tabs.value[0].id)

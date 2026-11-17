@@ -202,12 +202,14 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::middleware('can:manage-settings')->get('/reports/brigade-efficiency', [App\Http\Controllers\ReportsController::class, 'brigadeEfficiencyData'])->name('reports.brigade-efficiency');
     Route::middleware('can:manage-settings')->get('/reports/territory-frequency', [App\Http\Controllers\ReportsController::class, 'territoryFrequencyData'])->name('reports.territory-frequency');
+    Route::middleware('can:manage-settings')->get('/reports/referral-source', [App\Http\Controllers\ReportsController::class, 'referralSourceData'])->name('reports.referral-source');
     // Не manage-settings — доступ теперь у reports.view (ПЭО/Логистика/Абонотдел) тоже, см. ReportsController::materialDynamicsData
     Route::middleware(['auth', 'active'])->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
     // Доступ проверяется внутри метода: manage-settings ИЛИ reports.view (вкладка Работы/Материалы)
     Route::get('/reports/works-done', [App\Http\Controllers\ReportsController::class, 'worksDoneData'])->name('reports.works-done');
     Route::get('/reports/works-done/detail', [App\Http\Controllers\ReportsController::class, 'worksDoneDetailData'])->name('reports.works-done-detail');
     Route::middleware('can:manage-settings')->get('/reports/survey', [App\Http\Controllers\SurveyController::class, 'report'])->name('reports.survey');
+    Route::middleware('can:manage-settings')->get('/reports/speedtest', [App\Http\Controllers\ReportsController::class, 'speedtestData'])->name('reports.speedtest');
     Route::middleware('can:manage-settings')->get('/reports/distribution', [App\Http\Controllers\ReportsController::class, 'distributionData'])->name('reports.distribution');
     Route::middleware('can:manage-settings')->get('/reports/call-stats', [App\Http\Controllers\ReportsController::class, 'callStatsData'])->name('reports.call-stats');
     Route::middleware('can:manage-settings')->get('/reports/operator-load', [App\Http\Controllers\ReportsController::class, 'operatorLoadData'])->name('reports.operator-load');

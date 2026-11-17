@@ -162,6 +162,7 @@ class ConnectionRequestController extends Controller
             'newFromWebsite'     => $newFromWebsite,
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
             'promotions'         => Promotion::active()->get(['id', 'name', 'price']),
+            'referralSources'    => collect(ConnectionRequest::REFERRAL_SOURCES)->map(fn($label, $key) => ['key' => $key, 'label' => $label])->values(),
             'settings'           => [
                 'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
                 'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
@@ -186,6 +187,7 @@ class ConnectionRequestController extends Controller
             // при закрытии для номера акта (in-/cn-) вместо повторного вопроса.
             'service_type_id' => 'required|exists:service_types,id',
             'kind'            => 'nullable|in:connection,switch',
+            'referral_source' => 'required|in:' . implode(',', array_keys(\App\Models\ConnectionRequest::REFERRAL_SOURCES)),
         ], [
             'phone.regex' => 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер телефона)',
         ]);
@@ -223,6 +225,9 @@ class ConnectionRequestController extends Controller
             'territory_id'   => 'nullable|exists:territories,id',
             'brigade_id'     => 'nullable|exists:brigades,id',
             'service_type_id' => 'nullable|exists:service_types,id',
+            // Корректировка оператором, если изначально задан неверно -- само
+            // поле при создании уже required, здесь только правка.
+            'referral_source' => 'sometimes|nullable|in:' . implode(',', array_keys(\App\Models\ConnectionRequest::REFERRAL_SOURCES)),
         ], [
             'phone.regex' => 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер телефона)',
         ]);

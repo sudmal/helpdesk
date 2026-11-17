@@ -16,8 +16,21 @@ class ConnectionRequest extends Model
         'number',
         'name', 'phone', 'address_string', 'description',
         'status', 'scheduled_at', 'notes', 'act_number',
-        'assigned_to', 'created_by', 'source', 'territory_id', 'brigade_id', 'service_type_id', 'kind', 'needs_callback',
+        'assigned_to', 'created_by', 'source', 'referral_source', 'territory_id', 'brigade_id', 'service_type_id', 'kind', 'needs_callback',
         'feasibility', 'feasibility_comment', 'feasibility_by', 'feasibility_at',
+    ];
+
+    // Ответ абонента на вопрос "откуда вы о нас узнали" -- маркетинговый опрос,
+    // задаётся оператором при создании заявки на подключение вручную (не
+    // путать с полем source -- "кто завёл заявку", оператор/сайт). Заявки с
+    // сайта создаются без участия оператора, поле у них пустое. См. отчёт
+    // "Источники привлечения" в разделе Отчёты.
+    public const REFERRAL_SOURCES = [
+        'subscriber' => 'Был нашим абонентом',
+        'social'     => 'Узнал из соцсети',
+        'flyer'      => 'Флаер (магазин, Озон)',
+        'referral'   => 'Знакомые, соседи, родственники',
+        'installer'  => 'От монтажников',
     ];
 
     protected $casts = [

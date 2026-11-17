@@ -75,6 +75,7 @@ class ConnectionRequestController extends Controller
             'description'     => 'nullable|string|max:2000',
             'territory_id'    => 'required|exists:territories,id',
             'service_type_id' => 'nullable|exists:service_types,id',
+            'referral_source' => 'nullable|in:' . implode(',', array_keys(ConnectionRequest::REFERRAL_SOURCES)),
         ]);
 
         $data['created_by'] = $request->user()->id;

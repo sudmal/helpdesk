@@ -144,7 +144,15 @@ class ReportsController extends Controller
         //  - "Перекл. на PON" (заявка) + заявка на подключение kind=switch
         // Это РАЗНЫЕ источники (tickets vs connection_requests) — объединённая
         // строка, как и Итого, не кликается ни по одной цифре.
-        $mergeCrossSource = function (string $ticketKey, string $requestKey, string $label) use (&$rows) {
+        // Строка складывает ДВА источника (обычные заявки + заявки на
+        // подключение) — единой ссылки на существующий раздел нет (разные
+        // таблицы, разные страницы списков). По решению пользователя
+        // (2026-09-29, "нужна одна ссылка, разбивать нельзя") строка остаётся
+        // ОДНИМ кликом, но ведёт не на /tickets или /connection-requests, а
+        // открывает объединённый список прямо на этой странице (см.
+        // worksDoneDetailData() ниже и WorkDoneReport.vue) — сохраняем
+        // type_id/kind источников, чтобы было чем его отфильтровать.
+        $mergeCrossSource = function (string $ticketKey, string $requestKey, string $label, string $typeId, string $kind) use (&$rows) {
             if (!isset($rows[$ticketKey]) && !isset($rows[$requestKey])) return;
             $a = $rows[$ticketKey] ?? ['all' => 0, 'act' => 0, 'by_brigade' => []];
             $b = $rows[$requestKey] ?? ['all' => 0, 'act' => 0, 'by_brigade' => []];
@@ -156,12 +164,12 @@ class ReportsController extends Controller
             unset($rows[$ticketKey], $rows[$requestKey]);
             $rows['m_' . $ticketKey] = [
                 'key' => 'm_' . $ticketKey, 'label' => $label, 'source' => 'merged',
-                'type_id' => null, 'kind' => null,
+                'type_id' => $typeId, 'kind' => $kind,
                 'all' => $a['all'] + $b['all'], 'act' => $a['act'] + $b['act'], 'by_brigade' => $byBrigade,
             ];
         };
-        $mergeCrossSource('t1', 'cconnection', 'Подключение');
-        $mergeCrossSource('t10', 'cswitch', 'Перекл. на PON');
+        $mergeCrossSource('t1', 'cconnection', 'Подключение', '1', 'connection');
+        $mergeCrossSource('t10', 'cswitch', 'Перекл. на PON', '10', 'switch');
 
         // "Восстановление" + "Восстановление+замена кабеля" — ОБА обычные
         // заявки (один источник), поэтому строка остаётся кликабельной:
@@ -207,6 +215,98 @@ class ReportsController extends Controller
             'closed_status_id' => (int) DB::table('ticket_statuses')->where('slug', 'closed')->value('id'),
             'service_type'     => $serviceType,
             'service_types'    => DB::table('service_types')->orderBy('id')->get(['id', 'name']),
+        ]);
+    }
+
+    /**
+     * Объединённый список для строк "Выполнено работ", которые складывают
+     * ДВА источника (обычные заявки + заявки на подключение) — "Подключение"
+     * и "Перекл. на PON". У суммы нет единой ссылки на существующий раздел
+     * (разные таблицы, разные страницы списков), поэтому по просьбе
+     * пользователя (2026-09-29, "нужна одна ссылка, разбивать нельзя")
+     * сделан отдельный объединённый список прямо здесь, без ухода на
+     * /tickets или /connection-requests.
+     */
+    public function worksDoneDetailData(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->can('manage-settings') || $user->hasPermission('reports.view'), 403);
+
+        $data = $request->validate([
+            'type_id'      => 'nullable|string',   // "1" или "3,8" — как в самой таблице отчёта
+            'kind'         => 'nullable|string',
+            'closed_from'  => 'required|date',
+            'closed_to'    => 'required|date',
+            'brigade'      => 'nullable|string',   // id бригады либо "none"
+            'service_type' => 'nullable|integer',
+        ]);
+
+        $from = $data['closed_from'] . ' 00:00:00';
+        $to   = $data['closed_to']   . ' 23:59:59';
+        $brigade     = $data['brigade'] ?? null;
+        $serviceType = $data['service_type'] ?? null;
+
+        $rows = collect();
+
+        if (!empty($data['type_id'])) {
+            $typeIds = explode(',', $data['type_id']);
+            $tickets = \App\Models\Ticket::with(['address', 'brigade', 'act', 'type'])
+                ->whereHas('status', fn($q) => $q->where('slug', 'closed'))
+                ->whereIn('type_id', $typeIds)
+                ->whereBetween('closed_at', [$from, $to])
+                ->when($serviceType, fn($q) => $q->where('service_type_id', $serviceType))
+                ->when($brigade, fn($q) => $brigade === 'none' ? $q->whereNull('brigade_id') : $q->where('brigade_id', $brigade))
+                ->orderByDesc('closed_at')
+                ->limit(500)
+                ->get();
+
+            foreach ($tickets as $t) {
+                $rows->push([
+                    'source'      => 'ticket',
+                    'id'          => $t->id,
+                    'number'      => $t->number,
+                    'type_name'   => $t->type?->name,
+                    'address'     => $t->full_address,
+                    'closed_at'   => $t->closed_at?->toIso8601String(),
+                    'brigade_name'=> $t->brigade?->name ?? 'Без бригады',
+                    'act_id'      => $t->act?->id,
+                    'act_number'  => $t->act?->number,
+                ]);
+            }
+        }
+
+        if (!empty($data['kind'])) {
+            $requests = \App\Models\ConnectionRequest::with(['brigade', 'act'])
+                ->where('kind', $data['kind'])
+                ->where('status', 'closed')
+                ->whereBetween('updated_at', [$from, $to])
+                ->when($serviceType, fn($q) => $q->where('service_type_id', $serviceType))
+                ->when($brigade, fn($q) => $brigade === 'none' ? $q->whereNull('brigade_id') : $q->where('brigade_id', $brigade))
+                ->orderByDesc('updated_at')
+                ->limit(500)
+                ->get();
+
+            foreach ($requests as $r) {
+                $rows->push([
+                    'source'      => 'request',
+                    'id'          => $r->id,
+                    'number'      => null,
+                    'type_name'   => $r->kind === 'switch' ? 'Перекл. на PON (заявка на подключение)' : 'Подключение (заявка на подключение)',
+                    'address'     => $r->address_string,
+                    'closed_at'   => $r->updated_at?->toIso8601String(),
+                    'brigade_name'=> $r->brigade?->name ?? 'Без бригады',
+                    'act_id'      => $r->act?->id,
+                    'act_number'  => $r->act?->number,
+                ]);
+            }
+        }
+
+        $rows = $rows->sortByDesc('closed_at')->values();
+
+        return response()->json([
+            'rows'     => $rows,
+            'total'    => $rows->count(),
+            'truncated' => $rows->count() >= 500,
         ]);
     }
 
@@ -716,4 +816,115 @@ class ReportsController extends Controller
         ];
     }
 
+    /**
+     * Отчёт "Speedtest" (вкладка Отчёты): результаты внутреннего speedtest
+     * speed.vega8.ru за период -- сводка, средняя скорость по дням и таблица
+     * последних результатов (до 2000). Данные приходят по API (SpeedtestController).
+     */
+    /**
+     * Источники привлечения (2026-11-17): ответ абонента на вопрос "откуда вы
+     * о нас узнали", задаётся оператором при создании заявки на подключение
+     * вручную. Заявки с сайта (source=website) создаются без участия
+     * оператора -- поле у них пустое, группируются строкой "Не указано".
+     * Конверсия = закрытые (успешно подключены) / все заявки с этим
+     * источником, период -- по дате создания заявки.
+     */
+    public function referralSourceData(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->can('manage-settings') || $user->hasPermission('reports.view'), 403);
+
+        [$from, $to] = $this->parseRange($request);
+
+        $rows = DB::table('connection_requests')
+            ->whereNull('deleted_at')
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw("
+                COALESCE(referral_source, 'unknown') as source_key,
+                COUNT(*) as total,
+                SUM(status = 'closed') as closed,
+                SUM(status IN ('rejected', 'cancelled')) as lost
+            ")
+            ->groupBy('source_key')
+            ->get();
+
+        $labels = \App\Models\ConnectionRequest::REFERRAL_SOURCES;
+
+        $result = $rows->map(function ($r) use ($labels) {
+            $total  = (int) $r->total;
+            $closed = (int) $r->closed;
+            return [
+                'key'        => $r->source_key,
+                'label'      => $labels[$r->source_key] ?? 'Не указано',
+                'total'      => $total,
+                'closed'     => $closed,
+                'lost'       => (int) $r->lost,
+                'conversion' => $total > 0 ? round(100 * $closed / $total, 1) : null,
+            ];
+        })->sortByDesc('total')->values();
+
+        $totalAll    = (int) $result->sum('total');
+        $totalClosed = (int) $result->sum('closed');
+
+        return response()->json([
+            'rows'   => $result,
+            'total'  => [
+                'total'      => $totalAll,
+                'closed'     => $totalClosed,
+                'conversion' => $totalAll > 0 ? round(100 * $totalClosed / $totalAll, 1) : null,
+            ],
+            'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+        ]);
+    }
+
+    public function speedtestData(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        $base = DB::table('speedtest_results')->whereBetween('created_at', [$from, $to]);
+
+        $agg = (clone $base)->selectRaw(
+            'COUNT(*) n, COUNT(DISTINCT client_ip) ips, AVG(download_mbps) dl, AVG(upload_mbps) ul, AVG(ping_ms) ping, AVG(jitter_ms) jit'
+        )->first();
+
+        $median = function (string $col) use ($base) {
+            $v = (clone $base)->orderBy($col)->pluck($col)->map(fn ($x) => (float) $x)->all();
+            $c = count($v);
+            if ($c === 0) return null;
+            return $c % 2 ? $v[intdiv($c, 2)] : ($v[$c / 2 - 1] + $v[$c / 2]) / 2;
+        };
+
+        $daily = (clone $base)
+            ->selectRaw('DATE(created_at) day, COUNT(*) n, AVG(download_mbps) dl, AVG(upload_mbps) ul')
+            ->groupBy('day')->orderBy('day')->get()
+            ->map(fn ($r) => ['day' => $r->day, 'n' => (int) $r->n, 'dl' => round((float) $r->dl, 1), 'ul' => round((float) $r->ul, 1)]);
+
+        $rows = (clone $base)->orderByDesc('id')->limit(2000)
+            ->get(['id', 'client_ip', 'download_mbps', 'upload_mbps', 'ping_ms', 'jitter_ms', 'user_agent', 'created_at'])
+            ->map(fn ($r) => [
+                'id'            => $r->id,
+                'client_ip'     => $r->client_ip,
+                'download_mbps' => (float) $r->download_mbps,
+                'upload_mbps'   => (float) $r->upload_mbps,
+                'ping_ms'       => $r->ping_ms !== null ? (float) $r->ping_ms : null,
+                'jitter_ms'     => $r->jitter_ms !== null ? (float) $r->jitter_ms : null,
+                'user_agent'    => $r->user_agent,
+                'created_at'    => $r->created_at,
+            ]);
+
+        return response()->json([
+            'summary' => [
+                'n'          => (int) $agg->n,
+                'ips'        => (int) $agg->ips,
+                'dl_avg'     => $agg->n ? round((float) $agg->dl, 1) : null,
+                'dl_median'  => ($m = $median('download_mbps')) !== null ? round($m, 1) : null,
+                'ul_avg'     => $agg->n ? round((float) $agg->ul, 1) : null,
+                'ul_median'  => ($m = $median('upload_mbps')) !== null ? round($m, 1) : null,
+                'ping_avg'   => $agg->ping !== null ? round((float) $agg->ping, 1) : null,
+                'jitter_avg' => $agg->jit !== null ? round((float) $agg->jit, 1) : null,
+            ],
+            'daily' => $daily,
+            'rows'  => $rows,
+        ]);
+    }
 }
