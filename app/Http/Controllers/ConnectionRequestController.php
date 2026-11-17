@@ -8,6 +8,7 @@ use App\Models\ConnectionRequest;
 use App\Models\ConnectionRequestLog;
 use App\Models\Material;
 use App\Models\Promotion;
+use App\Models\ReferralSource;
 use App\Models\ServiceType;
 use App\Models\SystemSetting;
 use App\Models\Territory;
@@ -162,7 +163,10 @@ class ConnectionRequestController extends Controller
             'newFromWebsite'     => $newFromWebsite,
             'materialsCatalog'   => Material::active()->orderBy('sort_order')->orderBy('name')->get(['id', 'code', 'name', 'unit', 'price']),
             'promotions'         => Promotion::active()->get(['id', 'name', 'price']),
-            'referralSources'    => collect(ConnectionRequest::REFERRAL_SOURCES)->map(fn($label, $key) => ['key' => $key, 'label' => $label])->values(),
+            'referralSources'    => ReferralSource::orderBy('sort_order')->withCount('connectionRequests')->get()
+                ->map(fn($r) => ['id' => $r->id, 'key' => $r->key, 'label' => $r->label, 'is_active' => $r->is_active, 'usage_count' => $r->connection_requests_count])
+                ->values(),
+            'canManageReferralSources' => $user->can('manage-settings'),
             'settings'           => [
                 'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
                 'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
@@ -187,7 +191,7 @@ class ConnectionRequestController extends Controller
             // при закрытии для номера акта (in-/cn-) вместо повторного вопроса.
             'service_type_id' => 'required|exists:service_types,id',
             'kind'            => 'nullable|in:connection,switch',
-            'referral_source' => 'required|in:' . implode(',', array_keys(\App\Models\ConnectionRequest::REFERRAL_SOURCES)),
+            'referral_source' => 'required|in:' . implode(',', ReferralSource::where('is_active', true)->pluck('key')->all()),
         ], [
             'phone.regex' => 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер телефона)',
         ]);
@@ -227,7 +231,7 @@ class ConnectionRequestController extends Controller
             'service_type_id' => 'nullable|exists:service_types,id',
             // Корректировка оператором, если изначально задан неверно -- само
             // поле при создании уже required, здесь только правка.
-            'referral_source' => 'sometimes|nullable|in:' . implode(',', array_keys(\App\Models\ConnectionRequest::REFERRAL_SOURCES)),
+            'referral_source' => 'sometimes|nullable|in:' . implode(',', ReferralSource::pluck('key')->all()),
         ], [
             'phone.regex' => 'Телефон должен содержать только цифры (похоже, в поле вставлен не номер телефона)',
         ]);

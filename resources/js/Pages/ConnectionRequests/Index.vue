@@ -367,10 +367,14 @@
           </div>
           <div class="field-row">
             <label class="field-label">Откуда узнали <span class="text-red-400">*</span></label>
-            <select v-model="createForm.referral_source" class="field-input">
-              <option :value="null">— выберите вариант —</option>
-              <option v-for="opt in REFERRAL_SOURCE_OPTIONS" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
-            </select>
+            <div class="flex items-center gap-1 sm:flex-1">
+              <select v-model="createForm.referral_source" class="field-input flex-1">
+                <option :value="null">— выберите вариант —</option>
+                <option v-for="opt in activeReferralSources" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
+              </select>
+              <button type="button" @click="openReferralSourcesModal" title="Настроить варианты"
+                      class="shrink-0 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors">⚙️</button>
+            </div>
           </div>
           <div>
             <label class="field-label">Описание</label>
@@ -433,10 +437,14 @@
           </div>
           <div class="field-row">
             <label class="field-label">Откуда узнали</label>
-            <select v-model="editForm.referral_source" class="field-input">
-              <option :value="null">— не указано —</option>
-              <option v-for="opt in REFERRAL_SOURCE_OPTIONS" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
-            </select>
+            <div class="flex items-center gap-1 sm:flex-1">
+              <select v-model="editForm.referral_source" class="field-input flex-1">
+                <option :value="null">— не указано —</option>
+                <option v-for="opt in activeReferralSources" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
+              </select>
+              <button type="button" @click="openReferralSourcesModal" title="Настроить варианты"
+                      class="shrink-0 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors">⚙️</button>
+            </div>
           </div>
           <div>
             <label class="field-label">Описание</label>
@@ -447,6 +455,41 @@
         <div class="mt-4 flex justify-end gap-2">
           <button @click="modals.edit = false" class="btn-outline text-sm">Отмена</button>
           <button @click="submitEdit" :disabled="submitting" class="btn-primary text-sm">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модал: Варианты "Откуда узнали" -->
+    <div v-if="modals.referralSources" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-4">
+        <h3 class="text-sm font-semibold mb-1">Варианты ответа «Откуда узнали»</h3>
+        <p class="text-xs text-gray-400 mb-3">Вариант, по которому уже есть ответы (🔒), нельзя переименовать или удалить — можно только отключить от выбора в новых заявках.</p>
+        <div class="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100 max-h-80 overflow-y-auto">
+          <div v-for="row in referralSources" :key="row.id" class="flex items-center gap-2 px-3 py-2 text-sm">
+            <template v-if="row.usage_count > 0">
+              <span class="flex-1 text-gray-700">{{ row.label }}</span>
+              <span class="text-[11px] text-gray-400 whitespace-nowrap">🔒 {{ row.usage_count }} отв.</span>
+            </template>
+            <template v-else>
+              <input v-model="rowEdit(row).label" class="field-input flex-1 !py-1 text-sm" />
+              <button @click="deleteReferralSource(row)" title="Удалить" class="shrink-0 p-1 text-gray-400 hover:text-red-500 rounded">🗑</button>
+            </template>
+            <label class="flex items-center gap-1 shrink-0 text-xs text-gray-500 cursor-pointer whitespace-nowrap">
+              <input type="checkbox" v-model="rowEdit(row).is_active" @change="saveReferralSource(row)" />
+              Активен
+            </label>
+            <button v-if="row.usage_count === 0" @click="saveReferralSource(row)"
+                    class="shrink-0 btn-sm bg-blue-50 text-blue-600 hover:bg-blue-100">Сохранить</button>
+          </div>
+          <div v-if="!referralSources.length" class="px-3 py-6 text-center text-gray-400 text-xs">Нет вариантов</div>
+        </div>
+        <div v-if="rsErrors" class="mt-2 text-xs text-red-600">{{ rsErrors }}</div>
+        <div class="mt-3 flex items-center gap-2">
+          <input v-model="rsNewLabel" @keydown.enter="addReferralSource" class="field-input flex-1" placeholder="Новый вариант..." />
+          <button @click="addReferralSource" class="btn-sm bg-blue-50 text-blue-600 hover:bg-blue-100 shrink-0">+ Добавить</button>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button @click="modals.referralSources = false" class="btn-outline text-sm">Закрыть</button>
         </div>
       </div>
     </div>
@@ -887,7 +930,12 @@ const props = defineProps({
   materialsCatalog:  Array,
   promotions:        { type: Array, default: () => [] },
   settings:          { type: Object, default: () => ({ work_hours_start: '09:00', work_hours_end: '17:00', schedule_step_minutes: 30, work_days: '1,2,3,4,5' }) },
+  referralSources:   { type: Array, default: () => [] },
 })
+
+// Локальная реактивная копия -- проще обновлять через router.reload() без
+// пересвязывания шаблона, именованные обращения ниже используют её напрямую.
+const referralSources = computed(() => props.referralSources)
 
 // ── Обучение: как устроен алгоритм заявки на подключение ──
 const tour = useTour()
@@ -955,15 +1003,41 @@ function initialStatuses() {
   return []
 }
 
-const REFERRAL_SOURCE_OPTIONS = [
-  { key: 'subscriber', label: 'Был нашим абонентом' },
-  { key: 'social',     label: 'Узнал из соцсети' },
-  { key: 'flyer',       label: 'Флаер (магазин, Озон)' },
-  { key: 'referral',   label: 'Знакомые, соседи, родственники' },
-  { key: 'installer',  label: 'От монтажников' },
-]
 function referralSourceLabel(key) {
-  return REFERRAL_SOURCE_OPTIONS.find(o => o.key === key)?.label ?? key ?? '—'
+  return referralSources.value.find(o => o.key === key)?.label ?? key ?? '—'
+}
+const activeReferralSources = computed(() => referralSources.value.filter(o => o.is_active))
+const rsEdits = reactive({})
+function rowEdit(row) {
+  if (!rsEdits[row.id]) rsEdits[row.id] = { label: row.label, is_active: row.is_active }
+  return rsEdits[row.id]
+}
+const rsNewLabel = ref('')
+const rsErrors   = ref('')
+function openReferralSourcesModal() { rsErrors.value = ''; modals.referralSources = true }
+function saveReferralSource(row) {
+  rsErrors.value = ''
+  router.put(route('referral-sources.update', row.id), { ...rowEdit(row) }, {
+    preserveScroll: true,
+    onError: (errors) => { rsErrors.value = firstBackendError(errors) },
+  })
+}
+function deleteReferralSource(row) {
+  if (!confirm(`Удалить вариант «${row.label}»?`)) return
+  rsErrors.value = ''
+  router.delete(route('referral-sources.destroy', row.id), {
+    preserveScroll: true,
+    onError: (errors) => { rsErrors.value = firstBackendError(errors) },
+  })
+}
+function addReferralSource() {
+  if (!rsNewLabel.value.trim()) return
+  rsErrors.value = ''
+  router.post(route('referral-sources.store'), { label: rsNewLabel.value.trim() }, {
+    preserveScroll: true,
+    onSuccess: () => { rsNewLabel.value = '' },
+    onError: (errors) => { rsErrors.value = firstBackendError(errors) },
+  })
 }
 
 const STATUS_OPTIONS = [
@@ -1041,7 +1115,7 @@ function reset() {
 }
 
 // Модалы
-const modals      = reactive({ create: false, edit: false, schedule: false, delete: false, close: false, detail: false, feasibility: false, addAct: false, cancel: false })
+const modals      = reactive({ create: false, edit: false, schedule: false, delete: false, close: false, detail: false, feasibility: false, addAct: false, cancel: false, referralSources: false })
 const submitting  = ref(false)
 const activeRecord = ref(null)
 const closeErrors  = ref('')

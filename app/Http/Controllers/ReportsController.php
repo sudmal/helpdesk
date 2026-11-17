@@ -848,7 +848,7 @@ class ReportsController extends Controller
             ->groupBy('source_key')
             ->get();
 
-        $labels = \App\Models\ConnectionRequest::REFERRAL_SOURCES;
+        $labels = \App\Models\ReferralSource::pluck('label', 'key')->all();
 
         $result = $rows->map(function ($r) use ($labels) {
             $total  = (int) $r->total;

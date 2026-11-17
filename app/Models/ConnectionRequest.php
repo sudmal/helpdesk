@@ -20,18 +20,10 @@ class ConnectionRequest extends Model
         'feasibility', 'feasibility_comment', 'feasibility_by', 'feasibility_at',
     ];
 
-    // Ответ абонента на вопрос "откуда вы о нас узнали" -- маркетинговый опрос,
-    // задаётся оператором при создании заявки на подключение вручную (не
-    // путать с полем source -- "кто завёл заявку", оператор/сайт). Заявки с
-    // сайта создаются без участия оператора, поле у них пустое. См. отчёт
-    // "Источники привлечения" в разделе Отчёты.
-    public const REFERRAL_SOURCES = [
-        'subscriber' => 'Был нашим абонентом',
-        'social'     => 'Узнал из соцсети',
-        'flyer'      => 'Флаер (магазин, Озон)',
-        'referral'   => 'Знакомые, соседи, родственники',
-        'installer'  => 'От монтажников',
-    ];
+    // Ответ абонента на вопрос "откуда вы о нас узнали" -- хранится как
+    // ConnectionRequest::referral_source = ReferralSource::key (управляемый
+    // каталог вариантов, см. модель ReferralSource и ReferralSourceController).
+    // Не путать с полем source -- "кто завёл заявку" (оператор/сайт).
 
     protected $casts = [
         'scheduled_at'   => 'datetime',

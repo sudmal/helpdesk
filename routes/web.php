@@ -41,6 +41,12 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/{connectionRequest}',             [ConnectionRequestController::class, 'destroy'])->name('destroy');
     });
 
+    Route::prefix('referral-sources')->name('referral-sources.')->group(function () {
+        Route::post('/',                 [App\Http\Controllers\ReferralSourceController::class, 'store'])->name('store');
+        Route::put('/{referralSource}',  [App\Http\Controllers\ReferralSourceController::class, 'update'])->name('update');
+        Route::delete('/{referralSource}', [App\Http\Controllers\ReferralSourceController::class, 'destroy'])->name('destroy');
+    });
+
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/new-since', [DashboardController::class, 'newTicketsSince'])->name('dashboard.new-since');
 

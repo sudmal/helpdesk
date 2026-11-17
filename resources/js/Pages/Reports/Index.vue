@@ -3,14 +3,11 @@
   <AppLayout title="Отчёты" help-tab="admin" help-section="reports">
 
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div class="bg-gray-50 border-b border-gray-200 flex items-end gap-0.5 px-3 pt-2 flex-wrap">
-        <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
-                :class="['px-4 py-2 rounded-t-xl text-sm font-medium transition-colors',
-                         activeTab === tab.id
-                           ? 'bg-white border border-gray-200 border-b-white -mb-px z-10 text-gray-800'
-                           : 'text-gray-500 hover:text-gray-700 hover:bg-white/60']">
-          {{ tab.label }}
-        </button>
+      <div class="bg-gray-50 border-b border-gray-200 px-3 py-2.5">
+        <select :value="activeTab" @change="switchTab($event.target.value)"
+                class="field-input !w-auto min-w-[220px] text-sm font-medium">
+          <option v-for="tab in tabs" :key="tab.id" :value="tab.id">{{ tab.label }}</option>
+        </select>
       </div>
 
     <!-- Эффективность бригад -->
