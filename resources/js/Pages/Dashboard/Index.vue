@@ -169,6 +169,7 @@
           <div class="flex items-center gap-1.5 text-xs">
             <span class="leading-none">🔌</span>
             <span class="font-medium tabular-nums text-gray-700">{{ formatTime(c.scheduled_at) }}</span>
+            <span v-if="c.number" class="font-mono text-blue-600 font-medium">{{ c.number }}</span>
             <span class="flex-1"></span>
             <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">Подключение</span>
           </div>
@@ -193,7 +194,7 @@
                   @click="sortBy('scheduled_at')">
                 Время {{ sortIcon('scheduled_at') }}
               </th>
-              <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100 w-24"
+              <th class="px-2 py-1.5 text-left cursor-pointer hover:bg-gray-100 w-28"
                   @click="sortBy('number')">
                 № {{ sortIcon('number') }}
               </th>
@@ -242,7 +243,7 @@
                 {{ formatTime(t.scheduled_at) }}
               </td>
               <td class="px-2 py-0.5">
-                <span class="font-mono text-blue-600 font-medium text-xs">{{ t.number }}</span>
+                <span class="font-mono text-blue-600 font-medium text-xs whitespace-nowrap">{{ t.number }}</span>
               </td>
               <td class="px-0 py-0.5 text-center">
                 <span class="cursor-help text-sm leading-none text-gray-500 hover:text-blue-600"
@@ -304,7 +305,7 @@
                 {{ formatTime(c.scheduled_at) }}
               </td>
               <td class="px-2 py-0.5">
-                <span class="font-mono text-blue-600 font-medium text-xs">—</span>
+                <span class="font-mono text-blue-600 font-medium text-xs whitespace-nowrap">{{ c.number || '—' }}</span>
               </td>
               <td class="px-0 py-0.5 text-center">
                 <span class="cursor-help text-sm leading-none text-gray-500 hover:text-blue-600"
@@ -374,7 +375,7 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 text-xs">
               <span class="leading-none">{{ serviceIcon(t.service_type?.name) }}</span>
-              <span class="font-mono text-red-700 font-medium">{{ t.number }}</span>
+              <span class="font-mono text-red-700 font-medium whitespace-nowrap">{{ t.number }}</span>
               <span class="flex-1"></span>
               <span class="text-red-600 font-medium whitespace-nowrap">{{ formatDateTime(t.scheduled_at) }}</span>
             </div>
@@ -407,6 +408,7 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 text-xs">
               <span class="font-medium text-blue-700">Подключение</span>
+              <span v-if="c.number" class="font-mono text-red-700 font-medium">{{ c.number }}</span>
               <span class="flex-1"></span>
               <span class="text-red-600 font-medium whitespace-nowrap">{{ formatDateTime(c.scheduled_at) }}</span>
             </div>
@@ -435,8 +437,8 @@
                      class="rounded border-red-300 cursor-pointer" />
             </td>
             <td class="pl-1 pr-1 py-px text-center w-6">{{ serviceIcon(t.service_type?.name) }}</td>
-            <td class="px-3 py-px w-24">
-              <span class="font-mono text-red-700 font-medium">{{ t.number }}</span>
+            <td class="px-3 py-px w-[7.5rem]">
+              <span class="font-mono text-red-700 font-medium whitespace-nowrap">{{ t.number }}</span>
             </td>
             <td class="px-3 py-px">
               <p class="font-medium text-gray-800 truncate">{{ fullAddress(t) }}</p>
@@ -449,14 +451,14 @@
                 <span v-if="t.act || t.attachments_count" class="ml-1 text-gray-400" title="Есть акт и/или вложения">📎</span>
               </p>
             </td>
-            <td class="px-3 py-px hidden sm:table-cell w-32 overflow-hidden">
+            <td class="px-3 py-px hidden sm:table-cell w-[12%] overflow-hidden">
               <Badge v-if="t.type" :color="t.type.color" :label="t.type.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px w-28 overflow-hidden">
+            <td class="px-3 py-px w-[13%] overflow-hidden">
               <Badge v-if="t.status" :color="t.status.color" :label="t.status.name" small class="max-w-full truncate" />
             </td>
-            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-40 whitespace-nowrap">{{ t.phone ?? '—' }}</td>
-            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-44">
+            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-[12%] whitespace-nowrap">{{ t.phone ?? '—' }}</td>
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-[14%]">
               {{ formatDateTime(t.scheduled_at) }}
               <span v-if="t.days_overdue" class="ml-1 inline-block bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full align-middle">
                 {{ t.days_overdue }} дн.
@@ -471,21 +473,29 @@
               @click="router.visit(route('connection-requests.index', { open: c.id }))">
             <td class="pl-2 pr-0 py-px text-center w-7"></td>
             <td class="pl-1 pr-1 py-px text-center w-6">🔌</td>
-            <td class="px-3 py-px w-24">
-              <span class="font-mono text-blue-700 font-medium">—</span>
+            <td class="px-3 py-px w-[7.5rem]">
+              <span class="font-mono text-blue-700 font-medium whitespace-nowrap">{{ c.number || '—' }}</span>
             </td>
             <td class="px-3 py-px">
-              <p class="font-medium text-gray-800 truncate">{{ c.address_string }}</p>
-              <p class="text-blue-700 text-xs truncate">{{ c.name }}</p>
+              <p class="truncate">
+                <span class="font-medium text-gray-800">{{ c.address_string }}</span>
+                <span v-if="c.name && c.name !== '-'" class="text-blue-700 ml-1.5">— {{ c.name }}</span>
+              </p>
+              <p v-if="c.description || c.last_comment" class="text-xs truncate"
+                 :title="[c.description, c.last_comment].filter(Boolean).join(' · ')">
+                <span v-if="c.description" class="text-gray-500">{{ c.description }}</span>
+                <span v-if="c.description && c.last_comment" class="text-gray-300"> · </span>
+                <span v-if="c.last_comment" class="text-amber-700">💬 {{ c.last_comment }}</span>
+              </p>
             </td>
-            <td class="px-3 py-px hidden sm:table-cell w-32 overflow-hidden">
+            <td class="px-3 py-px hidden sm:table-cell w-[12%] overflow-hidden">
               <span v-if="c.service_type" :style="{ color: c.service_type.color }" class="text-xs font-medium">{{ c.service_type.name }}</span>
             </td>
-            <td class="px-3 py-px w-28 overflow-hidden">
+            <td class="px-3 py-px w-[13%] overflow-hidden">
               <span class="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded whitespace-nowrap">🔌 Подключение</span>
             </td>
-            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-40 whitespace-nowrap">{{ c.phone ?? '—' }}</td>
-            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-44">
+            <td class="px-3 py-px hidden md:table-cell text-gray-500 w-[12%] whitespace-nowrap">{{ c.phone ?? '—' }}</td>
+            <td class="px-3 py-px text-red-600 font-medium whitespace-nowrap text-right pr-4 w-[14%]">
               {{ formatDateTime(c.scheduled_at) }}
             </td>
           </tr>
@@ -870,7 +880,7 @@ function fullAddress(t) {
 // подмножество полей, которые у подключения реально есть (2026-09-15).
 function connectionTooltipData(c) {
   return {
-    number: null,
+    number: c.number ?? null,
     type: c.service_type ? { name: c.service_type.name, color: c.service_type.color } : null,
     address_string: c.address_string,
     description: c.description,
