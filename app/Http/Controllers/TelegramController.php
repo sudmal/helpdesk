@@ -19,7 +19,7 @@ class TelegramController extends Controller
     {
         $url    = config('app.url') . '/telegram/webhook';
         $result = \Illuminate\Support\Facades\Http::post(
-            "https://api.telegram.org/bot" . config('services.telegram.token') . "/setWebhook",
+            config('services.telegram.api_base') . "/bot" . config('services.telegram.token') . "/setWebhook",
             ['url' => $url]
         );
         return response()->json($result->json());

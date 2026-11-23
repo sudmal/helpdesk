@@ -17,7 +17,7 @@ class TelegramChannel
 
         try {
             $response = Http::post(
-                'https://api.telegram.org/bot' . config('services.telegram.token') . '/sendMessage',
+                config('services.telegram.api_base') . '/bot' . config('services.telegram.token') . '/sendMessage',
                 $payload
             );
 
