@@ -829,6 +829,75 @@ class ReportsController extends Controller
      * Конверсия = закрытые (успешно подключены) / все заявки с этим
      * источником, период -- по дате создания заявки.
      */
+    /**
+     * Отчёт "Подключения": матрица территория x статус за период (по дате
+     * создания заявки, как и referralSourceData). territory_id берётся прямо
+     * с connection_requests (колонка на самой заявке, не через address) --
+     * заявки с сайта без простановленной территории оператором попадают в
+     * отдельную строку "Без территории" (см. память
+     * project-website-connection-intake).
+     */
+    public function connectionRequestsData(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->can('manage-settings') || $user->hasPermission('reports.view'), 403);
+
+        [$from, $to] = $this->parseRange($request);
+
+        $statuses = ['pending', 'scheduled', 'closed', 'rejected', 'cancelled'];
+
+        $raw = DB::table('connection_requests')
+            ->whereNull('deleted_at')
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw('territory_id, status, COUNT(*) as total')
+            ->groupBy('territory_id', 'status')
+            ->get();
+
+        $territoryNames = DB::table('territories')->pluck('name', 'id');
+
+        $byTerritory = [];
+        foreach ($raw as $r) {
+            $key = $r->territory_id ?? 0;
+            if (!isset($byTerritory[$key])) {
+                $byTerritory[$key] = [
+                    'territory_id' => $r->territory_id,
+                    'label'        => $r->territory_id ? ($territoryNames[$r->territory_id] ?? '?') : 'Без территории',
+                    'total'        => 0,
+                ];
+                foreach ($statuses as $s) {
+                    $byTerritory[$key][$s] = 0;
+                }
+            }
+            $byTerritory[$key][$r->status] = (int) $r->total;
+            $byTerritory[$key]['total'] += (int) $r->total;
+        }
+
+        $rows = collect($byTerritory)->values()->sort(function ($a, $b) {
+            if (($a['territory_id'] === null) !== ($b['territory_id'] === null)) {
+                return $a['territory_id'] === null ? 1 : -1;
+            }
+            return strcmp($a['label'], $b['label']);
+        })->values();
+
+        $totals = ['total' => 0];
+        foreach ($statuses as $s) {
+            $totals[$s] = 0;
+        }
+        foreach ($rows as $r) {
+            foreach ($statuses as $s) {
+                $totals[$s] += $r[$s];
+            }
+            $totals['total'] += $r['total'];
+        }
+
+        return response()->json([
+            'rows'     => $rows,
+            'totals'   => $totals,
+            'statuses' => $statuses,
+            'period'   => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+        ]);
+    }
+
     public function referralSourceData(Request $request)
     {
         $user = $request->user();

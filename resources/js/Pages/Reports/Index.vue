@@ -224,6 +224,11 @@
       <ReferralSourceReport />
     </div>
 
+    <!-- Подключения: территория x статус -->
+    <div v-if="activeTab === 'connections'" class="p-4">
+      <ConnectionRequestsReport />
+    </div>
+
     <!-- Работа ТП -->
     <div v-show="activeTab === 'callcenter'" class="p-4 space-y-3">
       <div class="flex flex-wrap items-center gap-3">
@@ -353,6 +358,7 @@ import MaterialsReport from '@/Components/Reports/MaterialsReport.vue'
 import SurveyReport from '@/Components/Reports/SurveyReport.vue'
 import SpeedtestReport from '@/Components/Reports/SpeedtestReport.vue'
 import ReferralSourceReport from '@/Components/Reports/ReferralSourceReport.vue'
+import ConnectionRequestsReport from '@/Components/Reports/ConnectionRequestsReport.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
 const props = defineProps({
@@ -371,6 +377,7 @@ const tabs = computed(() => [
     { id: 'distribution', label: 'Распределение по дням' },
     { id: 'callcenter',   label: 'Обработка звонков' },
     { id: 'referral',     label: 'Источники привлечения' },
+    { id: 'connections',  label: 'Подключения' },
   ] : []),
   { id: 'materials', label: 'Работы/Материалы' },
   ...(props.canManageSettings ? [{ id: 'survey', label: 'Оценки абонентов' }] : []),

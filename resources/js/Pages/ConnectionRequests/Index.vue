@@ -132,6 +132,10 @@
         <!-- Всего/+Новая заявка -- были отдельной строкой над таблицей (чистый
              вайтспейс, когда подсказка по наведению пуста), перенесены сюда. -->
         <span class="text-sm text-gray-500 whitespace-nowrap ml-auto">Всего: {{ requests.total }}</span>
+        <Link v-if="canViewReports" :href="route('reports.index', { tab: 'connections' })"
+              class="px-2.5 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors shrink-0">
+          Отчёт →
+        </Link>
         <button @click="openCreate" data-tour="tour-conn-create"
                 class="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white transition-colors shrink-0">
           + Новая заявка
@@ -908,7 +912,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { Head, usePage } from '@inertiajs/vue3'
+import { Head, usePage, Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import AppLayout from '@/Components/Layout/AppLayout.vue'
 import TimePicker from '@/Components/UI/TimePicker.vue'
@@ -917,6 +921,7 @@ import { useTour, hasSeenTour } from '@/Composables/useTour'
 const hoverInfo = ref(null)
 
 const props = defineProps({
+  canViewReports: { type: Boolean, default: false },
   requests:          Object,
   filters:           Object,
   territories:        Array,

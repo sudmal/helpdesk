@@ -209,6 +209,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('can:manage-settings')->get('/reports/brigade-efficiency', [App\Http\Controllers\ReportsController::class, 'brigadeEfficiencyData'])->name('reports.brigade-efficiency');
     Route::middleware('can:manage-settings')->get('/reports/territory-frequency', [App\Http\Controllers\ReportsController::class, 'territoryFrequencyData'])->name('reports.territory-frequency');
     Route::middleware('can:manage-settings')->get('/reports/referral-source', [App\Http\Controllers\ReportsController::class, 'referralSourceData'])->name('reports.referral-source');
+    Route::middleware('can:manage-settings')->get('/reports/connections', [App\Http\Controllers\ReportsController::class, 'connectionRequestsData'])->name('reports.connections');
     // Не manage-settings — доступ теперь у reports.view (ПЭО/Логистика/Абонотдел) тоже, см. ReportsController::materialDynamicsData
     Route::middleware(['auth', 'active'])->get('/reports/material-dynamics', [App\Http\Controllers\ReportsController::class, 'materialDynamicsData'])->name('reports.material-dynamics');
     // Доступ проверяется внутри метода: manage-settings ИЛИ reports.view (вкладка Работы/Материалы)

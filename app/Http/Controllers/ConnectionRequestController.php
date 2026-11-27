@@ -22,6 +22,7 @@ class ConnectionRequestController extends Controller
     {
         $user            = $request->user();
         $userTerritories = $this->getUserTerritories($user);
+        $canViewReports  = $user->can('manage-settings') || $user->hasPermission('reports.view');
 
         // ?territory= из URL проверяется на принадлежность зоне видимости
         // пользователя — раньше принимался как есть, вкладки самого
@@ -167,6 +168,7 @@ class ConnectionRequestController extends Controller
                 ->map(fn($r) => ['id' => $r->id, 'key' => $r->key, 'label' => $r->label, 'is_active' => $r->is_active, 'usage_count' => $r->connection_requests_count])
                 ->values(),
             'canManageReferralSources' => $user->can('manage-settings'),
+            'canViewReports'    => $canViewReports,
             'settings'           => [
                 'work_hours_start'      => SystemSetting::get('work_hours_start', '09:00'),
                 'work_hours_end'        => SystemSetting::get('work_hours_end', '17:00'),
