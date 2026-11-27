@@ -1058,7 +1058,7 @@ const STATUS_OPTIONS = [
     hint: 'Согласована дата и время выезда бригады (подключение или переключение на ПОН).' },
   { key: 'rejected',         label: 'Отклонено',
     hint: 'Подключение технически невозможно — ставится автоматически, когда монтажник после прозвона отмечает «невозможно».' },
-  { key: 'cancelled',        label: 'Отказ',
+  { key: 'cancelled',        label: 'Самоотказ',
     hint: 'Абонент сам отказался от подключения после того, как оставил заявку — технически подключить было можно.' },
   { key: 'closed',           label: 'Выполнено',
     hint: 'Подключение/переключение выполнено бригадой, по заявке создан акт.' },
@@ -1458,7 +1458,7 @@ function submitCancel() {
 
 function statusLabel(s, feasibility) {
   if (s === 'pending') return feasibility ? 'Ожидает прозвон' : 'Ожидает техвозм.'
-  return { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', cancelled: 'Отказ', closed: 'Выполнено' }[s] ?? s
+  return { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', cancelled: 'Самоотказ', closed: 'Выполнено' }[s] ?? s
 }
 function statusHint(s, feasibility) {
   if (s === 'pending') {

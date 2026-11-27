@@ -69,7 +69,7 @@ function statusLabel(s) {
     scheduled:        'Назначено',
     closed:           'Выполнено',
     rejected:         'Отклонено',
-    cancelled:        'Отказ',
+    cancelled:        'Самоотказ',
   }[s] ?? s
 }
 function statusHint(s) {
