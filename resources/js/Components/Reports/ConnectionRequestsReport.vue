@@ -15,7 +15,10 @@
           <thead>
             <tr class="bg-gray-50 text-xs text-gray-500 border-b border-gray-100 font-medium">
               <th class="text-left px-4 py-2.5 whitespace-nowrap">Территория</th>
-              <th v-for="s in data.statuses" :key="s" class="text-right px-3 py-2.5 whitespace-nowrap">{{ statusLabel(s) }}</th>
+              <th v-for="s in data.statuses" :key="s" :title="statusHint(s)" class="text-right px-3 py-2.5 whitespace-nowrap">
+                {{ statusLabel(s) }}
+                <span v-if="statusHint(s)" class="text-gray-300">ⓘ</span>
+              </th>
               <th class="text-right px-4 py-2.5 whitespace-nowrap">Всего</th>
             </tr>
           </thead>
@@ -55,6 +58,12 @@ const data = computed(() => range.state.data)
 
 function statusLabel(s) {
   return { pending: 'Ожидает', scheduled: 'Назначено', closed: 'Выполнено', rejected: 'Отклонено', cancelled: 'Отказ' }[s] ?? s
+}
+function statusHint(s) {
+  return {
+    rejected:  'Подключение технически невозможно — ставится автоматически, когда монтажник после прозвона отмечает «невозможно».',
+    cancelled: 'Абонент сам отказался от подключения после того, как оставил заявку — технически подключить было можно.',
+  }[s] ?? null
 }
 function statusTextCls(s) {
   return {
