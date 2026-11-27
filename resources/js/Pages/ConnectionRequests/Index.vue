@@ -218,7 +218,8 @@
                           :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
                   </span>
                   <span v-if="r.kind === 'switch'" class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-semibold whitespace-nowrap" title="Переключение на PON">ПЕРЕКЛ</span>
-                  <span :class="statusClass(r.status, r.feasibility)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                  <span :class="statusClass(r.status, r.feasibility)" :title="statusHint(r.status, r.feasibility)"
+                        class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
                     {{ statusLabel(r.status, r.feasibility) }}
                   </span>
                   <span v-if="r.deleted_at" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
@@ -281,7 +282,8 @@
             <span v-else-if="r.feasibility === 'impossible'" class="text-red-600"
                   :title="'Монтажник: невозможно' + (r.feasibility_comment ? ' — ' + r.feasibility_comment : '')">❌</span>
             <span v-if="r.kind === 'switch'" class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-semibold" title="Переключение на PON">ПЕРЕКЛ</span>
-            <span :class="statusClass(r.status, r.feasibility)" class="px-2 py-0.5 rounded-full text-xs font-medium">
+            <span :class="statusClass(r.status, r.feasibility)" :title="statusHint(r.status, r.feasibility)"
+                  class="px-2 py-0.5 rounded-full text-xs font-medium">
               {{ statusLabel(r.status, r.feasibility) }}
             </span>
             <span v-if="r.deleted_at" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">Удалена</span>
@@ -721,6 +723,7 @@
           <div class="flex items-center gap-3">
             <h3 class="text-base font-semibold text-gray-800">Заявка на подключение</h3>
             <span v-if="detailData" :class="statusClass(detailData.status, detailData.feasibility)"
+                  :title="statusHint(detailData.status, detailData.feasibility)"
                   class="px-2 py-0.5 rounded-full text-xs font-medium">
               {{ statusLabel(detailData.status, detailData.feasibility) }}
             </span>
@@ -1047,14 +1050,18 @@ function addReferralSource() {
 }
 
 const STATUS_OPTIONS = [
-  { key: 'pending_tech',     label: 'Ожидает техвозм.' },
-  { key: 'pending_callback', label: 'Ожидает прозвон' },
-  { key: 'scheduled',        label: 'Назначено' },
+  { key: 'pending_tech',     label: 'Ожидает техвозм.',
+    hint: 'Заявка создана, монтажник ещё не оценил, можно ли технически подключить по этому адресу.' },
+  { key: 'pending_callback', label: 'Ожидает прозвон',
+    hint: 'Техвозможность подтверждена монтажником — осталось дозвониться до абонента и согласовать дату.' },
+  { key: 'scheduled',        label: 'Назначено',
+    hint: 'Согласована дата и время выезда бригады (подключение или переключение на ПОН).' },
   { key: 'rejected',         label: 'Отклонено',
     hint: 'Подключение технически невозможно — ставится автоматически, когда монтажник после прозвона отмечает «невозможно».' },
   { key: 'cancelled',        label: 'Отказ',
     hint: 'Абонент сам отказался от подключения после того, как оставил заявку — технически подключить было можно.' },
-  { key: 'closed',           label: 'Выполнено' },
+  { key: 'closed',           label: 'Выполнено',
+    hint: 'Подключение/переключение выполнено бригадой, по заявке создан акт.' },
 ]
 const statusMenuOpen = ref(false)
 const statusFilterLabel = computed(() => {
@@ -1452,6 +1459,19 @@ function submitCancel() {
 function statusLabel(s, feasibility) {
   if (s === 'pending') return feasibility ? 'Ожидает прозвон' : 'Ожидает техвозм.'
   return { pending: 'Ожидает', scheduled: 'Назначено', rejected: 'Отклонено', cancelled: 'Отказ', closed: 'Выполнено' }[s] ?? s
+}
+function statusHint(s, feasibility) {
+  if (s === 'pending') {
+    return feasibility
+      ? 'Техвозможность подтверждена монтажником — осталось дозвониться до абонента и согласовать дату.'
+      : 'Заявка создана, монтажник ещё не оценил, можно ли технически подключить по этому адресу.'
+  }
+  return {
+    scheduled: 'Согласована дата и время выезда бригады (подключение или переключение на ПОН).',
+    rejected:  'Подключение технически невозможно — ставится автоматически, когда монтажник после прозвона отмечает «невозможно».',
+    cancelled: 'Абонент сам отказался от подключения после того, как оставил заявку — технически подключить было можно.',
+    closed:    'Подключение/переключение выполнено бригадой, по заявке создан акт.',
+  }[s] ?? null
 }
 function statusClass(s, feasibility) {
   if (s === 'pending') return feasibility ? 'bg-amber-100 text-amber-800' : 'bg-yellow-100 text-yellow-800'

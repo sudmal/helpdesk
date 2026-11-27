@@ -51,27 +51,45 @@ import { computed, onMounted } from 'vue'
 import RangePicker from '@/Components/Reports/RangePicker.vue'
 import { useReportRange } from '@/Composables/useReportRange'
 
+// "pending" разбит на pending_tech/pending_callback -- это разные этапы работы с
+// заявкой (техвозможность ещё не оценена / оценена, ждём прозвона абонента), не
+// одно "Ожидает" -- та же логика, что и в бейдже/фильтре на странице Подключений
+// (см. statusLabel()/STATUS_OPTIONS в ConnectionRequests/Index.vue).
 const range = useReportRange('reports.connections', {
-  rows: [], totals: { total: 0 }, statuses: ['pending', 'scheduled', 'closed', 'rejected', 'cancelled'], period: null,
+  rows: [], totals: { total: 0 },
+  statuses: ['pending_tech', 'pending_callback', 'scheduled', 'closed', 'rejected', 'cancelled'],
+  period: null,
 })
 const data = computed(() => range.state.data)
 
 function statusLabel(s) {
-  return { pending: 'Ожидает', scheduled: 'Назначено', closed: 'Выполнено', rejected: 'Отклонено', cancelled: 'Отказ' }[s] ?? s
+  return {
+    pending_tech:     'Ожидает техвозм.',
+    pending_callback: 'Ожидает прозвон',
+    scheduled:        'Назначено',
+    closed:           'Выполнено',
+    rejected:         'Отклонено',
+    cancelled:        'Отказ',
+  }[s] ?? s
 }
 function statusHint(s) {
   return {
-    rejected:  'Подключение технически невозможно — ставится автоматически, когда монтажник после прозвона отмечает «невозможно».',
-    cancelled: 'Абонент сам отказался от подключения после того, как оставил заявку — технически подключить было можно.',
+    pending_tech:     'Заявка создана, монтажник ещё не оценил техническую возможность подключения по этому адресу.',
+    pending_callback: 'Техвозможность подтверждена монтажником — осталось дозвониться до абонента и согласовать дату.',
+    scheduled:        'Согласована дата и время выезда бригады (подключение или переключение на ПОН).',
+    closed:           'Подключение/переключение выполнено бригадой, по заявке создан акт.',
+    rejected:         'Подключение технически невозможно — ставится автоматически, когда монтажник после прозвона отмечает «невозможно».',
+    cancelled:        'Абонент сам отказался от подключения после того, как оставил заявку — технически подключить было можно.',
   }[s] ?? null
 }
 function statusTextCls(s) {
   return {
-    pending:   'text-yellow-700',
-    scheduled: 'text-blue-700',
-    closed:    'text-green-700',
-    rejected:  'text-red-600',
-    cancelled: 'text-gray-500',
+    pending_tech:     'text-amber-700',
+    pending_callback: 'text-yellow-700',
+    scheduled:        'text-blue-700',
+    closed:           'text-green-700',
+    rejected:         'text-red-600',
+    cancelled:        'text-gray-500',
   }[s] ?? 'text-gray-700'
 }
 

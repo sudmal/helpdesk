@@ -844,13 +844,24 @@ class ReportsController extends Controller
 
         [$from, $to] = $this->parseRange($request);
 
-        $statuses = ['pending', 'scheduled', 'closed', 'rejected', 'cancelled'];
+        // pending разбит на два подстатуса по feasibility -- та же логика, что и в бейдже/фильтре
+        // на самой странице Подключений (statusLabel()/STATUS_OPTIONS) -- это разные этапы работы
+        // с заявкой, не один статус "pending" в отчёте смешивал бы их в одном числе.
+        $statuses = ['pending_tech', 'pending_callback', 'scheduled', 'closed', 'rejected', 'cancelled'];
 
         $raw = DB::table('connection_requests')
             ->whereNull('deleted_at')
             ->whereBetween('created_at', [$from, $to])
-            ->selectRaw('territory_id, status, COUNT(*) as total')
-            ->groupBy('territory_id', 'status')
+            ->selectRaw("
+                territory_id,
+                CASE
+                    WHEN status = 'pending' AND feasibility IS NULL THEN 'pending_tech'
+                    WHEN status = 'pending' THEN 'pending_callback'
+                    ELSE status
+                END as status_key,
+                COUNT(*) as total
+            ")
+            ->groupBy('territory_id', 'status_key')
             ->get();
 
         $territoryNames = DB::table('territories')->pluck('name', 'id');
@@ -868,7 +879,7 @@ class ReportsController extends Controller
                     $byTerritory[$key][$s] = 0;
                 }
             }
-            $byTerritory[$key][$r->status] = (int) $r->total;
+            $byTerritory[$key][$r->status_key] = (int) $r->total;
             $byTerritory[$key]['total'] += (int) $r->total;
         }
 
