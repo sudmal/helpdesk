@@ -134,7 +134,7 @@
              вайтспейс, когда подсказка по наведению пуста), перенесены сюда. -->
         <span class="text-sm text-gray-500 whitespace-nowrap ml-auto">Всего: {{ requests.total }}</span>
         <Link v-if="canViewReports" :href="route('reports.index', { tab: 'connections' })"
-              class="px-2.5 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors shrink-0">
+              class="px-2.5 py-1.5 rounded-lg text-sm font-medium border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors shrink-0">
           Отчёт →
         </Link>
         <button @click="openCreate" data-tour="tour-conn-create"
