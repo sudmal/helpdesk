@@ -119,7 +119,7 @@ class Act extends Model
     // тип остаётся обычным полем Act::type, просто не кодируется в строке.
 
     /**
-     * Номер акта для заявки на подключение: <in|cn>-YYMMDDNN — буквенный префикс
+     * Номер акта для заявки на подключение: <in|cn>-YYMMDDNNN — буквенный префикс
      * определяется участком (ServiceType), который теперь выбирается один раз при
      * создании заявки на подключение (connection_requests.service_type_id), а не
      * заново при закрытии. Тип самого акта (Act.type) при этом всегда 'regular' —
@@ -144,7 +144,8 @@ class Act extends Model
     }
 
     /**
-     * Цифровая часть номера (2026-07-16): YYMMDDNN — дата создания акта +
+     * Цифровая часть номера (3 знака, 000-999, с 2026-11-27 -- см.
+     * Ticket::generateNumber(), тот же повод: 99 в день мало) -- дата создания акта +
      * порядковый номер СЕГОДНЯ в рамках именно этого буквенного префикса
      * (свой отдельный счётчик с 01 на каждый префикс каждый день; префиксы
      * друг другу не мешают). Буквенная часть перед дефисом не менялась.
@@ -196,13 +197,13 @@ class Act extends Model
 
         $candidate = max($lastNum, $lastNumFromRequests) + 1;
         while (
-            static::where('number', $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT))->exists()
-            || ConnectionRequest::where('number', $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT))->exists()
+            static::where('number', $searchPrefix . str_pad($candidate, 3, '0', STR_PAD_LEFT))->exists()
+            || ConnectionRequest::where('number', $searchPrefix . str_pad($candidate, 3, '0', STR_PAD_LEFT))->exists()
         ) {
             $candidate++;
         }
 
-        return $searchPrefix . str_pad($candidate, 2, '0', STR_PAD_LEFT);
+        return $searchPrefix . str_pad($candidate, 3, '0', STR_PAD_LEFT);
     }
 
     /**
