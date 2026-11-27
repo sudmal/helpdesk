@@ -168,7 +168,7 @@
               <th class="px-2 py-1 text-center w-7"></th>
               <th class="px-1 py-1 text-center w-6"></th>
               <th class="px-2 py-1 text-left">Дата</th>
-              <th class="px-2 py-1 text-left">Имя</th>
+              <th class="px-2 py-1 text-left">№ заявки</th>
               <th class="px-2 py-1 text-left">Телефон</th>
               <th class="px-2 py-1 text-left">Адрес</th>
               <th class="px-2 py-1 text-left">Описание</th>
@@ -197,7 +197,7 @@
               </td>
               <td class="px-1 py-px text-center text-sm leading-none" :title="r.service_type?.name">{{ serviceIcon(r.service_type?.name) }}</td>
               <td class="px-2 py-px whitespace-nowrap text-gray-500">{{ fmtDate(r.created_at) }}</td>
-              <td class="px-2 py-px font-medium truncate max-w-24">{{ r.name }}</td>
+              <td class="px-2 py-px font-medium truncate max-w-24" :title="r.name">{{ r.number || '—' }}</td>
               <td class="px-2 py-px font-mono whitespace-nowrap max-w-24">{{ r.phone }}</td>
               <td class="px-2 py-px text-blue-600 hover:underline cursor-pointer truncate max-w-36"
                   @click="openDetail(r)">
