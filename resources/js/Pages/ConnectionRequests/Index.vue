@@ -108,10 +108,11 @@
           </button>
           <div v-if="statusMenuOpen" class="fixed inset-0 z-10" @click="statusMenuOpen = false"></div>
           <div v-if="statusMenuOpen" class="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-52">
-            <label v-for="opt in STATUS_OPTIONS" :key="opt.key"
+            <label v-for="opt in STATUS_OPTIONS" :key="opt.key" :title="opt.hint"
                    class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer select-none">
               <input type="checkbox" :value="opt.key" v-model="f.statuses" class="rounded border-gray-300" />
               {{ opt.label }}
+              <span v-if="opt.hint" class="text-gray-300">ⓘ</span>
             </label>
             <div class="border-t border-gray-100 mt-1 pt-1 px-3 flex items-center justify-between">
               <button @click="f.statuses = []" class="text-xs text-gray-400 hover:text-gray-600">Сбросить</button>
@@ -1049,8 +1050,10 @@ const STATUS_OPTIONS = [
   { key: 'pending_tech',     label: 'Ожидает техвозм.' },
   { key: 'pending_callback', label: 'Ожидает прозвон' },
   { key: 'scheduled',        label: 'Назначено' },
-  { key: 'rejected',         label: 'Отклонено' },
-  { key: 'cancelled',        label: 'Отказ' },
+  { key: 'rejected',         label: 'Отклонено',
+    hint: 'Подключение технически невозможно — ставится автоматически, когда монтажник после прозвона отмечает «невозможно».' },
+  { key: 'cancelled',        label: 'Отказ',
+    hint: 'Абонент сам отказался от подключения после того, как оставил заявку — технически подключить было можно.' },
   { key: 'closed',           label: 'Выполнено' },
 ]
 const statusMenuOpen = ref(false)
